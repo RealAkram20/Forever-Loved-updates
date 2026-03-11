@@ -85,6 +85,7 @@
 </head>
 
 <body
+    class="overflow-x-hidden"
     x-data="{ 'loaded': true}"
     x-init="$store.sidebar.isExpanded = window.innerWidth >= 1280;
     const checkMobile = () => {
@@ -102,7 +103,7 @@
 
     {{-- Global toast notification system (bottom-right, above everything) --}}
     <div x-data="toastSystem()" x-on:toast.window="addToast($event.detail)"
-         class="fixed bottom-6 right-6 z-[99999] flex flex-col-reverse gap-3 pointer-events-none" style="max-width: 400px;">
+         class="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-[99999] flex flex-col-reverse gap-3 pointer-events-none sm:max-w-[400px]">
         <template x-for="toast in toasts" :key="toast.id">
             <div x-show="toast.visible"
                  x-transition:enter="transition ease-out duration-300"
@@ -201,7 +202,7 @@
         @include('layouts.backdrop')
         @include('layouts.sidebar')
 
-        <div class="flex-1 transition-all duration-300 ease-in-out dark:bg-gray-900"
+        <div class="flex-1 min-w-0 transition-all duration-300 ease-in-out dark:bg-gray-900"
             :class="{
                 'xl:ml-[290px]': $store.sidebar.isExpanded || $store.sidebar.isHovered,
                 'xl:ml-[90px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered,

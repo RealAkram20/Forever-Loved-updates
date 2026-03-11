@@ -10,59 +10,47 @@ class MenuHelper
     }
 
     /**
-     * Main nav items for regular users: Dashboard, Calendar, Memorials, User Profile, Billings.
+     * Main nav items for regular users.
      */
     public static function getUserMainNavItems(): array
     {
         return [
             ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => '/dashboard'],
-            ['icon' => 'calendar', 'name' => 'Calendar', 'path' => '/calendar'],
+            ['icon' => 'memorial', 'name' => 'Memorials', 'path' => '/memorials'],
             ['icon' => 'search', 'name' => 'Find Memorial', 'path' => '/find-memorial'],
-            ['icon' => 'user-profile', 'name' => 'Memorials', 'path' => '/memorials'],
-            ['icon' => 'user-profile', 'name' => 'User Profile', 'path' => '/profile'],
-            [
-                'name' => 'Billings',
-                'icon' => 'billing',
-                'subItems' => [
-                    ['name' => 'Payments', 'path' => '/billing/payments'],
-                    ['name' => 'Subscription', 'path' => '/billing/subscription'],
-                ],
-            ],
+            ['icon' => 'calendar', 'name' => 'Calendar', 'path' => '/calendar'],
         ];
     }
 
     /**
-     * Main nav items for admin (unchanged).
+     * Main nav items for admin / super-admin.
      */
     public static function getAdminMainNavItems(): array
     {
         return [
             ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => '/dashboard'],
-            ['icon' => 'user-profile', 'name' => 'Memorials', 'path' => '/memorials'],
+            ['icon' => 'memorial', 'name' => 'Memorials', 'path' => '/memorials'],
             ['icon' => 'search', 'name' => 'Find Memorial', 'path' => '/find-memorial'],
             ['icon' => 'calendar', 'name' => 'Calendar', 'path' => '/calendar'],
-            ['icon' => 'user-profile', 'name' => 'User Profile', 'path' => '/profile'],
-            [
-                'name' => 'Forms',
-                'icon' => 'forms',
-                'subItems' => [
-                    ['name' => 'Form Elements', 'path' => '/form-elements', 'pro' => false],
-                ],
-            ],
-            [
-                'name' => 'Tables',
-                'icon' => 'tables',
-                'subItems' => [
-                    ['name' => 'Basic Tables', 'path' => '/basic-tables', 'pro' => false],
-                    ['name' => 'All Memorials', 'path' => '/memorials', 'adminOnly' => true],
-                ],
-            ],
+            ['icon' => 'users', 'name' => 'Users', 'path' => '/users'],
             [
                 'name' => 'Pages',
                 'icon' => 'pages',
                 'subItems' => [
-                    ['name' => 'Blank Page', 'path' => '/blank', 'pro' => false],
-                    ['name' => '404 Error', 'path' => '/error-404', 'pro' => false],
+                    ['name' => 'Landing Page', 'path' => '/'],
+                    ['name' => 'Blank Page', 'path' => '/blank'],
+                ],
+            ],
+            [
+                'name' => 'Settings',
+                'icon' => 'settings',
+                'subItems' => [
+                    ['name' => 'General', 'path' => '/settings'],
+                    ['name' => 'AI Configuration', 'path' => '/settings/ai'],
+                    ['name' => 'Permissions', 'path' => '/settings/permissions'],
+                    ['name' => 'Payments', 'path' => '/settings/payments'],
+                    ['name' => 'Subscriptions', 'path' => '/settings/subscriptions'],
+                    ['name' => 'Plans', 'path' => '/settings/plans'],
                 ],
             ],
         ];
@@ -73,53 +61,11 @@ class MenuHelper
         return self::isAdmin() ? self::getAdminMainNavItems() : self::getUserMainNavItems();
     }
 
-    public static function getOthersItems(): array
-    {
-        if (self::isAdmin()) {
-            return [
-                [
-                    'icon' => 'charts',
-                    'name' => 'Charts',
-                    'subItems' => [
-                        ['name' => 'Line Chart', 'path' => '/line-chart', 'pro' => false],
-                        ['name' => 'Bar Chart', 'path' => '/bar-chart', 'pro' => false],
-                    ],
-                ],
-                [
-                    'icon' => 'ui-elements',
-                    'name' => 'UI Elements',
-                    'subItems' => [
-                        ['name' => 'Alerts', 'path' => '/alerts', 'pro' => false],
-                        ['name' => 'Avatar', 'path' => '/avatars', 'pro' => false],
-                        ['name' => 'Badge', 'path' => '/badge', 'pro' => false],
-                        ['name' => 'Buttons', 'path' => '/buttons', 'pro' => false],
-                        ['name' => 'Images', 'path' => '/image', 'pro' => false],
-                        ['name' => 'Videos', 'path' => '/videos', 'pro' => false],
-                    ],
-                ],
-                [
-                    'icon' => 'authentication',
-                    'name' => 'Authentication',
-                    'subItems' => [
-                        ['name' => 'Sign In', 'path' => '/login', 'pro' => false],
-                        ['name' => 'Sign Up', 'path' => '/register', 'pro' => false],
-                    ],
-                ],
-            ];
-        }
-        return [];
-    }
-
     public static function getMenuGroups(): array
     {
-        $groups = [
+        return [
             ['title' => 'Menu', 'items' => self::getMainNavItems()],
         ];
-        $others = self::getOthersItems();
-        if (!empty($others)) {
-            $groups[] = ['title' => 'Others', 'items' => $others];
-        }
-        return $groups;
     }
 
     public static function isActive($path)
@@ -161,6 +107,12 @@ class MenuHelper
             'search' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M11 4C7.13401 4 4 7.13401 4 11C4 14.866 7.13401 18 11 18C13.0512 18 14.8944 17.1932 16.2112 15.8944L19.2929 18.9762C19.6834 19.3667 20.3166 19.3667 20.7071 18.9762C21.0976 18.5857 21.0976 17.9525 20.7071 17.562L17.6254 14.4803C18.866 13.1315 19.6 11.2587 19.6 9.2C19.6 5.33401 16.466 2.2 12.6 2.2H11V4ZM11 6C8.23858 6 6 8.23858 6 11C6 13.7614 8.23858 16 11 16C13.7614 16 16 13.7614 16 11C16 8.23858 13.7614 6 11 6Z" fill="currentColor"></path></svg>',
 
             'email' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.5 8.187V17.25C3.5 17.6642 3.83579 18 4.25 18H19.75C20.1642 18 20.5 17.6642 20.5 17.25V8.18747L13.2873 13.2171C12.5141 13.7563 11.4866 13.7563 10.7134 13.2171L3.5 8.187ZM20.5 6.2286C20.5 6.23039 20.5 6.23218 20.5 6.23398V6.24336C20.4976 6.31753 20.4604 6.38643 20.3992 6.42905L12.4293 11.9867C12.1716 12.1664 11.8291 12.1664 11.5713 11.9867L3.60116 6.42885C3.538 6.38481 3.50035 6.31268 3.50032 6.23568C3.50028 6.10553 3.60577 6 3.73592 6H20.2644C20.3922 6 20.4963 6.10171 20.5 6.2286ZM22 6.25648V17.25C22 18.4926 20.9926 19.5 19.75 19.5H4.25C3.00736 19.5 2 18.4926 2 17.25V6.23398C2 6.22371 2.00021 6.2135 2.00061 6.20333C2.01781 5.25971 2.78812 4.5 3.73592 4.5H20.2644C21.2229 4.5 22 5.27697 22.0001 6.23549C22.0001 6.24249 22.0001 6.24949 22 6.25648Z" fill="currentColor"></path></svg>',
+
+            'memorial' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 6.25278V19.2528M12 6.25278C10.8321 5.47686 9.24649 5 7.5 5C5.75351 5 4.16789 5.47686 3 6.25278V19.2528C4.16789 18.4769 5.75351 18 7.5 18C9.24649 18 10.8321 18.4769 12 19.2528M12 6.25278C13.1679 5.47686 14.7535 5 16.5 5C18.2465 5 19.8321 5.47686 21 6.25278V19.2528C19.8321 18.4769 18.2465 18 16.5 18C14.7535 18 13.1679 18.4769 12 19.2528" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+            'users' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 20H22V18C22 16.3431 20.6569 15 19 15C18.0444 15 17.1931 15.4468 16.6438 16.1429M17 20H7M17 20V18C17 17.3438 16.8736 16.717 16.6438 16.1429M7 20H2V18C2 16.3431 3.34315 15 5 15C5.95561 15 6.80686 15.4468 7.35625 16.1429M7 20V18C7 17.3438 7.12642 16.717 7.35625 16.1429M7.35625 16.1429C8.0935 14.301 9.89482 13 12 13C14.1052 13 15.9065 14.301 16.6438 16.1429M15 7C15 8.65685 13.6569 10 12 10C10.3431 10 9 8.65685 9 7C9 5.34315 10.3431 4 12 4C13.6569 4 15 5.34315 15 7ZM21 10C21 11.1046 20.1046 12 19 12C17.8954 12 17 11.1046 17 10C17 8.89543 17.8954 8 19 8C20.1046 8 21 8.89543 21 10ZM7 10C7 11.1046 6.10457 12 5 12C3.89543 12 3 11.1046 3 10C3 8.89543 3.89543 8 5 8C6.10457 8 7 8.89543 7 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+            'settings' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.0175 2.75C10.1679 2.75 9.42075 3.33646 9.21677 4.15889L8.92868 5.31898C8.88609 5.49044 8.75714 5.63111 8.58512 5.69678C8.30383 5.8041 8.02968 5.92567 7.76372 6.06053C7.59865 6.14426 7.40337 6.15018 7.2339 6.07631L6.09942 5.58222C5.31794 5.24207 4.40451 5.48885 3.90193 6.17777L3.15193 7.2065C2.72283 7.7951 2.73213 8.58698 3.17459 9.16538L3.87559 10.0814C3.98877 10.2292 4.02465 10.4182 3.97589 10.5949C3.91102 10.8302 3.86154 11.0707 3.82835 11.3155C3.80353 11.498 3.69693 11.6588 3.53795 11.7534L2.48913 12.3781C1.7588 12.813 1.42437 13.6842 1.68186 14.4975L1.95686 15.3665C2.24124 16.264 3.16043 16.8077 4.08372 16.623L5.26121 16.3873C5.43901 16.3518 5.62108 16.398 5.75897 16.5071C5.97688 16.6793 6.20615 16.8376 6.44536 16.9808C6.60424 17.0758 6.71384 17.2333 6.74312 17.4144C6.93025 18.5726 7.97423 19.4101 9.14779 19.3445L9.51202 19.324C10.3404 19.2776 11.0524 18.7237 11.3035 17.9405L11.6113 17.0012C11.6697 16.8228 11.8068 16.6833 11.9843 16.6162C12.2554 16.5139 12.5185 16.3959 12.7722 16.2633C12.9402 16.1755 13.1402 16.1653 13.3158 16.2357L14.5064 16.7125C15.3028 17.0318 16.2082 16.7547 16.6899 16.0413L17.3699 15.0342C17.7741 14.4353 17.7414 13.6517 17.2906 13.0878L16.5485 12.1592C16.4299 12.0109 16.3897 11.8178 16.4374 11.6365C16.5019 11.3938 16.5504 11.1458 16.5822 10.8937C16.6062 10.7044 16.7155 10.5377 16.88 10.4406L17.9644 9.80078C18.711 9.36002 19.0536 8.47247 18.789 7.6457L18.4923 6.71931C18.2017 5.81241 17.2672 5.27165 16.3393 5.47247L15.2113 5.71654C15.033 5.75506 14.8479 5.71079 14.7077 5.59825C14.4928 5.42594 14.2666 5.26728 14.0306 5.12345C13.8724 5.0273 13.7637 4.86921 13.7358 4.68854L13.5359 3.39482C13.3905 2.45432 12.5822 1.75 11.6302 1.75H11.0175V2.75ZM12 9.25C10.4812 9.25 9.25 10.4812 9.25 12C9.25 13.5188 10.4812 14.75 12 14.75C13.5188 14.75 14.75 13.5188 14.75 12C14.75 10.4812 13.5188 9.25 12 9.25ZM7.75 12C7.75 9.65279 9.65279 7.75 12 7.75C14.3472 7.75 16.25 9.65279 16.25 12C16.25 14.3472 14.3472 16.25 12 16.25C9.65279 16.25 7.75 14.3472 7.75 12Z" fill="currentColor"/></svg>',
 
             'billing' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2 7C2 5.34315 3.34315 4 5 4H19C20.6569 4 22 5.34315 22 7V17C22 18.6569 20.6569 20 19 20H5C3.34315 20 2 18.6569 2 17V7ZM5 6C4.44772 6 4 6.44772 4 7V17C4 17.5523 4.44772 18 5 18H19C19.5523 18 20 17.5523 20 17V7C20 6.44772 19.5523 6 19 6H5ZM6 11C6 10.4477 6.44772 10 7 10H17C17.5523 10 18 10.4477 18 11C18 11.5523 17.5523 12 17 12H7C6.44772 12 6 11.5523 6 11ZM6 14C6 13.4477 6.44772 13 7 13H13C13.5523 13 14 13.4477 14 14C14 14.5523 13.5523 15 13 15H7C6.44772 15 6 14.5523 6 14Z" fill="currentColor"></path></svg>',
         ];

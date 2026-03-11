@@ -56,16 +56,9 @@ class MemorialDirectoryController extends Controller
         $ageMin = $request->integer('age_min', 0);
         $ageMax = $request->integer('age_max', 120);
         if ($ageMin > 0 || $ageMax < 120) {
-            $driver = $query->getConnection()->getDriverName();
-            if ($driver === 'mysql') {
-                $query->whereNotNull('date_of_birth')
-                    ->whereNotNull('date_of_passing')
-                    ->whereRaw('TIMESTAMPDIFF(YEAR, date_of_birth, date_of_passing) BETWEEN ? AND ?', [$ageMin, $ageMax]);
-            } else {
-                $query->whereNotNull('date_of_birth')
-                    ->whereNotNull('date_of_passing')
-                    ->whereRaw('(CAST(strftime("%Y", date_of_passing) AS INTEGER) - CAST(strftime("%Y", date_of_birth) AS INTEGER)) BETWEEN ? AND ?', [$ageMin, $ageMax]);
-            }
+            $query->whereNotNull('date_of_birth')
+                ->whereNotNull('date_of_passing')
+                ->whereRaw('TIMESTAMPDIFF(YEAR, date_of_birth, date_of_passing) BETWEEN ? AND ?', [$ageMin, $ageMax]);
         }
 
         $birthYearFrom = $request->integer('birth_year_from', 0);

@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\MemorialApiController;
 use App\Http\Controllers\MemorialController;
 use App\Http\Controllers\MemorialDirectoryController;
 use App\Http\Controllers\MemorialMediaController;
 use App\Http\Controllers\MemorialSignupController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicMemorialController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,9 +41,7 @@ Route::prefix('create-memorial')->name('memorial.create.')->group(function () {
 
 // Dashboard routes (protected)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('pages.dashboard.ecommerce', ['title' => 'Dashboard']);
-    })->name('dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     Route::post('memorials/{memorial}/status', [MemorialController::class, 'updateStatus'])->name('memorials.status');
     Route::patch('memorials/{memorial}/section', [MemorialController::class, 'updateSection'])->name('memorials.section');
@@ -50,78 +51,53 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('memorials/{memorial}/biography', [MemorialController::class, 'saveBiography'])->name('memorials.save-biography');
     Route::resource('memorials', MemorialController::class);
 
-// calender pages
+// Profile
+Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo');
+Route::delete('/profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.remove');
+Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+// Calendar
 Route::get('/calendar', function () {
     return view('pages.calender', ['title' => 'Calendar']);
 })->name('calendar');
 
-// profile pages
-Route::get('/profile', function () {
-    return view('pages.profile', ['title' => 'Profile']);
-})->name('profile');
-
-// billing pages (user only)
-Route::get('/billing/payments', function () {
-    return view('pages.billing.payments', ['title' => 'Payments']);
-})->name('billing.payments');
-Route::get('/billing/subscription', function () {
-    return view('pages.billing.subscription', ['title' => 'Subscription']);
-})->name('billing.subscription');
-
-// form pages
-Route::get('/form-elements', function () {
-    return view('pages.form.form-elements', ['title' => 'Form Elements']);
-})->name('form-elements');
-
-// tables pages
-Route::get('/basic-tables', function () {
-    return view('pages.tables.basic-tables', ['title' => 'Basic Tables']);
-})->name('basic-tables');
-
-// pages
-
+// Blank page
 Route::get('/blank', function () {
     return view('pages.blank', ['title' => 'Blank']);
 })->name('blank');
 
-// error pages
-Route::get('/error-404', function () {
-    return view('pages.errors.error-404', ['title' => 'Error 404']);
-})->name('error-404');
+// ─── Users Management (admin only) ──────────────────────────────
+Route::middleware('role:admin|super-admin')->group(function () {
+    Route::resource('users', UserController::class)->except(['show']);
+});
 
-// chart pages
-Route::get('/line-chart', function () {
-    return view('pages.chart.line-chart', ['title' => 'Line Chart']);
-})->name('line-chart');
+// ─── Admin Settings ──────────────────────────────────────────────
+Route::prefix('settings')->name('settings.')->middleware('role:admin|super-admin')->group(function () {
+    Route::get('/', [SettingsController::class, 'general'])->name('general');
+    Route::put('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
 
-Route::get('/bar-chart', function () {
-    return view('pages.chart.bar-chart', ['title' => 'Bar Chart']);
-})->name('bar-chart');
+    Route::get('/ai', [SettingsController::class, 'ai'])->name('ai');
+    Route::put('/ai', [SettingsController::class, 'updateAi'])->name('ai.update');
 
-// ui elements pages
-Route::get('/alerts', function () {
-    return view('pages.ui-elements.alerts', ['title' => 'Alerts']);
-})->name('alerts');
+    Route::get('/permissions', [SettingsController::class, 'permissions'])->name('permissions');
+    Route::post('/permissions/roles', [SettingsController::class, 'storeRole'])->name('roles.store');
+    Route::put('/permissions/users/{user}/role', [SettingsController::class, 'updateUserRole'])->name('users.role');
+    Route::delete('/permissions/roles/{role}', [SettingsController::class, 'destroyRole'])->name('roles.destroy');
 
-Route::get('/avatars', function () {
-    return view('pages.ui-elements.avatars', ['title' => 'Avatars']);
-})->name('avatars');
+    Route::get('/payments', [SettingsController::class, 'payments'])->name('payments');
+    Route::put('/payments', [SettingsController::class, 'updatePayments'])->name('payments.update');
 
-Route::get('/badge', function () {
-    return view('pages.ui-elements.badges', ['title' => 'Badges']);
-})->name('badges');
+    Route::get('/subscriptions', [SettingsController::class, 'subscriptions'])->name('subscriptions');
+    Route::put('/subscriptions/{subscription}', [SettingsController::class, 'updateSubscription'])->name('subscriptions.update');
 
-Route::get('/buttons', function () {
-    return view('pages.ui-elements.buttons', ['title' => 'Buttons']);
-})->name('buttons');
-
-Route::get('/image', function () {
-    return view('pages.ui-elements.images', ['title' => 'Images']);
-})->name('images');
-
-Route::get('/videos', function () {
-    return view('pages.ui-elements.videos', ['title' => 'Videos']);
-})->name('videos');
+    Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
+    Route::post('/plans', [SettingsController::class, 'storePlan'])->name('plans.store');
+    Route::put('/plans/{plan}', [SettingsController::class, 'updatePlan'])->name('plans.update');
+    Route::delete('/plans/{plan}', [SettingsController::class, 'destroyPlan'])->name('plans.destroy');
+});
 });
 
 // Memorial API (AJAX - no page reload)
@@ -156,8 +132,6 @@ Route::get('/{memorial_slug}/chapter/{share_id}', [PublicMemorialController::cla
 // Public memorial by profile slug (e.g. /miiro-rio-akram) - MUST be last to avoid matching /login, /dashboard, etc.
 Route::get('/{slug}', [PublicMemorialController::class, 'show'])->name('memorial.public')->where('slug', '[a-z0-9\-]+');
 Route::post('/{slug}/tribute', [PublicMemorialController::class, 'storeTribute'])->name('memorial.tribute.store')->where('slug', '[a-z0-9\-]+');
-
-
 
 
 

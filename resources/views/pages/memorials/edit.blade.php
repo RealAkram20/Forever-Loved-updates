@@ -48,22 +48,22 @@
                 <div class="space-y-5" data-section="identity">
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                         <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700" for="first_name">First name</label>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="first_name">First name</label>
                             <input type="text" id="first_name" name="first_name" value="{{ old('first_name', $memorial->first_name) }}" required
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                             @error('first_name')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700" for="middle_name">Middle name</label>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="middle_name">Middle name</label>
                             <input type="text" id="middle_name" name="middle_name" value="{{ old('middle_name', $memorial->middle_name) }}"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700" for="last_name">Last name</label>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="last_name">Last name</label>
                             <input type="text" id="last_name" name="last_name" value="{{ old('last_name', $memorial->last_name) }}" required
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                             @error('last_name')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -71,36 +71,36 @@
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700" for="short_description">Short description</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="short_description">Short description</label>
                         <input type="text" id="short_description" name="short_description" value="{{ old('short_description', $memorial->short_description) }}"
                             placeholder="e.g. American businessman, co-inventor, investor"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                            class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                     </div>
 
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div x-data="{ nationalityVal: '{{ old('nationality', $memorial->nationality) }}' }" @nationality-detected.window="if ($event.detail.source === 'edit_birth_country') { nationalityVal = $event.detail.nationality; $nextTick(() => $refs.natInput.dispatchEvent(new Event('change', { bubbles: true }))) }">
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700" for="nationality">Nationality</label>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="nationality">Nationality</label>
                             <input type="text" id="nationality" name="nationality" x-model="nationalityVal" x-ref="natInput"
                                 placeholder="Auto-filled from birth country"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700" for="primary_profession">Primary profession</label>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="primary_profession">Primary profession</label>
                             <input type="text" id="primary_profession" name="primary_profession" value="{{ old('primary_profession', $memorial->primary_profession) }}"
                                 placeholder="e.g. Entrepreneur"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         </div>
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700" for="notable_title">Notable title (optional)</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="notable_title">Notable title (optional)</label>
                         <input type="text" id="notable_title" name="notable_title" value="{{ old('notable_title', $memorial->notable_title) }}"
                             placeholder="e.g. Pioneer of personal computing"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                            class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Gender</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Gender</label>
                         <div class="flex flex-wrap items-center gap-6">
                             <label class="flex cursor-pointer items-center text-sm font-medium text-gray-700 select-none">
                                 <input type="radio" name="gender" value="male" {{ old('gender', $memorial->gender) === 'male' ? 'checked' : '' }}
@@ -116,8 +116,8 @@
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700" for="relationship">Relationship</label>
-                        <select id="relationship" name="relationship" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden">
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="relationship">Relationship</label>
+                        <select id="relationship" name="relationship" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden">
                             <option value="">— Select relationship —</option>
                             <option value="Father" {{ old('relationship', $memorial->relationship) === 'Father' ? 'selected' : '' }}>Father</option>
                             <option value="Mother" {{ old('relationship', $memorial->relationship) === 'Mother' ? 'selected' : '' }}>Mother</option>
@@ -146,40 +146,40 @@
             <x-common.component-card title="2. Biography Summary" desc="For auto-generating the top paragraph">
                 <div class="space-y-5" data-section="biography_summary">
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700" for="major_achievements">Major achievements</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="major_achievements">Major achievements</label>
                         <textarea id="major_achievements" name="major_achievements" rows="3" placeholder="e.g. Co-founded Apple Inc. with Steve Wozniak in 1976..."
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden">{{ old('major_achievements', $memorial->major_achievements) }}</textarea>
+                            class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden">{{ old('major_achievements', $memorial->major_achievements) }}</textarea>
                     </div>
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700" for="known_for">Known for</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="known_for">Known for</label>
                         <input type="text" id="known_for" name="known_for" value="{{ old('known_for', $memorial->known_for) }}"
                             placeholder="e.g. Co-founding Apple Inc."
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                            class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                     </div>
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700" for="active_year_start">Active year start</label>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="active_year_start">Active year start</label>
                             <input type="number" id="active_year_start" name="active_year_start" value="{{ old('active_year_start', $memorial->active_year_start) }}"
                                 placeholder="e.g. 1976" min="1900" max="2100"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700" for="active_year_end">Active year end</label>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="active_year_end">Active year end</label>
                             <input type="number" id="active_year_end" name="active_year_end" value="{{ old('active_year_end', $memorial->active_year_end) }}"
                                 placeholder="e.g. 2011" min="1900" max="2100"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         </div>
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Notable companies</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Notable companies</label>
                         <div class="space-y-2" x-ref="companiesContainer">
                             @php $companiesData = old('companies', $memorial->notableCompanies->map(fn($c) => ['company_name' => $c->company_name])->toArray()); @endphp
                             @foreach($companiesData as $i => $company)
                             <div class="flex gap-2 items-center company-row">
                                 <input type="text" name="companies[{{ $i }}][company_name]" value="{{ $company['company_name'] ?? '' }}"
                                     placeholder="e.g. Apple Inc."
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                                 <button type="button" @click="$event.target.closest('.company-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
@@ -190,14 +190,14 @@
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Co-founders</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Co-founders</label>
                         <div class="space-y-2" x-ref="coFoundersContainer">
                             @php $coFoundersData = old('co_founders', $memorial->coFounders->map(fn($c) => ['name' => $c->name])->toArray()); @endphp
                             @foreach($coFoundersData as $i => $founder)
                             <div class="flex gap-2 items-center cofounder-row">
                                 <input type="text" name="co_founders[{{ $i }}][name]" value="{{ $founder['name'] ?? '' }}"
                                     placeholder="e.g. Steve Wozniak"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                                 <button type="button" @click="$event.target.closest('.cofounder-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
@@ -213,7 +213,7 @@
             <x-common.component-card title="3. Birth Information">
                 <div class="space-y-5" data-section="birth">
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Date of birth</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Date of birth</label>
                         <x-form.date-picker id="date_of_birth" name="date_of_birth" placeholder="Select date"
                             :defaultDate="old('date_of_birth', $memorial->date_of_birth?->format('Y-m-d'))" />
                     </div>
@@ -238,7 +238,7 @@
             <x-common.component-card title="3. Passed Away">
                 <div class="space-y-5" data-section="death">
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Date of passing</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Date of passing</label>
                         <x-form.date-picker id="date_of_passing" name="date_of_passing" placeholder="Select date"
                             :defaultDate="old('date_of_passing', $memorial->date_of_passing?->format('Y-m-d'))" />
                     </div>
@@ -257,9 +257,9 @@
                         </div>
                     </div>
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700" for="cause_of_death">Designation</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="cause_of_death">Designation</label>
                         @php $causeVal = old('cause_of_death', $memorial->cause_of_death); $causeOptions = ['COVID-19 victim','War veteran','First responder','Substance abuse victim','Cancer victim','Victim of an accident','Crime victim','Miscarriage, stillborn and infant loss','Child loss','Other','No designation']; @endphp
-                        <select id="cause_of_death" name="cause_of_death" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden">
+                        <select id="cause_of_death" name="cause_of_death" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden">
                             <option value="">— Select designation —</option>
                             @if($causeVal && !in_array($causeVal, $causeOptions))
                             <option value="{{ e($causeVal) }}" selected>{{ $causeVal }}</option>
@@ -290,15 +290,15 @@
             <x-common.component-card title="5. Family Relationships" desc="Optional, can be added later">
                 <div class="space-y-6" data-section="family">
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Children</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Children</label>
                         <div class="space-y-2" x-ref="childrenContainer">
                             @php $children = old('children', $memorial->children->map(fn($c) => ['child_name' => $c->child_name, 'birth_year' => $c->birth_year])->toArray() ?: []); @endphp
                             @foreach($children as $i => $child)
                             <div class="flex gap-2 items-center child-row">
                                 <input type="text" name="children[{{ $i }}][child_name]" value="{{ $child['child_name'] ?? '' }}" placeholder="Name"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                                 <input type="number" name="children[{{ $i }}][birth_year]" value="{{ $child['birth_year'] ?? '' }}" placeholder="Year" min="1900" max="2100"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                                 <button type="button" @click="$event.target.closest('.child-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
@@ -309,17 +309,17 @@
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Spouses</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Spouses</label>
                         <div class="space-y-2" x-ref="spousesContainer">
                             @php $spouses = old('spouses', $memorial->spouses->map(fn($s) => ['spouse_name' => $s->spouse_name, 'marriage_start_year' => $s->marriage_start_year, 'marriage_end_year' => $s->marriage_end_year])->toArray() ?: []); @endphp
                             @foreach($spouses as $i => $spouse)
                             <div class="flex flex-wrap gap-2 items-center spouse-row">
                                 <input type="text" name="spouses[{{ $i }}][spouse_name]" value="{{ $spouse['spouse_name'] ?? '' }}" placeholder="Name"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 min-w-[120px] rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 min-w-[120px] rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                                 <input type="number" name="spouses[{{ $i }}][marriage_start_year]" value="{{ $spouse['marriage_start_year'] ?? '' }}" placeholder="Start year" min="1900" max="2100"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                                 <input type="number" name="spouses[{{ $i }}][marriage_end_year]" value="{{ $spouse['marriage_end_year'] ?? '' }}" placeholder="End year" min="1900" max="2100"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                                 <button type="button" @click="$event.target.closest('.spouse-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
@@ -330,13 +330,13 @@
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Parents</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Parents</label>
                         <div class="space-y-2" x-ref="parentsContainer">
                             @php $parents = old('parents', $memorial->parents->map(fn($p) => ['parent_name' => $p->parent_name, 'relationship_type' => $p->relationship_type])->toArray() ?: []); @endphp
                             @foreach($parents as $i => $parent)
                             <div class="flex gap-2 items-center parent-row">
                                 <input type="text" name="parents[{{ $i }}][parent_name]" value="{{ $parent['parent_name'] ?? '' }}" placeholder="Name"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                                 <select name="parents[{{ $i }}][relationship_type]" class="dark:bg-dark-900 h-11 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm">
                                     <option value="biological" {{ ($parent['relationship_type'] ?? '') === 'biological' ? 'selected' : '' }}>Biological</option>
                                     <option value="adoptive" {{ ($parent['relationship_type'] ?? '') === 'adoptive' ? 'selected' : '' }}>Adoptive</option>
@@ -351,13 +351,13 @@
                     </div>
 
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Siblings</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Siblings</label>
                         <div class="space-y-2" x-ref="siblingsContainer">
                             @php $siblings = old('siblings', $memorial->siblings->map(fn($s) => ['sibling_name' => $s->sibling_name])->toArray() ?: []); @endphp
                             @foreach($siblings as $i => $sibling)
                             <div class="flex gap-2 items-center sibling-row">
                                 <input type="text" name="siblings[{{ $i }}][sibling_name]" value="{{ $sibling['sibling_name'] ?? '' }}" placeholder="Name"
-                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                    class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                                 <button type="button" @click="$event.target.closest('.sibling-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
@@ -378,22 +378,22 @@
                         <div class="sm:col-span-2">
                             <label class="mb-1 block text-xs text-gray-500">Institution</label>
                             <input type="text" name="education[{{ $i }}][institution_name]" value="{{ $edu['institution_name'] ?? '' }}" placeholder="e.g. Reed College"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div>
                             <label class="mb-1 block text-xs text-gray-500">Start year</label>
                             <input type="number" name="education[{{ $i }}][start_year]" value="{{ $edu['start_year'] ?? '' }}" placeholder="1972" min="1900" max="2100"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div>
                             <label class="mb-1 block text-xs text-gray-500">End year</label>
                             <input type="number" name="education[{{ $i }}][end_year]" value="{{ $edu['end_year'] ?? '' }}" placeholder="1974" min="1900" max="2100"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div class="sm:col-span-2">
                             <label class="mb-1 block text-xs text-gray-500">Degree (optional)</label>
                             <input type="text" name="education[{{ $i }}][degree]" value="{{ $edu['degree'] ?? '' }}" placeholder="e.g. B.A."
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div class="flex items-end">
                             <button type="button" @click="$event.target.closest('.education-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
@@ -488,10 +488,10 @@
             <x-common.component-card title="Settings">
                 <div class="space-y-5" data-section="settings">
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Theme</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Theme</label>
                         <div class="relative z-20 bg-transparent">
                             <select name="theme"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm text-gray-800 focus:ring-3 focus:outline-hidden">
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pr-11 text-sm text-gray-800 focus:ring-3 focus:outline-hidden">
                                 <option value="free" {{ old('theme', $memorial->theme) === 'free' ? 'selected' : '' }}>Classic</option>
                                 <option value="premium" {{ old('theme', $memorial->theme) === 'premium' ? 'selected' : '' }}>Premium</option>
                                 <option value="modern" {{ old('theme', $memorial->theme) === 'modern' ? 'selected' : '' }}>Modern</option>
@@ -503,7 +503,7 @@
                         </div>
                     </div>
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Plan</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Plan</label>
                         <div class="flex flex-wrap items-center gap-6">
                             <label class="flex cursor-pointer items-center text-sm font-medium text-gray-700 select-none">
                                 <input type="radio" name="plan" value="free" {{ old('plan', $memorial->plan ?? 'free') === 'free' ? 'checked' : '' }}
@@ -724,7 +724,7 @@
                     const idx = container.querySelectorAll('.company-row').length;
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center company-row';
-                    div.innerHTML = `<input type="text" name="companies[${idx}][company_name]" placeholder="e.g. Apple Inc." class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                    div.innerHTML = `<input type="text" name="companies[${idx}][company_name]" placeholder="e.g. Apple Inc." class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);
@@ -733,7 +733,7 @@
                     const idx = container.querySelectorAll('.cofounder-row').length;
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center cofounder-row';
-                    div.innerHTML = `<input type="text" name="co_founders[${idx}][name]" placeholder="e.g. Steve Wozniak" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                    div.innerHTML = `<input type="text" name="co_founders[${idx}][name]" placeholder="e.g. Steve Wozniak" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);
@@ -742,8 +742,8 @@
                     const idx = container.querySelectorAll('.child-row').length;
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center child-row';
-                    div.innerHTML = `<input type="text" name="children[${idx}][child_name]" placeholder="Name" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
-                        <input type="number" name="children[${idx}][birth_year]" placeholder="Year" min="1900" max="2100" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                    div.innerHTML = `<input type="text" name="children[${idx}][child_name]" placeholder="Name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                        <input type="number" name="children[${idx}][birth_year]" placeholder="Year" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);
@@ -752,9 +752,9 @@
                     const idx = container.querySelectorAll('.spouse-row').length;
                     const div = document.createElement('div');
                     div.className = 'flex flex-wrap gap-2 items-center spouse-row';
-                    div.innerHTML = `<input type="text" name="spouses[${idx}][spouse_name]" placeholder="Name" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 min-w-[120px] rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
-                        <input type="number" name="spouses[${idx}][marriage_start_year]" placeholder="Start year" min="1900" max="2100" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
-                        <input type="number" name="spouses[${idx}][marriage_end_year]" placeholder="End year" min="1900" max="2100" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                    div.innerHTML = `<input type="text" name="spouses[${idx}][spouse_name]" placeholder="Name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 min-w-[120px] rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                        <input type="number" name="spouses[${idx}][marriage_start_year]" placeholder="Start year" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                        <input type="number" name="spouses[${idx}][marriage_end_year]" placeholder="End year" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);
@@ -763,7 +763,7 @@
                     const idx = container.querySelectorAll('.parent-row').length;
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center parent-row';
-                    div.innerHTML = `<input type="text" name="parents[${idx}][parent_name]" placeholder="Name" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                    div.innerHTML = `<input type="text" name="parents[${idx}][parent_name]" placeholder="Name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         <select name="parents[${idx}][relationship_type]" class="dark:bg-dark-900 h-11 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm"><option value="biological">Biological</option><option value="adoptive">Adoptive</option></select>
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
@@ -773,7 +773,7 @@
                     const idx = container.querySelectorAll('.sibling-row').length;
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center sibling-row';
-                    div.innerHTML = `<input type="text" name="siblings[${idx}][sibling_name]" placeholder="Name" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
+                    div.innerHTML = `<input type="text" name="siblings[${idx}][sibling_name]" placeholder="Name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);
@@ -782,10 +782,10 @@
                     const idx = container.querySelectorAll('.education-row').length;
                     const div = document.createElement('div');
                     div.className = 'grid grid-cols-1 gap-2 sm:grid-cols-4 items-end education-row';
-                    div.innerHTML = `<div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Institution</label><input type="text" name="education[${idx}][institution_name]" placeholder="e.g. Reed College" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
-                        <div><label class="mb-1 block text-xs text-gray-500">Start year</label><input type="number" name="education[${idx}][start_year]" placeholder="1972" min="1900" max="2100" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
-                        <div><label class="mb-1 block text-xs text-gray-500">End year</label><input type="number" name="education[${idx}][end_year]" placeholder="1974" min="1900" max="2100" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
-                        <div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Degree (optional)</label><input type="text" name="education[${idx}][degree]" placeholder="e.g. B.A." class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
+                    div.innerHTML = `<div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Institution</label><input type="text" name="education[${idx}][institution_name]" placeholder="e.g. Reed College" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
+                        <div><label class="mb-1 block text-xs text-gray-500">Start year</label><input type="number" name="education[${idx}][start_year]" placeholder="1972" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
+                        <div><label class="mb-1 block text-xs text-gray-500">End year</label><input type="number" name="education[${idx}][end_year]" placeholder="1974" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
+                        <div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Degree (optional)</label><input type="text" name="education[${idx}][degree]" placeholder="e.g. B.A." class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
                         <div class="flex items-end"><button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);

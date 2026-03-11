@@ -8,7 +8,7 @@
     }">
     <div class="flex flex-col items-center justify-between grow xl:flex-row xl:px-6">
         <div
-            class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
+            class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 xl:flex-1 xl:min-w-0 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
 
             <!-- Desktop Sidebar Toggle Button (visible on xl and up) -->
             <button
@@ -49,9 +49,9 @@
             </button>
 
             <!-- Logo (mobile only) -->
-            <a href="{{ route('dashboard') }}" class="xl:hidden">
-                <img class="dark:hidden" src="/images/logo/logo.svg" alt="Logo" />
-                <img class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" />
+            <a href="{{ route('dashboard') }}" class="xl:hidden shrink-0">
+                <img class="dark:hidden h-8 w-auto" src="/images/logo/logo.svg" alt="Logo" />
+                <img class="hidden dark:block h-8 w-auto" src="/images/logo/logo-dark.svg" alt="Logo" />
             </a>
 
             <!-- Application Menu Toggle (mobile only) -->
@@ -66,7 +66,7 @@
             </button>
 
             <!-- Search Bar (desktop only) -->
-            <div class="hidden xl:block"
+            <div class="hidden xl:block xl:flex-1 xl:min-w-0"
                 data-search-context="{{ auth()->user()?->hasRole('super-admin') ? 'super_admin' : (auth()->user()?->hasRole('admin') ? 'admin' : 'public') }}"
                 x-data="{
                     query: '',
@@ -118,7 +118,7 @@
                         @focus="if (results.length) open = true"
                         placeholder="Search memorials..."
                         autocomplete="off"
-                        class="h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent dark:bg-gray-800 py-2.5 pl-12 pr-14 text-sm text-gray-800 dark:text-white/90 shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 xl:w-[430px]" />
+                        class="h-11 w-full max-w-[430px] rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent dark:bg-gray-800 py-2.5 pl-12 pr-14 text-sm text-gray-800 dark:text-white/90 shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10" />
                     <template x-if="loading">
                         <svg class="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                     </template>
@@ -133,7 +133,7 @@
 
                 {{-- Results dropdown --}}
                 <div x-show="open" x-cloak x-transition.opacity
-                    class="absolute z-50 mt-1 w-[430px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
+                    class="absolute z-50 mt-1 w-full max-w-[430px] rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
                     <template x-for="(item, idx) in results" :key="item.slug">
                         <a :href="item.url"
                            class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/60"
@@ -169,7 +169,7 @@
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
-            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
+            class="items-center justify-between w-full gap-4 px-3 py-3 sm:px-5 sm:py-4 xl:flex xl:w-auto xl:shrink-0 border-b border-gray-200 dark:border-gray-800 xl:border-b-0 shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
             <div class="flex items-center gap-2 2xsm:gap-3">
                 <!-- Theme Toggle Button -->
                 <button

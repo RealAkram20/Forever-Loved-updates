@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'profile_photo',
     ];
 
     /**
@@ -45,6 +46,14 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        if ($this->profile_photo) {
+            return url('/storage/' . ltrim($this->profile_photo, '/'));
+        }
+        return null;
     }
 
     public function memorials(): \Illuminate\Database\Eloquent\Relations\HasMany

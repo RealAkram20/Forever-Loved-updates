@@ -20,7 +20,7 @@
 }" @click.away="closeDropdown()">
     <!-- Notification Button -->
     <button
-        class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700"
+        class="relative flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full h-11 w-11 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200"
         @click="toggleDropdown()"
         type="button"
     >
@@ -61,14 +61,14 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
-        class="absolute -right-[240px] mt-[17px] flex h-[480px] w-[350px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg sm:w-[361px] lg:right-0"
+        class="absolute right-0 mt-[17px] flex max-h-[80vh] w-[calc(100vw-2rem)] max-w-[361px] flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 shadow-theme-lg sm:w-[361px]"
         style="display: none;"
     >
         <!-- Dropdown Header -->
-        <div class="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
-            <h5 class="text-lg font-semibold text-gray-800">Notification</h5>
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-gray-100 dark:border-gray-700">
+            <h5 class="text-lg font-semibold text-gray-800 dark:text-white/90">Notifications</h5>
 
-            <button @click="closeDropdown()" class="text-gray-500" type="button">
+            <button @click="closeDropdown()" class="text-gray-500 dark:text-gray-400" type="button">
                 <svg
                     class="fill-current"
                     width="24"
@@ -177,7 +177,7 @@
             @foreach ($notifications as $notification)
                 <li @click="handleItemClick()">
                     <a
-                        class="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100"
+                        class="flex gap-3 rounded-lg border-b border-gray-100 dark:border-gray-700 p-3 px-4.5 py-3 hover:bg-gray-100 dark:hover:bg-gray-700/50"
                         href="#"
                     >
                         <span class="relative block w-full h-10 rounded-full z-1 max-w-10">
@@ -188,12 +188,12 @@
                         </span>
 
                         <span class="block">
-                            <span class="mb-1.5 block text-theme-sm text-gray-500">
-                                <span class="font-medium text-gray-800">
+                            <span class="mb-1.5 block text-theme-sm text-gray-500 dark:text-gray-400">
+                                <span class="font-medium text-gray-800 dark:text-white/90">
                                     {{ $notification['userName'] }}
                                 </span>
                                 {{ $notification['action'] }}
-                                <span class="font-medium text-gray-800">
+                                <span class="font-medium text-gray-800 dark:text-white/90">
                                     {{ $notification['project'] }}
                                 </span>
                             </span>
@@ -212,7 +212,7 @@
         <!-- View All Button -->
         <a
             href="#"
-            class="mt-3 flex justify-center rounded-lg border border-gray-300 bg-white p-3 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800"
+            class="mt-3 flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-3 text-theme-sm font-medium text-gray-700 dark:text-gray-300 shadow-theme-xs hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-gray-800 dark:hover:text-white"
             @click.prevent="handleViewAllClick()"
         >
             View All Notification
