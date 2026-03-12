@@ -1,5 +1,6 @@
 
 @php
+    use App\Helpers\BrandingHelper;
     use App\Helpers\MenuHelper;
     $menuGroups = MenuHelper::getMenuGroups();
 
@@ -23,8 +24,8 @@
                     @if (isset($item['subItems']))
                         // Check if any submenu item matches current path
                         @foreach ($item['subItems'] as $subItem)
-                            if (currentPath === '{{ ltrim($subItem['path'], '/') }}' ||
-                                window.location.pathname === '{{ $subItem['path'] }}') {
+                            if (currentPath === '{{ MenuHelper::pathForMatch($subItem['path']) }}' ||
+                                window.location.pathname === '{{ parse_url($subItem['path'], PHP_URL_PATH) ?: $subItem['path'] }}') {
                                 this.openSubmenus['{{ $groupIndex }}-{{ $itemIndex }}'] = true;
                             } @endforeach
             @endif
@@ -47,7 +48,10 @@
             return this.openSubmenus[key] || false;
         },
         isActive(path) {
-            return window.location.pathname === path || '{{ $currentPath }}' === path.replace(/^\//, '');
+            const pathPart = path.startsWith('http') ? (new URL(path)).pathname : path;
+            const base = '{{ rtrim(parse_url(config('app.url'), PHP_URL_PATH) ?: '/', '/') }}';
+            const pathForMatch = base && pathPart.startsWith(base) ? (pathPart.slice(base.length) || '/').replace(/^\//, '') : pathPart.replace(/^\//, '');
+            return window.location.pathname === pathPart || '{{ $currentPath }}' === pathForMatch;
         }
     }"
     :class="{
@@ -65,12 +69,12 @@
         'justify-start'">
         <a href="{{ route('dashboard') }}">
             <img x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                class="dark:hidden" src="/images/logo/logo.svg" alt="Logo" width="150" height="40" />
+                class="dark:hidden" src="{{ BrandingHelper::logoUrl() }}" alt="Logo" width="150" height="40" />
             <img x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" width="150"
+                class="hidden dark:block" src="{{ BrandingHelper::logoDarkUrl() }}" alt="Logo" width="150"
                 height="40" />
             <img x-show="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen"
-                src="/images/logo/logo-icon.svg" alt="Logo" width="32" height="32" />
+                src="{{ BrandingHelper::logoIconUrl() }}" alt="Logo" width="32" height="32" />
 
         </a>
     </div>

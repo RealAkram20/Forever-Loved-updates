@@ -6,12 +6,9 @@
     <div class="flex h-14 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {{-- Logo --}}
         <a href="{{ route('home') }}" class="flex items-center gap-2 text-gray-800 dark:text-white/90 hover:text-brand-500">
-            <div class="flex gap-0.5">
-                <span class="h-2 w-2 rounded-full bg-brand-500"></span>
-                <span class="h-2 w-2 rounded-full bg-amber-400"></span>
-                <span class="h-2 w-2 rounded-full bg-success-500"></span>
-            </div>
-            <span class="font-semibold">Forever-Loved</span>
+            <img class="dark:hidden h-8 w-auto" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="{{ \App\Models\SystemSetting::get('branding.app_name', 'Forever-Loved') }}" />
+            <img class="hidden dark:block h-8 w-auto" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="{{ \App\Models\SystemSetting::get('branding.app_name', 'Forever-Loved') }}" />
+            <span class="font-semibold">{{ \App\Models\SystemSetting::get('branding.app_name', 'Forever-Loved') }}</span>
         </a>
 
         {{-- Search bar --}}

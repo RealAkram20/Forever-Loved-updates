@@ -10,6 +10,8 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="icon" href="{{ \App\Helpers\BrandingHelper::faviconUrl() }}" type="image/x-icon" />
+    <style>{{ \App\Helpers\BrandingHelper::brandColorCss() }}</style>
     @stack('head')
 
     <!-- Alpine.js -->

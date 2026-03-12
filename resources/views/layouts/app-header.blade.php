@@ -50,8 +50,8 @@
 
             <!-- Logo (mobile only) -->
             <a href="{{ route('dashboard') }}" class="xl:hidden shrink-0">
-                <img class="dark:hidden h-8 w-auto" src="/images/logo/logo.svg" alt="Logo" />
-                <img class="hidden dark:block h-8 w-auto" src="/images/logo/logo-dark.svg" alt="Logo" />
+                <img class="dark:hidden h-8 w-auto" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="Logo" />
+                <img class="hidden dark:block h-8 w-auto" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="Logo" />
             </a>
 
             <!-- Application Menu Toggle (mobile only) -->

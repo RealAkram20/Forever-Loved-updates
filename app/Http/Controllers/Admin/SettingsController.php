@@ -42,6 +42,7 @@ class SettingsController extends Controller
             'branding.secondary_color' => 'required|string|max:20',
             'branding.accent_color' => 'required|string|max:20',
             'logo' => 'nullable|image|max:2048',
+            'logo_dark' => 'nullable|image|max:2048',
             'favicon' => 'nullable|image|max:512',
         ]);
 
@@ -54,6 +55,11 @@ class SettingsController extends Controller
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('branding', 'public');
             SystemSetting::set('branding.logo_path', $path);
+        }
+
+        if ($request->hasFile('logo_dark')) {
+            $path = $request->file('logo_dark')->store('branding', 'public');
+            SystemSetting::set('branding.logo_dark_path', $path);
         }
 
         if ($request->hasFile('favicon')) {

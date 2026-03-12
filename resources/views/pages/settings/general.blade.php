@@ -51,6 +51,15 @@
                 </div>
 
                 <div>
+                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Dark Logo</label>
+                    <input type="file" name="logo_dark" accept="image/*"
+                        class="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 file:mr-4 file:rounded-md file:border-0 file:bg-brand-500 file:px-4 file:py-1.5 file:text-sm file:text-white hover:file:bg-brand-600" />
+                    @if (!empty($settings['branding.logo_dark_path']))
+                        <p class="mt-1 text-xs text-gray-500">Current: {{ $settings['branding.logo_dark_path'] }}</p>
+                    @endif
+                </div>
+
+                <div>
                     <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Favicon</label>
                     <input type="file" name="favicon" accept="image/*"
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 file:mr-4 file:rounded-md file:border-0 file:bg-brand-500 file:px-4 file:py-1.5 file:text-sm file:text-white hover:file:bg-brand-600" />
@@ -79,7 +88,7 @@
                 </div>
 
                 <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Secondary Color</label>
+                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode Color</label>
                     <div class="flex items-center gap-3">
                         <input type="color" name="branding[secondary_color]"
                             value="{{ old('branding.secondary_color', $settings['branding.secondary_color'] ?? '#1e3a5f') }}"

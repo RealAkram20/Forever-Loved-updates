@@ -14,6 +14,7 @@ class SystemSetting extends Model
         'branding.app_name' => ['value' => 'Forever Loved', 'type' => 'string', 'group' => 'branding'],
         'branding.tagline' => ['value' => 'Celebrate lives that matter', 'type' => 'string', 'group' => 'branding'],
         'branding.logo_path' => ['value' => '', 'type' => 'string', 'group' => 'branding'],
+        'branding.logo_dark_path' => ['value' => '', 'type' => 'string', 'group' => 'branding'],
         'branding.favicon_path' => ['value' => '', 'type' => 'string', 'group' => 'branding'],
         'branding.primary_color' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
         'branding.secondary_color' => ['value' => '#1e3a5f', 'type' => 'string', 'group' => 'branding'],
