@@ -10,6 +10,7 @@ use App\Models\UserSubscription;
 use App\Services\NotificationService;
 use App\Services\PesapalService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -109,7 +110,7 @@ class PaymentController extends Controller
         }
 
         $callbackUrl = $pesapal->getCallbackUrl('payment.callback');
-        $cancellationUrl = $pesapal->getCallbackUrl('subscription.index');
+        $cancellationUrl = $pesapal->getCallbackUrl('payment.complete', ['result' => 'cancelled']);
 
         $result = $pesapal->submitOrder(
             $merchantRef,
@@ -151,34 +152,84 @@ class PaymentController extends Controller
         $merchantRef = $request->query('OrderMerchantReference');
 
         if (! $orderTrackingId || ! $merchantRef) {
-            return redirect()->route('subscription.index')->with('error', 'Invalid callback parameters.');
+            return redirect()->route('payment.complete', ['result' => 'error', 'message' => 'Invalid callback parameters.']);
         }
 
         $order = PaymentOrder::where('merchant_reference', $merchantRef)->first();
-        if (! $order || ! $order->isPending()) {
-            return redirect()->route('subscription.index')->with('error', 'Order not found or already processed.');
+        if (! $order) {
+            return redirect()->route('payment.complete', ['result' => 'error', 'message' => 'Order not found.']);
+        }
+        // IPN may have already processed the payment before the callback - show success
+        if ($order->isCompleted()) {
+            return $this->redirectToCompletionPage('success', 'Payment successful! Your subscription is now active.', $order);
+        }
+        if (! $order->isPending()) {
+            return redirect()->route('payment.complete', ['result' => 'error', 'message' => 'Order already processed.']);
         }
 
         $pesapal = app(PesapalService::class);
         $status = null;
-        foreach ([0, 1, 2] as $attempt) {
+        foreach ([0, 1, 2, 3] as $attempt) {
             if ($attempt > 0) {
-                usleep(500000 * $attempt); // 0.5s, 1s delay before retry
+                usleep(500000 * $attempt); // 0.5s, 1s, 1.5s delay before retry
             }
             $status = $pesapal->getTransactionStatus($orderTrackingId);
             if ($status && $pesapal->isPaymentCompleted($status)) {
                 break;
             }
             if ($status && $pesapal->isPaymentFailed($status)) {
-                break;
+                // Pesapal may return transient "failed" before updating to completed - retry once more
+                if ($attempt >= 2) {
+                    break;
+                }
+                usleep(1500000); // 1.5s extra wait before re-checking "failed"
             }
         }
 
         if (! $status) {
-            return redirect()->route('subscription.index')->with('error', 'Could not verify payment status. The order will update when Pesapal sends the IPN notification.');
+            return redirect()->route('payment.complete', ['result' => 'info', 'message' => 'Could not verify payment status. The order will update when Pesapal sends the IPN notification.']);
         }
 
         return $this->processPaymentResult($order, $status, 'callback');
+    }
+
+    /**
+     * Public payment completion page - no auth required.
+     * Used when Pesapal redirects back (iframe may not have session cookies).
+     */
+    public function complete(Request $request)
+    {
+        $result = $request->query('result');
+        $message = $request->query('message');
+        $token = $request->query('token');
+
+        $data = ['result' => 'info', 'message' => 'Payment processing.', 'redirect_url' => null, 'redirect_label' => 'Back to Subscription'];
+
+        if ($token) {
+            $cached = Cache::pull('payment_complete_' . $token);
+            if ($cached && is_array($cached)) {
+                $data = array_merge($data, $cached);
+            }
+        } elseif ($result) {
+            $data['result'] = in_array($result, ['success', 'error', 'info', 'cancelled']) ? $result : 'info';
+            $data['message'] = $message ?? match ($data['result']) {
+                'cancelled' => 'Payment was cancelled.',
+                'error' => 'Something went wrong.',
+                'success' => 'Payment successful!',
+                default => 'Payment is being processed.',
+            };
+            if ($data['result'] === 'cancelled') {
+                $data['redirect_url'] = url('/');
+                $data['redirect_label'] = 'Back to Home';
+            }
+        }
+
+        if (! $data['redirect_url']) {
+            $data['redirect_url'] = route('subscription.index');
+            $data['redirect_label'] = 'Back to Subscription';
+        }
+
+        return view('pages.payment.complete', $data);
     }
 
     /**
@@ -243,7 +294,7 @@ class PaymentController extends Controller
             if (!$memorial || ($memorial->status ?? Memorial::STATUS_ACTIVE) !== Memorial::STATUS_ACTIVE) {
                 $order->update(['status' => 'cancelled']);
                 if ($source === 'callback') {
-                    return redirect()->route('subscription.index')->with('error', 'Payment cancelled: memorial no longer available.');
+                    return redirect()->route('payment.complete', ['result' => 'error', 'message' => 'Payment cancelled: memorial no longer available.']);
                 }
                 return response()->json(['status' => 200], 200);
             }
@@ -262,34 +313,50 @@ class PaymentController extends Controller
                     $plan->name,
                     number_format($order->amount, 2) . ' ' . $order->currency
                 );
-                $memorialSlug = $order->metadata['memorial_slug'] ?? null;
-                $isAdminCreated = ($order->metadata['admin_created'] ?? false) === true;
-                if ($memorialSlug) {
-                    return redirect()->route('memorial.create.preparing', ['slug' => $memorialSlug])
-                        ->with('success', 'Payment successful! Your subscription is now active.');
-                }
-                if ($isAdminCreated) {
-                    return redirect()->route('settings.payment-orders')
-                        ->with('success', 'Payment successful! Order completed and subscription activated.');
-                }
-                return redirect()->route('subscription.index')->with('success', 'Payment successful! Your subscription is now active.');
+                return $this->redirectToCompletionPage('success', 'Payment successful! Your subscription is now active.', $order);
             }
         } elseif ($pesapal->isPaymentFailed($status)) {
             $order->update(['status' => 'failed']);
             if ($source === 'callback') {
-                $isAdminCreated = ($order->metadata['admin_created'] ?? false) === true;
-                $target = $isAdminCreated ? route('settings.payment-orders') : route('subscription.index');
-                return redirect($target)->with('error', 'Payment failed. Please try again.');
+                return $this->redirectToCompletionPage('error', 'Payment failed. Please try again.', $order);
             }
         }
 
         if ($source === 'callback') {
-            $isAdminCreated = ($order->metadata['admin_created'] ?? false) === true;
-            $target = $isAdminCreated ? route('settings.payment-orders') : route('subscription.index');
-            return redirect($target)->with('info', 'Payment is being processed. We will notify you when it is complete.');
+            return $this->redirectToCompletionPage('info', 'Payment is being processed. We will notify you when it is complete.', $order);
         }
 
         return response()->json(['status' => 200], 200);
+    }
+
+    /**
+     * Redirect to public completion page with one-time token (avoids auth issues in iframe).
+     */
+    private function redirectToCompletionPage(string $result, string $message, PaymentOrder $order): \Illuminate\Http\RedirectResponse
+    {
+        $memorialSlug = $order->metadata['memorial_slug'] ?? null;
+        $isAdminCreated = ($order->metadata['admin_created'] ?? false) === true;
+
+        $redirectUrl = route('subscription.index');
+        $redirectLabel = 'Back to Subscription';
+
+        if ($memorialSlug) {
+            $redirectUrl = route('memorial.create.preparing', ['slug' => $memorialSlug]);
+            $redirectLabel = 'Continue to Memorial';
+        } elseif ($isAdminCreated) {
+            $redirectUrl = route('settings.payment-orders');
+            $redirectLabel = 'Back to Payment Orders';
+        }
+
+        $token = Str::random(48);
+        Cache::put('payment_complete_' . $token, [
+            'result' => $result,
+            'message' => $message,
+            'redirect_url' => $redirectUrl,
+            'redirect_label' => $redirectLabel,
+        ], now()->addMinutes(15));
+
+        return redirect()->route('payment.complete', ['token' => $token]);
     }
 
     private function activateSubscription(PaymentOrder $order): void

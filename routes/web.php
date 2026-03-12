@@ -165,6 +165,7 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
 
 // Payment callback & IPN (no auth - Pesapal redirects/IPN calls)
 Route::get('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
+Route::get('/payment/complete', [PaymentController::class, 'complete'])->name('payment.complete');
 Route::match(['get', 'post'], '/payment/ipn', [PaymentController::class, 'ipn'])->name('payment.ipn');
 
 // Public memorial - deep links for tribute/chapter (MUST be before single-slug route)

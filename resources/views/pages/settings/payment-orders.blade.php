@@ -300,7 +300,13 @@
             pesapalError: null,
             init() {
                 window.addEventListener('message', (e) => {
-                    if (e.data?.type === 'pesapal_payment_complete') this.closePesapal();
+                    if (e.data?.type === 'pesapal_payment_complete') {
+                        if (e.data?.redirect_url) {
+                            window.location.href = e.data.redirect_url;
+                        } else {
+                            this.closePesapal();
+                        }
+                    }
                 });
             },
             handleSubmit(e) {

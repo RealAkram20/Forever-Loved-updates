@@ -1,4 +1,8 @@
 {{-- Notification Dropdown Component --}}
+@php
+    $unreadCount = $unreadCount ?? 0;
+    $notifications = $notifications ?? [];
+@endphp
 <div class="relative" x-data="{
     dropdownOpen: false,
     notifying: {{ $unreadCount > 0 ? 'true' : 'false' }},

@@ -289,6 +289,14 @@ class NotificationService
      * Send a push payload to given subscriptions. Returns array of report data.
      * Used by dispatchPush and test push endpoint.
      */
+    /**
+     * Check if PHP has GMP or BCMath (required for Web Push crypto).
+     */
+    public static function hasPushMathExtension(): bool
+    {
+        return extension_loaded('gmp') || extension_loaded('bcmath');
+    }
+
     public static function sendPushToSubscriptions(
         \Illuminate\Support\Collection $subscriptions,
         string $title,
@@ -298,6 +306,12 @@ class NotificationService
     ): array {
         if ($subscriptions->isEmpty()) {
             return [];
+        }
+
+        if (! static::hasPushMathExtension()) {
+            throw new \RuntimeException(
+                'Push requires the BCMath or GMP PHP extension. In Hostinger: Advanced → PHP Configuration → PHP Extensions → enable BCMath. Wait a few minutes after enabling.'
+            );
         }
 
         $appUrl = config('app.url', 'http://localhost');

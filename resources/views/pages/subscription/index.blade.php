@@ -264,6 +264,20 @@ function subscriptionPage(checkoutPlan = null, fromSignup = false, memorialSlug 
             }
         },
 
+        init() {
+            window.addEventListener('message', (e) => {
+                if (e.data?.type === 'pesapal_payment_complete') {
+                    this.checkoutOpen = false;
+                    this.loading = false;
+                    this.error = null;
+                    if (e.data?.redirect_url) {
+                        window.location.href = e.data.redirect_url;
+                    } else if (e.data?.result === 'success') {
+                        window.location.reload();
+                    }
+                }
+            });
+        },
         closeCheckout() {
             if (!this.loading) {
                 this.checkoutOpen = false;

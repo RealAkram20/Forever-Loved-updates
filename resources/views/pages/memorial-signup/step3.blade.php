@@ -158,6 +158,18 @@ function step3Checkout(plansData) {
             this.proceedToPay();
         },
 
+        init() {
+            window.addEventListener('message', (e) => {
+                if (e.data?.type === 'pesapal_payment_complete') {
+                    this.checkoutOpen = false;
+                    this.loading = false;
+                    this.error = null;
+                    if (e.data?.redirect_url) {
+                        window.location.href = e.data.redirect_url;
+                    }
+                }
+            });
+        },
         closeCheckout() {
             if (!this.loading) {
                 this.checkoutOpen = false;

@@ -218,10 +218,14 @@
     {{-- Admin push opt-in popup: system is enabled, ask if they want to receive push in this browser --}}
     @auth
     @php
-        $vapidSet = !empty(App\Models\SystemSetting::get('notifications.vapid_public_key', ''));
-        $pushConfigured = App\Models\SystemSetting::get('notifications.push_enabled', false) && $vapidSet;
-        $userHasNoPushSub = auth()->user()->pushSubscriptions()->count() === 0;
-        $showPushModal = auth()->user()->hasRole(['admin','super-admin']) && $pushConfigured && $userHasNoPushSub && !session('admin_push_onboarding_dismissed');
+        try {
+            $vapidSet = !empty(App\Models\SystemSetting::get('notifications.vapid_public_key', ''));
+            $pushConfigured = App\Models\SystemSetting::get('notifications.push_enabled', false) && $vapidSet;
+            $userHasNoPushSub = auth()->user()->pushSubscriptions()->count() === 0;
+            $showPushModal = auth()->user()->hasRole(['admin','super-admin']) && $pushConfigured && $userHasNoPushSub && !session('admin_push_onboarding_dismissed');
+        } catch (\Throwable $e) {
+            $showPushModal = false;
+        }
     @endphp
     @if($showPushModal)
     <div x-data="{ open: true, enabling: false }" x-show="open" x-cloak

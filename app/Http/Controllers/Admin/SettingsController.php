@@ -309,7 +309,7 @@ class SettingsController extends Controller
 
             $pesapal = app(\App\Services\PesapalService::class);
             $callbackUrl = $pesapal->getCallbackUrl('payment.callback');
-            $cancellationUrl = $pesapal->getCallbackUrl('settings.payment-orders');
+            $cancellationUrl = $pesapal->getCallbackUrl('payment.complete', ['result' => 'cancelled']);
 
             $result = $pesapal->submitOrder(
                 $merchantRef,
@@ -522,10 +522,12 @@ class SettingsController extends Controller
     public function notifications()
     {
         $settings = SystemSetting::getByGroup('notifications');
+        $pushExtensionOk = \App\Services\NotificationService::hasPushMathExtension();
 
         return view('pages.settings.notifications', [
             'title' => 'Notification Settings',
             'settings' => $settings,
+            'pushExtensionOk' => $pushExtensionOk,
         ]);
     }
 

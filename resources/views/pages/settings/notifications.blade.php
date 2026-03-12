@@ -66,6 +66,12 @@
 
         {{-- Push Notifications --}}
         <div id="push-notifications-section">
+        @if (isset($pushExtensionOk) && !$pushExtensionOk)
+        <div class="mb-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
+            <p class="text-sm font-medium text-red-800 dark:text-red-200">Push requires BCMath or GMP PHP extension</p>
+            <p class="mt-1 text-sm text-red-700 dark:text-red-300">Enable <strong>BCMath</strong> in Hostinger: Advanced → PHP Configuration → PHP Extensions. Wait a few minutes after enabling.</p>
+        </div>
+        @endif
         <x-common.component-card title="Push Notifications" desc="Send browser push notifications to users. Uses the free Web Push API (VAPID) — no paid services required.">
             <div class="space-y-6">
                 <div class="flex items-center justify-between"

@@ -161,9 +161,15 @@ class NotificationController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'GMP') || str_contains($msg, 'BCMath')) {
+                $msg = 'Push requires the BCMath PHP extension. In Hostinger: Advanced → PHP Configuration → PHP Extensions → enable BCMath. After enabling, wait a few minutes or restart PHP.';
+            } else {
+                $msg = 'Push failed: ' . $msg;
+            }
             return response()->json([
                 'success' => false,
-                'message' => 'Push failed: ' . $e->getMessage(),
+                'message' => $msg,
             ], 500);
         }
     }
