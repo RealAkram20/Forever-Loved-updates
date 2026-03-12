@@ -178,13 +178,14 @@ class SettingsController extends Controller
             'payments.pesapal_consumer_key' => 'nullable|string|max:255',
             'payments.pesapal_consumer_secret' => 'nullable|string|max:255',
             'payments.pesapal_environment' => 'required|in:sandbox,live',
+            'payments.pesapal_ipn_id' => 'nullable|string|max:255',
         ]);
 
         $keys = [
             'payments.enabled', 'payments.currency',
             'payments.stripe_enabled', 'payments.stripe_public_key',
             'payments.pesapal_enabled', 'payments.pesapal_consumer_key',
-            'payments.pesapal_environment',
+            'payments.pesapal_environment', 'payments.pesapal_ipn_id',
         ];
 
         foreach ($keys as $key) {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Memorial;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Models\UserSubscription;
 use App\Services\NotificationService;
 use App\Services\TemplateBioGeneratorService;
 use Illuminate\Auth\Events\Registered;
@@ -187,6 +188,9 @@ class MemorialSignupController extends Controller
             $data['last_name'],
         ])));
 
+        $plan = SubscriptionPlan::find($data['plan_id']);
+        $isFreePlan = $plan && $plan->isFree();
+
         $memorial = Memorial::create([
             'user_id' => $request->user()->id,
             'slug' => $this->generateSlug($fullName),
@@ -231,7 +235,24 @@ class MemorialSignupController extends Controller
 
         session()->forget(self::SESSION_KEY);
 
-        return redirect()->route('memorial.create.preparing', ['slug' => $memorial->slug]);
+        if ($isFreePlan && $plan) {
+            UserSubscription::create([
+                'user_id' => $request->user()->id,
+                'subscription_plan_id' => $plan->id,
+                'starts_at' => now(),
+                'ends_at' => null,
+                'status' => 'active',
+                'payment_gateway' => null,
+                'payment_reference' => null,
+            ]);
+            return redirect()->route('memorial.create.preparing', ['slug' => $memorial->slug]);
+        }
+
+        return redirect()->route('subscription.index', [
+            'from_signup' => 1,
+            'plan_id' => $plan->id,
+            'memorial_slug' => $memorial->slug,
+        ])->with('info', 'Your memorial has been created. Complete your subscription to unlock premium features.');
     }
 
     /**

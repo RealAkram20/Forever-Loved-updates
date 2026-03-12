@@ -38,6 +38,7 @@ class SystemSetting extends Model
         'payments.pesapal_consumer_key' => ['value' => '', 'type' => 'string', 'group' => 'payments'],
         'payments.pesapal_consumer_secret' => ['value' => '', 'type' => 'encrypted', 'group' => 'payments'],
         'payments.pesapal_environment' => ['value' => 'sandbox', 'type' => 'string', 'group' => 'payments'],
+        'payments.pesapal_ipn_id' => ['value' => '', 'type' => 'string', 'group' => 'payments'],
 
         // SMTP / Email
         'smtp.enabled' => ['value' => '0', 'type' => 'boolean', 'group' => 'smtp'],

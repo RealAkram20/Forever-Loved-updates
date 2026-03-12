@@ -140,6 +140,14 @@
                             <option value="live" {{ old('payments.pesapal_environment', $settings['payments.pesapal_environment'] ?? 'sandbox') === 'live' ? 'selected' : '' }}>Live (Production)</option>
                         </select>
                     </div>
+                    <div class="lg:col-span-3">
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">IPN ID (Required for Pesapal)</label>
+                        <input type="text" name="payments[pesapal_ipn_id]"
+                            value="{{ old('payments.pesapal_ipn_id', $settings['payments.pesapal_ipn_id'] ?? '') }}"
+                            placeholder="e.g. fe078e53-78da-4a83-aa89-e7ded5c456e6"
+                            class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Register your IPN URL at Pesapal (Sandbox or Live) and paste the returned IPN ID here. IPN URL: <code class="text-xs">{{ url('/payment/ipn') }}</code></p>
+                    </div>
                 </div>
             </div>
         </x-common.component-card>

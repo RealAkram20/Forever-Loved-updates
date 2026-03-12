@@ -8,8 +8,10 @@ use App\Http\Controllers\MemorialDirectoryController;
 use App\Http\Controllers\MemorialMediaController;
 use App\Http\Controllers\MemorialSignupController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicMemorialController;
+use App\Http\Controllers\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes (login, register, password reset, etc.)
@@ -61,6 +63,10 @@ Route::delete('/notifications/{notification}', [NotificationController::class, '
 Route::post('/notifications/push/subscribe', [NotificationController::class, 'subscribePush'])->name('notifications.push.subscribe');
 Route::post('/notifications/push/unsubscribe', [NotificationController::class, 'unsubscribePush'])->name('notifications.push.unsubscribe');
 Route::post('/notifications/push/test', [NotificationController::class, 'testPush'])->name('notifications.push.test');
+
+// Subscription & Billing (user)
+Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+Route::post('/payment/create-order', [PaymentController::class, 'createOrder'])->name('payment.create-order');
 
 // Profile
 Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -141,6 +147,10 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::post('/post-media', [MemorialMediaController::class, 'uploadPostMedia'])->name('post-media');
     Route::post('/tribute-post', [MemorialMediaController::class, 'storeTributePost'])->name('tribute-post');
 });
+
+// Payment callback & IPN (no auth - Pesapal redirects/IPN calls)
+Route::get('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
+Route::match(['get', 'post'], '/payment/ipn', [PaymentController::class, 'ipn'])->name('payment.ipn');
 
 // Public memorial - deep links for tribute/chapter (MUST be before single-slug route)
 Route::get('/{memorial_slug}/tribute/{share_id}', [PublicMemorialController::class, 'showTribute'])->name('memorial.tribute.public')->where(['memorial_slug' => '[a-z0-9\-]+', 'share_id' => '[a-z0-9]{7}']);

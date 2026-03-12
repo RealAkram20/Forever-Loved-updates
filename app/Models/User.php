@@ -71,6 +71,18 @@ class User extends Authenticatable
         return $this->hasMany(UserSubscription::class);
     }
 
+    public function activeSubscription(): ?UserSubscription
+    {
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where(function ($q) {
+                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
+            })
+            ->with('plan')
+            ->latest()
+            ->first();
+    }
+
     public function notifications(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Notification::class);
