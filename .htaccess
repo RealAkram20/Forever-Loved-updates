@@ -12,6 +12,11 @@
 
     RewriteRule ^\.git - [F,L]
     RewriteRule ^vendor/ - [F,L]
+    # Allow files that exist in public/storage/ (uploaded assets via symlink)
+    RewriteCond %{DOCUMENT_ROOT}/public/storage/$1 -f
+    RewriteRule ^storage/(.+)$ public/storage/$1 [L]
+
+    # Block direct access to the real storage/ directory (logs, framework, etc.)
     RewriteRule ^storage/ - [F,L]
     RewriteRule ^database/ - [F,L]
     RewriteRule ^bootstrap/ - [F,L]

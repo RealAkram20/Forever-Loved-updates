@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MemorialSubscription;
 use App\Models\Notification;
 use App\Models\PushSubscription;
 use App\Models\SystemSetting;
@@ -495,6 +496,15 @@ class NotificationService
                 );
             }
         }
+
+        static::notifyMemorialSubscribers(
+            $memorial,
+            'notify_tributes',
+            'New Tribute',
+            $tributeMessage,
+            $actionUrl,
+            $excludeUserId,
+        );
     }
 
     private static function formatTributeMessage(string $authorName, string $tributeType, string $deceasedName): string
@@ -546,6 +556,64 @@ class NotificationService
                     actionUrl: $actionUrl,
                     data: $adminNotification['data'],
                 );
+            }
+        }
+
+        static::notifyMemorialSubscribers(
+            $memorial,
+            'notify_life_chapters',
+            'New Life Chapter',
+            $chapterMessage,
+            $actionUrl,
+            $authorUserId,
+        );
+    }
+
+    /**
+     * Notify all memorial subscribers via email (for both registered users and guests).
+     */
+    public static function notifyMemorialSubscribers(
+        \App\Models\Memorial $memorial,
+        string $preference,
+        string $title,
+        string $message,
+        string $actionUrl,
+        ?int $excludeUserId = null
+    ): void {
+        $subs = MemorialSubscription::where('memorial_id', $memorial->id)
+            ->where($preference, true)
+            ->get();
+
+        foreach ($subs as $sub) {
+            if ($sub->user_id && $sub->user_id === $excludeUserId) {
+                continue;
+            }
+
+            if ($sub->user_id) {
+                static::send(
+                    userId: $sub->user_id,
+                    type: 'memorial_subscription',
+                    title: $title,
+                    message: $message,
+                    icon: 'bell',
+                    actionUrl: $actionUrl,
+                    data: ['memorial_id' => $memorial->id],
+                );
+            } else {
+                $email = $sub->guest_email;
+                $name = $sub->guest_name ?? 'Subscriber';
+                if ($email) {
+                    try {
+                        static::configureSmtp();
+                        $appName = SystemSetting::get('branding.app_name', config('app.name'));
+                        $html = "<p>Hi {$name},</p><p>{$message}</p><p><a href=\"{$actionUrl}\" style=\"display:inline-block;padding:10px 20px;background-color:#6366f1;color:white;border-radius:8px;text-decoration:none;font-weight:600;\">View Memorial</a></p><p style=\"color:#999;font-size:12px;\">You received this because you subscribed to updates for this memorial.</p>";
+                        Mail::html($html, function ($msg) use ($email, $name, $title, $appName) {
+                            $msg->to($email, $name)->subject("{$appName} - {$title}");
+                        });
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to email memorial subscriber', ['email' => $email, 'error' => $e->getMessage()]);
+                    }
+                }
             }
         }
     }

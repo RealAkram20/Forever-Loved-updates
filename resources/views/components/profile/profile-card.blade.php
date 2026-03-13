@@ -5,7 +5,7 @@
         <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div class="flex w-full flex-col items-center gap-6 xl:flex-row">
                 <div class="h-20 w-20 overflow-hidden rounded-full border border-gray-200">
-                    <img src="./images/user/owner.jpg" alt="user" />
+                    <img src="{{ Auth::user()->profile_photo_url ?? asset('images/logo/logo-icon.svg') }}" alt="user" />
                 </div>
                 <div class="order-3 xl:order-2">
                     <h4 class="mb-2 text-center text-lg font-semibold text-gray-800 xl:text-left">

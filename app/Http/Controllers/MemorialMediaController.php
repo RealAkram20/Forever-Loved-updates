@@ -280,6 +280,56 @@ class MemorialMediaController extends Controller
         return response()->json($response);
     }
 
+    /**
+     * Upload or replace background music. Admin or owner only.
+     */
+    public function uploadBackgroundMusic(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate(['file' => ['required', 'file', 'max:20480']]); // 20MB
+
+        $file = $request->file('file');
+        $mime = $file->getMimeType();
+
+        if (!in_array($mime, self::ALLOWED_AUDIO_MIMES)) {
+            return response()->json(['error' => 'Invalid file type. Use MP3, WAV, or OGG audio.'], 422);
+        }
+
+        if ($memorial->background_music) {
+            Storage::disk('public')->delete($memorial->background_music);
+        }
+
+        $path = $file->store("memorials/{$memorial->id}/background", 'public');
+        $memorial->update(['background_music' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'url' => StorageHelper::publicUrl($path),
+        ]);
+    }
+
+    /**
+     * Remove background music. Admin or owner only.
+     */
+    public function removeBackgroundMusic(string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($memorial->background_music) {
+            Storage::disk('public')->delete($memorial->background_music);
+            $memorial->update(['background_music' => null]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
     private function canEdit(Memorial $memorial): bool
     {
         $user = auth()->user();

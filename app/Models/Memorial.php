@@ -194,6 +194,11 @@ class Memorial extends Model
         return $this->hasMany(Post::class);
     }
 
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(MemorialSubscription::class);
+    }
+
     public function media(): HasMany
     {
         return $this->hasMany(Media::class);

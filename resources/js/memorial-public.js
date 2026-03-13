@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Gallery upload ---
+    // --- Gallery upload (supports Images/Videos sub-tabs + lightbox) ---
     if (canUpload) {
         document.getElementById('gallery-upload')?.addEventListener('change', (e) => {
             const file = e.target.files?.[0];
@@ -143,13 +143,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(r => r.json())
                 .then(data => {
                     if (data.success && data.media) {
-                        const grid = document.getElementById('gallery-grid');
-                        if (grid) {
-                            const isVideo = data.media.type === 'video';
-                            const el = isVideo
-                                ? `<div class="aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700"><video src="${data.media.url}" controls class="h-full w-full object-cover"></video></div>`
-                                : `<a href="${data.media.url}" target="_blank" class="block aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700"><img src="${data.media.url}" alt="" class="h-full w-full object-cover" /></a>`;
-                            grid.insertAdjacentHTML('beforeend', el);
+                        const isVideo = data.media.type === 'video';
+                        if (isVideo) {
+                            const grid = document.getElementById('gallery-grid-videos');
+                            if (grid) {
+                                const el = buildVideoPlayerHtml(data.media.url, data.media.caption);
+                                grid.insertAdjacentHTML('beforeend', el);
+                                const added = grid.lastElementChild;
+                                if (typeof Alpine !== 'undefined' && added) Alpine.initTree(added);
+                            }
+                        } else {
+                            const galleryEl = document.getElementById('tab-gallery');
+                            const alpineData = galleryEl?.__x?.$data || Alpine.$data(galleryEl);
+                            if (alpineData) {
+                                const idx = alpineData.images.length;
+                                alpineData.addImage(data.media.url, data.media.caption || '');
+                                const grid = document.getElementById('gallery-grid-images');
+                                if (grid) {
+                                    const btn = document.createElement('button');
+                                    btn.type = 'button';
+                                    btn.className = 'group relative block aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2';
+                                    btn.setAttribute('@click', `openLightbox(${idx})`);
+                                    btn.innerHTML = `<img src="${data.media.url}" alt="Photo" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" /><div class="absolute inset-0 bg-black/0 transition group-hover:bg-black/10"></div>`;
+                                    grid.appendChild(btn);
+                                }
+                            }
                         }
                     } else if (data.error) {
                         alert(data.error);
@@ -282,8 +300,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             const p = data.post;
                             const mediaHtml = (p.media || []).map(m => {
                                 if (m.type === 'photo') return `<img src="${m.url}" alt="" class="max-w-full rounded-lg mt-2" />`;
-                                if (m.type === 'video') return `<video src="${m.url}" controls class="max-w-full rounded-lg mt-2"></video>`;
-                                if (m.type === 'music') return `<audio src="${m.url}" controls class="w-full mt-2"></audio>`;
+                                if (m.type === 'video') return buildVideoPlayerHtml(m.url, m.caption);
+                                if (m.type === 'music') return buildAudioPlayerHtml(m.url, m.caption, m.filename);
                                 return '';
                             }).join('');
                             const article = document.createElement('article');
@@ -312,22 +330,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <span data-post-id="${p.id}" data-reaction-count class="text-sm text-gray-600 dark:text-gray-400">0</span>
                                         </button>
                                     </div>
-                                    <div class="relative flex items-center gap-1" data-comment-container="${p.id}">
+                                    <div class="flex items-center gap-1" data-comment-container="${p.id}">
                                         <button type="button" data-comment-toggle data-post-id="${p.id}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
                                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                                             <span data-post-id="${p.id}" data-comment-count class="text-sm text-gray-600 dark:text-gray-400">0</span>
                                         </button>
-                                        <div data-comment-dropdown="${p.id}" class="absolute left-0 top-full z-[9999] mt-1 hidden w-full min-w-[320px] max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl">
-                                            <div class="border-b border-gray-100 dark:border-gray-700 p-3">
-                                                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Add your comment</p>
-                                                <div class="flex gap-2">
-                                                    <input type="text" data-comment-input="${p.id}" placeholder="Write a comment..." class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm" />
-                                                    <button type="button" data-comment-submit data-post-id="${p.id}" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Post</button>
-                                                </div>
-                                            </div>
-                                            <div class="max-h-48 overflow-y-auto p-3" data-comments-list="${p.id}"></div>
-                                            <p data-comments-empty="${p.id}" class="px-3 py-4 text-center text-sm text-gray-500">No comments yet. Add a comment.</p>
-                                        </div>
                                     </div>
                                     <div class="relative ml-auto" data-share-container="${p.id}">
                                         <button type="button" data-share-toggle data-share-url="${(p.share_id ? `${window.location.origin}/${memorialSlug}/chapter/${p.share_id}` : `${window.location.origin}/${memorialSlug}/chapter/${p.id}`)}" data-post-id="${p.id}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
@@ -339,8 +346,18 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </div>
                                     </div>
                                 </div>
+                                <div data-comment-section="${p.id}" class="hidden border-t border-gray-100 dark:border-gray-800">
+                                    <div class="flex items-center gap-2 px-4 py-3">
+                                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400 text-xs font-semibold">${escapeHtml(document.querySelector('[data-user-initial]')?.dataset.userInitial || 'G')}</div>
+                                        <input type="text" data-comment-input="${p.id}" placeholder="Add a comment..." class="h-9 flex-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3.5 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                        <button type="button" data-comment-submit data-post-id="${p.id}" class="h-9 shrink-0 rounded-full bg-brand-500 px-4 text-xs font-semibold text-white hover:bg-brand-600 transition active:scale-95">Post</button>
+                                    </div>
+                                    <div class="px-4 pb-3 space-y-0" data-comments-list="${p.id}"></div>
+                                    <p data-comments-empty="${p.id}" class="px-4 pb-4 text-center text-xs text-gray-400 dark:text-gray-500">No comments yet. Be the first to comment.</p>
+                                </div>
                             `;
                             feed.prepend(article);
+                            if (typeof Alpine !== 'undefined') Alpine.initTree(article);
                             article.querySelector('[data-reaction-btn]')?.addEventListener('click', function() {
                                 const payload = { reactionable_type: 'post', reactionable_id: p.id, type: 'like' };
                                 const doR = (name, email) => {
@@ -350,44 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 };
                                 isAuthenticated ? doR() : showGuestModal({ type: 'reaction', payload, callback: doR });
                             });
-                            article.querySelector('[data-comment-toggle]')?.addEventListener('click', () => {
-                                article.querySelector(`[data-post-comments="${p.id}"]`)?.classList.toggle('hidden');
-                            });
-                            article.querySelector('[data-comment-submit]')?.addEventListener('click', function() {
-                                const btn = this;
-                                const input = article.querySelector(`[data-comment-input="${p.id}"]`);
-                                const content = input?.value?.trim();
-                                if (!content) return;
-                                if (btn.disabled) return;
-                                btn.disabled = true;
-                                const origText = btn.textContent;
-                                btn.textContent = 'Posting...';
-                                const resetBtn = () => { btn.disabled = false; btn.textContent = origText; };
-                                const doSubmit = (guestName, guestEmail) => {
-                                    const body = { content };
-                                    if (guestName) body.guest_name = guestName;
-                                    if (guestEmail) body.guest_email = guestEmail;
-                                    fetch(`${baseUrl}/posts/${p.id}/comments`, fetchOpts('POST', body))
-                                        .then(r => r.json())
-                                        .then(data => {
-                                            if (data.success && data.comment) {
-                                                const list = article.querySelector(`[data-comments-list="${p.id}"]`);
-                                                if (list) {
-                                                    const div = document.createElement('div');
-                                                    div.className = 'rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2';
-                                                    div.innerHTML = `<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p><p class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
-                                                    list.appendChild(div);
-                                                }
-                                                const countEl = article.querySelector(`[data-comment-container="${p.id}"] [data-comment-count]`);
-                                                if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + 1;
-                                                input.value = '';
-                                            } else if (data.error) alert(data.error);
-                                            resetBtn();
-                                        })
-                                        .catch(() => { alert('Something went wrong.'); resetBtn(); });
-                                };
-                                isAuthenticated ? doSubmit() : showGuestModal({ type: 'comment', payload: { content }, callback: (name, email) => doSubmit(name, email) });
-                            });
+                            // comment toggle + submit are handled by delegated listeners
                         }
                         if (chapterQuill) chapterQuill.setText('');
                         form.reset();
@@ -837,15 +817,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- Comment toggle (dropdown) ---
-    document.querySelectorAll('[data-comment-toggle]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const postId = btn.dataset.postId;
-            const dropdown = document.querySelector(`[data-comment-dropdown="${postId}"]`);
-            document.querySelectorAll('[data-comment-dropdown]').forEach(d => { if (d !== dropdown) d.classList.add('hidden'); });
-            dropdown?.classList.toggle('hidden');
-        });
+    // --- Comment toggle (inline section) ---
+    document.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-comment-toggle]');
+        if (!toggleBtn) return;
+        e.stopPropagation();
+        const postId = toggleBtn.dataset.postId;
+        const section = document.querySelector(`[data-comment-section="${postId}"]`);
+        if (section) {
+            section.classList.toggle('hidden');
+            if (!section.classList.contains('hidden')) {
+                const input = section.querySelector(`[data-comment-input="${postId}"]`);
+                if (input) setTimeout(() => input.focus(), 50);
+            }
+        }
+    });
+
+    // --- Enter to submit comment/reply ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const commentInput = e.target.closest('[data-comment-input]');
+        const replyInput = e.target.closest('[data-reply-input]');
+        if (commentInput) {
+            e.preventDefault();
+            const section = commentInput.closest('[data-comment-section]');
+            section?.querySelector('[data-comment-submit]')?.click();
+        } else if (replyInput) {
+            e.preventDefault();
+            const form = replyInput.closest('[data-reply-form]');
+            form?.querySelector('[data-reply-submit]')?.click();
+        }
     });
 
     // --- Share toggle (posts and tributes) ---
@@ -875,7 +876,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const tributeId = btn.dataset.tributeId;
             const dropdown = document.querySelector(`[data-tribute-comment-dropdown="${tributeId}"]`);
             document.querySelectorAll('[data-tribute-comment-dropdown]').forEach(d => { if (d !== dropdown) d.classList.add('hidden'); });
-            document.querySelectorAll('[data-comment-dropdown]').forEach(d => d.classList.add('hidden'));
+            // legacy dropdown reference removed; comments are inline now
             dropdown?.classList.toggle('hidden');
         });
     });
@@ -996,14 +997,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Click outside to close dropdowns ---
+    // --- Click outside to close dropdowns (share/tribute only, comments are inline now) ---
     document.addEventListener('click', (e) => {
-        if (e.target.closest('[data-comment-container], [data-share-container], [data-tribute-comment-container], #invite-share-btn, #invite-share-dropdown')) return;
-        document.querySelectorAll('[data-comment-dropdown], [data-share-dropdown], [data-share-dropdown-tribute], [data-tribute-comment-dropdown]').forEach(d => d.classList.add('hidden'));
+        if (e.target.closest('[data-share-container], [data-tribute-comment-container], #invite-share-btn, #invite-share-dropdown')) return;
+        document.querySelectorAll('[data-share-dropdown], [data-share-dropdown-tribute], [data-tribute-comment-dropdown]').forEach(d => d.classList.add('hidden'));
         document.getElementById('invite-share-dropdown')?.classList.add('hidden');
     });
 
-    // --- Reply toggle and submit ---
+    // --- Reply toggle and submit (threaded) ---
     document.addEventListener('click', (e) => {
         const replyBtn = e.target.closest('[data-reply-to]');
         if (replyBtn) {
@@ -1013,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('[data-reply-form]').forEach(f => { if (f !== form) f.classList.add('hidden'); });
             form?.classList.toggle('hidden');
             const input = document.querySelector(`[data-reply-input="${commentId}"]`);
-            if (form?.classList.contains('hidden') === false && input) input.focus();
+            if (form && !form.classList.contains('hidden') && input) input.focus();
         }
     });
 
@@ -1029,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (submitBtn.disabled) return;
             submitBtn.disabled = true;
             const origText = submitBtn.textContent;
-            submitBtn.textContent = 'Posting...';
+            submitBtn.textContent = '...';
             const resetBtn = () => { submitBtn.disabled = false; submitBtn.textContent = origText; };
             const doSubmit = (guestName, guestEmail) => {
                 const body = { content, parent_id: parentId };
@@ -1039,34 +1040,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(r => r.json())
                     .then(data => {
                         if (data.success && data.comment) {
-                            const repliesList = document.querySelector(`[data-replies-list="${parentId}"]`);
-                            const replyForm = document.querySelector(`[data-reply-form="${parentId}"]`);
-                            if (repliesList) {
-                                const div = document.createElement('div');
-                                div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2 ml-4 border-l-2 border-gray-200 dark:border-gray-700';
-                                div.innerHTML = `<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p><p class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
-                                repliesList.appendChild(div);
-                            }
-                            if (!repliesList) {
-                                const parentComment = document.querySelector(`[data-comment-id="${parentId}"]`);
-                                if (parentComment) {
-                                    let list = parentComment.querySelector(`[data-replies-list="${parentId}"]`);
-                                    if (!list) {
-                                        list = document.createElement('div');
-                                        list.className = 'mt-2 space-y-2';
-                                        list.dataset.repliesList = parentId;
-                                        parentComment.appendChild(list);
-                                    }
-                                    const div = document.createElement('div');
-                                    div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2 ml-4 border-l-2 border-gray-200 dark:border-gray-700';
-                                    div.innerHTML = `<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p><p class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
-                                    list.appendChild(div);
+                            const parentComment = document.querySelector(`[data-comment-id="${parentId}"]`);
+                            if (parentComment) {
+                                const contentWrap = parentComment.querySelector(':scope > .min-w-0');
+                                let repliesList = contentWrap?.querySelector(`[data-replies-list="${parentId}"]`);
+                                if (!repliesList) {
+                                    repliesList = document.createElement('div');
+                                    repliesList.className = 'mt-1 space-y-0';
+                                    repliesList.dataset.repliesList = parentId;
+                                    contentWrap?.appendChild(repliesList);
+                                }
+                                const initial = data.comment.author ? data.comment.author.charAt(0).toUpperCase() : '?';
+                                const deleteHtml = canEdit ? `<button type="button" data-delete-comment data-comment-id="${data.comment.id}" data-post-id="${postId}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition">Delete</button>` : '';
+                                const replyEl = document.createElement('div');
+                                replyEl.className = 'relative flex gap-3 ml-10 sm:ml-12';
+                                replyEl.dataset.commentId = data.comment.id;
+                                replyEl.innerHTML = `<div class="flex flex-col items-center shrink-0"><div class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-semibold">${escapeHtml(initial)}</div></div><div class="min-w-0 flex-1 pb-3"><div class="flex items-baseline gap-2"><span class="truncate text-sm font-semibold text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</span><span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">${escapeHtml(data.comment.created_at)}</span></div><p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300 break-words">${escapeHtml(data.comment.content)}</p><div class="mt-1.5 flex items-center gap-3">${deleteHtml}</div></div>`;
+                                repliesList.appendChild(replyEl);
+
+                                const avatarCol = parentComment.querySelector(':scope > .flex.flex-col');
+                                if (avatarCol && !avatarCol.querySelector('.w-px')) {
+                                    const line = document.createElement('div');
+                                    line.className = 'mt-1 w-px flex-1 bg-gray-200 dark:bg-gray-700';
+                                    avatarCol.appendChild(line);
                                 }
                             }
                             const countEl = document.querySelector(`[data-comment-container="${postId}"] [data-comment-count]`);
                             if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
                             input.value = '';
-                            replyForm?.classList.add('hidden');
+                            document.querySelector(`[data-reply-form="${parentId}"]`)?.classList.add('hidden');
                         } else if (data.error) alert(data.error);
                         resetBtn();
                     })
@@ -1077,50 +1079,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Comment submit ---
-    document.querySelectorAll('[data-comment-submit]').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const postId = parseInt(this.dataset.postId);
-            const input = document.querySelector(`[data-comment-input="${postId}"]`);
-            const content = input?.value?.trim();
-            if (!content) return;
-            if (this.disabled) return;
-            this.disabled = true;
-            const origText = this.textContent;
-            this.textContent = 'Posting...';
-            const resetBtn = () => { this.disabled = false; this.textContent = origText; };
-            const doSubmit = (guestName, guestEmail) => {
-                const body = { content };
-                if (guestName) body.guest_name = guestName;
-                if (guestEmail) body.guest_email = guestEmail;
-                fetch(`${baseUrl}/posts/${postId}/comments`, fetchOpts('POST', body))
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.success && data.comment) {
-                            const list = document.querySelector(`[data-comments-list="${postId}"]`);
-                            const empty = document.querySelector(`[data-comments-empty="${postId}"]`);
-                            if (list) {
-                                const div = document.createElement('div');
-                                div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2';
-                                div.innerHTML = `
-                                    <p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p>
-                                    <p class="text-sm text-gray-700 dark:text-gray-300">${escapeHtml(data.comment.content)}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>
-                                `;
-                                list.appendChild(div);
-                            }
-                            if (empty) empty.classList.add('hidden');
-                            const countEl = document.querySelector(`[data-comment-container="${postId}"] [data-comment-count]`);
-                            if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
-                            input.value = '';
-                        } else if (data.error) alert(data.error);
-                        resetBtn();
-                    })
-                    .catch(() => { alert('Something went wrong.'); resetBtn(); });
-            };
-            if (isAuthenticated) doSubmit();
-            else showGuestModal({ type: 'comment', payload: { content }, callback: (name, email) => doSubmit(name, email) });
-        });
+    // --- Comment submit (delegated for static + dynamic posts) ---
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-comment-submit]');
+        if (!btn || btn.closest('[data-reply-form]')) return;
+        const postId = parseInt(btn.dataset.postId);
+        const input = document.querySelector(`[data-comment-input="${postId}"]`);
+        const content = input?.value?.trim();
+        if (!content) return;
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = '...';
+        const resetBtn = () => { btn.disabled = false; btn.textContent = origText; };
+        const doSubmit = (guestName, guestEmail) => {
+            const body = { content };
+            if (guestName) body.guest_name = guestName;
+            if (guestEmail) body.guest_email = guestEmail;
+            fetch(`${baseUrl}/posts/${postId}/comments`, fetchOpts('POST', body))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.comment) {
+                        const list = document.querySelector(`[data-comments-list="${postId}"]`);
+                        const empty = document.querySelector(`[data-comments-empty="${postId}"]`);
+                        if (list) {
+                            const initial = data.comment.author ? data.comment.author.charAt(0).toUpperCase() : '?';
+                            const deleteHtml = canEdit ? `<button type="button" data-delete-comment data-comment-id="${data.comment.id}" data-post-id="${postId}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition">Delete</button>` : '';
+                            const el = document.createElement('div');
+                            el.className = 'relative flex gap-3';
+                            el.dataset.commentId = data.comment.id;
+                            el.innerHTML = `<div class="flex flex-col items-center shrink-0"><div class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400 text-xs font-semibold">${escapeHtml(initial)}</div></div><div class="min-w-0 flex-1 pb-3"><div class="flex items-baseline gap-2"><span class="truncate text-sm font-semibold text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</span><span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">${escapeHtml(data.comment.created_at)}</span></div><p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300 break-words">${escapeHtml(data.comment.content)}</p><div class="mt-1.5 flex items-center gap-3"><button type="button" data-reply-to data-comment-id="${data.comment.id}" data-post-id="${postId}" class="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">Reply</button>${deleteHtml}</div><div data-reply-form="${data.comment.id}" class="hidden mt-2"><div class="flex items-center gap-2"><div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"><svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></div><input type="text" data-reply-input="${data.comment.id}" placeholder="Write a reply..." class="h-9 flex-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3.5 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" /><button type="button" data-reply-submit data-comment-id="${data.comment.id}" data-post-id="${postId}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3.5 text-xs font-semibold text-white hover:bg-brand-600 transition active:scale-95">Reply</button></div></div></div>`;
+                            list.appendChild(el);
+                        }
+                        if (empty) empty.classList.add('hidden');
+                        const countEl = document.querySelector(`[data-comment-container="${postId}"] [data-comment-count]`);
+                        if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
+                        input.value = '';
+                    } else if (data.error) alert(data.error);
+                    resetBtn();
+                })
+                .catch(() => { alert('Something went wrong.'); resetBtn(); });
+        };
+        if (isAuthenticated) doSubmit();
+        else showGuestModal({ type: 'comment', payload: { content }, callback: (name, email) => doSubmit(name, email) });
+    });
+
+    // --- Delete comment ---
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-delete-comment]');
+        if (!btn) return;
+        e.stopPropagation();
+        const commentId = parseInt(btn.dataset.commentId);
+        const postId = parseInt(btn.dataset.postId);
+        if (!confirm('Delete this comment?')) return;
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch(`${baseUrl}/comments/${commentId}`, fetchOpts('DELETE'))
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const commentEl = document.querySelector(`[data-comment-id="${commentId}"]`);
+                    const deletedCount = data.deleted_count || 1;
+                    commentEl?.remove();
+                    const countEl = document.querySelector(`[data-comment-container="${postId}"] [data-comment-count]`);
+                    if (countEl) {
+                        const current = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0);
+                        countEl.textContent = Math.max(0, current - deletedCount);
+                    }
+                    const list = document.querySelector(`[data-comments-list="${postId}"]`);
+                    if (list && list.children.length === 0) {
+                        const empty = document.querySelector(`[data-comments-empty="${postId}"]`);
+                        if (empty) empty.classList.remove('hidden');
+                    }
+                } else if (data.error) {
+                    alert(data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Delete';
+                }
+            })
+            .catch(() => { alert('Something went wrong.'); btn.disabled = false; btn.textContent = 'Delete'; });
     });
 
     function escapeHtml(s) {
@@ -1128,6 +1165,99 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.textContent = s;
         return div.innerHTML;
+    }
+
+    function buildVideoPlayerHtml(src, caption) {
+        const cap = caption ? `<div class="bg-gray-50 dark:bg-white/[0.03] px-3 py-2"><p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(caption)}</p></div>` : '';
+        return `<div x-data="{
+            playing:false,muted:false,volume:1,currentTime:0,duration:0,buffered:0,loading:true,fullscreen:false,showControls:true,controlTimeout:null,dragging:false,showVolume:false,
+            get progress(){return this.duration?(this.currentTime/this.duration)*100:0},
+            get bufferProgress(){return this.duration?(this.buffered/this.duration)*100:0},
+            formatTime(s){if(isNaN(s))return '0:00';const m=Math.floor(s/60);const sec=Math.floor(s%60);return m+':'+(sec<10?'0':'')+sec},
+            init(){const v=this.$refs.video;v.addEventListener('loadedmetadata',()=>{this.duration=v.duration;this.loading=false});v.addEventListener('timeupdate',()=>{if(!this.dragging)this.currentTime=v.currentTime});v.addEventListener('progress',()=>{if(v.buffered.length>0)this.buffered=v.buffered.end(v.buffered.length-1)});v.addEventListener('ended',()=>{this.playing=false});v.addEventListener('waiting',()=>{this.loading=true});v.addEventListener('canplay',()=>{this.loading=false})},
+            toggle(){const v=this.$refs.video;if(v.paused){v.play();this.playing=true}else{v.pause();this.playing=false}},
+            seek(e){const r=this.$refs.progressBar.getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));this.$refs.video.currentTime=p*this.duration;this.currentTime=this.$refs.video.currentTime},
+            setVolume(e){const r=this.$refs.volumeBar.getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));this.volume=p;this.$refs.video.volume=p;this.muted=p===0},
+            toggleMute(){this.muted=!this.muted;this.$refs.video.muted=this.muted},
+            toggleFullscreen(){const el=this.$refs.container;if(!document.fullscreenElement){el.requestFullscreen?.()}else{document.exitFullscreen?.()}},
+            scheduleHide(){clearTimeout(this.controlTimeout);this.showControls=true;if(this.playing){this.controlTimeout=setTimeout(()=>{this.showControls=false},2500)}}
+        }" x-ref="container" @mousemove="scheduleHide()" @mouseleave="if(playing)showControls=false" class="memorial-video-player group relative overflow-hidden rounded-xl bg-gray-900 shadow-lg">
+            <video x-ref="video" preload="metadata" playsinline @click="toggle()" @dblclick="toggleFullscreen()" class="aspect-video w-full cursor-pointer object-contain bg-black"><source src="${src}" type="video/mp4"></video>
+            <div x-show="loading" x-cloak class="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none"><div class="h-10 w-10 animate-spin rounded-full border-3 border-white/30 border-t-brand-400"></div></div>
+            <div x-show="!playing&&showControls" x-cloak @click="toggle()" class="absolute inset-0 flex cursor-pointer items-center justify-center"><div class="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500/90 text-white shadow-xl backdrop-blur-sm transition hover:bg-brand-600 hover:scale-110"><svg class="ml-1 h-7 w-7" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+            <div x-show="showControls||!playing" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-3 pt-10">
+                <div x-ref="progressBar" @mousedown.prevent="dragging=true;seek($event)" @mousemove="if(dragging)seek($event)" @mouseup="dragging=false" @mouseleave="dragging=false" class="group/progress mb-2.5 flex h-1.5 cursor-pointer items-center rounded-full bg-white/20 transition-all hover:h-2.5">
+                    <div class="pointer-events-none absolute left-0 h-full rounded-full bg-white/10" :style="'width:'+bufferProgress+'%'"></div>
+                    <div class="pointer-events-none relative h-full rounded-full bg-brand-400 transition-all" :style="'width:'+progress+'%'"><div class="absolute -right-1.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-brand-500 opacity-0 shadow transition group-hover/progress:opacity-100"></div></div>
+                </div>
+                <div class="flex items-center gap-3 text-white">
+                    <button type="button" @click="toggle()" class="shrink-0 transition hover:text-brand-300"><template x-if="!playing"><svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></template><template x-if="playing"><svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></template></button>
+                    <span class="min-w-[80px] text-xs font-medium tabular-nums text-white/80" x-text="formatTime(currentTime)+' / '+formatTime(duration)"></span>
+                    <div class="flex-1"></div>
+                    <div class="relative flex items-center" @mouseenter="showVolume=true" @mouseleave="showVolume=false">
+                        <button type="button" @click="toggleMute()" class="shrink-0 transition hover:text-brand-300"><template x-if="muted||volume===0"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg></template><template x-if="!muted&&volume>0"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg></template></button>
+                        <div x-show="showVolume" x-cloak x-transition class="ml-2 flex w-20 items-center"><div x-ref="volumeBar" @click="setVolume($event)" class="h-1 w-full cursor-pointer rounded-full bg-white/20"><div class="h-full rounded-full bg-brand-400" :style="'width:'+(muted?0:volume*100)+'%'"></div></div></div>
+                    </div>
+                    <button type="button" @click="toggleFullscreen()" class="shrink-0 transition hover:text-brand-300"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg></button>
+                </div>
+            </div>
+            ${cap}
+        </div>`;
+    }
+
+    function buildAudioPlayerHtml(src, caption, filename) {
+        const name = escapeHtml(caption || filename || src.split('/').pop());
+        const ext = (name.split('.').pop() || 'MP3').toUpperCase();
+        return `<div x-data="{
+            playing:false,currentTime:0,duration:0,volume:1,muted:false,loading:true,dragging:false,showVolume:false,
+            get progress(){return this.duration?(this.currentTime/this.duration)*100:0},
+            formatTime(s){if(isNaN(s)||s===0)return '0:00';const m=Math.floor(s/60);const sec=Math.floor(s%60);return m+':'+(sec<10?'0':'')+sec},
+            init(){const a=this.$refs.audio;a.addEventListener('loadedmetadata',()=>{this.duration=a.duration;this.loading=false});a.addEventListener('timeupdate',()=>{if(!this.dragging)this.currentTime=a.currentTime});a.addEventListener('ended',()=>{this.playing=false;this.currentTime=0});a.addEventListener('canplay',()=>{this.loading=false})},
+            toggle(){const a=this.$refs.audio;if(a.paused){a.play();this.playing=true}else{a.pause();this.playing=false}},
+            seek(e){const r=this.$refs.progressBar.getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));this.$refs.audio.currentTime=p*this.duration;this.currentTime=this.$refs.audio.currentTime},
+            skip(sec){const a=this.$refs.audio;a.currentTime=Math.max(0,Math.min(a.duration,a.currentTime+sec))},
+            setVolume(e){const r=this.$refs.volumeBar.getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));this.volume=p;this.$refs.audio.volume=p;this.muted=p===0},
+            toggleMute(){this.muted=!this.muted;this.$refs.audio.muted=this.muted}
+        }" class="memorial-audio-player overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700/50 bg-gradient-to-r from-brand-50 via-white to-brand-50/50 dark:from-brand-950/50 dark:via-gray-900 dark:to-brand-950/30 shadow-sm">
+            <audio x-ref="audio" preload="metadata"><source src="${src}"></audio>
+            <div class="flex items-center gap-3 p-3">
+                <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-500 shadow-md shadow-brand-500/30">
+                    <div class="flex items-end gap-[3px] h-5">
+                        <span class="w-[3px] rounded-full bg-white/90" :class="playing?'audio-eq-bar audio-eq-bar-1':'h-1'"></span>
+                        <span class="w-[3px] rounded-full bg-white/90" :class="playing?'audio-eq-bar audio-eq-bar-2':'h-2'"></span>
+                        <span class="w-[3px] rounded-full bg-white/90" :class="playing?'audio-eq-bar audio-eq-bar-3':'h-3'"></span>
+                        <span class="w-[3px] rounded-full bg-white/90" :class="playing?'audio-eq-bar audio-eq-bar-4':'h-1.5'"></span>
+                        <span class="w-[3px] rounded-full bg-white/90" :class="playing?'audio-eq-bar audio-eq-bar-5':'h-2.5'"></span>
+                    </div>
+                    <div x-show="loading" x-cloak class="absolute inset-0 flex items-center justify-center rounded-lg bg-brand-600/50"><div class="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"></div></div>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                        <p class="truncate text-sm font-medium text-gray-900 dark:text-white/90">${name}</p>
+                        <span class="shrink-0 rounded bg-brand-100 dark:bg-brand-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-brand-600 dark:text-brand-400">${ext}</span>
+                    </div>
+                    <div class="mt-1.5 flex items-center gap-2.5">
+                        <span class="w-8 text-right text-[11px] tabular-nums text-gray-500 dark:text-gray-400" x-text="formatTime(currentTime)"></span>
+                        <div x-ref="progressBar" @mousedown.prevent="dragging=true;seek($event)" @mousemove="if(dragging)seek($event)" @mouseup="dragging=false" @mouseleave="dragging=false" class="group/bar relative h-1.5 flex-1 cursor-pointer rounded-full bg-gray-200 dark:bg-white/10 transition-all hover:h-2">
+                            <div class="absolute left-0 h-full rounded-full bg-brand-500 transition-all" :style="'width:'+progress+'%'"><div class="absolute -right-1 -top-[3px] h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 bg-brand-500 shadow opacity-0 transition group-hover/bar:opacity-100"></div></div>
+                        </div>
+                        <span class="w-8 text-[11px] tabular-nums text-gray-500 dark:text-gray-400" x-text="formatTime(duration)"></span>
+                    </div>
+                </div>
+                <div class="flex shrink-0 items-center gap-1">
+                    <button type="button" @click="skip(-10)" class="rounded-full p-1.5 text-gray-500 dark:text-gray-400 transition hover:bg-brand-100 dark:hover:bg-brand-500/20 hover:text-brand-600 dark:hover:text-brand-400" title="Back 10s"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg></button>
+                    <button type="button" @click="toggle()" class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white shadow-md shadow-brand-500/30 transition hover:bg-brand-600 active:scale-95"><template x-if="!playing"><svg class="ml-0.5 h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></template><template x-if="playing"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></template></button>
+                    <button type="button" @click="skip(10)" class="rounded-full p-1.5 text-gray-500 dark:text-gray-400 transition hover:bg-brand-100 dark:hover:bg-brand-500/20 hover:text-brand-600 dark:hover:text-brand-400" title="Forward 10s"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg></button>
+                    <div class="flex items-center" @mouseenter="showVolume=true" @mouseleave="showVolume=false">
+                        <button type="button" @click="toggleMute()" class="rounded-full p-1.5 text-gray-500 dark:text-gray-400 transition hover:bg-brand-100 dark:hover:bg-brand-500/20 hover:text-brand-600 dark:hover:text-brand-400">
+                            <template x-if="muted||volume===0"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg></template>
+                            <template x-if="!muted&&volume>0"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg></template>
+                        </button>
+                        <div x-show="showVolume" x-cloak x-transition class="ml-1 flex w-16 items-center"><div x-ref="volumeBar" @click="setVolume($event)" class="h-1.5 w-full cursor-pointer rounded-full bg-gray-200 dark:bg-white/10"><div class="h-full rounded-full bg-brand-500 transition-all" :style="'width:'+(muted?0:volume*100)+'%'"></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
     }
 
     function formatTimeAgo(date) {

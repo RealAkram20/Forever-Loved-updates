@@ -7,6 +7,7 @@ use App\Helpers\MemorialStatsHelper;
 use App\Models\Comment;
 use App\Models\Memorial;
 use App\Models\MemorialShare;
+use App\Models\MemorialSubscription;
 use App\Models\TributeComment;
 use App\Models\Post;
 use App\Models\Reaction;
@@ -391,6 +392,191 @@ class MemorialApiController extends Controller
         return response()->json([
             'tributes' => $tributes->items(),
             'total' => $tributes->total(),
+        ]);
+    }
+
+    /**
+     * Subscribe to a memorial for notifications.
+     */
+    public function subscribe(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+
+        $validated = $request->validate([
+            'guest_name' => ['nullable', 'string', 'max:255'],
+            'guest_email' => ['nullable', 'email', 'max:255'],
+            'notify_life_chapters' => ['nullable', 'boolean'],
+            'notify_tributes' => ['nullable', 'boolean'],
+        ]);
+
+        $userId = $request->user()?->id;
+        $guestName = $validated['guest_name'] ?? null;
+        $guestEmail = $validated['guest_email'] ?? null;
+
+        if (!$userId && $guestEmail) {
+            $existingUser = User::where('email', strtolower($guestEmail))->first();
+            if ($existingUser) {
+                $userId = $existingUser->id;
+                $guestName = $existingUser->name;
+                $guestEmail = null;
+            }
+        }
+
+        if (!$userId && !$guestEmail) {
+            return response()->json(['error' => 'Email is required'], 422);
+        }
+
+        $sub = MemorialSubscription::updateOrCreate(
+            $userId
+                ? ['memorial_id' => $memorial->id, 'user_id' => $userId]
+                : ['memorial_id' => $memorial->id, 'guest_email' => strtolower($guestEmail)],
+            [
+                'user_id' => $userId,
+                'guest_name' => $userId ? null : $guestName,
+                'guest_email' => $userId ? null : strtolower($guestEmail),
+                'notify_life_chapters' => $validated['notify_life_chapters'] ?? true,
+                'notify_tributes' => $validated['notify_tributes'] ?? true,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'subscription' => [
+                'id' => $sub->id,
+                'name' => $sub->subscriber_name,
+                'notify_life_chapters' => $sub->notify_life_chapters,
+                'notify_tributes' => $sub->notify_tributes,
+            ],
+        ]);
+    }
+
+    /**
+     * Update subscription notification preferences.
+     */
+    public function updateSubscription(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+
+        $validated = $request->validate([
+            'guest_email' => ['nullable', 'email'],
+            'notify_life_chapters' => ['required', 'boolean'],
+            'notify_tributes' => ['required', 'boolean'],
+        ]);
+
+        $userId = $request->user()?->id;
+        $guestEmail = $validated['guest_email'] ?? null;
+
+        if (!$userId && $guestEmail) {
+            $existingUser = User::where('email', strtolower($guestEmail))->first();
+            if ($existingUser) {
+                $userId = $existingUser->id;
+                $guestEmail = null;
+            }
+        }
+
+        $sub = $userId
+            ? MemorialSubscription::where('memorial_id', $memorial->id)->where('user_id', $userId)->first()
+            : MemorialSubscription::where('memorial_id', $memorial->id)->where('guest_email', strtolower($guestEmail))->first();
+
+        if (!$sub) {
+            return response()->json(['error' => 'Subscription not found'], 404);
+        }
+
+        $sub->update([
+            'notify_life_chapters' => $validated['notify_life_chapters'],
+            'notify_tributes' => $validated['notify_tributes'],
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Unsubscribe from a memorial.
+     */
+    public function unsubscribe(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+
+        $userId = $request->user()?->id;
+        $guestEmail = $request->input('guest_email');
+
+        if (!$userId && $guestEmail) {
+            $existingUser = User::where('email', strtolower($guestEmail))->first();
+            if ($existingUser) {
+                $userId = $existingUser->id;
+                $guestEmail = null;
+            }
+        }
+
+        $deleted = $userId
+            ? MemorialSubscription::where('memorial_id', $memorial->id)->where('user_id', $userId)->delete()
+            : ($guestEmail ? MemorialSubscription::where('memorial_id', $memorial->id)->where('guest_email', strtolower($guestEmail))->delete() : 0);
+
+        return response()->json(['success' => $deleted > 0]);
+    }
+
+    /**
+     * Check subscription status for current user or guest email.
+     */
+    public function checkSubscription(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+
+        $userId = $request->user()?->id;
+        $guestEmail = $request->query('email');
+
+        if (!$userId && $guestEmail) {
+            $existingUser = User::where('email', strtolower($guestEmail))->first();
+            if ($existingUser) {
+                $userId = $existingUser->id;
+                $guestEmail = null;
+            }
+        }
+
+        $sub = $userId
+            ? MemorialSubscription::where('memorial_id', $memorial->id)->where('user_id', $userId)->first()
+            : ($guestEmail ? MemorialSubscription::where('memorial_id', $memorial->id)->where('guest_email', strtolower($guestEmail))->first() : null);
+
+        if (!$sub) {
+            return response()->json(['subscribed' => false]);
+        }
+
+        return response()->json([
+            'subscribed' => true,
+            'subscription' => [
+                'id' => $sub->id,
+                'name' => $sub->subscriber_name,
+                'notify_life_chapters' => $sub->notify_life_chapters,
+                'notify_tributes' => $sub->notify_tributes,
+            ],
+        ]);
+    }
+
+    /**
+     * Delete a comment. Memorial owner or admin/super-admin only.
+     */
+    public function deleteComment(Request $request, string $slug, int $commentId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $comment = Comment::where('id', $commentId)
+            ->whereHas('post', fn ($q) => $q->where('memorial_id', $memorial->id))
+            ->first();
+
+        if (!$comment) {
+            return response()->json(['error' => 'Comment not found'], 404);
+        }
+
+        $replyCount = $comment->replies()->count();
+        $comment->replies()->delete();
+        $comment->delete();
+
+        return response()->json([
+            'success' => true,
+            'deleted_count' => 1 + $replyCount,
         ]);
     }
 

@@ -153,16 +153,24 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::delete('/posts/{postId}', [MemorialApiController::class, 'deletePost'])->name('posts.delete');
     Route::get('/posts/{postId}/comments', [MemorialApiController::class, 'comments'])->name('posts.comments');
     Route::post('/posts/{postId}/comments', [MemorialApiController::class, 'storeComment'])->name('posts.comments.store');
+    Route::delete('/comments/{commentId}', [MemorialApiController::class, 'deleteComment'])->name('comments.delete');
     Route::get('/posts/{postId}/reactions', [MemorialApiController::class, 'reactions'])->name('posts.reactions');
     Route::get('/tributes', [MemorialApiController::class, 'tributes'])->name('tributes');
     Route::post('/tributes/{tributeId}/comments', [MemorialApiController::class, 'storeTributeComment'])->name('tributes.comments.store');
     Route::get('/chapters', [MemorialApiController::class, 'chapters'])->name('chapters');
     Route::post('/chapters', [MemorialApiController::class, 'storeChapter'])->name('chapters.store');
+    // Memorial subscriptions
+    Route::post('/subscribe', [MemorialApiController::class, 'subscribe'])->name('subscribe');
+    Route::put('/subscribe', [MemorialApiController::class, 'updateSubscription'])->name('subscribe.update');
+    Route::delete('/subscribe', [MemorialApiController::class, 'unsubscribe'])->name('subscribe.delete');
+    Route::get('/subscribe/check', [MemorialApiController::class, 'checkSubscription'])->name('subscribe.check');
     // Media uploads
     Route::post('/profile-photo', [MemorialMediaController::class, 'uploadProfilePhoto'])->name('profile-photo');
     Route::post('/gallery', [MemorialMediaController::class, 'uploadGalleryMedia'])->name('gallery');
     Route::post('/post-media', [MemorialMediaController::class, 'uploadPostMedia'])->name('post-media');
     Route::post('/tribute-post', [MemorialMediaController::class, 'storeTributePost'])->name('tribute-post');
+    Route::post('/background-music', [MemorialMediaController::class, 'uploadBackgroundMusic'])->name('background-music');
+    Route::delete('/background-music', [MemorialMediaController::class, 'removeBackgroundMusic'])->name('background-music.delete');
 });
 
 // Payment callback & IPN (no auth - Pesapal redirects/IPN calls)
