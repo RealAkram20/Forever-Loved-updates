@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\HtmlHelper;
+use App\Helpers\PlanLimitsHelper;
 use App\Helpers\StorageHelper;
 use App\Models\Media;
 use App\Models\Memorial;
@@ -71,6 +72,17 @@ class MemorialMediaController extends Controller
             $type = 'video';
         } else {
             return response()->json(['error' => 'Invalid file type. Use images or videos (mp4, webm).'], 422);
+        }
+
+        $limitCheck = $type === 'photo'
+            ? PlanLimitsHelper::canUploadGalleryImage($memorial)
+            : PlanLimitsHelper::canUploadGalleryVideo($memorial);
+
+        if (!$limitCheck['allowed']) {
+            $label = $type === 'photo' ? 'image' : 'video';
+            return response()->json([
+                'error' => "Gallery {$label} limit reached ({$limitCheck['current']}/{$limitCheck['max']}). Upgrade your plan for more.",
+            ], 422);
         }
 
         $path = $file->store(StorageHelper::memorialGalleryPath($memorial->id), 'public');
@@ -189,6 +201,13 @@ class MemorialMediaController extends Controller
             'idempotency_key' => ['nullable', 'string', 'max:64'],
         ]);
 
+        $tributeCheck = PlanLimitsHelper::canAddTribute($memorial);
+        if (!$tributeCheck['allowed']) {
+            return response()->json([
+                'error' => "Tribute limit reached ({$tributeCheck['current']}/{$tributeCheck['max']}). Upgrade your plan for more.",
+            ], 422);
+        }
+
         $idempotencyKey = $validated['idempotency_key'] ?? null;
         if ($idempotencyKey) {
             $cacheKey = 'tribute_post:' . $memorial->id . ':' . $idempotencyKey;
@@ -288,6 +307,10 @@ class MemorialMediaController extends Controller
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
         if (!$this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!PlanLimitsHelper::canUseBackgroundMusic($memorial)) {
+            return response()->json(['error' => 'Background music is not available on your current plan. Upgrade for this feature.'], 422);
         }
 
         $request->validate(['file' => ['required', 'file', 'max:20480']]); // 20MB

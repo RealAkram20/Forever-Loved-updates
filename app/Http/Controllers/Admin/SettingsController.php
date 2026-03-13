@@ -733,13 +733,28 @@ class SettingsController extends Controller
             'interval' => 'required|in:monthly,yearly,lifetime',
             'memorial_limit' => 'required|integer|min:1',
             'storage_limit_mb' => 'required|integer|min:10',
+            'max_gallery_images' => 'required|integer|min:0',
+            'max_gallery_videos' => 'required|integer|min:0',
+            'max_tributes' => 'required|integer|min:0',
+            'max_chapters' => 'required|integer|min:0',
+            'max_ai_bio_per_day' => 'required|integer|min:0',
+            'feature_background_music' => 'boolean',
+            'feature_advanced_privacy' => 'boolean',
+            'feature_guest_notifications' => 'boolean',
+            'feature_never_expires' => 'boolean',
+            'feature_no_ads' => 'boolean',
+            'feature_share_memories' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
 
         SubscriptionPlan::create($request->only([
             'name', 'slug', 'description', 'price', 'interval',
-            'memorial_limit', 'storage_limit_mb', 'is_active', 'sort_order',
+            'memorial_limit', 'storage_limit_mb',
+            'max_gallery_images', 'max_gallery_videos', 'max_tributes', 'max_chapters', 'max_ai_bio_per_day',
+            'feature_background_music', 'feature_advanced_privacy', 'feature_guest_notifications',
+            'feature_never_expires', 'feature_no_ads', 'feature_share_memories',
+            'is_active', 'sort_order',
         ]));
 
         return back()->with('success', 'Plan created successfully.');
@@ -754,13 +769,28 @@ class SettingsController extends Controller
             'interval' => 'required|in:monthly,yearly,lifetime',
             'memorial_limit' => 'required|integer|min:1',
             'storage_limit_mb' => 'required|integer|min:10',
+            'max_gallery_images' => 'required|integer|min:0',
+            'max_gallery_videos' => 'required|integer|min:0',
+            'max_tributes' => 'required|integer|min:0',
+            'max_chapters' => 'required|integer|min:0',
+            'max_ai_bio_per_day' => 'required|integer|min:0',
+            'feature_background_music' => 'boolean',
+            'feature_advanced_privacy' => 'boolean',
+            'feature_guest_notifications' => 'boolean',
+            'feature_never_expires' => 'boolean',
+            'feature_no_ads' => 'boolean',
+            'feature_share_memories' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
 
         $plan->update($request->only([
             'name', 'description', 'price', 'interval',
-            'memorial_limit', 'storage_limit_mb', 'is_active', 'sort_order',
+            'memorial_limit', 'storage_limit_mb',
+            'max_gallery_images', 'max_gallery_videos', 'max_tributes', 'max_chapters', 'max_ai_bio_per_day',
+            'feature_background_music', 'feature_advanced_privacy', 'feature_guest_notifications',
+            'feature_never_expires', 'feature_no_ads', 'feature_share_memories',
+            'is_active', 'sort_order',
         ]));
 
         return back()->with('success', 'Plan updated successfully.');

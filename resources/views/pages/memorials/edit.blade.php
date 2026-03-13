@@ -474,11 +474,28 @@
                             <span x-show="templateLoading">Generating...</span>
                         </button>
                         @if($aiEnabled ?? false)
-                        <button type="button" @click="generateAI()" :disabled="aiLoading"
-                            class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">
-                            <span x-show="!aiLoading">Generate with AI</span>
-                            <span x-show="aiLoading">Generating...</span>
-                        </button>
+                            @if(isset($quotaInfo) && !$quotaInfo['ai_bio']['allowed'])
+                                <button type="button" disabled
+                                    class="rounded-lg bg-gray-300 dark:bg-gray-700 px-4 py-2.5 text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                                    title="{{ $quotaInfo['ai_bio']['reason'] }}">
+                                    @if($quotaInfo['ai_bio']['max'] === 0)
+                                        AI Bio (Upgrade Plan)
+                                    @else
+                                        AI Bio ({{ $quotaInfo['ai_bio']['current'] }}/{{ $quotaInfo['ai_bio']['max'] }} today)
+                                    @endif
+                                </button>
+                            @else
+                                <button type="button" @click="generateAI()" :disabled="aiLoading"
+                                    class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">
+                                    <span x-show="!aiLoading">
+                                        Generate with AI
+                                        @if(isset($quotaInfo) && $quotaInfo['ai_bio']['max'] > 0)
+                                            <span class="text-xs opacity-75">({{ $quotaInfo['ai_bio']['current'] }}/{{ $quotaInfo['ai_bio']['max'] }})</span>
+                                        @endif
+                                    </span>
+                                    <span x-show="aiLoading">Generating...</span>
+                                </button>
+                            @endif
                         @endif
                     </div>
                 </div>

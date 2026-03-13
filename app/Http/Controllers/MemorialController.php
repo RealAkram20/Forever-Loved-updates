@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\PlanLimitsHelper;
 use App\Models\Memorial;
 use App\Services\ClaudeBioGeneratorService;
 use App\Services\GeminiBioGeneratorService;
@@ -232,6 +233,7 @@ class MemorialController extends Controller
             'memorial' => $memorial,
             'aiEnabled' => $aiProvider !== null,
             'aiProviderName' => $aiProvider,
+            'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
         ]);
     }
 
@@ -644,6 +646,11 @@ class MemorialController extends Controller
     {
         $this->authorize('update', $memorial);
 
+        $aiCheck = PlanLimitsHelper::canUseAiBio($memorial);
+        if (!$aiCheck['allowed']) {
+            return response()->json(['message' => $aiCheck['reason']], 422);
+        }
+
         if ($request->has('form_data') && is_array($request->form_data)) {
             $this->applyFormDataToMemorial($memorial, $request->form_data);
             $memorial->refresh();
@@ -685,6 +692,8 @@ class MemorialController extends Controller
                 'message' => 'AI returned empty results. Please add more details and try again.',
             ], 422);
         }
+
+        PlanLimitsHelper::incrementAiBioUsage($memorial->user_id);
 
         return response()->json([
             'ai_provider' => $aiProvider,

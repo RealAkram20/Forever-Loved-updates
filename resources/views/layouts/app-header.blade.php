@@ -1,14 +1,8 @@
 <header
-    class="sticky top-0 flex w-full bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 z-99999 xl:border-b"
-    x-data="{
-        isApplicationMenuOpen: false,
-        toggleApplicationMenu() {
-            this.isApplicationMenuOpen = !this.isApplicationMenuOpen;
-        }
-    }">
-    <div class="flex flex-col items-center justify-between grow xl:flex-row xl:px-6">
+    class="sticky top-0 flex w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-99999">
+    <div class="flex items-center justify-between w-full px-3 sm:px-5 xl:px-6">
         <div
-            class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 xl:flex-1 xl:min-w-0 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
+            class="flex items-center gap-2 py-3 sm:gap-4 xl:flex-1 xl:min-w-0 lg:py-4">
 
             <!-- Desktop Sidebar Toggle Button (visible on xl and up) -->
             <button
@@ -53,17 +47,6 @@
                 <img class="dark:hidden h-8 w-auto" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="Logo" />
                 <img class="hidden dark:block h-8 w-auto" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="Logo" />
             </a>
-
-            <!-- Application Menu Toggle (mobile only) -->
-            <button @click="toggleApplicationMenu()"
-                class="flex items-center justify-center w-10 h-10 text-gray-700 dark:text-gray-300 rounded-lg z-99999 hover:bg-gray-100 dark:hover:bg-gray-800 xl:hidden">
-                <!-- Dots Icon -->
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                        d="M5.99902 10.4951C6.82745 10.4951 7.49902 11.1667 7.49902 11.9951V12.0051C7.49902 12.8335 6.82745 13.5051 5.99902 13.5051C5.1706 13.5051 4.49902 12.8335 4.49902 12.0051V11.9951C4.49902 11.1667 5.1706 10.4951 5.99902 10.4951ZM17.999 10.4951C18.8275 10.4951 19.499 11.1667 19.499 11.9951V12.0051C19.499 12.8335 18.8275 13.5051 17.999 13.5051C17.1706 13.5051 16.499 12.8335 16.499 12.0051V11.9951C16.499 11.1667 17.1706 10.4951 17.999 10.4951ZM13.499 11.9951C13.499 11.1667 12.8275 10.4951 11.999 10.4951C11.1706 10.4951 10.499 11.1667 10.499 11.9951V12.0051C10.499 12.8335 11.1706 13.5051 11.999 13.5051C12.8275 13.5051 13.499 12.8335 13.499 12.0051V11.9951Z"
-                        fill="currentColor" />
-                </svg>
-            </button>
 
             <!-- Search Bar (desktop only) -->
             <div class="hidden xl:block xl:flex-1 xl:min-w-0"
@@ -167,13 +150,11 @@
             </div>
         </div>
 
-        <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
-        <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
-            class="items-center justify-between w-full gap-4 px-3 py-3 sm:px-5 sm:py-4 xl:flex xl:w-auto xl:shrink-0 border-b border-gray-200 dark:border-gray-800 xl:border-b-0 shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
-            <div class="flex items-center gap-2 2xsm:gap-3">
+        <!-- Right Side Actions -->
+        <div class="flex items-center gap-2 py-3 2xsm:gap-3 xl:shrink-0 lg:py-4">
                 <!-- Theme Toggle Button -->
                 <button
-                    class="relative flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200"
+                    class="relative flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:text-dark-900 h-9 w-9 sm:h-11 sm:w-11 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200"
                     @click="$store.theme.toggle()">
                     <svg class="hidden dark:block" width="20" height="20" viewBox="0 0 20 20" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
@@ -191,10 +172,9 @@
 
                 <!-- Notification Dropdown -->
                 <x-header.notification-dropdown />
-            </div>
 
-            <!-- User Dropdown -->
-            <x-header.user-dropdown />
+                <!-- User Dropdown -->
+                <x-header.user-dropdown />
         </div>
     </div>
 </header>

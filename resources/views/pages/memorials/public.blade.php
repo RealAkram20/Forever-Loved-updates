@@ -271,15 +271,17 @@
                                                 <span data-post-id="{{ $post->id }}" data-comment-count class="text-sm text-gray-600 dark:text-gray-400">{{ $post->comments->count() + $post->comments->sum(fn($c) => $c->replies->count()) }}</span>
                                             </button>
                                         </div>
-                                        <div class="relative ml-auto" data-share-container="{{ $post->id }}">
-                                            <button type="button" data-share-toggle data-share-url="{{ route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id]) }}" data-post-id="{{ $post->id }}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                                                Share
-                                            </button>
-                                            <div data-share-dropdown="{{ $post->id }}" class="absolute right-0 top-full z-[9999] mt-1 hidden w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-1.5">
-                                                @include('pages.memorials.partials.share-dropdown', ['shareUrl' => route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id])])
+                                        @if ($quotaInfo['share_memories'] ?? false)
+                                            <div class="relative ml-auto" data-share-container="{{ $post->id }}">
+                                                <button type="button" data-share-toggle data-share-url="{{ route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id]) }}" data-post-id="{{ $post->id }}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                                                    Share
+                                                </button>
+                                                <div data-share-dropdown="{{ $post->id }}" class="absolute right-0 top-full z-[9999] mt-1 hidden w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-1.5">
+                                                    @include('pages.memorials.partials.share-dropdown', ['shareUrl' => route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id])])
+                                                </div>
                                             </div>
-                                        </div>
+                                        @endif
                                     </div>
                                     {{-- Inline comment thread (hidden by default, toggled by comment button) --}}
                                     <div data-comment-section="{{ $post->id }}" class="hidden border-t border-gray-100 dark:border-gray-800">
@@ -424,6 +426,20 @@
                                 </label>
                             @endif
                         </div>
+                        @if (isset($quotaInfo) && ($quotaInfo['gallery_images']['max'] > 0 || $quotaInfo['gallery_videos']['max'] > 0))
+                            <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                @if ($quotaInfo['gallery_images']['max'] > 0)
+                                    <span class="{{ !$quotaInfo['gallery_images']['allowed'] ? 'text-red-500 dark:text-red-400 font-medium' : '' }}">
+                                        Images: {{ $quotaInfo['gallery_images']['current'] }}/{{ $quotaInfo['gallery_images']['max'] }}
+                                    </span>
+                                @endif
+                                @if ($quotaInfo['gallery_videos']['max'] > 0)
+                                    <span class="{{ !$quotaInfo['gallery_videos']['allowed'] ? 'text-red-500 dark:text-red-400 font-medium' : '' }}">
+                                        Videos: {{ $quotaInfo['gallery_videos']['current'] }}/{{ $quotaInfo['gallery_videos']['max'] }}
+                                    </span>
+                                @endif
+                            </div>
+                        @endif
 
                         {{-- Sub-tabs: Images / Videos --}}
                         <div class="mt-4 flex gap-1 rounded-lg bg-gray-100 dark:bg-white/[0.04] p-1">
@@ -702,20 +718,23 @@
                                     </div>
                                 </div>
                             </div>
-                            @php $deceasedFirstName = \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'their'); @endphp
-                            <div class="border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
-                                <button type="button" id="invite-share-btn" data-share-url="{{ url()->current() }}" class="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand-400 dark:border-brand-500 bg-brand-50/30 dark:bg-brand-500/10 px-4 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-500/20 transition">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                                    Invite {{ $deceasedFirstName }}'s family and friends
-                                </button>
-                                <div id="invite-share-dropdown" class="mt-2 hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2">
-                                    <button type="button" data-share="invite" data-share-url="{{ url()->current() }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Copy link</button>
+                            @if ($quotaInfo['share_memories'] ?? false)
+                                @php $deceasedFirstName = \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'their'); @endphp
+                                <div class="border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
+                                    <button type="button" id="invite-share-btn" data-share-url="{{ url()->current() }}" class="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand-400 dark:border-brand-500 bg-brand-50/30 dark:bg-brand-500/10 px-4 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-500/20 transition">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                                        Invite {{ $deceasedFirstName }}'s family and friends
+                                    </button>
+                                    <div id="invite-share-dropdown" class="mt-2 hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2">
+                                        <button type="button" data-share="invite" data-share-url="{{ url()->current() }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Copy link</button>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
                     </div>
 
-                    {{-- Subscribe to memorial --}}
+                    {{-- Subscribe to memorial (plan-gated) --}}
+                    @if ($quotaInfo['guest_notifications'] ?? false)
                     <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] shadow-theme-sm overflow-hidden"
                          x-data="{
                             subscribed: false,
@@ -909,24 +928,35 @@
                             </template>
                         </div>
                     </div>
+                    @endif
 
                     {{-- Leave a Tribute --}}
                     <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-4 shadow-theme-sm">
                         <h3 class="font-semibold text-gray-900 dark:text-white/90">Leave a Tribute</h3>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Honor their memory with a flower, candle, or note.</p>
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            <button type="button" data-tribute-btn="flower" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Flower</button>
-                            <button type="button" data-tribute-btn="candle" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Candle</button>
-                            <button type="button" data-tribute-btn="note" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Note</button>
-                        </div>
+                        @if (isset($quotaInfo) && $quotaInfo['tributes']['max'] > 0 && !$quotaInfo['tributes']['allowed'])
+                            <p class="mt-3 text-xs font-medium text-red-500 dark:text-red-400">Tribute limit reached ({{ $quotaInfo['tributes']['current'] }}/{{ $quotaInfo['tributes']['max'] }}).</p>
+                        @else
+                            @if (isset($quotaInfo) && $quotaInfo['tributes']['max'] > 0)
+                                <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">{{ $quotaInfo['tributes']['current'] }}/{{ $quotaInfo['tributes']['max'] }} tributes used</p>
+                            @endif
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <button type="button" data-tribute-btn="flower" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Flower</button>
+                                <button type="button" data-tribute-btn="candle" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Candle</button>
+                                <button type="button" data-tribute-btn="note" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Note</button>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </aside>
         </div>
     </main>
 
-    {{-- Background music: floating mute/unmute button --}}
-    @php $bgMusicUrl = $memorial->background_music ? \App\Helpers\StorageHelper::publicUrl($memorial->background_music) : null; @endphp
+    {{-- Background music: floating mute/unmute button (plan-gated) --}}
+    @php
+        $bgMusicAllowed = $quotaInfo['background_music'] ?? false;
+        $bgMusicUrl = ($bgMusicAllowed && $memorial->background_music) ? \App\Helpers\StorageHelper::publicUrl($memorial->background_music) : null;
+    @endphp
     <div id="bg-music-widget"
         x-data="{
             hasMusic: {{ $bgMusicUrl ? 'true' : 'false' }},
@@ -1036,8 +1066,8 @@
         </div>
     </div>
 
-    {{-- Background music: upload control for owner/admin --}}
-    @if ($canEdit)
+    {{-- Background music: upload control for owner/admin (plan-gated) --}}
+    @if ($canEdit && ($quotaInfo['background_music'] ?? false))
         <div id="bg-music-admin"
             x-data="{ uploading: false }"
             class="fixed bottom-6 right-20 z-50">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\MemorialStatsHelper;
+use App\Helpers\PlanLimitsHelper;
 use App\Models\Memorial;
 use App\Models\MemorialView;
 use App\Models\Post;
@@ -62,6 +63,7 @@ class PublicMemorialController extends Controller
             'isAuthenticated' => auth()->check(),
             'memorialStats' => $stats,
             'tributeCounts' => $tributeCounts,
+            'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => null,
             'scrollToChapterId' => null,
             'shareMeta' => null,
@@ -126,6 +128,7 @@ class PublicMemorialController extends Controller
             'isAuthenticated' => auth()->check(),
             'memorialStats' => $stats,
             'tributeCounts' => $tributeCounts,
+            'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => $tribute->id,
             'scrollToChapterId' => null,
             'shareMeta' => [
@@ -193,6 +196,7 @@ class PublicMemorialController extends Controller
             'isAuthenticated' => auth()->check(),
             'memorialStats' => $stats,
             'tributeCounts' => $tributeCounts,
+            'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => null,
             'scrollToChapterId' => $post->id,
             'shareMeta' => [
@@ -272,6 +276,11 @@ class PublicMemorialController extends Controller
             'guest_name' => ['nullable', 'string', 'max:255'],
             'guest_email' => ['nullable', 'email'],
         ]);
+
+        $tributeCheck = PlanLimitsHelper::canAddTribute($memorial);
+        if (!$tributeCheck['allowed']) {
+            return back()->with('error', "Tribute limit reached ({$tributeCheck['current']}/{$tributeCheck['max']}).");
+        }
 
         $guestName = $request->user()?->name ?? $validated['guest_name'] ?? 'Anonymous';
         $guestEmail = $request->user()?->email ?? $validated['guest_email'] ?? null;

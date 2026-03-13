@@ -156,9 +156,9 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-200 dark:border-gray-700">
-                                <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300">Date</th>
+                                <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300 hidden sm:table-cell">Date</th>
                                 <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300">Memorial</th>
-                                <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300">Plan</th>
+                                <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300 hidden md:table-cell">Plan</th>
                                 <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300">Amount</th>
                                 <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300">Status</th>
                             </tr>
@@ -166,7 +166,7 @@
                         <tbody>
                             @foreach ($paymentHistory as $payment)
                                 <tr class="border-b border-gray-100 dark:border-gray-800">
-                                    <td class="py-3 text-gray-600 dark:text-gray-400">{{ $payment->created_at->format('M j, Y H:i') }}</td>
+                                    <td class="py-3 text-gray-600 dark:text-gray-400 hidden sm:table-cell">{{ $payment->created_at->format('M j, Y H:i') }}</td>
                                     <td class="py-3 text-gray-800 dark:text-white/90">
                                         @if ($payment->memorial)
                                             <a href="{{ route('memorials.show', $payment->memorial) }}" class="text-brand-500 hover:underline">{{ $payment->memorial->full_name }}</a>
@@ -174,7 +174,7 @@
                                             -
                                         @endif
                                     </td>
-                                    <td class="py-3 text-gray-800 dark:text-white/90">{{ $payment->plan->name ?? 'N/A' }}</td>
+                                    <td class="py-3 text-gray-800 dark:text-white/90 hidden md:table-cell">{{ $payment->plan->name ?? 'N/A' }}</td>
                                     <td class="py-3 text-gray-800 dark:text-white/90">{{ number_format($payment->amount, 2) }} {{ $payment->currency }}</td>
                                     <td class="py-3">
                                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium

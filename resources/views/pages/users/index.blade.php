@@ -105,7 +105,7 @@
 
             {{-- Pagination --}}
             @if ($users->hasPages())
-                <div class="mt-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
                     <p class="text-sm text-gray-500 dark:text-gray-400">
                         Showing {{ $users->firstItem() }} to {{ $users->lastItem() }} of {{ $users->total() }} users
                     </p>

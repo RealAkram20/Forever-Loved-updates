@@ -244,7 +244,7 @@
                 {{-- Quick Actions --}}
                 <div class="mt-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-5">
                     <h3 class="text-base font-medium text-gray-800 dark:text-white/90 mb-4">Quick Actions</h3>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 2xsm:grid-cols-2 gap-3">
                         <a href="{{ route('memorials.create') }}" class="flex items-center gap-2.5 rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition">
                             <svg class="w-5 h-5 text-brand-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             New Memorial
@@ -301,7 +301,7 @@
         </div>
 
         {{-- User Metric Cards --}}
-        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5 mb-6">
+        <div class="grid grid-cols-1 2xsm:grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5 mb-6">
             <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-4 sm:p-5">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-500">
@@ -461,8 +461,8 @@
                                     @endif
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-2">
-                                        <p class="text-sm font-medium text-gray-800 dark:text-white/90 truncate">
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                        <p class="text-sm font-medium text-gray-800 dark:text-white/90 truncate max-w-[180px] sm:max-w-none">
                                             {{ $tribute->user?->name ?? $tribute->guest_name ?? 'Anonymous' }}
                                         </p>
                                         <span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ $tribute->created_at->diffForHumans() }}</span>

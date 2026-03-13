@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\HtmlHelper;
 use App\Helpers\MemorialStatsHelper;
+use App\Helpers\PlanLimitsHelper;
 use App\Models\Comment;
 use App\Models\Memorial;
 use App\Models\MemorialShare;
@@ -291,6 +292,13 @@ class MemorialApiController extends Controller
             'description' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $chapterCheck = PlanLimitsHelper::canAddChapter($memorial);
+        if (!$chapterCheck['allowed']) {
+            return response()->json([
+                'error' => "Chapter limit reached ({$chapterCheck['current']}/{$chapterCheck['max']}). Upgrade your plan for more.",
+            ], 422);
+        }
+
         $chapter = $memorial->storyChapters()->create([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
@@ -401,6 +409,10 @@ class MemorialApiController extends Controller
     public function subscribe(Request $request, string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
+
+        if (!PlanLimitsHelper::canUseGuestNotifications($memorial)) {
+            return response()->json(['error' => 'Guest notifications are not available on this memorial\'s plan.'], 422);
+        }
 
         $validated = $request->validate([
             'guest_name' => ['nullable', 'string', 'max:255'],
@@ -777,6 +789,10 @@ class MemorialApiController extends Controller
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
         if (!$memorial->is_public) {
             return response()->json(['error' => 'Not found'], 404);
+        }
+
+        if (!PlanLimitsHelper::canShareMemories($memorial)) {
+            return response()->json(['error' => 'Sharing is not available on this memorial\'s plan.'], 422);
         }
 
         $validated = $request->validate([
