@@ -244,6 +244,35 @@ class Memorial extends Model
         return $this->hasMany(MemorialEducation::class);
     }
 
+    public function collaborators(): HasMany
+    {
+        return $this->hasMany(MemorialCollaborator::class);
+    }
+
+    /**
+     * Check if a user can edit this memorial (owner, collaborator with editor role, or admin).
+     */
+    public function canBeEditedBy(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($this->user_id === $user->id) {
+            return true;
+        }
+
+        if ($user->hasRole(['admin', 'super-admin'])) {
+            return true;
+        }
+
+        return $this->collaborators()
+            ->where('user_id', $user->id)
+            ->where('role', 'editor')
+            ->whereNotNull('accepted_at')
+            ->exists();
+    }
+
     public function galleryMedia()
     {
         $usedInPosts = DB::table('post_media')->pluck('media_id')->toArray();

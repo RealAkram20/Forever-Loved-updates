@@ -38,8 +38,7 @@ class MemorialPolicy
      */
     public function update(User $user, Memorial $memorial): bool
     {
-        return $memorial->user_id === $user->id
-            || $user->hasRole(['admin', 'super-admin']);
+        return $memorial->canBeEditedBy($user);
     }
 
     /**

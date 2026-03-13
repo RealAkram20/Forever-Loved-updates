@@ -353,10 +353,55 @@ class MemorialMediaController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * Update gallery media caption. Admin, owner, or collaborator only.
+     */
+    public function updateGalleryMedia(Request $request, string $slug, int $mediaId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $media = $memorial->media()->findOrFail($mediaId);
+
+        $validated = $request->validate([
+            'caption' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $media->update(['caption' => $validated['caption'] ?? null]);
+
+        return response()->json([
+            'success' => true,
+            'media' => [
+                'id' => $media->id,
+                'caption' => $media->caption,
+            ],
+        ]);
+    }
+
+    /**
+     * Delete gallery media. Admin, owner, or collaborator only.
+     */
+    public function deleteGalleryMedia(string $slug, int $mediaId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $media = $memorial->media()->findOrFail($mediaId);
+        $type = $media->type;
+
+        Storage::disk('public')->delete($media->path);
+        $media->delete();
+
+        return response()->json(['success' => true, 'type' => $type]);
+    }
+
     private function canEdit(Memorial $memorial): bool
     {
-        $user = auth()->user();
-        return $user && ($memorial->user_id === $user->id || $user->hasRole(['admin', 'super-admin']));
+        return $memorial->canBeEditedBy(auth()->user());
     }
 
     private function canUpload(Memorial $memorial): bool

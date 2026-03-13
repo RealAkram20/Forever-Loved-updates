@@ -116,10 +116,39 @@
                                         @endif
                                     </div>
                                 @endif
-                                <span class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-success-50 dark:bg-success-500/20 px-3 py-1 text-xs font-medium text-success-700 dark:text-success-400">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-success-500"></span>
-                                    In Loving Memory
-                                </span>
+                                <div class="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-success-50 dark:bg-success-500/20 px-3 py-1 text-xs font-medium text-success-700 dark:text-success-400">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-success-500"></span>
+                                        In Loving Memory
+                                    </span>
+                                    @if ($memorial->is_public)
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-500/15 px-2.5 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                                            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            Public
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                            Private
+                                        </span>
+                                    @endif
+                                    @php
+                                        $qualityPercent = $memorial->completion_percentage;
+                                        $qualityColor = $qualityPercent >= 75 ? 'green' : ($qualityPercent >= 40 ? 'amber' : 'red');
+                                        $qualityColors = [
+                                            'green' => ['bg' => 'bg-green-50 dark:bg-green-500/15', 'text' => 'text-green-600 dark:text-green-400', 'dot' => 'bg-green-500'],
+                                            'amber' => ['bg' => 'bg-amber-50 dark:bg-amber-500/15', 'text' => 'text-amber-600 dark:text-amber-400', 'dot' => 'bg-amber-500'],
+                                            'red' => ['bg' => 'bg-red-50 dark:bg-red-500/15', 'text' => 'text-red-600 dark:text-red-400', 'dot' => 'bg-red-500'],
+                                        ];
+                                        $qc = $qualityColors[$qualityColor];
+                                    @endphp
+                                    @if ($canEdit)
+                                        <span class="inline-flex items-center gap-1 rounded-full {{ $qc['bg'] }} px-2.5 py-0.5 text-[11px] font-medium {{ $qc['text'] }}" title="Profile completeness: {{ $qualityPercent }}%">
+                                            <span class="h-1.5 w-1.5 rounded-full {{ $qc['dot'] }}"></span>
+                                            {{ $qualityPercent }}% Complete
+                                        </span>
+                                    @endif
+                                </div>
                                 <div class="mt-4 flex gap-6">
                                     <div class="text-center">
                                         <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-tribute-count>{{ $tributes->total() }}</p>
@@ -211,50 +240,121 @@
                             </button>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mb-4">
-                            <div class="flex flex-wrap gap-1">
+                            <div class="flex flex-wrap gap-1" id="chapter-filters">
                                 <button type="button" class="chapter-filter rounded-md bg-brand-50 dark:bg-brand-500/20 px-4 py-2 text-sm font-medium text-brand-600 dark:text-brand-400" data-chapter="">All</button>
                                 @foreach ($memorial->storyChapters as $chapter)
-                                    <button type="button" class="chapter-filter rounded-md px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/10" data-chapter="{{ $chapter->id }}">{{ $chapter->title }}</button>
+                                    @php $chapterPostCount = $memorial->posts->where('story_chapter_id', $chapter->id)->where('is_published', true)->count(); @endphp
+                                    <div class="group relative inline-flex items-center" data-chapter-pill="{{ $chapter->id }}">
+                                        <button type="button" class="chapter-filter relative rounded-md px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/10" data-chapter="{{ $chapter->id }}">
+                                            {{ $chapter->title }}
+                                            <span class="ml-1 inline-block h-2 w-2 rounded-full {{ $chapterPostCount >= 3 ? 'bg-emerald-500' : ($chapterPostCount >= 1 ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600') }}" title="{{ $chapterPostCount }} {{ Str::plural('post', $chapterPostCount) }}"></span>
+                                        </button>
+                                        @if ($canEdit)
+                                            <div class="absolute -top-1 -right-1 hidden group-hover:flex items-center gap-0.5 z-10">
+                                                <button type="button" data-edit-chapter="{{ $chapter->id }}" data-chapter-title="{{ $chapter->title }}" data-chapter-desc="{{ $chapter->description }}"
+                                                    class="flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm hover:bg-brand-600 transition" title="Edit chapter">
+                                                    <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                </button>
+                                                <button type="button" data-delete-chapter="{{ $chapter->id }}"
+                                                    class="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600 transition" title="Delete chapter">
+                                                    <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endforeach
                             </div>
                         </div>
+
+                        {{-- Edit chapter modal --}}
+                        @if ($canEdit)
+                        <div id="edit-chapter-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 p-4">
+                            <div class="w-full max-w-md rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-xl">
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white/90">Edit Chapter</h3>
+                                <form id="edit-chapter-form" class="mt-4 space-y-4">
+                                    <input type="hidden" id="edit-chapter-id" />
+                                    <div>
+                                        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+                                        <input type="text" id="edit-chapter-title" required
+                                            class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm" />
+                                    </div>
+                                    <div>
+                                        <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Description (optional)</label>
+                                        <textarea id="edit-chapter-desc" rows="2"
+                                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm"></textarea>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">Save</button>
+                                        <button type="button" onclick="document.getElementById('edit-chapter-modal').classList.add('hidden')" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Cancel</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        @endif
                         <div class="space-y-4" id="life-feed">
                             @php $lifePosts = $memorial->posts->where('is_published', true)->sortByDesc('created_at'); @endphp
                             @foreach ($lifePosts as $post)
-                                <article id="chapter-{{ $post->id }}" class="relative overflow-visible rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]" data-post-id="{{ $post->id }}" data-chapter-id="{{ $post->story_chapter_id ?? '' }}">
+                                <article id="chapter-{{ $post->id }}" class="group/post relative overflow-visible rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]" data-post-id="{{ $post->id }}" data-chapter-id="{{ $post->story_chapter_id ?? '' }}">
                                     <div class="p-4">
                                         <div class="flex items-center gap-3">
                                             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-400 text-sm font-semibold">
                                                 {{ strtoupper(substr($post->user?->name ?? $memorial->full_name ?? '?', 0, 1)) }}
                                             </div>
-                                            <div>
+                                            <div class="flex-1">
                                                 <p class="font-medium text-gray-900 dark:text-white/90">{{ $post->user?->name ?? $memorial->full_name ?? 'Anonymous' }}</p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400"><span class="time-ago" data-created-at="{{ $post->created_at->toIso8601String() }}">{{ $post->created_at->diffForHumans() }}</span> · {{ $post->storyChapter?->title ?? 'Life' }}</p>
                                             </div>
+                                            @if ($canEdit)
+                                                <button type="button" data-post-edit-trigger="{{ $post->id }}" class="rounded p-1 text-gray-400 opacity-0 group-hover/post:opacity-100 hover:text-brand-500 transition" title="Edit post">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                </button>
+                                            @endif
                                         </div>
-                                        @if ($post->title)
-                                            <h3 class="mt-2 font-medium text-gray-900 dark:text-white/90">{{ $post->title }}</h3>
-                                        @endif
-                                        @if ($post->content)
-                                            <div class="mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">{!! \App\Helpers\HtmlHelper::sanitize($post->content) !!}</div>
-                                        @endif
-                                        @if ($post->media->isNotEmpty())
-                                            <div class="mt-3 space-y-3">
-                                                @foreach ($post->media as $m)
-                                                    @if ($m->type === 'photo')
-                                                        <img src="{{ $m->url }}" alt="{{ $m->caption }}" class="max-w-full rounded-lg" />
-                                                    @elseif ($m->type === 'video')
-                                                        <x-media.video-player :src="$m->url" :caption="$m->caption" />
-                                                    @elseif ($m->type === 'music')
-                                                        <x-media.audio-player :src="$m->url" :caption="$m->caption" :filename="$m->filename" />
-                                                    @endif
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                        @if ($post->location)
-                                            <div class="mt-3 flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                                                <svg class="h-4 w-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                                <span class="text-sm text-gray-700 dark:text-gray-300">{{ $post->location }}</span>
+                                        <div data-post-display="{{ $post->id }}">
+                                            @if ($post->title)
+                                                <h3 class="mt-2 font-medium text-gray-900 dark:text-white/90">{{ $post->title }}</h3>
+                                            @endif
+                                            @if ($post->content)
+                                                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">{!! \App\Helpers\HtmlHelper::sanitize($post->content) !!}</div>
+                                            @endif
+                                            @if ($post->media->isNotEmpty())
+                                                <div class="mt-3 space-y-3">
+                                                    @foreach ($post->media as $m)
+                                                        @if ($m->type === 'photo')
+                                                            <img src="{{ $m->url }}" alt="{{ $m->caption }}" class="max-w-full rounded-lg" />
+                                                        @elseif ($m->type === 'video')
+                                                            <x-media.video-player :src="$m->url" :caption="$m->caption" />
+                                                        @elseif ($m->type === 'music')
+                                                            <x-media.audio-player :src="$m->url" :caption="$m->caption" :filename="$m->filename" />
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                            @if ($post->location)
+                                                <div class="mt-3 flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                                                    <svg class="h-4 w-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ $post->location }}</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        @if ($canEdit)
+                                            <div data-post-edit="{{ $post->id }}" class="hidden mt-3 space-y-3">
+                                                <div>
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Title</label>
+                                                    <input type="text" data-post-edit-title="{{ $post->id }}" value="{{ $post->title ?? '' }}" placeholder="Post title (optional)" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                                </div>
+                                                <div>
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Content</label>
+                                                    <div id="post-editor-{{ $post->id }}" class="min-h-[120px] rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900"></div>
+                                                </div>
+                                                <div class="flex flex-wrap items-center gap-3">
+                                                    <button type="button" data-post-save="{{ $post->id }}" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">Save</button>
+                                                    <button type="button" data-post-cancel="{{ $post->id }}" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition">Cancel</button>
+                                                    <button type="button" data-post-delete="{{ $post->id }}" class="ml-auto inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 transition">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </div>
                                         @endif
                                     </div>
@@ -429,12 +529,12 @@
                         @if (isset($quotaInfo) && ($quotaInfo['gallery_images']['max'] > 0 || $quotaInfo['gallery_videos']['max'] > 0))
                             <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
                                 @if ($quotaInfo['gallery_images']['max'] > 0)
-                                    <span class="{{ !$quotaInfo['gallery_images']['allowed'] ? 'text-red-500 dark:text-red-400 font-medium' : '' }}">
+                                    <span data-quota-images data-current="{{ $quotaInfo['gallery_images']['current'] }}" data-max="{{ $quotaInfo['gallery_images']['max'] }}" class="{{ !$quotaInfo['gallery_images']['allowed'] ? 'text-red-500 dark:text-red-400 font-medium' : '' }}">
                                         Images: {{ $quotaInfo['gallery_images']['current'] }}/{{ $quotaInfo['gallery_images']['max'] }}
                                     </span>
                                 @endif
                                 @if ($quotaInfo['gallery_videos']['max'] > 0)
-                                    <span class="{{ !$quotaInfo['gallery_videos']['allowed'] ? 'text-red-500 dark:text-red-400 font-medium' : '' }}">
+                                    <span data-quota-videos data-current="{{ $quotaInfo['gallery_videos']['current'] }}" data-max="{{ $quotaInfo['gallery_videos']['max'] }}" class="{{ !$quotaInfo['gallery_videos']['allowed'] ? 'text-red-500 dark:text-red-400 font-medium' : '' }}">
                                         Videos: {{ $quotaInfo['gallery_videos']['current'] }}/{{ $quotaInfo['gallery_videos']['max'] }}
                                     </span>
                                 @endif
@@ -459,39 +559,84 @@
                         <div x-show="subTab === 'images'" x-cloak class="mt-4">
                             <div class="grid grid-cols-2 gap-2 sm:grid-cols-3" id="gallery-grid-images">
                                 @foreach ($galleryImages as $idx => $media)
-                                    <button type="button" @click="openLightbox({{ $idx }})"
-                                        class="group relative block aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
-                                        <img src="{{ $media->url }}" alt="{{ $media->caption ?? 'Photo' }}"
-                                            class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
-                                        <div class="absolute inset-0 bg-black/0 transition group-hover:bg-black/10"></div>
-                                        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
-                                            <svg class="mx-auto h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
-                                        </div>
-                                    </button>
+                                    <div class="group/img relative aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700" data-gallery-item data-media-id="{{ $media->id }}" data-media-type="photo" data-gallery-index="{{ $idx }}">
+                                        <button type="button" @click="openLightbox({{ $idx }})"
+                                            class="block h-full w-full focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+                                            <img src="{{ $media->url }}" alt="{{ $media->caption ?? 'Photo' }}"
+                                                class="h-full w-full object-cover transition duration-300 group-hover/img:scale-105" loading="lazy" />
+                                            <div class="absolute inset-0 bg-black/0 transition group-hover/img:bg-black/10"></div>
+                                            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent p-2 opacity-0 transition group-hover/img:opacity-100">
+                                                <svg class="mx-auto h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+                                            </div>
+                                        </button>
+                                        @if ($canEdit)
+                                            <div class="absolute top-1 right-1 z-10 flex items-center gap-1 opacity-0 group-hover/img:opacity-100 transition">
+                                                <button type="button" data-gallery-edit-caption="{{ $media->id }}" data-current-caption="{{ e($media->caption ?? '') }}"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-brand-500 transition" title="Edit caption">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                </button>
+                                                <button type="button" data-gallery-delete="{{ $media->id }}"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500 transition" title="Delete">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endforeach
                             </div>
-                            @if ($galleryImages->isEmpty())
+                            <div id="gallery-images-empty" class="{{ $galleryImages->isEmpty() ? '' : 'hidden' }}">
                                 <div class="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center">
                                     <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                     <p class="mt-2 text-gray-500 dark:text-gray-400">No photos yet.</p>
                                 </div>
-                            @endif
+                            </div>
                         </div>
 
                         {{-- Videos grid --}}
                         <div x-show="subTab === 'videos'" x-cloak class="mt-4">
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2" id="gallery-grid-videos">
                                 @foreach ($galleryVideos as $media)
-                                    <x-media.video-player :src="$media->url" :caption="$media->caption" />
+                                    <div class="group/vid relative" data-gallery-item data-media-id="{{ $media->id }}" data-media-type="video">
+                                        <x-media.video-player :src="$media->url" :caption="$media->caption" />
+                                        @if ($canEdit)
+                                            <div class="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover/vid:opacity-100 transition">
+                                                <button type="button" data-gallery-edit-caption="{{ $media->id }}" data-current-caption="{{ e($media->caption ?? '') }}"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-brand-500 transition" title="Edit caption">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                </button>
+                                                <button type="button" data-gallery-delete="{{ $media->id }}"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500 transition" title="Delete">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endforeach
                             </div>
-                            @if ($galleryVideos->isEmpty())
+                            <div id="gallery-videos-empty" class="{{ $galleryVideos->isEmpty() ? '' : 'hidden' }}">
                                 <div class="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center">
                                     <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                     <p class="mt-2 text-gray-500 dark:text-gray-400">No videos yet.</p>
                                 </div>
-                            @endif
+                            </div>
                         </div>
+
+                        {{-- Caption edit popover --}}
+                        @if ($canEdit)
+                            <div id="gallery-caption-editor" class="hidden fixed inset-0 z-[99998] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                                <div class="mx-4 w-full max-w-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl">
+                                    <div class="p-5">
+                                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Edit caption</h3>
+                                        <input type="text" id="gallery-caption-input" placeholder="Enter caption..." class="mt-3 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                        <input type="hidden" id="gallery-caption-media-id" />
+                                    </div>
+                                    <div class="flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-700 px-5 py-3">
+                                        <button type="button" id="gallery-caption-cancel" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">Cancel</button>
+                                        <button type="button" id="gallery-caption-save" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
 
                         {{-- Lightbox overlay --}}
                         <template x-teleport="body">
@@ -813,10 +958,10 @@
                                             this.showForm = false;
                                             if (email) this.guestEmail = email;
                                         } else if (data.error) {
-                                            alert(data.error);
+                                            $toast('error', data.error);
                                         }
                                     })
-                                    .catch(() => { this.submitting = false; alert('Something went wrong.'); });
+                                    .catch(() => { this.submitting = false; $toast('error', 'Something went wrong.'); });
                             },
 
                             updatePrefs() {
@@ -1089,8 +1234,8 @@
                                     const widget = document.getElementById('bg-music-widget');
                                     if (widget && widget.__x) widget.__x.$data.setMusic(data.url);
                                     else if (typeof Alpine !== 'undefined') Alpine.$data(widget).setMusic(data.url);
-                                } else { alert(data.error || 'Upload failed'); }
-                            }).catch(() => { uploading = false; alert('Upload failed'); });
+                                } else { $toast('error', data.error || 'Upload failed'); }
+                            }).catch(() => { uploading = false; $toast('error', 'Upload failed'); });
                             $event.target.value = '';
                         ">
                     <template x-if="!uploading">

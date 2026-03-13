@@ -47,10 +47,7 @@ class PublicMemorialController extends Controller
 
         $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
 
-        $canEdit = auth()->check() && (
-            $memorial->user_id === auth()->id() ||
-            auth()->user()->hasRole(['admin', 'super-admin'])
-        );
+        $canEdit = $memorial->canBeEditedBy(auth()->user());
 
         $stats = MemorialStatsHelper::get($memorial);
         $tributeCounts = $this->getTributeTypeCounts($memorial);
@@ -104,10 +101,7 @@ class PublicMemorialController extends Controller
 
         $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
 
-        $canEdit = auth()->check() && (
-            $memorial->user_id === auth()->id() ||
-            auth()->user()->hasRole(['admin', 'super-admin'])
-        );
+        $canEdit = $memorial->canBeEditedBy(auth()->user());
 
         $stats = MemorialStatsHelper::get($memorial);
 
@@ -173,10 +167,7 @@ class PublicMemorialController extends Controller
 
         $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
 
-        $canEdit = auth()->check() && (
-            $memorial->user_id === auth()->id() ||
-            auth()->user()->hasRole(['admin', 'super-admin'])
-        );
+        $canEdit = $memorial->canBeEditedBy(auth()->user());
 
         $stats = MemorialStatsHelper::get($memorial);
 

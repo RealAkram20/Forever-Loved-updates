@@ -109,6 +109,258 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- Chapter edit/delete ---
+    if (canEdit) {
+        // Edit chapter: open modal
+        document.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('[data-edit-chapter]');
+            if (!editBtn) return;
+            e.stopPropagation();
+            const chapterId = editBtn.dataset.editChapter;
+            const title = editBtn.dataset.chapterTitle || '';
+            const desc = editBtn.dataset.chapterDesc || '';
+            const modal = document.getElementById('edit-chapter-modal');
+            if (!modal) return;
+            document.getElementById('edit-chapter-id').value = chapterId;
+            document.getElementById('edit-chapter-title').value = title;
+            document.getElementById('edit-chapter-desc').value = desc;
+            modal.classList.remove('hidden');
+            setTimeout(() => document.getElementById('edit-chapter-title')?.focus(), 100);
+        });
+
+        // Edit chapter: submit
+        document.getElementById('edit-chapter-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const chapterId = document.getElementById('edit-chapter-id').value;
+            const title = document.getElementById('edit-chapter-title').value.trim();
+            const desc = document.getElementById('edit-chapter-desc').value.trim();
+            if (!title) return;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+            fetch(`${baseUrl}/chapters/${chapterId}`, fetchOpts('PATCH', { title, description: desc || null }))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.chapter) {
+                        const pill = document.querySelector(`[data-chapter-pill="${chapterId}"]`);
+                        if (pill) {
+                            const filterBtn = pill.querySelector('.chapter-filter');
+                            if (filterBtn) filterBtn.textContent = data.chapter.title;
+                            const editBtn = pill.querySelector('[data-edit-chapter]');
+                            if (editBtn) {
+                                editBtn.dataset.chapterTitle = data.chapter.title;
+                                editBtn.dataset.chapterDesc = data.chapter.description || '';
+                            }
+                        }
+                        document.querySelectorAll(`#life-feed article[data-chapter-id="${chapterId}"]`).forEach(article => {
+                            const chapterLabel = article.querySelector('.text-xs.text-gray-500');
+                            if (chapterLabel) {
+                                const parts = chapterLabel.innerHTML.split(' · ');
+                                if (parts.length > 1) {
+                                    parts[parts.length - 1] = escapeHtml(data.chapter.title);
+                                    chapterLabel.innerHTML = parts.join(' · ');
+                                }
+                            }
+                        });
+                        document.getElementById('edit-chapter-modal')?.classList.add('hidden');
+                    } else if (data.error) {
+                        $toast('error', data.error);
+                    }
+                })
+                .catch(() => $toast('error', 'Something went wrong.'))
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Save';
+                });
+        });
+
+        // Delete chapter
+        document.addEventListener('click', async (e) => {
+            const deleteBtn = e.target.closest('[data-delete-chapter]');
+            if (!deleteBtn) return;
+            e.stopPropagation();
+            const chapterId = deleteBtn.dataset.deleteChapter;
+            if (!await $confirm('Posts in this chapter will be moved to "Life" (uncategorized).', { title: 'Delete this chapter?', confirmText: 'Delete chapter' })) return;
+            deleteBtn.disabled = true;
+            fetch(`${baseUrl}/chapters/${chapterId}`, fetchOpts('DELETE'))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const pill = document.querySelector(`[data-chapter-pill="${chapterId}"]`);
+                        pill?.remove();
+                        document.querySelectorAll(`#life-feed article[data-chapter-id="${chapterId}"]`).forEach(article => {
+                            article.dataset.chapterId = '';
+                            const chapterLabel = article.querySelector('.text-xs.text-gray-500');
+                            if (chapterLabel) {
+                                const parts = chapterLabel.innerHTML.split(' · ');
+                                if (parts.length > 1) {
+                                    parts[parts.length - 1] = 'Life';
+                                    chapterLabel.innerHTML = parts.join(' · ');
+                                }
+                            }
+                        });
+                    } else if (data.error) {
+                        $toast('error', data.error);
+                    }
+                })
+                .catch(() => { $toast('error', 'Something went wrong.'); deleteBtn.disabled = false; });
+        });
+
+        // Inline Quill editing for posts
+        const postQuillInstances = {};
+
+        function initPostEditor(postId) {
+            if (postQuillInstances[postId]) return postQuillInstances[postId];
+            const editorEl = document.getElementById(`post-editor-${postId}`);
+            if (!editorEl || typeof Quill === 'undefined') return null;
+            const q = new Quill(`#post-editor-${postId}`, {
+                theme: 'snow',
+                placeholder: 'Write your story...',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'color': [] }],
+                        ['link', 'blockquote'],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        ['clean']
+                    ]
+                }
+            });
+            postQuillInstances[postId] = q;
+            return q;
+        }
+
+        // Open post inline editor
+        document.addEventListener('click', (e) => {
+            const trigger = e.target.closest('[data-post-edit-trigger]');
+            if (!trigger) return;
+            e.stopPropagation();
+            const postId = trigger.dataset.postEditTrigger;
+            const article = document.querySelector(`#life-feed article[data-post-id="${postId}"]`);
+            if (!article) return;
+
+            const displayEl = article.querySelector(`[data-post-display="${postId}"]`);
+            const editEl = article.querySelector(`[data-post-edit="${postId}"]`);
+            if (!displayEl || !editEl) return;
+
+            displayEl.classList.add('hidden');
+            editEl.classList.remove('hidden');
+
+            const quill = initPostEditor(postId);
+            if (quill) {
+                const proseEl = displayEl.querySelector('.prose');
+                const html = proseEl?.innerHTML?.trim() || '';
+                quill.setContents([]);
+                if (html) {
+                    quill.clipboard.dangerouslyPasteHTML(0, html);
+                }
+                requestAnimationFrame(() => quill.focus());
+            }
+        });
+
+        // Save post inline edit
+        document.addEventListener('click', (e) => {
+            const saveBtn = e.target.closest('[data-post-save]');
+            if (!saveBtn) return;
+            e.stopPropagation();
+            const postId = saveBtn.dataset.postSave;
+            const article = document.querySelector(`#life-feed article[data-post-id="${postId}"]`);
+            if (!article) return;
+
+            const displayEl = article.querySelector(`[data-post-display="${postId}"]`);
+            const editEl = article.querySelector(`[data-post-edit="${postId}"]`);
+            const titleInput = article.querySelector(`[data-post-edit-title="${postId}"]`);
+            const quill = postQuillInstances[postId];
+
+            const newTitle = titleInput?.value?.trim() || null;
+            const newContent = quill ? quill.root.innerHTML?.trim() : null;
+            const isEmpty = !newContent || newContent === '<p><br></p>';
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            fetch(`${baseUrl}/posts/${postId}`, fetchOpts('PATCH', {
+                title: newTitle,
+                content: isEmpty ? null : newContent,
+            }))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.post) {
+                        let titleEl = displayEl.querySelector('h3');
+                        let proseEl = displayEl.querySelector('.prose');
+
+                        if (data.post.title) {
+                            if (!titleEl) {
+                                titleEl = document.createElement('h3');
+                                titleEl.className = 'mt-2 font-medium text-gray-900 dark:text-white/90';
+                                displayEl.insertBefore(titleEl, displayEl.firstChild);
+                            }
+                            titleEl.textContent = data.post.title;
+                        } else if (titleEl) {
+                            titleEl.remove();
+                        }
+
+                        if (data.post.content) {
+                            if (!proseEl) {
+                                proseEl = document.createElement('div');
+                                proseEl.className = 'mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none';
+                                displayEl.appendChild(proseEl);
+                            }
+                            proseEl.innerHTML = data.post.content;
+                        } else if (proseEl) {
+                            proseEl.innerHTML = '';
+                        }
+
+                        displayEl.classList.remove('hidden');
+                        editEl.classList.add('hidden');
+                    } else if (data.error) {
+                        $toast('error', data.error);
+                    }
+                })
+                .catch(() => $toast('error', 'Something went wrong.'))
+                .finally(() => {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                });
+        });
+
+        // Cancel post inline edit
+        document.addEventListener('click', (e) => {
+            const cancelBtn = e.target.closest('[data-post-cancel]');
+            if (!cancelBtn) return;
+            e.stopPropagation();
+            const postId = cancelBtn.dataset.postCancel;
+            const article = document.querySelector(`#life-feed article[data-post-id="${postId}"]`);
+            if (!article) return;
+
+            const displayEl = article.querySelector(`[data-post-display="${postId}"]`);
+            const editEl = article.querySelector(`[data-post-edit="${postId}"]`);
+            if (displayEl) displayEl.classList.remove('hidden');
+            if (editEl) editEl.classList.add('hidden');
+        });
+
+        // Delete post from inline edit panel
+        document.addEventListener('click', async (e) => {
+            const deleteBtn = e.target.closest('[data-post-delete]');
+            if (!deleteBtn) return;
+            e.stopPropagation();
+            const postId = deleteBtn.dataset.postDelete;
+            if (!await $confirm('This cannot be undone.', { title: 'Delete this post?', confirmText: 'Delete post' })) return;
+            deleteBtn.disabled = true;
+            fetch(`${baseUrl}/posts/${postId}`, fetchOpts('DELETE'))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const article = document.querySelector(`#life-feed article[data-post-id="${postId}"]`);
+                        article?.remove();
+                    } else if (data.error) {
+                        $toast('error', data.error);
+                    }
+                })
+                .catch(() => { $toast('error', 'Something went wrong.'); deleteBtn.disabled = false; });
+        });
+    }
+
     // --- Profile photo upload ---
     if (canEdit) {
         document.getElementById('profile-photo-input')?.addEventListener('change', (e) => {
@@ -170,12 +422,174 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
                     } else if (data.error) {
-                        alert(data.error);
+                        $toast('error', data.error);
                     }
                 });
             e.target.value = '';
         });
     }
+
+    // --- Gallery delete ---
+    document.addEventListener('click', async (e) => {
+        const deleteBtn = e.target.closest('[data-gallery-delete]');
+        if (!deleteBtn) return;
+        e.stopPropagation();
+        const mediaId = deleteBtn.dataset.galleryDelete;
+        if (!await $confirm('This media will be permanently removed.', { title: 'Delete this gallery item?', confirmText: 'Delete' })) return;
+        deleteBtn.disabled = true;
+        fetch(`${baseUrl}/gallery/${mediaId}`, fetchOpts('DELETE'))
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const item = deleteBtn.closest('[data-gallery-item]');
+                    const type = item?.dataset.mediaType;
+
+                    if (type === 'photo') {
+                        const galleryEl = document.getElementById('tab-gallery');
+                        const alpineData = galleryEl?.__x?.$data || (typeof Alpine !== 'undefined' ? Alpine.$data(galleryEl) : null);
+                        const idx = parseInt(item?.dataset.galleryIndex ?? -1);
+                        if (alpineData && idx >= 0) {
+                            alpineData.images.splice(idx, 1);
+                            // Re-index remaining image items
+                            document.querySelectorAll('#gallery-grid-images [data-gallery-item][data-media-type="photo"]').forEach((el, i) => {
+                                el.dataset.galleryIndex = i;
+                                const btn = el.querySelector('button[\\@click]');
+                                if (btn) btn.setAttribute('@click', `openLightbox(${i})`);
+                            });
+                        }
+                    }
+
+                    item?.remove();
+
+                    // Update quota counter
+                    const quotaAttr = type === 'photo' ? 'data-quota-images' : 'data-quota-videos';
+                    const quotaEl = document.querySelector(`[${quotaAttr}]`);
+                    if (quotaEl) {
+                        const current = Math.max(0, parseInt(quotaEl.dataset.current || 0) - 1);
+                        const max = quotaEl.dataset.max;
+                        quotaEl.dataset.current = current;
+                        const label = type === 'photo' ? 'Images' : 'Videos';
+                        quotaEl.textContent = `${label}: ${current}/${max}`;
+                        quotaEl.classList.remove('text-red-500', 'dark:text-red-400', 'font-medium');
+                    }
+
+                    // Show empty state if grid is now empty
+                    if (type === 'photo') {
+                        const grid = document.getElementById('gallery-grid-images');
+                        if (grid && !grid.children.length) {
+                            document.getElementById('gallery-images-empty')?.classList.remove('hidden');
+                        }
+                    } else {
+                        const grid = document.getElementById('gallery-grid-videos');
+                        if (grid && !grid.children.length) {
+                            document.getElementById('gallery-videos-empty')?.classList.remove('hidden');
+                        }
+                    }
+
+                    $toast('success', 'Gallery item deleted.');
+                } else if (data.error) {
+                    $toast('error', data.error);
+                }
+            })
+            .catch(() => { $toast('error', 'Something went wrong.'); deleteBtn.disabled = false; });
+    });
+
+    // --- Gallery caption edit ---
+    document.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-gallery-edit-caption]');
+        if (!editBtn) return;
+        e.stopPropagation();
+        const mediaId = editBtn.dataset.galleryEditCaption;
+        const currentCaption = editBtn.dataset.currentCaption || '';
+        const editor = document.getElementById('gallery-caption-editor');
+        const input = document.getElementById('gallery-caption-input');
+        const mediaIdInput = document.getElementById('gallery-caption-media-id');
+        if (!editor || !input || !mediaIdInput) return;
+
+        mediaIdInput.value = mediaId;
+        input.value = currentCaption;
+        editor.classList.remove('hidden');
+        requestAnimationFrame(() => input.focus());
+    });
+
+    // Caption save
+    document.getElementById('gallery-caption-save')?.addEventListener('click', () => {
+        const editor = document.getElementById('gallery-caption-editor');
+        const input = document.getElementById('gallery-caption-input');
+        const mediaId = document.getElementById('gallery-caption-media-id')?.value;
+        if (!mediaId) return;
+
+        const saveBtn = document.getElementById('gallery-caption-save');
+        const caption = input.value.trim();
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        fetch(`${baseUrl}/gallery/${mediaId}`, fetchOpts('PATCH', { caption: caption || null }))
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the edit button's data attribute
+                    document.querySelectorAll(`[data-gallery-edit-caption="${mediaId}"]`).forEach(btn => {
+                        btn.dataset.currentCaption = caption;
+                    });
+
+                    // Update caption in Alpine images array (for lightbox)
+                    const item = document.querySelector(`[data-gallery-item][data-media-id="${mediaId}"][data-media-type="photo"]`);
+                    if (item) {
+                        const idx = parseInt(item.dataset.galleryIndex ?? -1);
+                        const galleryEl = document.getElementById('tab-gallery');
+                        const alpineData = galleryEl?.__x?.$data || (typeof Alpine !== 'undefined' ? Alpine.$data(galleryEl) : null);
+                        if (alpineData && idx >= 0 && alpineData.images[idx]) {
+                            alpineData.images[idx].caption = caption || 'Photo';
+                        }
+                        const img = item.querySelector('img');
+                        if (img) img.alt = caption || 'Photo';
+                    }
+
+                    // Update video caption text if it's a video
+                    const videoItem = document.querySelector(`[data-gallery-item][data-media-id="${mediaId}"][data-media-type="video"]`);
+                    if (videoItem) {
+                        const captionEl = videoItem.querySelector('.memorial-video-player + div p, .memorial-video-player .text-xs');
+                        if (captionEl) captionEl.textContent = caption;
+                    }
+
+                    editor.classList.add('hidden');
+                    $toast('success', 'Caption updated.');
+                } else if (data.error) {
+                    $toast('error', data.error);
+                }
+            })
+            .catch(() => $toast('error', 'Something went wrong.'))
+            .finally(() => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            });
+    });
+
+    // Caption cancel
+    document.getElementById('gallery-caption-cancel')?.addEventListener('click', () => {
+        document.getElementById('gallery-caption-editor')?.classList.add('hidden');
+    });
+
+    // Close caption editor on Escape or backdrop click
+    document.getElementById('gallery-caption-editor')?.addEventListener('click', (e) => {
+        if (e.target.id === 'gallery-caption-editor') {
+            e.target.classList.add('hidden');
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.getElementById('gallery-caption-editor')?.classList.add('hidden');
+        }
+    });
+
+    // Caption save on Enter
+    document.getElementById('gallery-caption-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('gallery-caption-save')?.click();
+        }
+    });
 
     // --- Quill editors ---
     let chapterQuill, tributeQuill, biographyQuill;
@@ -278,7 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const guestName = document.getElementById('chapter-guest-name')?.value?.trim();
                 const guestEmail = document.getElementById('chapter-guest-email')?.value?.trim();
                 if (!guestName || !guestEmail) {
-                    alert('Please enter your name and email to add your chapter.');
+                    $toast('warning', 'Please enter your name and email to add your chapter.');
                     resetButton();
                     return;
                 }
@@ -372,12 +786,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (chapterQuill) chapterQuill.setText('');
                         form.reset();
                     } else if (data.error) {
-                        alert(data.error);
+                        $toast('error', data.error);
                     }
                     resetButton();
                 })
                 .catch(() => {
-                    alert('Something went wrong. Please try again.');
+                    $toast('error', 'Something went wrong. Please try again.');
                     resetButton();
                 });
         });
@@ -510,6 +924,143 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Tribute inline editing ---
+    const tributeQuillInstances = {};
+
+    function initTributeEditor(tributeId) {
+        if (tributeQuillInstances[tributeId]) return tributeQuillInstances[tributeId];
+        const editorEl = document.getElementById(`tribute-editor-${tributeId}`);
+        if (!editorEl || typeof Quill === 'undefined') return null;
+        const q = new Quill(`#tribute-editor-${tributeId}`, {
+            theme: 'snow',
+            placeholder: 'Write your tribute message...',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    [{ 'color': [] }],
+                    ['link'],
+                    ['clean']
+                ]
+            }
+        });
+        tributeQuillInstances[tributeId] = q;
+        return q;
+    }
+
+    // Open tribute inline editor
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('[data-tribute-edit-trigger]');
+        if (!trigger) return;
+        e.stopPropagation();
+        const tributeId = trigger.dataset.tributeEditTrigger;
+        const wrapper = document.querySelector(`#tribute-${tributeId}`);
+        if (!wrapper) return;
+
+        const displayEl = wrapper.querySelector(`[data-tribute-display="${tributeId}"]`);
+        const editEl = wrapper.querySelector(`[data-tribute-edit="${tributeId}"]`);
+        if (!displayEl || !editEl) return;
+
+        displayEl.classList.add('hidden');
+        editEl.classList.remove('hidden');
+
+        const quill = initTributeEditor(tributeId);
+        if (quill) {
+            const proseEl = displayEl.querySelector('.prose');
+            const html = proseEl?.innerHTML?.trim() || '';
+            quill.setContents([]);
+            if (html) {
+                quill.clipboard.dangerouslyPasteHTML(0, html);
+            }
+            requestAnimationFrame(() => quill.focus());
+        }
+    });
+
+    // Save tribute inline edit
+    document.addEventListener('click', (e) => {
+        const saveBtn = e.target.closest('[data-tribute-save]');
+        if (!saveBtn) return;
+        e.stopPropagation();
+        const tributeId = saveBtn.dataset.tributeSave;
+        const wrapper = document.querySelector(`#tribute-${tributeId}`);
+        if (!wrapper) return;
+
+        const displayEl = wrapper.querySelector(`[data-tribute-display="${tributeId}"]`);
+        const editEl = wrapper.querySelector(`[data-tribute-edit="${tributeId}"]`);
+        const typeRadio = wrapper.querySelector(`input[name="tribute-type-${tributeId}"]:checked`);
+        const quill = tributeQuillInstances[tributeId];
+
+        const newType = typeRadio?.value || null;
+        const newMessage = quill ? quill.root.innerHTML?.trim() : null;
+        const isEmpty = !newMessage || newMessage === '<p><br></p>';
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        fetch(`${baseUrl}/tributes/${tributeId}`, fetchOpts('PATCH', {
+            type: newType,
+            message: isEmpty ? '' : newMessage,
+        }))
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    if (displayEl) displayEl.classList.remove('hidden');
+                    if (editEl) editEl.classList.add('hidden');
+                    // Reload the page to reflect type-dependent styling changes
+                    window.location.reload();
+                } else if (data.error) {
+                    $toast('error', data.error);
+                }
+            })
+            .catch(() => $toast('error', 'Something went wrong.'))
+            .finally(() => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            });
+    });
+
+    // Cancel tribute inline edit
+    document.addEventListener('click', (e) => {
+        const cancelBtn = e.target.closest('[data-tribute-cancel]');
+        if (!cancelBtn) return;
+        e.stopPropagation();
+        const tributeId = cancelBtn.dataset.tributeCancel;
+        const wrapper = document.querySelector(`#tribute-${tributeId}`);
+        if (!wrapper) return;
+
+        const displayEl = wrapper.querySelector(`[data-tribute-display="${tributeId}"]`);
+        const editEl = wrapper.querySelector(`[data-tribute-edit="${tributeId}"]`);
+        if (displayEl) displayEl.classList.remove('hidden');
+        if (editEl) editEl.classList.add('hidden');
+    });
+
+    // Delete tribute
+    document.addEventListener('click', async (e) => {
+        const deleteBtn = e.target.closest('[data-tribute-delete]');
+        if (!deleteBtn) return;
+        e.stopPropagation();
+        const tributeId = deleteBtn.dataset.tributeDelete;
+        if (!await $confirm('This cannot be undone.', { title: 'Delete this tribute?', confirmText: 'Delete tribute' })) return;
+        deleteBtn.disabled = true;
+        fetch(`${baseUrl}/tributes/${tributeId}`, fetchOpts('DELETE'))
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const wrapper = document.querySelector(`#tribute-${tributeId}`);
+                    wrapper?.remove();
+                    const countEl = document.querySelector('[data-tribute-count]');
+                    if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent || 0) - 1);
+                    const list = document.querySelector('[data-tributes-list]');
+                    if (list && !list.children.length) {
+                        const emptyEl = document.querySelector('[data-tributes-empty]');
+                        if (emptyEl) emptyEl.classList.remove('hidden');
+                    }
+                } else if (data.error) {
+                    $toast('error', data.error);
+                }
+            })
+            .catch(() => { $toast('error', 'Something went wrong.'); deleteBtn.disabled = false; });
+    });
+
     // --- Guest modal (name + email for tributes/reactions) ---
     const guestModal = document.getElementById('guest-modal');
     const guestForm = document.getElementById('guest-form');
@@ -564,14 +1115,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateTributeCount();
                 } else if (data.requires_login) {
                     hideGuestModal();
-                    alert(data.error + ' You can sign in at: ' + window.location.origin + '/login/code');
+                    $toast('warning', data.error + ' You can sign in at: ' + window.location.origin + '/login/code');
                 } else if (data.error) {
-                    alert(data.error);
+                    $toast('error', data.error);
                 }
             })
             .catch(err => {
                 console.error('Tribute error:', err);
-                alert(err.message || 'Could not submit tribute. Please try again.');
+                $toast('error', err.message || 'Could not submit tribute. Please try again.');
             });
     }
 
@@ -913,10 +1464,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             const countEl = document.querySelector(`[data-tribute-comment-container="${tributeId}"] [data-tribute-comment-count]`);
                             if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
                             input.value = '';
-                        } else if (data.error) alert(data.error);
+                        } else if (data.error) $toast('error', data.error);
                         resetBtn();
                     })
-                    .catch(() => { alert('Something went wrong.'); resetBtn(); });
+                    .catch(() => { $toast('error', 'Something went wrong.'); resetBtn(); });
             };
             if (isAuthenticated) doSubmit();
             else showGuestModal({ type: 'comment', payload: { content }, callback: (name, email) => doSubmit(name, email) });
@@ -987,10 +1538,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
                             input.value = '';
                             replyForm?.classList.add('hidden');
-                        } else if (data.error) alert(data.error);
+                        } else if (data.error) $toast('error', data.error);
                         resetBtn();
                     })
-                    .catch(() => { alert('Something went wrong.'); resetBtn(); });
+                    .catch(() => { $toast('error', 'Something went wrong.'); resetBtn(); });
             };
             if (isAuthenticated) doSubmit();
             else showGuestModal({ type: 'comment', payload: { content }, callback: (name, email) => doSubmit(name, email) });
@@ -1069,10 +1620,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
                             input.value = '';
                             document.querySelector(`[data-reply-form="${parentId}"]`)?.classList.add('hidden');
-                        } else if (data.error) alert(data.error);
+                        } else if (data.error) $toast('error', data.error);
                         resetBtn();
                     })
-                    .catch(() => { alert('Something went wrong.'); resetBtn(); });
+                    .catch(() => { $toast('error', 'Something went wrong.'); resetBtn(); });
             };
             if (isAuthenticated) doSubmit();
             else showGuestModal({ type: 'comment', payload: { content }, callback: (name, email) => doSubmit(name, email) });
@@ -1115,23 +1666,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         const countEl = document.querySelector(`[data-comment-container="${postId}"] [data-comment-count]`);
                         if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
                         input.value = '';
-                    } else if (data.error) alert(data.error);
+                    } else if (data.error) $toast('error', data.error);
                     resetBtn();
                 })
-                .catch(() => { alert('Something went wrong.'); resetBtn(); });
+                .catch(() => { $toast('error', 'Something went wrong.'); resetBtn(); });
         };
         if (isAuthenticated) doSubmit();
         else showGuestModal({ type: 'comment', payload: { content }, callback: (name, email) => doSubmit(name, email) });
     });
 
     // --- Delete comment ---
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-delete-comment]');
         if (!btn) return;
         e.stopPropagation();
         const commentId = parseInt(btn.dataset.commentId);
         const postId = parseInt(btn.dataset.postId);
-        if (!confirm('Delete this comment?')) return;
+        if (!await $confirm('This comment will be permanently removed.', { title: 'Delete this comment?', confirmText: 'Delete comment' })) return;
         btn.disabled = true;
         btn.textContent = '...';
         fetch(`${baseUrl}/comments/${commentId}`, fetchOpts('DELETE'))
@@ -1152,12 +1703,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (empty) empty.classList.remove('hidden');
                     }
                 } else if (data.error) {
-                    alert(data.error);
+                    $toast('error', data.error);
                     btn.disabled = false;
                     btn.textContent = 'Delete';
                 }
             })
-            .catch(() => { alert('Something went wrong.'); btn.disabled = false; btn.textContent = 'Delete'; });
+            .catch(() => { $toast('error', 'Something went wrong.'); btn.disabled = false; btn.textContent = 'Delete'; });
     });
 
     function escapeHtml(s) {

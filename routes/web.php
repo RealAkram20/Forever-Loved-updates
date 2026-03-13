@@ -157,8 +157,12 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::get('/posts/{postId}/reactions', [MemorialApiController::class, 'reactions'])->name('posts.reactions');
     Route::get('/tributes', [MemorialApiController::class, 'tributes'])->name('tributes');
     Route::post('/tributes/{tributeId}/comments', [MemorialApiController::class, 'storeTributeComment'])->name('tributes.comments.store');
+    Route::patch('/tributes/{tributeId}', [MemorialApiController::class, 'updateTribute'])->name('tributes.update');
+    Route::delete('/tributes/{tributeId}', [MemorialApiController::class, 'deleteTribute'])->name('tributes.delete');
     Route::get('/chapters', [MemorialApiController::class, 'chapters'])->name('chapters');
     Route::post('/chapters', [MemorialApiController::class, 'storeChapter'])->name('chapters.store');
+    Route::patch('/chapters/{chapterId}', [MemorialApiController::class, 'updateChapter'])->name('chapters.update');
+    Route::delete('/chapters/{chapterId}', [MemorialApiController::class, 'deleteChapter'])->name('chapters.delete');
     // Memorial subscriptions
     Route::post('/subscribe', [MemorialApiController::class, 'subscribe'])->name('subscribe');
     Route::put('/subscribe', [MemorialApiController::class, 'updateSubscription'])->name('subscribe.update');
@@ -167,6 +171,8 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     // Media uploads
     Route::post('/profile-photo', [MemorialMediaController::class, 'uploadProfilePhoto'])->name('profile-photo');
     Route::post('/gallery', [MemorialMediaController::class, 'uploadGalleryMedia'])->name('gallery');
+    Route::patch('/gallery/{mediaId}', [MemorialMediaController::class, 'updateGalleryMedia'])->name('gallery.update');
+    Route::delete('/gallery/{mediaId}', [MemorialMediaController::class, 'deleteGalleryMedia'])->name('gallery.delete');
     Route::post('/post-media', [MemorialMediaController::class, 'uploadPostMedia'])->name('post-media');
     Route::post('/tribute-post', [MemorialMediaController::class, 'storeTributePost'])->name('tribute-post');
     Route::post('/background-music', [MemorialMediaController::class, 'uploadBackgroundMusic'])->name('background-music');

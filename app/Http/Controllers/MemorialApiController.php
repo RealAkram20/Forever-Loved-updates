@@ -311,6 +311,50 @@ class MemorialApiController extends Controller
     }
 
     /**
+     * Update a story chapter. Admin, owner, or collaborator only.
+     */
+    public function updateChapter(Request $request, string $slug, int $chapterId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $chapter = $memorial->storyChapters()->findOrFail($chapterId);
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $chapter->update([
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return response()->json(['success' => true, 'chapter' => $chapter->fresh()]);
+    }
+
+    /**
+     * Delete a story chapter. Admin, owner, or collaborator only.
+     * Posts in the chapter are unlinked (set to null), not deleted.
+     */
+    public function deleteChapter(string $slug, int $chapterId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $chapter = $memorial->storyChapters()->findOrFail($chapterId);
+
+        $chapter->posts()->update(['story_chapter_id' => null]);
+        $chapter->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Store a post. Admin or owner only.
      */
     public function storePost(Request $request, string $slug): JsonResponse
@@ -401,6 +445,77 @@ class MemorialApiController extends Controller
             'tributes' => $tributes->items(),
             'total' => $tributes->total(),
         ]);
+    }
+
+    /**
+     * Update a tribute. Memorial editor OR tribute author.
+     */
+    public function updateTribute(Request $request, string $slug, int $tributeId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        $tribute = $memorial->tributes()->findOrFail($tributeId);
+
+        if (!$this->canEditTribute($memorial, $tribute)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'type' => ['nullable', 'in:flower,candle,note'],
+            'message' => ['nullable', 'string', 'max:10000'],
+        ]);
+
+        $tribute->update(array_filter([
+            'type' => $validated['type'] ?? null,
+            'message' => array_key_exists('message', $validated) ? HtmlHelper::sanitize($validated['message']) : null,
+        ], fn ($v) => $v !== null));
+
+        $tribute->load('user');
+        $authorName = $tribute->user?->name ?? $tribute->guest_name ?? 'Anonymous';
+
+        return response()->json([
+            'success' => true,
+            'tribute' => [
+                'id' => $tribute->id,
+                'share_id' => $tribute->share_id,
+                'type' => $tribute->type,
+                'message' => $tribute->message,
+                'author' => $authorName,
+            ],
+        ]);
+    }
+
+    /**
+     * Delete a tribute. Memorial editor OR tribute author.
+     */
+    public function deleteTribute(string $slug, int $tributeId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        $tribute = $memorial->tributes()->findOrFail($tributeId);
+
+        if (!$this->canEditTribute($memorial, $tribute)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $tribute->reactions()->delete();
+        $tribute->comments()->each(function ($comment) {
+            $comment->replies()->delete();
+            $comment->delete();
+        });
+        $tribute->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    private function canEditTribute(Memorial $memorial, Tribute $tribute): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+        if ($this->canEdit($memorial)) {
+            return true;
+        }
+        return $tribute->user_id && $tribute->user_id === $user->id;
     }
 
     /**
@@ -594,11 +709,7 @@ class MemorialApiController extends Controller
 
     private function canEdit(Memorial $memorial): bool
     {
-        $user = auth()->user();
-        if (!$user) {
-            return false;
-        }
-        return $memorial->user_id === $user->id || $user->hasRole(['admin', 'super-admin']);
+        return $memorial->canBeEditedBy(auth()->user());
     }
 
     /**
