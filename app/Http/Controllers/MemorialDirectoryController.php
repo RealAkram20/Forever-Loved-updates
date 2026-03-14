@@ -53,6 +53,14 @@ class MemorialDirectoryController extends Controller
             $query->where('gender', $gender);
         }
 
+        $designation = trim($request->input('designation', ''));
+        if ($designation !== '') {
+            $query->where(function ($q) use ($designation) {
+                $q->where('designation', $designation)
+                  ->orWhere('cause_of_death', $designation);
+            });
+        }
+
         $ageMin = $request->integer('age_min', 0);
         $ageMax = $request->integer('age_max', 120);
         if ($ageMin > 0 || $ageMax < 120) {
@@ -103,7 +111,7 @@ class MemorialDirectoryController extends Controller
         $perPage = min(max($perPage, 6), 48);
         $memorials = $query
             ->withCount('tributes')
-            ->select(['id', 'slug', 'full_name', 'primary_profession', 'profile_photo_path', 'gender', 'visitor_count', 'date_of_birth', 'date_of_passing', 'birth_year', 'death_year'])
+            ->select(['id', 'slug', 'full_name', 'primary_profession', 'profile_photo_path', 'gender', 'visitor_count', 'date_of_birth', 'date_of_passing', 'birth_year', 'death_year', 'designation'])
             ->orderBy('full_name')
             ->paginate($perPage);
 
@@ -115,6 +123,7 @@ class MemorialDirectoryController extends Controller
             'gender' => $m->gender,
             'years' => $m->birth_death_years,
             'age_at_death' => $m->age_at_death,
+            'designation' => $m->designation,
             'visitor_count' => $m->visitor_count ?? 0,
             'tributes_count' => $m->tributes_count ?? 0,
             'url' => route('memorial.public', $m->slug),

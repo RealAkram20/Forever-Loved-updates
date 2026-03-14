@@ -13,6 +13,7 @@
                 filtersOpen: false,
                 search: '',
                 gender: '',
+                designation: '',
                 ageMin: '',
                 ageMax: '',
                 birthYearFrom: '',
@@ -32,6 +33,7 @@
                         per_page: this.perPage,
                         q: this.search,
                         gender: this.gender,
+                        designation: this.designation,
                         age_min: this.ageMin === '' || this.ageMin === null ? 0 : this.ageMin,
                         age_max: this.ageMax === '' || this.ageMax === null ? 120 : this.ageMax,
                         birth_year_from: this.birthYearFrom || 0,
@@ -66,6 +68,10 @@
                     this.fetch();
                 },
                 init() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.get('designation')) this.designation = urlParams.get('designation');
+                    if (urlParams.get('q')) this.search = urlParams.get('q');
+                    if (urlParams.get('gender')) this.gender = urlParams.get('gender');
                     this.fetch();
                     if (window.innerWidth >= 1024) this.filtersOpen = true;
                     window.addEventListener('resize', () => { if (window.innerWidth >= 1024) this.filtersOpen = true; });
@@ -93,6 +99,23 @@
                                 <option value="">All</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Designation</label>
+                            <select x-model="designation"
+                                class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-800 dark:text-white/90">
+                                <option value="">All categories</option>
+                                <option value="COVID-19 victim">COVID-19 Victims</option>
+                                <option value="War veteran">War Veterans</option>
+                                <option value="First responder">First Responders</option>
+                                <option value="Substance abuse victim">Substance Abuse Victims</option>
+                                <option value="Cancer victim">Cancer Victims</option>
+                                <option value="Victim of an accident">Accident Victims</option>
+                                <option value="Crime victim">Crime Victims</option>
+                                <option value="Miscarriage, stillborn and infant loss">Infant Loss</option>
+                                <option value="Child loss">Child Loss</option>
                             </select>
                         </div>
 

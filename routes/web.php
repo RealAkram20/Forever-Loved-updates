@@ -11,22 +11,30 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicMemorialController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\PageController;
 use App\Http\Controllers\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes (login, register, password reset, etc.)
 require __DIR__.'/auth.php';
 
-// Landing page (public)
-Route::get('/', function () {
-    return view('pages.landing', ['title' => 'Home']);
-})->name('home');
+// Landing / Home page (public)
+Route::get('/', [PageController::class, 'home'])->name('home');
 
 // AJAX memorial search (public)
 Route::get('/api/search/memorials', [MemorialController::class, 'search'])->name('memorials.search');
 
 // Find Memorial directory (public)
 Route::get('/find-memorial', [MemorialDirectoryController::class, 'index'])->name('memorial.directory');
+
+// Public visitor pages
+Route::get('/pricing', [PageController::class, 'pricing'])->name('pricing');
+Route::get('/about', [PageController::class, 'about'])->name('about');
+Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->name('privacy-policy');
+Route::get('/terms-of-use', [PageController::class, 'termsOfUse'])->name('terms-of-use');
+Route::get('/contact', [ContactController::class, 'show'])->name('contact');
+Route::post('/contact', [ContactController::class, 'send'])->name('contact.send');
 
 // Memorial creation flow (multi-step signup)
 Route::prefix('create-memorial')->name('memorial.create.')->group(function () {
@@ -137,6 +145,11 @@ Route::prefix('settings')->name('settings.')->middleware('role:admin|super-admin
     Route::delete('/plans/{plan}', [SettingsController::class, 'destroyPlan'])->name('plans.destroy');
 
     Route::get('/updates', [SettingsController::class, 'updates'])->name('updates');
+
+    // Editable Pages
+    Route::get('/pages', [\App\Http\Controllers\Admin\PageController::class, 'index'])->name('pages.index');
+    Route::get('/pages/{slug}/edit', [\App\Http\Controllers\Admin\PageController::class, 'edit'])->name('pages.edit');
+    Route::put('/pages/{slug}', [\App\Http\Controllers\Admin\PageController::class, 'update'])->name('pages.update');
 });
 });
 

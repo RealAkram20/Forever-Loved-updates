@@ -40,8 +40,10 @@ class MenuHelper
                 'name' => 'Pages',
                 'icon' => 'pages',
                 'subItems' => [
-                    ['name' => 'Landing Page', 'path' => url('/')],
-                    ['name' => 'Blank Page', 'path' => url('/blank')],
+                    ['name' => 'All Pages', 'path' => url('/settings/pages')],
+                    ['name' => 'About Page', 'path' => url('/settings/pages/about/edit')],
+                    ['name' => 'Privacy Policy', 'path' => url('/settings/pages/privacy-policy/edit')],
+                    ['name' => 'Terms of Use', 'path' => url('/settings/pages/terms-of-use/edit')],
                 ],
             ],
             [

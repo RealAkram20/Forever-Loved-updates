@@ -2,6 +2,9 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import ApexCharts from 'apexcharts';
+import Swiper from 'swiper';
+import { Autoplay, FreeMode } from 'swiper/modules';
+import 'swiper/css';
 
 // flatpickr
 import flatpickr from 'flatpickr';
@@ -14,6 +17,9 @@ import { Calendar } from '@fullcalendar/core';
 Alpine.plugin(collapse);
 window.Alpine = Alpine;
 window.ApexCharts = ApexCharts;
+window.Swiper = Swiper;
+window.SwiperAutoplay = Autoplay;
+window.SwiperFreeMode = FreeMode;
 window.flatpickr = flatpickr;
 window.FullCalendar = Calendar;
 
