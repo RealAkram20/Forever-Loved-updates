@@ -8,7 +8,10 @@ class StorageHelper
 {
     /**
      * Get the public URL for a file stored on the public disk.
-     * Uses the current request URL so images work regardless of APP_URL.
+     *
+     * For HTTP requests, uses the incoming host/scheme (and subdirectory base path)
+     * so logos and uploads work when APP_URL still points at localhost or another domain.
+     * Falls back to url() for CLI/queue.
      */
     public static function publicUrl(?string $path): ?string
     {
@@ -16,7 +19,16 @@ class StorageHelper
             return null;
         }
 
-        return url('/storage/' . ltrim($path, '/'));
+        $path = str_replace('\\', '/', ltrim($path, '/'));
+
+        if (! app()->runningInConsole() && request()->getHttpHost()) {
+            $root = request()->getScheme().'://'.request()->getHttpHost();
+            $base = rtrim(request()->getBasePath(), '/');
+
+            return $root.$base.'/storage/'.$path;
+        }
+
+        return rtrim(config('app.url'), '/').'/storage/'.$path;
     }
 
     /**

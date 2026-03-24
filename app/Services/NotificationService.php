@@ -7,7 +7,6 @@ use App\Models\Notification;
 use App\Models\PushSubscription;
 use App\Models\SystemSetting;
 use App\Models\User;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Minishlink\WebPush\Subscription;
@@ -121,7 +120,7 @@ class NotificationService
 
     private static function dispatchEmail(Notification $notification): void
     {
-        static::configureSmtp();
+        SystemMailConfigurator::applyFromSettings();
 
         $user = $notification->user;
         if (!$user || !$user->email) {
@@ -138,34 +137,6 @@ class NotificationService
                     ->subject("{$appName} - {$subject}");
             }
         );
-    }
-
-    /**
-     * Dynamically override Laravel's SMTP config from SystemSettings.
-     */
-    private static function configureSmtp(): void
-    {
-        $host = SystemSetting::get('smtp.host');
-        if (!$host) {
-            return;
-        }
-
-        Config::set('mail.default', 'smtp');
-        Config::set('mail.mailers.smtp.host', $host);
-        Config::set('mail.mailers.smtp.port', SystemSetting::get('smtp.port', 587));
-        Config::set('mail.mailers.smtp.username', SystemSetting::get('smtp.username'));
-        Config::set('mail.mailers.smtp.password', SystemSetting::get('smtp.password'));
-
-        $encryption = SystemSetting::get('smtp.encryption', 'tls');
-        Config::set('mail.mailers.smtp.encryption', $encryption === 'none' ? null : $encryption);
-
-        $fromAddress = SystemSetting::get('smtp.from_address');
-        $fromName = SystemSetting::get('smtp.from_name', SystemSetting::get('branding.app_name', config('app.name')));
-
-        if ($fromAddress) {
-            Config::set('mail.from.address', $fromAddress);
-            Config::set('mail.from.name', $fromName);
-        }
     }
 
     private static function buildEmailHtml(Notification $notification, string $appName): string
@@ -604,7 +575,7 @@ class NotificationService
                 $name = $sub->guest_name ?? 'Subscriber';
                 if ($email) {
                     try {
-                        static::configureSmtp();
+                        SystemMailConfigurator::applyFromSettings();
                         $appName = SystemSetting::get('branding.app_name', config('app.name'));
                         $html = "<p>Hi {$name},</p><p>{$message}</p><p><a href=\"{$actionUrl}\" style=\"display:inline-block;padding:10px 20px;background-color:#6366f1;color:white;border-radius:8px;text-decoration:none;font-weight:600;\">View Memorial</a></p><p style=\"color:#999;font-size:12px;\">You received this because you subscribed to updates for this memorial.</p>";
                         Mail::html($html, function ($msg) use ($email, $name, $title, $appName) {

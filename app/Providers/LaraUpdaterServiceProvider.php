@@ -19,10 +19,10 @@ class LaraUpdaterServiceProvider extends ServiceProvider
             'laraupdater'
         );
 
-        Route::middleware(array_merge(['web'], config('laraupdater.middleware', ['auth', 'role:admin|super-admin'])))->group(function () {
+        Route::middleware(config('laraupdater.middleware', ['web', 'auth', 'role:admin|super-admin']))->group(function () {
             Route::get('updater.check', [\App\Http\Controllers\Admin\LaraUpdaterController::class, 'check']);
             Route::get('updater.currentVersion', [\App\Http\Controllers\Admin\LaraUpdaterController::class, 'getCurrentVersion']);
-            Route::get('updater.update', [\App\Http\Controllers\Admin\LaraUpdaterController::class, 'update']);
+            Route::post('updater.update', [\App\Http\Controllers\Admin\LaraUpdaterController::class, 'update']);
         });
     }
 }

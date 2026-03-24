@@ -3,21 +3,32 @@
 namespace App\Helpers;
 
 use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Storage;
 
 class BrandingHelper
 {
+    private static function publicDiskPathUrl(?string $path, string $fallbackAsset): string
+    {
+        if (empty($path)) {
+            return asset($fallbackAsset);
+        }
+
+        if (! Storage::disk('public')->exists($path)) {
+            return asset($fallbackAsset);
+        }
+
+        return StorageHelper::publicUrl($path) ?? asset($fallbackAsset);
+    }
+
     /**
      * Get the logo URL for use in layouts. Returns custom logo if set, else default.
      */
     public static function logoUrl(?string $variant = 'light'): string
     {
-        $path = SystemSetting::get('branding.logo_path');
-
-        if (! empty($path)) {
-            return StorageHelper::publicUrl($path);
-        }
-
-        return asset('images/logo/logo.svg');
+        return self::publicDiskPathUrl(
+            SystemSetting::get('branding.logo_path'),
+            'images/logo/logo.svg'
+        );
     }
 
     /**
@@ -25,13 +36,10 @@ class BrandingHelper
      */
     public static function logoDarkUrl(): string
     {
-        $path = SystemSetting::get('branding.logo_dark_path');
-
-        if (! empty($path)) {
-            return StorageHelper::publicUrl($path);
-        }
-
-        return asset('images/logo/logo-dark.svg');
+        return self::publicDiskPathUrl(
+            SystemSetting::get('branding.logo_dark_path'),
+            'images/logo/logo-dark.svg'
+        );
     }
 
     /**
@@ -39,13 +47,10 @@ class BrandingHelper
      */
     public static function logoIconUrl(): string
     {
-        $path = SystemSetting::get('branding.logo_path');
-
-        if (! empty($path)) {
-            return StorageHelper::publicUrl($path);
-        }
-
-        return asset('images/logo/logo-icon.svg');
+        return self::publicDiskPathUrl(
+            SystemSetting::get('branding.logo_path'),
+            'images/logo/logo-icon.svg'
+        );
     }
 
     /**
@@ -53,13 +58,10 @@ class BrandingHelper
      */
     public static function authLogoUrl(): string
     {
-        $path = SystemSetting::get('branding.logo_path');
-
-        if (! empty($path)) {
-            return StorageHelper::publicUrl($path);
-        }
-
-        return asset('images/logo/auth-logo.svg');
+        return self::publicDiskPathUrl(
+            SystemSetting::get('branding.logo_path'),
+            'images/logo/auth-logo.svg'
+        );
     }
 
     /**
@@ -67,18 +69,15 @@ class BrandingHelper
      */
     public static function faviconUrl(): string
     {
-        $path = SystemSetting::get('branding.favicon_path');
-
-        if (! empty($path)) {
-            return StorageHelper::publicUrl($path);
+        $favicon = SystemSetting::get('branding.favicon_path');
+        if (! empty($favicon) && Storage::disk('public')->exists($favicon)) {
+            return StorageHelper::publicUrl($favicon) ?? asset('favicon.ico');
         }
 
-        $logoPath = SystemSetting::get('branding.logo_path');
-        if (! empty($logoPath)) {
-            return StorageHelper::publicUrl($logoPath);
-        }
-
-        return asset('favicon.ico');
+        return self::publicDiskPathUrl(
+            SystemSetting::get('branding.logo_path'),
+            'favicon.ico'
+        );
     }
 
     /**

@@ -26,6 +26,10 @@
     RewriteRule ^resources/ - [F,L]
     RewriteRule ^tests/ - [F,L]
 
+    # Rewrite root URL to public/
+    RewriteRule ^$ public/index.php [L]
+
+    # Rewrite all other requests to public/
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ public/$1 [L]

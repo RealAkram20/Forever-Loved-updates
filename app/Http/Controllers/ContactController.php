@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
+use App\Services\SystemMailConfigurator;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -37,7 +37,7 @@ class ContactController extends Controller
         }
 
         try {
-            $this->configureSmtp();
+            SystemMailConfigurator::applyFromSettings();
 
             $appName = SystemSetting::get('branding.app_name', config('app.name'));
             $toAddress = SystemSetting::get('smtp.from_address');
@@ -63,29 +63,6 @@ class ContactController extends Controller
         } catch (\Throwable $e) {
             Log::error('Contact form email failed', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to send your message. Please try again later.');
-        }
-    }
-
-    private function configureSmtp(): void
-    {
-        $host = SystemSetting::get('smtp.host');
-        if (!$host) return;
-
-        Config::set('mail.default', 'smtp');
-        Config::set('mail.mailers.smtp.host', $host);
-        Config::set('mail.mailers.smtp.port', SystemSetting::get('smtp.port', 587));
-        Config::set('mail.mailers.smtp.username', SystemSetting::get('smtp.username'));
-        Config::set('mail.mailers.smtp.password', SystemSetting::get('smtp.password'));
-
-        $encryption = SystemSetting::get('smtp.encryption', 'tls');
-        Config::set('mail.mailers.smtp.encryption', $encryption === 'none' ? null : $encryption);
-
-        $fromAddress = SystemSetting::get('smtp.from_address');
-        $fromName = SystemSetting::get('smtp.from_name', SystemSetting::get('branding.app_name', config('app.name')));
-
-        if ($fromAddress) {
-            Config::set('mail.from.address', $fromAddress);
-            Config::set('mail.from.name', $fromName);
         }
     }
 

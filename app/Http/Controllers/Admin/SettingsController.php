@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\UserSubscription;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -54,16 +55,28 @@ class SettingsController extends Controller
         }
 
         if ($request->hasFile('logo')) {
+            $previous = SystemSetting::get('branding.logo_path');
+            if (is_string($previous) && $previous !== '' && Storage::disk('public')->exists($previous)) {
+                Storage::disk('public')->delete($previous);
+            }
             $path = $request->file('logo')->store('branding', 'public');
             SystemSetting::set('branding.logo_path', $path);
         }
 
         if ($request->hasFile('logo_dark')) {
+            $previous = SystemSetting::get('branding.logo_dark_path');
+            if (is_string($previous) && $previous !== '' && Storage::disk('public')->exists($previous)) {
+                Storage::disk('public')->delete($previous);
+            }
             $path = $request->file('logo_dark')->store('branding', 'public');
             SystemSetting::set('branding.logo_dark_path', $path);
         }
 
         if ($request->hasFile('favicon')) {
+            $previous = SystemSetting::get('branding.favicon_path');
+            if (is_string($previous) && $previous !== '' && Storage::disk('public')->exists($previous)) {
+                Storage::disk('public')->delete($previous);
+            }
             $path = $request->file('favicon')->store('branding', 'public');
             SystemSetting::set('branding.favicon_path', $path);
         }

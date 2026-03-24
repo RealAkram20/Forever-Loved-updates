@@ -14,6 +14,6 @@ Route::prefix('install')->name('install.')->group(function () {
     Route::get('/admin', [InstallController::class, 'adminAccount'])->name('admin');
     Route::post('/admin', [InstallController::class, 'storeAdmin'])->name('admin.store');
     Route::get('/run', [InstallController::class, 'run'])->name('run');
-    Route::post('/execute', [InstallController::class, 'execute'])->name('execute');
+    Route::post('/execute/{step}', [InstallController::class, 'executeStep'])->name('execute.step')->where('step', '[1-9]');
     Route::get('/complete', [InstallController::class, 'complete'])->name('complete');
 });

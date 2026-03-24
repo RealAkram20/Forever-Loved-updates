@@ -18,6 +18,7 @@ use pcinaglia\laraUpdater\LaraUpdaterController as BaseLaraUpdaterController;
  *  - Auto-runs migrations after file extraction
  *  - Uses local/remote fallback for version info
  *  - Clears caches after update
+ *  - Backup kept until success; recovery on extract/migrate failure
  */
 class LaraUpdaterController extends BaseLaraUpdaterController
 {
@@ -80,12 +81,20 @@ class LaraUpdaterController extends BaseLaraUpdaterController
 
             if (! $this->extractAndInstall($zipPath)) {
                 $this->appendLog('Installation failed.', 'err');
+                $this->runRecovery();
                 Artisan::call('up');
 
                 return $this->htmlResponse();
             }
 
-            $this->runMigrations();
+            if (! $this->runMigrations()) {
+                $this->appendLog('Migrations failed; restoring files from backup.', 'err');
+                $this->runRecovery();
+                Artisan::call('up');
+                $this->appendLog('Maintenance mode OFF.');
+
+                return $this->htmlResponse();
+            }
 
             File::put(base_path('version.txt'), $lastVersionInfo['version']);
             $this->appendLog('Version updated to '.$lastVersionInfo['version'].'.');
@@ -95,6 +104,7 @@ class LaraUpdaterController extends BaseLaraUpdaterController
             Artisan::call('up');
             $this->appendLog('Maintenance mode OFF.');
             $this->appendLog('Update installed successfully.');
+            $this->discardBackupDir();
 
         } catch (\Exception $e) {
             $this->appendLog('Exception: '.$e->getMessage(), 'err');
@@ -240,14 +250,9 @@ class LaraUpdaterController extends BaseLaraUpdaterController
                 @unlink($upgradeScript);
             }
 
-            // Clean up the actual zip file
+            // Clean up the actual zip file (backup dir kept until migrate + version succeed)
             if (File::exists($zipPath)) {
                 File::delete($zipPath);
-            }
-
-            // Clean up backup dir
-            if ($this->backupDir && File::isDirectory($this->backupDir)) {
-                File::deleteDirectory($this->backupDir);
             }
 
             $this->appendLog('File extraction complete.');
@@ -279,7 +284,17 @@ class LaraUpdaterController extends BaseLaraUpdaterController
 
         $path = implode('/', $parts);
 
-        return $path !== '' ? $path : null;
+        if ($path === '' || str_contains($path, '..')) {
+            return null;
+        }
+
+        $realBase = realpath(base_path());
+        $resolvedTarget = realpath(dirname(base_path($path)));
+        if ($resolvedTarget !== false && ! str_starts_with($resolvedTarget, $realBase)) {
+            return null;
+        }
+
+        return $path;
     }
 
     private function backupFile(string $relativePath): void
@@ -293,18 +308,22 @@ class LaraUpdaterController extends BaseLaraUpdaterController
         File::copy(base_path($relativePath), $dest);
     }
 
-    private function runMigrations(): void
+    private function runMigrations(): bool
     {
         try {
-            Artisan::call('migrate', ['--force' => true]);
+            $exitCode = Artisan::call('migrate', ['--force' => true]);
             $output = trim(Artisan::output());
             if ($output) {
                 $this->appendLog('Migrations: '.$output);
             } else {
                 $this->appendLog('Migrations: nothing to migrate.');
             }
+
+            return $exitCode === 0;
         } catch (\Exception $e) {
-            $this->appendLog('Migration warning: '.$e->getMessage(), 'warn');
+            $this->appendLog('Migration error: '.$e->getMessage(), 'err');
+
+            return false;
         }
     }
 
@@ -320,15 +339,20 @@ class LaraUpdaterController extends BaseLaraUpdaterController
         }
     }
 
+    private function discardBackupDir(): void
+    {
+        if ($this->backupDir && File::isDirectory($this->backupDir)) {
+            File::deleteDirectory($this->backupDir);
+            $this->appendLog('Backup directory removed after successful update.');
+        }
+        $this->backupDir = null;
+    }
+
     private function runRecovery(): void
     {
         $this->appendLog('Attempting recovery from backup...');
 
-        if (! $this->backupDir) {
-            $this->backupDir = base_path('backup_'.date('Ymd'));
-        }
-
-        if (! File::isDirectory($this->backupDir)) {
+        if (! $this->backupDir || ! File::isDirectory($this->backupDir)) {
             $this->appendLog('No backup found for recovery.', 'warn');
 
             return;

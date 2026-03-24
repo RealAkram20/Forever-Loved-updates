@@ -73,37 +73,70 @@
                     this.runInstall();
                 },
                 async runInstall() {
-                    try {
-                        this.steps = [{ step: 'Starting installation...', status: 'running' }];
-                        this.progress = 5;
+                    const stepDefs = [
+                        { num: 1, label: 'Writing configuration file...' },
+                        { num: 2, label: 'Generating application key...' },
+                        { num: 3, label: 'Running database migrations...' },
+                        { num: 4, label: 'Seeding data...' },
+                        { num: 5, label: 'Creating admin account...' },
+                        { num: 6, label: 'Creating storage link...' },
+                        { num: 7, label: 'Optimizing application...' },
+                        { num: 8, label: 'Finalizing installation...' },
+                    ];
 
-                        const resp = await fetch('{{ route("install.execute") }}', {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'Accept': 'application/json',
-                            },
-                        });
+                    const lastCompleted = {{ (int) ($installLastCompletedStep ?? 0) }};
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+                    const baseUrl = '{{ url("/install/execute") }}';
 
-                        const data = await resp.json();
+                    this.progress = Math.round((lastCompleted / stepDefs.length) * 100);
 
-                        if (data.steps) {
-                            this.steps = data.steps;
+                    for (let i = 0; i < stepDefs.length; i++) {
+                        const def = stepDefs[i];
+
+                        if (def.num <= lastCompleted) {
+                            this.steps.push({ step: def.label, status: 'done' });
+                            continue;
                         }
 
-                        if (data.success) {
-                            this.progress = 100;
-                            setTimeout(() => {
-                                window.location.href = '{{ route("install.complete") }}';
-                            }, 1500);
-                        } else {
-                            this.error = data.message || 'Installation failed. Please check your configuration.';
-                            this.progress = 0;
+                        this.steps.push({ step: def.label, status: 'running' });
+                        this.progress = Math.round((i / stepDefs.length) * 100);
+
+                        try {
+                            const resp = await fetch(baseUrl + '/' + def.num, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrfToken,
+                                    'Accept': 'application/json',
+                                },
+                            });
+
+                            let data;
+                            const contentType = resp.headers.get('content-type') || '';
+                            if (contentType.includes('application/json')) {
+                                data = await resp.json();
+                            } else {
+                                await resp.text();
+                                data = { success: false, message: 'Server error (HTTP ' + resp.status + '). If this persists, check storage/logs/laravel.log.' };
+                            }
+
+                            if (!resp.ok || !data.success) {
+                                this.steps[this.steps.length - 1].status = 'error';
+                                this.error = data.message || 'Step failed: ' + def.label;
+                                return;
+                            }
+
+                            this.steps[this.steps.length - 1].status = 'done';
+                        } catch (e) {
+                            this.steps[this.steps.length - 1].status = 'error';
+                            this.error = 'Network error on step: ' + def.label + (e.message ? ' (' + e.message + ')' : '');
+                            return;
                         }
-                    } catch (e) {
-                        this.error = 'Network error: ' + e.message;
-                        this.progress = 0;
                     }
+
+                    this.progress = 100;
+                    setTimeout(() => {
+                        window.location.href = '{{ route("install.complete") }}';
+                    }, 1500);
                 }
             };
         }

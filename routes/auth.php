@@ -16,7 +16,7 @@ Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    Route::post('register', [RegisteredUserController::class, 'store'])->middleware('throttle:6,1');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
@@ -25,14 +25,15 @@ Route::middleware('guest')->group(function () {
 
     // Passwordless login (email + code)
     Route::get('login/code', [PasswordlessLoginController::class, 'showEmailForm'])->name('login.passwordless');
-    Route::post('login/code', [PasswordlessLoginController::class, 'sendCode'])->name('login.code.send');
+    Route::post('login/code', [PasswordlessLoginController::class, 'sendCode'])->middleware('throttle:5,1')->name('login.code.send');
     Route::get('login/verify', [PasswordlessLoginController::class, 'showCodeForm'])->name('login.code');
-    Route::post('login/verify', [PasswordlessLoginController::class, 'verifyCode'])->name('login.code.verify');
+    Route::post('login/verify', [PasswordlessLoginController::class, 'verifyCode'])->middleware('throttle:15,1')->name('login.code.verify');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:6,1')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])

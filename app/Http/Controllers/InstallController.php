@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Database\Seeders\PageSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SubscriptionPlanSeeder;
 use Illuminate\Http\Request;
@@ -81,7 +82,7 @@ class InstallController extends Controller
         $request->validate([
             'host' => 'required|string',
             'port' => 'required|numeric',
-            'database' => 'required|string',
+            'database' => ['required', 'string', 'regex:/^[a-zA-Z0-9_]+$/'],
             'username' => 'required|string',
             'password' => 'nullable|string',
         ]);
@@ -91,9 +92,10 @@ class InstallController extends Controller
             $pdo = new PDO($dsn, $request->username, $request->password ?? '');
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$request->database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $dbName = preg_replace('/[^a-zA-Z0-9_]/', '', $request->database);
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-            $pdo->exec("USE `{$request->database}`");
+            $pdo->exec("USE `{$dbName}`");
 
             return response()->json(['success' => true, 'message' => 'Connection successful. Database is ready.']);
         } catch (PDOException $e) {
@@ -106,7 +108,7 @@ class InstallController extends Controller
         $validated = $request->validate([
             'host' => 'required|string',
             'port' => 'required|numeric',
-            'database' => 'required|string',
+            'database' => ['required', 'string', 'regex:/^[a-zA-Z0-9_]+$/'],
             'username' => 'required|string',
             'password' => 'nullable|string',
         ]);
@@ -115,7 +117,8 @@ class InstallController extends Controller
             $dsn = "mysql:host={$validated['host']};port={$validated['port']}";
             $pdo = new PDO($dsn, $validated['username'], $validated['password'] ?? '');
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$validated['database']}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $dbName = preg_replace('/[^a-zA-Z0-9_]/', '', $validated['database']);
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         } catch (PDOException $e) {
             return back()->withInput()->withErrors(['database' => 'Database connection failed: '.$e->getMessage()]);
         }
@@ -184,115 +187,186 @@ class InstallController extends Controller
 
     // ─── Step 5: Run Installation ───────────────────────────────────────
 
+    private function installDataPath(): string
+    {
+        return storage_path('app/install-data.json');
+    }
+
+    private function saveInstallData(array $data): void
+    {
+        $dir = dirname($this->installDataPath());
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        File::put($this->installDataPath(), json_encode($data));
+    }
+
+    private function loadInstallData(): ?array
+    {
+        $path = $this->installDataPath();
+        if (! file_exists($path)) {
+            return null;
+        }
+        $data = json_decode(File::get($path), true);
+        return is_array($data) ? $data : null;
+    }
+
     public function run()
     {
         $db = session('install.database');
         $settings = session('install.settings');
         $admin = session('install.admin');
 
-        if (! $db || ! $settings || ! $admin) {
-            return redirect()->route('install.requirements')
-                ->with('error', 'Please complete all previous steps first.');
+        if ($db && $settings && $admin) {
+            $this->saveInstallData([
+                'database' => $db,
+                'settings' => $settings,
+                'admin' => $admin,
+                'last_completed_step' => 0,
+            ]);
+            session()->forget(['install.database', 'install.settings', 'install.admin']);
+        } else {
+            $existing = $this->loadInstallData();
+            if (! $existing || ! isset($existing['database'], $existing['settings'], $existing['admin'])) {
+                return redirect()->route('install.requirements')
+                    ->with('error', 'Please complete all previous steps first.');
+            }
         }
+
+        $snapshot = $this->loadInstallData();
+        $lastCompleted = (int) ($snapshot['last_completed_step'] ?? 0);
 
         return view('pages.install.progress')
-            ->with('currentStep', 'install');
+            ->with('currentStep', 'install')
+            ->with('installLastCompletedStep', $lastCompleted);
     }
 
-    public function execute(Request $request)
+    public function executeStep(Request $request, int $step)
     {
-        $db = session('install.database');
-        $settings = session('install.settings');
-        $admin = session('install.admin');
+        $data = $this->loadInstallData();
 
-        if (! $db || ! $settings || ! $admin) {
-            return response()->json(['success' => false, 'message' => 'Session expired. Please restart the installer.'], 422);
+        if (! $data || ! isset($data['database'], $data['settings'], $data['admin'])) {
+            return response()->json(['success' => false, 'message' => 'Installation data not found. Please restart the installer.'], 422);
         }
 
-        $steps = [];
+        $db = $data['database'];
+        $settings = $data['settings'];
+        $admin = $data['admin'];
 
         try {
-            // 1. Write .env
-            $steps[] = ['step' => 'Writing configuration file...', 'status' => 'running'];
-            $this->writeEnvFile($db, $settings);
-            $steps[count($steps) - 1]['status'] = 'done';
+            match ($step) {
+                1 => $this->stepWriteEnv($db, $settings),
+                2 => $this->stepReloadAndGenerateKey($db, $settings),
+                3 => $this->stepMigrate(),
+                4 => $this->stepSeed(),
+                5 => $this->stepCreateAdmin($admin),
+                6 => $this->stepStorageLink(),
+                7 => $this->stepOptimize(),
+                8 => $this->stepFinalize(),
+                default => throw new \InvalidArgumentException('Invalid step.'),
+            };
 
-            // 2. Reload config from the fresh .env
-            $steps[] = ['step' => 'Loading configuration...', 'status' => 'running'];
-            $this->reloadConfig($db, $settings);
-            $steps[count($steps) - 1]['status'] = 'done';
-
-            // 3. Generate app key
-            $steps[] = ['step' => 'Generating application key...', 'status' => 'running'];
-            Artisan::call('key:generate', ['--force' => true]);
-            $steps[count($steps) - 1]['status'] = 'done';
-
-            // 4. Run migrations
-            $steps[] = ['step' => 'Running database migrations...', 'status' => 'running'];
-            Artisan::call('migrate', ['--force' => true]);
-            $steps[count($steps) - 1]['status'] = 'done';
-
-            // 5. Seed roles & plans
-            $steps[] = ['step' => 'Seeding roles and subscription plans...', 'status' => 'running'];
-            Artisan::call('db:seed', ['--class' => RoleSeeder::class, '--force' => true]);
-            Artisan::call('db:seed', ['--class' => SubscriptionPlanSeeder::class, '--force' => true]);
-            $steps[count($steps) - 1]['status'] = 'done';
-
-            // 6. Create admin user
-            $steps[] = ['step' => 'Creating admin account...', 'status' => 'running'];
-            $user = User::firstOrCreate(
-                ['email' => $admin['email']],
-                [
-                    'name' => $admin['name'],
-                    'password' => Hash::make($admin['password']),
-                ]
-            );
-            $user->assignRole('super-admin');
-            $steps[count($steps) - 1]['status'] = 'done';
-
-            // 7. Storage link
-            $steps[] = ['step' => 'Creating storage link...', 'status' => 'running'];
-            try {
-                Artisan::call('storage:link');
-            } catch (\Exception $e) {
-                // Link may already exist
+            if ($step === 8) {
+                @unlink($this->installDataPath());
+            } else {
+                $this->persistLastCompletedStep($step);
             }
-            $steps[count($steps) - 1]['status'] = 'done';
 
-            // 8. Cache config & routes
-            $steps[] = ['step' => 'Optimizing application...', 'status' => 'running'];
-            Artisan::call('config:clear');
-            Artisan::call('route:clear');
-            Artisan::call('view:clear');
-            $steps[count($steps) - 1]['status'] = 'done';
-
-            // 9. Create installed lock
-            $steps[] = ['step' => 'Finalizing installation...', 'status' => 'running'];
-            File::put(storage_path('installed'), json_encode([
-                'installed_at' => now()->toIso8601String(),
-                'version' => trim(File::get(base_path('version.txt'))),
-            ]));
-            $steps[count($steps) - 1]['status'] = 'done';
-
-            session()->forget(['install.database', 'install.settings', 'install.admin']);
-
-            return response()->json(['success' => true, 'steps' => $steps]);
+            return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
-            $steps[] = ['step' => 'Error: '.$e->getMessage(), 'status' => 'error'];
-
-            return response()->json(['success' => false, 'steps' => $steps, 'message' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    private function stepWriteEnv(array $db, array $settings): void
+    {
+        $this->writeEnvFile($db, $settings);
+    }
+
+    private function stepReloadAndGenerateKey(array $db, array $settings): void
+    {
+        $this->reloadConfig($db, $settings);
+        Artisan::call('key:generate', ['--force' => true]);
+    }
+
+    private function persistLastCompletedStep(int $step): void
+    {
+        $data = $this->loadInstallData();
+        if (! is_array($data)) {
+            return;
+        }
+        $prev = (int) ($data['last_completed_step'] ?? 0);
+        if ($step > $prev) {
+            $data['last_completed_step'] = $step;
+            $this->saveInstallData($data);
+        }
+    }
+
+    private function stepMigrate(): void
+    {
+        set_time_limit(120);
+        Artisan::call('migrate', ['--force' => true]);
+    }
+
+    private function stepSeed(): void
+    {
+        set_time_limit(120);
+        Artisan::call('db:seed', ['--class' => RoleSeeder::class, '--force' => true]);
+        Artisan::call('db:seed', ['--class' => SubscriptionPlanSeeder::class, '--force' => true]);
+        Artisan::call('db:seed', ['--class' => PageSeeder::class, '--force' => true]);
+    }
+
+    private function stepCreateAdmin(array $admin): void
+    {
+        $user = User::firstOrCreate(
+            ['email' => $admin['email']],
+            [
+                'name' => $admin['name'],
+                'password' => Hash::make($admin['password']),
+            ]
+        );
+        $user->assignRole('super-admin');
+    }
+
+    private function stepStorageLink(): void
+    {
+        try {
+            Artisan::call('storage:link');
+        } catch (\Exception $e) {
+            // Link may already exist
+        }
+    }
+
+    private function stepOptimize(): void
+    {
+        Artisan::call('config:clear');
+        Artisan::call('route:clear');
+        Artisan::call('view:clear');
+    }
+
+    private function stepFinalize(): void
+    {
+        $version = file_exists(base_path('version.txt'))
+            ? trim(File::get(base_path('version.txt')))
+            : '1.0.0';
+
+        File::put(storage_path('installed'), json_encode([
+            'installed_at' => now()->toIso8601String(),
+            'version' => $version,
+        ]));
     }
 
     private function writeEnvFile(array $db, array $settings): void
     {
         $isProduction = ($settings['app_env'] ?? 'production') === 'production';
 
+        $currentKey = config('app.key') ?: 'base64:'.base64_encode(random_bytes(32));
+
         $env = <<<ENV
 APP_NAME="{$settings['app_name']}"
 APP_ENV={$settings['app_env']}
-APP_KEY=
+APP_KEY={$currentKey}
 APP_DEBUG={$this->bool(! $isProduction)}
 APP_URL={$settings['app_url']}
 
@@ -307,18 +381,18 @@ BCRYPT_ROUNDS=12
 LOG_CHANNEL=stack
 LOG_STACK=single
 LOG_DEPRECATIONS_CHANNEL=null
-LOG_LEVEL=debug
+LOG_LEVEL={$this->logLevel($isProduction)}
 
 DB_CONNECTION=mysql
 DB_HOST={$db['host']}
 DB_PORT={$db['port']}
 DB_DATABASE={$db['database']}
 DB_USERNAME={$db['username']}
-DB_PASSWORD={$db['password']}
+DB_PASSWORD="{$this->escapeEnvValue($db['password'] ?? '')}"
 
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
-SESSION_ENCRYPT=false
+SESSION_ENCRYPT={$this->bool($isProduction)}
 SESSION_PATH=/
 SESSION_DOMAIN=null
 SESSION_SECURE_COOKIE={$this->bool($isProduction)}
@@ -359,6 +433,16 @@ ENV;
         ]);
 
         app('db')->purge('mysql');
+    }
+
+    private function logLevel(bool $isProduction): string
+    {
+        return $isProduction ? 'error' : 'debug';
+    }
+
+    private function escapeEnvValue(string $value): string
+    {
+        return addcslashes($value, '"\\$');
     }
 
     private function bool(bool $value): string

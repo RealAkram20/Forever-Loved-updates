@@ -56,7 +56,13 @@ document.addEventListener('alpine:init', () => {
             this.updating = true;
             this.resultHtml = '';
             try {
-                const r = await fetch('{{ url("/updater.update") }}', { headers: { 'Accept': 'text/html' } });
+                const r = await fetch('{{ url("/updater.update") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'text/html',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                    },
+                });
                 const html = await r.text();
                 this.resultHtml = html.replace(/<br\s*\/?>/gi, '<br>');
                 this.updating = false;

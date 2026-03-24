@@ -16,6 +16,7 @@ use App\Models\StoryChapter;
 use App\Models\Tribute;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\SystemMailConfigurator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -110,13 +111,16 @@ class MemorialApiController extends Controller
                 NotificationService::notifyNewUserSignup($user);
 
                 try {
-                    $setupUrl = route('password.request');
-                    Mail::raw(
-                        "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: " . route('login.passwordless'),
-                        function ($message) use ($guestEmail) {
-                            $message->to($guestEmail)->subject('Welcome to Forever-Loved - Complete your account');
-                        }
-                    );
+                    SystemMailConfigurator::applyFromSettings();
+                    if (SystemMailConfigurator::mailDeliveryConfigured()) {
+                        $setupUrl = route('password.request');
+                        Mail::raw(
+                            "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: " . route('login.passwordless'),
+                            function ($message) use ($guestEmail) {
+                                $message->to($guestEmail)->subject('Welcome to Forever-Loved - Complete your account');
+                            }
+                        );
+                    }
                 } catch (\Exception $e) {
                     report($e);
                 }
@@ -203,12 +207,15 @@ class MemorialApiController extends Controller
             ]);
 
             try {
-                Mail::raw(
-                    "Welcome to Forever-Loved! You can sign in with a one-time code at: " . route('login.passwordless'),
-                    function ($message) use ($guestEmail) {
-                        $message->to($guestEmail)->subject('Welcome to Forever-Loved');
-                    }
-                );
+                SystemMailConfigurator::applyFromSettings();
+                if (SystemMailConfigurator::mailDeliveryConfigured()) {
+                    Mail::raw(
+                        "Welcome to Forever-Loved! You can sign in with a one-time code at: " . route('login.passwordless'),
+                        function ($message) use ($guestEmail) {
+                            $message->to($guestEmail)->subject('Welcome to Forever-Loved');
+                        }
+                    );
+                }
             } catch (\Exception $e) {
                 report($e);
             }
@@ -259,7 +266,8 @@ class MemorialApiController extends Controller
 
         $posts = $memorial->posts()
             ->where('is_published', true)
-            ->with(['user', 'reactions', 'media', 'storyChapter'])
+            ->with(['user', 'memorial', 'reactions', 'media', 'storyChapter'])
+            ->withCount('reactions')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(fn ($p) => $this->formatPost($p));
@@ -985,7 +993,7 @@ class MemorialApiController extends Controller
             'author' => $post->user?->name ?? $post->memorial->full_name,
             'created_at' => $post->created_at->format('F j'),
             'created_at_human' => $post->created_at->diffForHumans(),
-            'reaction_count' => $post->reactions()->count(),
+            'reaction_count' => (int) ($post->reactions_count ?? $post->reactions()->count()),
             'media' => $media->map(fn ($m) => [
                 'id' => $m->id,
                 'type' => $m->type,

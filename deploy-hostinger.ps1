@@ -55,7 +55,7 @@ $includeDirs = @(
     "app", "bootstrap", "config", "database", "public", "resources", "routes", "storage", "vendor"
 )
 $includeFiles = @(
-    ".env.production", "artisan", "composer.json", "composer.lock", "package.json", "version.txt"
+    ".env.production", ".htaccess", "artisan", "composer.json", "composer.lock", "package.json", "version.txt"
 )
 
 $tempDir = Join-Path $env:TEMP "Forever-love-deploy"
@@ -75,6 +75,21 @@ foreach ($file in $includeFiles) {
         Copy-Item -Path $src -Destination $tempDir -Force
     } else {
         Write-Host "  [skip] $file not found" -ForegroundColor Yellow
+    }
+}
+
+# Remove files that must NOT be in the deploy package
+$removeFiles = @(
+    "public\hot",
+    "public\setup.php",
+    "storage\installed",
+    "storage\logs\laravel.log"
+)
+foreach ($f in $removeFiles) {
+    $fPath = Join-Path $tempDir $f
+    if (Test-Path $fPath) {
+        Remove-Item $fPath -Force
+        Write-Host "  Removed $f" -ForegroundColor Gray
     }
 }
 
@@ -110,7 +125,8 @@ Write-Host "  - public/updates/ (update packages)" -ForegroundColor Gray
 if (Test-Path $geoDb) {
     Write-Host "  - database/geo/world.sqlite3 (country/state/city data)" -ForegroundColor Gray
 }
-Write-Host "`nAfter upload, run on server:" -ForegroundColor Cyan
-Write-Host "  cp .env.production .env   # then edit with your credentials" -ForegroundColor Gray
-Write-Host "  php artisan storage:link" -ForegroundColor Gray
-Write-Host "  php artisan config:cache && php artisan route:cache && php artisan view:cache" -ForegroundColor Gray
+Write-Host "`nAfter upload:" -ForegroundColor Cyan
+Write-Host "  1. Extract to public_html/" -ForegroundColor Gray
+Write-Host "  2. Create .env in public_html/ (use .env.production as template)" -ForegroundColor Gray
+Write-Host "  3. Visit https://yourdomain.com/install to run the installer" -ForegroundColor Gray
+Write-Host "  4. If installer times out, upload public/setup.php and visit /setup.php" -ForegroundColor Gray

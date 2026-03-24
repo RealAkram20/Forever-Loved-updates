@@ -23,7 +23,7 @@ require __DIR__.'/auth.php';
 Route::get('/', [PageController::class, 'home'])->name('home');
 
 // AJAX memorial search (public)
-Route::get('/api/search/memorials', [MemorialController::class, 'search'])->name('memorials.search');
+Route::get('/api/search/memorials', [MemorialController::class, 'search'])->middleware('throttle:60,1')->name('memorials.search');
 
 // Find Memorial directory (public)
 Route::get('/find-memorial', [MemorialDirectoryController::class, 'index'])->name('memorial.directory');
@@ -34,7 +34,7 @@ Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->name('privacy-policy');
 Route::get('/terms-of-use', [PageController::class, 'termsOfUse'])->name('terms-of-use');
 Route::get('/contact', [ContactController::class, 'show'])->name('contact');
-Route::post('/contact', [ContactController::class, 'send'])->name('contact.send');
+Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:10,1')->name('contact.send');
 
 // Memorial creation flow (multi-step signup)
 Route::prefix('create-memorial')->name('memorial.create.')->group(function () {
@@ -43,7 +43,7 @@ Route::prefix('create-memorial')->name('memorial.create.')->group(function () {
     Route::get('/step-2', [MemorialSignupController::class, 'step2'])->name('step2');
     Route::post('/step-2/register', [MemorialSignupController::class, 'storeStep2Register'])->name('storeStep2Register');
     Route::post('/step-2/login', [MemorialSignupController::class, 'storeStep2Login'])->name('storeStep2Login');
-    Route::post('/check-email', [MemorialSignupController::class, 'checkEmail'])->name('checkEmail');
+    Route::post('/check-email', [MemorialSignupController::class, 'checkEmail'])->middleware('throttle:30,1')->name('checkEmail');
     Route::get('/step-3', [MemorialSignupController::class, 'step3'])->name('step3');
     Route::post('/step-3', [MemorialSignupController::class, 'storeStep3'])->name('storeStep3');
     Route::post('/prepare-paid-checkout', [MemorialSignupController::class, 'preparePaidCheckout'])->name('preparePaidCheckout');
@@ -59,7 +59,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('memorials/{memorial}/section', [MemorialController::class, 'updateSection'])->name('memorials.section');
     Route::patch('memorials/{memorial}/fields', [MemorialController::class, 'updateFields'])->name('memorials.fields');
     Route::post('memorials/{memorial}/generate-biography', [MemorialController::class, 'generateBiography'])->middleware('throttle:10,1')->name('memorials.generate-biography');
-    Route::post('memorials/{memorial}/generate-template-biography', [MemorialController::class, 'generateTemplateBiography'])->name('memorials.generate-template-biography');
+    Route::post('memorials/{memorial}/generate-template-biography', [MemorialController::class, 'generateTemplateBiography'])->middleware('throttle:10,1')->name('memorials.generate-template-biography');
     Route::patch('memorials/{memorial}/biography', [MemorialController::class, 'saveBiography'])->name('memorials.save-biography');
     Route::resource('memorials', MemorialController::class);
 
@@ -72,7 +72,7 @@ Route::delete('/notifications/{notification}', [NotificationController::class, '
 Route::post('/notifications/push/subscribe', [NotificationController::class, 'subscribePush'])->name('notifications.push.subscribe');
 Route::post('/notifications/push/unsubscribe', [NotificationController::class, 'unsubscribePush'])->name('notifications.push.unsubscribe');
 Route::post('/notifications/push/reset', [NotificationController::class, 'resetPush'])->name('notifications.push.reset');
-Route::post('/notifications/push/test', [NotificationController::class, 'testPush'])->name('notifications.push.test');
+Route::post('/notifications/push/test', [NotificationController::class, 'testPush'])->middleware('role:admin|super-admin')->name('notifications.push.test');
 
 // Subscription & Billing (user)
 Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
@@ -90,11 +90,6 @@ Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.
 Route::get('/calendar', function () {
     return view('pages.calender', ['title' => 'Calendar']);
 })->name('calendar');
-
-// Blank page
-Route::get('/blank', function () {
-    return view('pages.blank', ['title' => 'Blank']);
-})->name('blank');
 
 // ─── Users Management (admin only) ──────────────────────────────
 Route::middleware('role:admin|super-admin')->group(function () {
@@ -197,13 +192,16 @@ Route::get('/payment/callback', [PaymentController::class, 'callback'])->name('p
 Route::get('/payment/complete', [PaymentController::class, 'complete'])->name('payment.complete');
 Route::match(['get', 'post'], '/payment/ipn', [PaymentController::class, 'ipn'])->name('payment.ipn');
 
+// Install routes (must be before the catch-all slug route)
+require __DIR__.'/install.php';
+
 // Public memorial - deep links for tribute/chapter (MUST be before single-slug route)
 Route::get('/{memorial_slug}/tribute/{share_id}', [PublicMemorialController::class, 'showTribute'])->name('memorial.tribute.public')->where(['memorial_slug' => '[a-z0-9\-]+', 'share_id' => '[a-z0-9]{7}']);
 Route::get('/{memorial_slug}/chapter/{share_id}', [PublicMemorialController::class, 'showChapter'])->name('memorial.chapter.public')->where(['memorial_slug' => '[a-z0-9\-]+', 'share_id' => '[a-z0-9]{7}']);
 
 // Public memorial by profile slug (e.g. /miiro-rio-akram) - MUST be last to avoid matching /login, /dashboard, etc.
 Route::get('/{slug}', [PublicMemorialController::class, 'show'])->name('memorial.public')->where('slug', '[a-z0-9\-]+');
-Route::post('/{slug}/tribute', [PublicMemorialController::class, 'storeTribute'])->name('memorial.tribute.store')->where('slug', '[a-z0-9\-]+');
+Route::post('/{slug}/tribute', [PublicMemorialController::class, 'storeTribute'])->middleware('throttle:20,1')->name('memorial.tribute.store')->where('slug', '[a-z0-9\-]+');
 
 
 

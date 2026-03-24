@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\LoginCode;
+use App\Services\SystemMailConfigurator;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,6 +38,12 @@ class PasswordlessLoginController extends Controller
         }
 
         $loginCode = LoginCode::generate($email);
+
+        SystemMailConfigurator::applyFromSettings();
+
+        if (! SystemMailConfigurator::mailDeliveryConfigured()) {
+            return back()->withErrors(['email' => 'Email login codes are not available because outgoing mail is not configured. Please use password login or contact support.']);
+        }
 
         try {
             Mail::raw(
