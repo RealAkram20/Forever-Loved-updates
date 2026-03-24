@@ -165,7 +165,13 @@ function step3Checkout(plansData, pesapalEnabled, paymentsEnabled) {
             const planId = parseInt(document.querySelector('input[name="plan_id"]:checked')?.value || 0, 10);
             const plan = this.plans[planId];
             if (!plan) return;
-            if (plan.is_free) return; // Let form submit normally for free plan
+            if (plan.is_free) {
+                e.preventDefault();
+                this.submitting = true;
+                const form = e.target;
+                requestAnimationFrame(() => form.submit());
+                return;
+            }
             e.preventDefault();
             this.prepareAndOpenCheckout(planId);
         },

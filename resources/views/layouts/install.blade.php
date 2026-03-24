@@ -6,7 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Install &mdash; {{ $title ?? 'Setup' }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @if (\App\Support\InstallerVite::hasManifest())
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @elseif (\App\Support\InstallerVite::hasUsableBuildWithoutManifest())
+        @foreach (\App\Support\InstallerVite::fallbackStylesheetPaths() as $href)
+            <link rel="stylesheet" href="{{ asset($href) }}" />
+        @endforeach
+        <script type="module" src="{{ asset(\App\Support\InstallerVite::fallbackScriptPath()) }}"></script>
+    @endif
     <style>
         /* Fallback if Vite assets are unavailable */
         .install-fallback { font-family: system-ui, -apple-system, sans-serif; }
@@ -14,6 +21,12 @@
 </head>
 
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 antialiased">
+    @if (! \App\Support\InstallerVite::hasManifest() && ! \App\Support\InstallerVite::hasUsableBuildWithoutManifest())
+        <div class="install-fallback" role="alert" style="max-width:42rem;margin:0 auto;padding:1rem 1.25rem;border-bottom:1px solid #fecaca;background:#fef2f2;color:#7f1d1d;font-family:system-ui,sans-serif;font-size:14px;line-height:1.55;">
+            <strong>Installer assets missing.</strong>
+            <span style="display:block;margin-top:.35rem">Upload the full <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">public/build</code> folder from <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">npm run build</code> (include <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">manifest.json</code> and <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">assets/*</code>), or use <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">/setup.php</code> instead.</span>
+        </div>
+    @endif
     <div class="flex min-h-screen flex-col items-center justify-center px-4 py-10">
         {{-- Logo / Title --}}
         <div class="mb-8 text-center">

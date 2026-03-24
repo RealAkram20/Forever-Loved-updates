@@ -1,7 +1,7 @@
 <?php
 /**
  * Forever Love - Server Setup Script
- * Upload to public_html/public/setup.php and visit in browser.
+ * Place with the rest of public/ (e.g. public_html/public/setup.php if the full app lives under public_html).
  * DELETE THIS FILE immediately after installation completes!
  */
 
@@ -11,6 +11,9 @@ error_reporting(E_ALL);
 
 ob_implicit_flush(true);
 if (ob_get_level()) ob_end_flush();
+
+require __DIR__.'/laravel-base.php';
+$basePath = forever_loved_laravel_base();
 
 echo "<!DOCTYPE html><html><head><title>Setup</title><style>body{font-family:monospace;background:#1a1a2e;color:#e0e0e0;padding:2rem;line-height:1.8}
 .ok{color:#4ade80}.err{color:#f87171}.warn{color:#fbbf24}h1{color:#818cf8}</style></head><body>";
@@ -23,8 +26,8 @@ function info($msg) { echo "$msg<br>"; flush(); }
 
 // ── Boot Laravel ──
 info("Booting Laravel...");
-require __DIR__.'/../vendor/autoload.php';
-$app = require_once __DIR__.'/../bootstrap/app.php';
+require $basePath.'/vendor/autoload.php';
+$app = require_once $basePath.'/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 step("Laravel booted.");

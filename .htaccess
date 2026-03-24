@@ -12,12 +12,15 @@
 
     RewriteRule ^\.git - [F,L]
     RewriteRule ^vendor/ - [F,L]
-    # Allow files that exist in public/storage/ (uploaded assets via symlink)
+    # Public uploads: /storage/* maps to the public disk (storage/app/public/*).
+    # Try public/storage first (symlink from `php artisan storage:link`), then the real path.
+    # Without the fallback, a missing/broken symlink (common after ZIP on shared hosting) caused
+    # every /storage/* URL to hit the old blanket 403 below — broken profile & memorial images.
     RewriteCond %{DOCUMENT_ROOT}/public/storage/$1 -f
     RewriteRule ^storage/(.+)$ public/storage/$1 [L]
 
-    # Block direct access to the real storage/ directory (logs, framework, etc.)
-    RewriteRule ^storage/ - [F,L]
+    RewriteCond %{DOCUMENT_ROOT}/storage/app/public/$1 -f
+    RewriteRule ^storage/(.+)$ storage/app/public/$1 [L]
     RewriteRule ^database/ - [F,L]
     RewriteRule ^bootstrap/ - [F,L]
     RewriteRule ^config/ - [F,L]
