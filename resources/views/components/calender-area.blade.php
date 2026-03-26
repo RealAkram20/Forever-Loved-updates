@@ -1,12 +1,27 @@
 
 <div>
     <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] overflow-hidden">
+        @unless($hasMemorials)
+            <div class="px-6 pt-5 pb-0">
+                <div class="rounded-lg border border-blue-100 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/20 p-4 text-sm text-blue-700 dark:text-blue-300">
+                    You don't have any memorial profiles yet. Death anniversaries will appear here automatically once you
+                    <a href="{{ route('memorial.create.step1') }}" class="font-semibold underline hover:text-blue-900 dark:hover:text-blue-100">create a memorial</a>.
+                    In the meantime, you can add your own events below.
+                </div>
+            </div>
+        @endunless
         <div class="custom-calendar overflow-x-auto">
-            <div id="calendar" class="min-h-screen"></div>
+            <div id="calendar" class="min-h-screen"
+                 data-events-url="{{ $eventsUrl }}"
+                 data-store-url="{{ $storeUrl }}"
+                 data-update-url-base="{{ $updateUrlBase }}"
+                 data-destroy-url-base="{{ $destroyUrlBase }}"
+                 data-csrf-token="{{ csrf_token() }}"
+            ></div>
         </div>
     </div>
 
-    <!-- Modal -->
+    <!-- Event Modal -->
     <div class="fixed inset-0 items-center justify-center hidden p-5 overflow-y-auto modal z-99999" id="eventModal">
         <div class="modal-close-btn fixed inset-0 h-full w-full bg-gray-400/50 dark:bg-gray-900/70 backdrop-blur-[32px]"></div>
         <div class="modal-dialog relative flex w-full max-w-[700px] flex-col overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 p-6 lg:p-11">
@@ -25,13 +40,32 @@
                     <h5 class="mb-2 font-semibold text-gray-800 dark:text-white/90 modal-title text-theme-xl lg:text-2xl" id="eventModalLabel">
                         Add Event
                     </h5>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Plan your next big moment: schedule or edit an event to stay on track
+                    <p class="text-sm text-gray-500 dark:text-gray-400" id="eventModalSubtitle">
+                        Schedule a personal event on your calendar
                     </p>
                 </div>
 
-                <!-- Modal Body -->
-                <div class="mt-8 modal-body">
+                <!-- Anniversary Detail (shown when clicking an anniversary) -->
+                <div id="anniversary-detail" class="mt-6 hidden">
+                    <div class="flex items-center gap-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-white/[0.02] p-5">
+                        <div id="anniversary-photo" class="h-14 w-14 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center">
+                            <svg class="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800 dark:text-white/90" id="anniversary-name"></p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400" id="anniversary-date-label"></p>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex">
+                        <a id="anniversary-link" href="#" class="inline-flex items-center gap-2 text-sm font-medium text-brand-500 hover:text-brand-600">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                            View Memorial Profile
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Event Form (hidden for anniversaries) -->
+                <div id="event-form" class="mt-8 modal-body">
 
                     <!-- Event Title -->
                     <div>
@@ -55,7 +89,7 @@
                                             <input class="sr-only form-check-input" type="radio" name="event-level" value="Danger" id="modalDanger" />
                                             <span class="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 dark:border-gray-600 rounded-full box"></span>
                                         </span>
-                                        Danger
+                                        Red
                                     </label>
                                 </div>
                             </div>
@@ -67,7 +101,7 @@
                                             <input class="sr-only form-check-input" type="radio" name="event-level" value="Success" id="modalSuccess" />
                                             <span class="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 dark:border-gray-600 rounded-full box"></span>
                                         </span>
-                                        Success
+                                        Green
                                     </label>
                                 </div>
                             </div>
@@ -79,7 +113,7 @@
                                             <input class="sr-only form-check-input" type="radio" name="event-level" value="Primary" id="modalPrimary" />
                                             <span class="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 dark:border-gray-600 rounded-full box"></span>
                                         </span>
-                                        Primary
+                                        Blue
                                     </label>
                                 </div>
                             </div>
@@ -91,7 +125,7 @@
                                             <input class="sr-only form-check-input" type="radio" name="event-level" value="Warning" id="modalWarning" />
                                             <span class="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 dark:border-gray-600 rounded-full box"></span>
                                         </span>
-                                        Warning
+                                        Orange
                                     </label>
                                 </div>
                             </div>
@@ -102,7 +136,7 @@
                     <!-- Start Date -->
                     <div class="mt-6">
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Enter Start Date
+                            Start Date
                         </label>
                         <div class="relative">
                             <input id="event-start-date" type="date" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full appearance-none rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" onclick="this.showPicker()" />
@@ -117,7 +151,7 @@
                     <!-- End Date -->
                     <div class="mt-6">
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Enter End Date
+                            End Date <span class="text-gray-400 font-normal">(optional)</span>
                         </label>
                         <div class="relative">
                             <input id="event-end-date" type="date" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full appearance-none rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" onclick="this.showPicker()" />
@@ -135,6 +169,9 @@
                 <div class="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
                     <button type="button" class="modal-close-btn flex w-full justify-center rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 sm:w-auto">
                         Close
+                    </button>
+                    <button type="button" class="btn btn-delete-event hidden bg-error-500 hover:bg-error-600 flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white sm:w-auto" data-fc-event-public-id="">
+                        Delete
                     </button>
                     <button type="button" class="btn btn-update-event bg-brand-500 hover:bg-brand-600 flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white sm:w-auto" style="display: none;" data-fc-event-public-id="">
                         Update Changes

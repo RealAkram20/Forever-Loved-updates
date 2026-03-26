@@ -14,6 +14,7 @@ use App\Http\Controllers\PublicMemorialController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\CalendarController;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes (login, register, password reset, etc.)
@@ -87,9 +88,11 @@ Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->n
 Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
 // Calendar
-Route::get('/calendar', function () {
-    return view('pages.calender', ['title' => 'Calendar']);
-})->name('calendar');
+Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar');
+Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events');
+Route::post('/calendar/events', [CalendarController::class, 'store'])->name('calendar.events.store');
+Route::put('/calendar/events/{calendarEvent}', [CalendarController::class, 'update'])->name('calendar.events.update');
+Route::delete('/calendar/events/{calendarEvent}', [CalendarController::class, 'destroy'])->name('calendar.events.destroy');
 
 // ─── Users Management (admin only) ──────────────────────────────
 Route::middleware('role:admin|super-admin')->group(function () {
