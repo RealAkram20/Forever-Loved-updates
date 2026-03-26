@@ -38,6 +38,7 @@
                     flatpickr(this.$refs.datepicker, {
                         mode: 'range',
                         static: true,
+                        disableMobile: true,
                         monthSelectorType: 'static',
                         dateFormat: 'M j',
                         defaultDate: [new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), new Date()],

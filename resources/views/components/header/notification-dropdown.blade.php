@@ -8,14 +8,42 @@
     notifying: {{ $unreadCount > 0 ? 'true' : 'false' }},
     unreadCount: {{ $unreadCount }},
     notifications: @js($notifications),
+    panelStyle: {},
     toggleDropdown() {
         this.dropdownOpen = !this.dropdownOpen;
         if (this.dropdownOpen) {
             this.refreshNotifications();
+            this.$nextTick(() => this.positionPanel());
         }
     },
     closeDropdown() {
         this.dropdownOpen = false;
+    },
+    positionPanel() {
+        const btn = this.$refs.bellBtn;
+        if (!btn) return;
+        const rect = btn.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const isMobile = vw < 640;
+        if (isMobile) {
+            this.panelStyle = {
+                position: 'fixed',
+                top: rect.bottom + 8 + 'px',
+                left: '12px',
+                right: '12px',
+                width: 'auto',
+                maxHeight: 'calc(100vh - ' + (rect.bottom + 24) + 'px)'
+            };
+        } else {
+            this.panelStyle = {
+                position: 'absolute',
+                top: rect.height + 10 + 'px',
+                right: '0px',
+                left: 'auto',
+                width: '380px',
+                maxHeight: '80vh'
+            };
+        }
     },
     async refreshNotifications() {
         try {
@@ -92,9 +120,10 @@
         };
         return colors[icon] || colors.info;
     }
-}" @click.away="closeDropdown()">
+}" @click.away="closeDropdown()" @resize.window.debounce.100ms="if(dropdownOpen) positionPanel()">
     <!-- Notification Button -->
     <button
+        x-ref="bellBtn"
         class="relative flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full h-9 w-9 sm:h-11 sm:w-11 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200"
         @click="toggleDropdown()"
         type="button"
@@ -129,7 +158,22 @@
         </svg>
     </button>
 
-    <!-- Dropdown Start -->
+    <!-- Mobile backdrop -->
+    <div
+        x-show="dropdownOpen"
+        x-cloak
+        x-transition:enter="transition ease-out duration-100"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-75"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-black/20 sm:hidden"
+        style="z-index: 99998;"
+        @click="closeDropdown()"
+    ></div>
+
+    <!-- Dropdown Panel -->
     <div
         x-show="dropdownOpen"
         x-cloak
@@ -139,8 +183,9 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
-        class="absolute right-0 mt-[17px] flex max-h-[80vh] w-[calc(100vw-2rem)] max-w-[361px] flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 shadow-theme-lg sm:w-[361px]"
-        style="display: none;"
+        :style="panelStyle"
+        class="flex flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 shadow-theme-lg"
+        style="z-index: 99999; display: none;"
     >
         <!-- Dropdown Header -->
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-gray-100 dark:border-gray-700">
@@ -255,5 +300,4 @@
             View All Notifications
         </a>
     </div>
-    <!-- Dropdown End -->
 </div>

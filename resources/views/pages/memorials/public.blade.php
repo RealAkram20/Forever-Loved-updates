@@ -26,6 +26,21 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900" data-memorial-slug="{{ $memorial->slug }}" data-tribute-url="{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}" data-can-edit="{{ $canEdit ? '1' : '0' }}" data-is-authenticated="{{ $isAuthenticated ? '1' : '0' }}" data-can-upload="{{ $canEdit ? '1' : '0' }}" data-scroll-tribute="{{ $scrollToTributeId ?? '' }}" data-scroll-chapter="{{ $scrollToChapterId ?? '' }}" data-deceased-first="{{ \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them') }}" data-user-initial="{{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}">
     <x-home-header />
 
+    @if ($canEdit)
+        {{-- Owner edit affordance: hover-only controls are invisible on touch; banner + mobile-visible pencils fix that --}}
+        <div class="sticky top-14 z-30 border-b border-amber-300/80 bg-amber-50 px-4 py-2.5 shadow-sm dark:border-amber-500/45 dark:bg-amber-950/95 sm:px-6" role="status" aria-live="polite">
+            <div class="mx-auto flex max-w-7xl items-start gap-2.5">
+                <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-200/90 text-amber-900 dark:bg-amber-500/25 dark:text-amber-200">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-amber-950 dark:text-amber-50">You’re editing this memorial</p>
+                    <p class="mt-0.5 text-xs leading-snug text-amber-900/85 dark:text-amber-100/85">Tap any <span class="font-medium">pencil</span> button or a <span class="font-medium">dashed outline</span> to update content. This strip is only shown to you.</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Guest modal: name + email for tributes/reactions --}}
     <div id="guest-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 p-4">
         <div class="w-full max-w-md rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-xl">
@@ -63,12 +78,16 @@
                                 @php
                                     $ageLabel = null;
                                     if ($memorial->date_of_birth && $memorial->date_of_passing) {
-                                        $totalMonths = $memorial->date_of_birth->diffInMonths($memorial->date_of_passing);
-                                        if ($totalMonths < 12) {
-                                            $ageLabel = $totalMonths . 'mth' . ($totalMonths !== 1 ? 's' : '');
+                                        $days   = (int) abs($memorial->date_of_birth->diffInDays($memorial->date_of_passing));
+                                        $months = (int) abs($memorial->date_of_birth->diffInMonths($memorial->date_of_passing));
+                                        $years  = (int) abs($memorial->date_of_birth->diffInYears($memorial->date_of_passing));
+
+                                        if ($years >= 1) {
+                                            $ageLabel = $years . 'yr' . ($years !== 1 ? 's' : '');
+                                        } elseif ($months >= 1) {
+                                            $ageLabel = $months . 'mth' . ($months !== 1 ? 's' : '');
                                         } else {
-                                            $years = (int) $memorial->date_of_birth->diffInYears($memorial->date_of_passing);
-                                            $ageLabel = $years . 'yrs';
+                                            $ageLabel = $days . 'day' . ($days !== 1 ? 's' : '');
                                         }
                                     }
                                 @endphp
@@ -84,35 +103,43 @@
                                         <span class="absolute -right-2 top-0 z-10 rounded-full bg-brand-500 px-2 py-0.5 text-[11px] font-bold text-white shadow-md shadow-brand-500/30 ring-2 ring-white dark:ring-gray-900">{{ $ageLabel }}</span>
                                     @endif
                                     @if ($canEdit)
-                                        <label class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition group-hover:opacity-100">
+                                        <label class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/55">
                                             <input type="file" id="profile-photo-input" accept="image/*" class="hidden" />
-                                            <span class="text-white text-xs">Change</span>
+                                            <span class="rounded-md bg-white/95 px-2 py-0.5 text-[11px] font-semibold text-gray-900 shadow-sm dark:bg-gray-900/95 dark:text-white">Photo</span>
                                         </label>
                                     @endif
                                 </div>
-                                <div data-editable="full_name" class="relative group">
-                                    <h2 data-display class="text-lg font-semibold text-gray-900 dark:text-white/90">{{ $memorial->full_name ?: 'Full name' }}</h2>
+                                <div data-editable="full_name" class="relative group w-full @if($canEdit) rounded-lg border border-dashed border-brand-400/55 bg-brand-50/40 px-2 py-2 dark:border-brand-400/40 dark:bg-brand-500/[0.08] @endif">
                                     @if ($canEdit)
-                                        <button type="button" data-edit-trigger class="absolute -right-6 top-0 rounded p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-brand-500">
-                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                        </button>
-                                        <div data-edit class="hidden mt-1">
-                                            <input type="text" value="{{ $memorial->full_name }}" class="w-full rounded border px-2 py-1 text-sm" />
-                                            <button type="button" data-save class="mt-1 text-xs text-brand-500">Save</button>
+                                        <div class="flex items-start justify-center gap-2">
+                                            <h2 data-display class="min-w-0 flex-1 text-center text-lg font-semibold text-gray-900 dark:text-white/90">{{ $memorial->full_name ?: 'Full name' }}</h2>
+                                            <button type="button" data-edit-trigger class="memorial-edit-fab shrink-0 rounded-lg border border-brand-300/90 bg-white p-1.5 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit name">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                            </button>
                                         </div>
+                                        <div data-edit class="hidden mt-1">
+                                            <input type="text" value="{{ $memorial->full_name }}" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+                                            <button type="button" data-save class="mt-2 rounded-md bg-brand-500 px-3 py-1.5 text-xs font-medium text-white">Save</button>
+                                        </div>
+                                    @else
+                                        <h2 data-display class="text-lg font-semibold text-gray-900 dark:text-white/90">{{ $memorial->full_name ?: 'Full name' }}</h2>
                                     @endif
                                 </div>
                                 @if ($canEdit || ($memorial->designation && !$memorial->cause_of_death_private))
-                                    <div data-editable="designation" class="relative group mt-0.5">
-                                        <p data-display class="text-sm text-gray-500 dark:text-gray-400">{{ $memorial->designation ?: ($canEdit ? 'Add designation' : '') }}</p>
+                                    <div data-editable="designation" class="relative group mt-0.5 w-full @if($canEdit) rounded-lg border border-dashed border-brand-400/45 bg-brand-50/35 px-2 py-1.5 dark:border-brand-400/35 dark:bg-brand-500/[0.06] @endif">
                                         @if ($canEdit)
-                                            <button type="button" data-edit-trigger class="absolute -right-6 top-0 rounded p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-brand-500">
-                                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                            </button>
-                                            <div data-edit class="hidden">
-                                                <input type="text" value="{{ $memorial->designation }}" class="w-full rounded border px-2 py-1 text-sm" placeholder="Designation" />
-                                                <button type="button" data-save class="mt-1 text-xs text-brand-500">Save</button>
+                                            <div class="flex items-start justify-center gap-1.5">
+                                                <p data-display class="min-w-0 flex-1 text-center text-sm text-gray-600 dark:text-gray-300">{{ $memorial->designation ?: 'Add designation' }}</p>
+                                                <button type="button" data-edit-trigger class="memorial-edit-fab shrink-0 rounded-md border border-brand-300/90 bg-white p-1 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit designation">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                </button>
                                             </div>
+                                            <div data-edit class="hidden mt-1">
+                                                <input type="text" value="{{ $memorial->designation }}" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white" placeholder="Designation" />
+                                                <button type="button" data-save class="mt-2 rounded-md bg-brand-500 px-3 py-1.5 text-xs font-medium text-white">Save</button>
+                                            </div>
+                                        @else
+                                            <p data-display class="text-sm text-gray-500 dark:text-gray-400">{{ $memorial->designation }}</p>
                                         @endif
                                     </div>
                                 @endif
@@ -161,7 +188,7 @@
                                 </div>
                             </div>
                             @if ($memorial->date_of_birth || $memorial->date_of_passing || $canEdit)
-                                <div data-editable="dates" class="mt-4 border-t border-gray-100 dark:border-gray-800 pt-4 text-center">
+                                <div data-editable="dates" class="mt-4 pt-4 text-center @if($canEdit) rounded-lg border border-dashed border-brand-400/50 bg-brand-50/30 px-2 pb-3 dark:border-brand-400/35 dark:bg-brand-500/[0.06] @else border-t border-gray-100 dark:border-gray-800 @endif">
                                     <p data-display class="text-sm text-gray-600 dark:text-gray-400">
                                         @if ($memorial->date_of_birth){{ $memorial->date_of_birth->format('M d, Y') }}@endif
                                         @if ($memorial->date_of_birth && $memorial->date_of_passing) &ndash; @endif
@@ -172,10 +199,10 @@
                                         <p class="mt-1 text-xs font-medium text-brand-600 dark:text-brand-400">Died at {{ $ageLabel }}</p>
                                     @endif
                                     @if ($canEdit)
-                                        <div data-edit class="hidden mt-2 space-y-1">
-                                            <input type="date" data-date-type="birth" value="{{ $memorial->date_of_birth?->format('Y-m-d') }}" class="rounded border px-2 py-1 text-sm" />
-                                            <input type="date" data-date-type="death" value="{{ $memorial->date_of_passing?->format('Y-m-d') }}" class="rounded border px-2 py-1 text-sm ml-1" />
-                                            <button type="button" data-save class="block mt-1 text-xs text-brand-500">Save</button>
+                                        <div data-edit class="hidden mt-2 space-y-2 text-left sm:text-center">
+                                            <input type="date" data-date-type="birth" value="{{ $memorial->date_of_birth?->format('Y-m-d') }}" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white sm:w-auto" />
+                                            <input type="date" data-date-type="death" value="{{ $memorial->date_of_passing?->format('Y-m-d') }}" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white sm:ml-1 sm:w-auto" />
+                                            <button type="button" data-save class="mt-1 rounded-md bg-brand-500 px-3 py-1.5 text-xs font-medium text-white">Save</button>
                                         </div>
                                     @endif
                                 </div>
@@ -204,13 +231,13 @@
 
                     {{-- Tab: Biography (first) --}}
                     <div id="tab-biography" class="memorial-tab-panel p-4 sm:p-6">
-                        <div data-editable="biography" class="relative group">
+                        <div data-editable="biography" class="relative group rounded-xl @if($canEdit) border border-dashed border-brand-400/55 bg-brand-50/35 p-3 dark:border-brand-400/40 dark:bg-brand-500/[0.07] @endif">
                             @if ($canEdit)
-                                <button type="button" data-edit-trigger class="absolute right-0 top-0 rounded p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-brand-500">
+                                <button type="button" data-edit-trigger class="memorial-edit-fab absolute right-0 top-0 z-10 rounded-lg border border-brand-300/90 bg-white p-2 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit biography">
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                 </button>
                             @endif
-                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white/90">Biography</h2>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white/90 @if($canEdit) pr-12 @endif">Biography</h2>
                             <div data-display class="mt-3 text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">{!! \App\Helpers\BiographyFormatter::format($memorial->biography) ?: 'Add biography...' !!}</div>
                             @if ($canEdit)
                                 <div data-edit class="hidden mt-3 space-y-4">
@@ -250,13 +277,13 @@
                                             <span class="ml-1 inline-block h-2 w-2 rounded-full {{ $chapterPostCount >= 3 ? 'bg-emerald-500' : ($chapterPostCount >= 1 ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600') }}" title="{{ $chapterPostCount }} {{ Str::plural('post', $chapterPostCount) }}"></span>
                                         </button>
                                         @if ($canEdit)
-                                            <div class="absolute -top-1 -right-1 hidden group-hover:flex items-center gap-0.5 z-10">
+                                            <div class="absolute -top-1 -right-1 z-10 flex items-center gap-0.5">
                                                 <button type="button" data-edit-chapter="{{ $chapter->id }}" data-chapter-title="{{ $chapter->title }}" data-chapter-desc="{{ $chapter->description }}"
-                                                    class="flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm hover:bg-brand-600 transition" title="Edit chapter">
+                                                    class="flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm ring-2 ring-white dark:ring-gray-900 hover:bg-brand-600 transition" title="Edit chapter">
                                                     <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                                 </button>
                                                 <button type="button" data-delete-chapter="{{ $chapter->id }}"
-                                                    class="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600 transition" title="Delete chapter">
+                                                    class="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm ring-2 ring-white dark:ring-gray-900 hover:bg-red-600 transition" title="Delete chapter">
                                                     <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                 </button>
                                             </div>
@@ -305,7 +332,7 @@
                                                 <p class="text-xs text-gray-500 dark:text-gray-400"><span class="time-ago" data-created-at="{{ $post->created_at->toIso8601String() }}">{{ $post->created_at->diffForHumans() }}</span> · {{ $post->storyChapter?->title ?? 'Life' }}</p>
                                             </div>
                                             @if ($canEdit)
-                                                <button type="button" data-post-edit-trigger="{{ $post->id }}" class="rounded p-1 text-gray-400 opacity-0 group-hover/post:opacity-100 hover:text-brand-500 transition" title="Edit post">
+                                                <button type="button" data-post-edit-trigger="{{ $post->id }}" class="memorial-edit-fab rounded-lg border border-brand-300/90 bg-white p-1.5 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit post">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                                 </button>
                                             @endif
@@ -315,7 +342,7 @@
                                                 <h3 class="mt-2 font-medium text-gray-900 dark:text-white/90">{{ $post->title }}</h3>
                                             @endif
                                             @if ($post->content)
-                                                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">{!! \App\Helpers\HtmlHelper::sanitize($post->content) !!}</div>
+                                                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">{!! \App\Helpers\HtmlHelper::sanitize($post->content) !!}</div>
                                             @endif
                                             @if ($post->media->isNotEmpty())
                                                 <div class="mt-3 space-y-3">
@@ -384,22 +411,22 @@
                                         @endif
                                     </div>
                                     {{-- Inline comment thread (hidden by default, toggled by comment button) --}}
-                                    <div data-comment-section="{{ $post->id }}" class="hidden border-t border-gray-100 dark:border-gray-800">
+                                    <div data-comment-section="{{ $post->id }}" class="hidden border-t border-gray-100 dark:border-gray-800 overflow-hidden">
                                         {{-- Comment input --}}
-                                        <div class="flex items-center gap-2 px-4 py-3">
-                                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400 text-xs font-semibold">
+                                        <div class="flex flex-wrap items-center gap-2 px-3 py-3 sm:px-4">
+                                            <div class="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400 text-[11px] sm:text-xs font-semibold">
                                                 {{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}
                                             </div>
-                                            <input type="text" data-comment-input="{{ $post->id }}" placeholder="Add a comment..." class="h-9 flex-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3.5 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-                                            <button type="button" data-comment-submit data-post-id="{{ $post->id }}" class="h-9 shrink-0 rounded-full bg-brand-500 px-4 text-xs font-semibold text-white hover:bg-brand-600 transition active:scale-95">Post</button>
+                                            <input type="text" data-comment-input="{{ $post->id }}" placeholder="Add a comment..." class="h-9 min-w-0 flex-1 basis-36 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                            <button type="button" data-comment-submit data-post-id="{{ $post->id }}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 sm:px-4 text-xs font-semibold text-white hover:bg-brand-600 transition active:scale-95">Post</button>
                                         </div>
                                         {{-- Thread list --}}
-                                        <div class="px-4 pb-3 space-y-0" data-comments-list="{{ $post->id }}">
+                                        <div class="px-3 pb-3 space-y-0 sm:px-4" data-comments-list="{{ $post->id }}">
                                             @foreach ($post->comments as $comment)
                                                 @include('pages.memorials.partials.comment-item', ['comment' => $comment, 'postId' => $post->id, 'canDelete' => $canEdit])
                                             @endforeach
                                         </div>
-                                        <p data-comments-empty="{{ $post->id }}" class="px-4 pb-4 text-center text-xs text-gray-400 dark:text-gray-500 {{ $post->comments->isEmpty() ? '' : 'hidden' }}">No comments yet. Be the first to comment.</p>
+                                        <p data-comments-empty="{{ $post->id }}" class="px-3 pb-4 text-center text-xs text-gray-400 dark:text-gray-500 sm:px-4 {{ $post->comments->isEmpty() ? '' : 'hidden' }}">No comments yet. Be the first to comment.</p>
                                     </div>
                                 </article>
                             @endforeach
@@ -570,7 +597,7 @@
                                             </div>
                                         </button>
                                         @if ($canEdit)
-                                            <div class="absolute top-1 right-1 z-10 flex items-center gap-1 opacity-0 group-hover/img:opacity-100 transition">
+                                            <div class="absolute top-1 right-1 z-10 flex items-center gap-1">
                                                 <button type="button" data-gallery-edit-caption="{{ $media->id }}" data-current-caption="{{ e($media->caption ?? '') }}"
                                                     class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-brand-500 transition" title="Edit caption">
                                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -599,7 +626,7 @@
                                     <div class="group/vid relative" data-gallery-item data-media-id="{{ $media->id }}" data-media-type="video">
                                         <x-media.video-player :src="$media->url" :caption="$media->caption" />
                                         @if ($canEdit)
-                                            <div class="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover/vid:opacity-100 transition">
+                                            <div class="absolute top-2 right-2 z-20 flex items-center gap-1">
                                                 <button type="button" data-gallery-edit-caption="{{ $media->id }}" data-current-caption="{{ e($media->caption ?? '') }}"
                                                     class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-brand-500 transition" title="Edit caption">
                                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>

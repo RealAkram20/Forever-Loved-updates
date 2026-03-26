@@ -222,8 +222,17 @@ class PublicMemorialController extends Controller
         if (!$birth || !$death) {
             return null;
         }
-        $age = $death->diffInYears($birth);
-        return $age . ' years';
+
+        $days   = (int) abs($birth->diffInDays($death));
+        $months = (int) abs($birth->diffInMonths($death));
+        $years  = (int) abs($birth->diffInYears($death));
+
+        if ($years >= 1) {
+            return $years . ' year' . ($years !== 1 ? 's' : '');
+        } elseif ($months >= 1) {
+            return $months . ' month' . ($months !== 1 ? 's' : '');
+        }
+        return $days . ' day' . ($days !== 1 ? 's' : '');
     }
 
     private function visitorHash(Request $request): string

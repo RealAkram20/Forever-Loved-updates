@@ -41,7 +41,7 @@
         </div>
         <div class="flex items-center gap-1 shrink-0">
             @if($canEditTribute)
-                <button type="button" data-tribute-edit-trigger="{{ $tribute->id }}" class="rounded p-1 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-brand-500 transition" title="Edit tribute">
+                <button type="button" data-tribute-edit-trigger="{{ $tribute->id }}" class="memorial-edit-fab rounded-lg border border-brand-300/90 bg-white p-1.5 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit tribute">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
             @endif
@@ -186,12 +186,12 @@
                     <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                     <span data-tribute-id="{{ $tribute->id }}" data-tribute-comment-count>{{ $commentCount }}</span>
                 </button>
-                <div data-tribute-comment-dropdown="{{ $tribute->id }}" class="absolute left-0 top-full z-[9999] mt-1 hidden w-full min-w-[320px] max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl">
+                <div data-tribute-comment-dropdown="{{ $tribute->id }}" class="absolute left-0 top-full z-[9999] mt-1 hidden w-[calc(100vw-2rem)] max-w-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl sm:w-80">
                     <div class="border-b border-gray-100 dark:border-gray-700 p-3">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Add your comment</p>
                         <div class="flex gap-2">
-                            <input type="text" data-tribute-comment-input="{{ $tribute->id }}" placeholder="Write a comment..." class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm" />
-                            <button type="button" data-tribute-comment-submit data-tribute-id="{{ $tribute->id }}" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Post</button>
+                            <input type="text" data-tribute-comment-input="{{ $tribute->id }}" placeholder="Write a comment..." class="min-w-0 flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm dark:text-white" />
+                            <button type="button" data-tribute-comment-submit data-tribute-id="{{ $tribute->id }}" class="shrink-0 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600">Post</button>
                         </div>
                     </div>
                     <div class="max-h-48 overflow-y-auto p-3" data-tribute-comments-list="{{ $tribute->id }}">

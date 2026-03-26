@@ -15,6 +15,7 @@
             this.flatpickrInstance = flatpickr(this.$refs.dateInput, {
                 mode: '{{ $mode }}',
                 static: true,
+                disableMobile: true,
                 monthSelectorType: 'static',
                 dateFormat: '{{ $dateFormat }}',
                 defaultDate: {{ $defaultDate ? (is_array($defaultDate) ? json_encode($defaultDate) : "'" . $defaultDate . "'") : 'null' }},

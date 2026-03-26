@@ -911,6 +911,7 @@ pre[class*='language-'] {
   }
 }
 
+
 /* Rich text content (Quill output) */
 .prose p { margin: 0.5em 0; }
 .prose p:first-child { margin-top: 0; }

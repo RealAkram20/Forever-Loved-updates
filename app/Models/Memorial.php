@@ -374,7 +374,7 @@ class Memorial extends Model
         if (!$birth || !$death) {
             return null;
         }
-        return $birth->diffInYears($death);
+        return (int) abs($birth->diffInYears($death));
     }
 
     /**

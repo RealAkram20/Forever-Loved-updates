@@ -154,7 +154,7 @@ class GeminiBioGeneratorService
         ])))) ?: null;
 
         $ageAtDeath = ($memorial->date_of_birth && $memorial->date_of_passing)
-            ? (int) $memorial->date_of_birth->diffInYears($memorial->date_of_passing)
+            ? (int) abs($memorial->date_of_birth->diffInYears($memorial->date_of_passing))
             : null;
 
         $children = $memorial->children
