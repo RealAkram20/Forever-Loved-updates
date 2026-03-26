@@ -28,3 +28,5 @@ ngrok.exe
 ngrok-stdout.txt
 ngrok-stderr.txt
 Forever-love-deploy.zip
+public.zip
+*.zip
