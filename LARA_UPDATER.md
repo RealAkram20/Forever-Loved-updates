@@ -118,6 +118,15 @@ function main(): bool
 
 ---
 
+## Version number (maintainers)
+
+- **Installed version** lives in **`version.txt`** at the project root. Admin **Settings → System Updates** and `LaraUpdaterController::getCurrentVersion()` read this file.
+- **Published update** metadata lives in **`public/updates/laraupdater.json`** (or your remote URL). Its `version` must be **strictly greater** than a server’s `version.txt` for that server to see “Update available.”
+- **Zip name** should match the `archive` field (e.g. `RELEASE-1.1.0.zip`). After a successful update, LaraUpdater writes the new version into `version.txt`.
+- **Current baseline in repo:** `1.1.6` — use `build-update.ps1` to produce the matching zip for your update host.
+
+---
+
 ## Security
 
 - **Who can update?** Only users with `admin` or `super-admin` role.
@@ -171,7 +180,10 @@ This project uses a fully overridden `App\Http\Controllers\Admin\LaraUpdaterCont
 | "Update server not reachable" | Check `LARA_UPDATER_URL`, firewall, SSL |
 | "Permission denied" | Ensure user is admin/super-admin |
 | "Already updated" | Version in `laraupdater.json` must be **greater** than `version.txt` |
+| **404 / download failed** on Update Now | **`archive` in `laraupdater.json` must exactly match the zip filename** (e.g. `RELEASE-1.1.0.zip`). If you only uploaded a new zip but left `archive` as `RELEASE-1.0.1.zip`, the server requests the old name → 404. |
+| **403** or failed download from own domain | **`public/updates/.htaccess` must not deny `.zip` files.** The app downloads the archive via HTTP from `LARA_UPDATER_URL`; blocking zips breaks self-update. Use `Options -Indexes` only, or host zips elsewhere. |
 | Zip extraction fails | Ensure zip structure matches app (no extra root folder unless expected) |
+| Folders like **`-1.1.5/`** or **`RELEASE-x/`** inside `public_html` | Caused by **broken zip entry names** built on Windows when `Resolve-Path` returned a short path (`RIOAKR~1`) but file paths were long — fixed in `build-update.ps1` (uses `Get-Item` for the temp root). **Rebuild** the zip with the current script, re-upload, and delete the stray folders on the server. LaraUpdater also strips legacy `-X.Y.Z/` and `RELEASE-*` wrappers when extracting. |
 | Maintenance mode stuck | Run `php artisan up` manually |
 
 ---
@@ -197,7 +209,11 @@ The script automatically:
 - Always includes `version.txt`
 - Creates the zip and `laraupdater.json` in `public/updates/`
 
-**Updatable directories:** `app/`, `config/`, `database/migrations/`, `database/seeders/`, `resources/views/`, `routes/`, `public/images/`, `public/build/`
+**Full release (`-All`):** `app/`, `bootstrap/` (except generated `bootstrap/cache/*.php`), `config/`, `database/` (migrations, seeders, factories, root files — no `.sqlite`), `resources/css/`, `resources/js/`, `resources/views/`, `routes/`, almost all of **`public/`** except `public/storage/` (uploads) and `public/updates/RELEASE-*.zip`, plus root files: `artisan`, `composer.json`, `composer.lock`, `package*.json`, `vite.config.js`, PostCSS/Tailwind configs, `version.txt`.
+
+**Still excluded:** `vendor/`, `node_modules/`, `storage/`, `.env`, `public/storage/`, nested release zips.
+
+Before `-All`, run **`npm run build`** so `public/build` matches your CSS/JS. If `composer.json` / `composer.lock` changed, SSH in after update and run **`composer install --no-dev --optimize-autoloader`**.
 
 ## Deploy Script
 

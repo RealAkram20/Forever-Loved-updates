@@ -7,6 +7,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use pcinaglia\laraUpdater\LaraUpdaterController as BaseLaraUpdaterController;
 
@@ -172,16 +173,37 @@ class LaraUpdaterController extends BaseLaraUpdaterController
         File::ensureDirectoryExists($tmpDir, 0755);
 
         $localFile = $tmpDir.'/'.$filename;
-        $remoteUrl = rtrim(config('laraupdater.update_baseurl'), '/').'/'.$filename;
+        $remoteUrl = rtrim((string) config('laraupdater.update_baseurl'), '/').'/'.$filename;
+
+        $this->appendLog('GET '.$remoteUrl);
 
         try {
-            $contents = file_get_contents($remoteUrl);
-            if ($contents === false) {
-                throw new \RuntimeException('Download returned empty.');
+            $response = Http::timeout(300)->sink($localFile)->get($remoteUrl);
+
+            if (! $response->successful()) {
+                if (File::exists($localFile)) {
+                    File::delete($localFile);
+                }
+                $this->appendLog(
+                    'Download failed: HTTP '.$response->status().'. Ensure laraupdater.json "archive" matches the zip filename on the server, and that /updates/.htaccess does not block .zip files.',
+                    'err'
+                );
+                $this->appendLog('Tried: '.$remoteUrl, 'err');
+
+                return false;
             }
-            file_put_contents($localFile, $contents);
-        } catch (\Exception $e) {
+
+            if (! File::exists($localFile) || File::size($localFile) === 0) {
+                $this->appendLog('Download failed: empty file. URL: '.$remoteUrl, 'err');
+
+                return false;
+            }
+        } catch (\Throwable $e) {
+            if (File::exists($localFile)) {
+                File::delete($localFile);
+            }
             $this->appendLog('Download failed: '.$e->getMessage(), 'err');
+            $this->appendLog('URL: '.$remoteUrl, 'err');
 
             return false;
         }
@@ -267,19 +289,32 @@ class LaraUpdaterController extends BaseLaraUpdaterController
     }
 
     /**
-     * Normalize zip entry paths: strip a top-level folder wrapper if present
+     * Normalize zip entry paths: strip top-level folder wrapper(s) if present
      * (e.g. "RELEASE-1.0.1/app/Models/Foo.php" -> "app/Models/Foo.php").
+     * Strips legacy Windows zip bugs ("-1.1.5/app/..."), nested wrappers, and
+     * common hosting folder names when used as a single outer directory.
      */
     private function normalizeZipEntryPath(string $entry): ?string
     {
-        $parts = explode('/', $entry);
+        $entry = str_replace('\\', '/', $entry);
+        $entry = ltrim($entry, '/');
+        $parts = array_values(array_filter(explode('/', $entry), fn ($p) => $p !== '' && $p !== '.'));
 
-        if (count($parts) < 2) {
+        if ($parts === []) {
             return null;
         }
 
-        if (str_starts_with($parts[0], 'RELEASE') || str_starts_with($parts[0], '__')) {
+        $maxStrip = 20;
+        for ($n = 0; $n < $maxStrip && count($parts) >= 2; $n++) {
+            $first = $parts[0];
+            if (! $this->isZipPathWrapperSegment($first)) {
+                break;
+            }
             array_shift($parts);
+        }
+
+        if ($parts === []) {
+            return null;
         }
 
         $path = implode('/', $parts);
@@ -295,6 +330,46 @@ class LaraUpdaterController extends BaseLaraUpdaterController
         }
 
         return $path;
+    }
+
+    /**
+     * True if this path segment is only a container added when building the zip,
+     * not part of the Laravel app tree (app/, public/, config/, …).
+     */
+    private function isZipPathWrapperSegment(string $segment): bool
+    {
+        $segment = trim($segment);
+        if ($segment === '' || $segment === '.') {
+            return true;
+        }
+
+        $lower = strtolower($segment);
+
+        if ($lower === '__macosx' || str_starts_with($segment, '__MACOSX')) {
+            return true;
+        }
+
+        if (str_starts_with($lower, 'release')) {
+            return true;
+        }
+
+        if (str_starts_with($segment, '__')
+            || str_starts_with($segment, 'Forever-love-update')
+            || str_starts_with($segment, 'ForeverLoveUpdate_v')) {
+            return true;
+        }
+
+        // Broken Windows zip entries: "-1.1.5", "-1.1.0", optional suffix
+        if (preg_match('/^-\d+\.\d+\.\d+(?:[.\-+a-zA-Z0-9]*)?$/', $segment) === 1) {
+            return true;
+        }
+
+        // Some tools use a bare semver folder at the zip root
+        if (preg_match('/^\d+\.\d+\.\d+$/', $segment) === 1) {
+            return true;
+        }
+
+        return in_array($lower, ['public_html', 'htdocs'], true);
     }
 
     private function backupFile(string $relativePath): void
@@ -330,12 +405,27 @@ class LaraUpdaterController extends BaseLaraUpdaterController
     private function clearCaches(): void
     {
         try {
-            Artisan::call('config:clear');
-            Artisan::call('route:clear');
-            Artisan::call('view:clear');
-            $this->appendLog('Caches cleared.');
+            Artisan::call('optimize:clear');
+            $out = trim(Artisan::output());
+            if ($out !== '') {
+                $this->appendLog('optimize:clear: '.$out);
+            } else {
+                $this->appendLog('Application caches cleared (optimize:clear).');
+            }
         } catch (\Exception $e) {
-            $this->appendLog('Cache clear warning: '.$e->getMessage(), 'warn');
+            $this->appendLog('optimize:clear warning: '.$e->getMessage(), 'warn');
+            try {
+                Artisan::call('config:clear');
+                Artisan::call('route:clear');
+                Artisan::call('view:clear');
+            } catch (\Exception $e2) {
+                $this->appendLog('Fallback cache clear failed: '.$e2->getMessage(), 'warn');
+            }
+        }
+
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+            $this->appendLog('OPcache reset (if enabled).');
         }
     }
 

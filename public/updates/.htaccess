@@ -1,4 +1,3 @@
-# Block direct access to update archives (source code protection)
-<FilesMatch "\.(zip|gz|tar|bz2|rar)$">
-    Require all denied
-</FilesMatch>
+# LaraUpdater must be able to HTTP-fetch RELEASE-*.zip from this folder (same as LARA_UPDATER_URL).
+# Blocking .zip here breaks "Update Now" with 403/404 when the app downloads from its own domain.
+Options -Indexes

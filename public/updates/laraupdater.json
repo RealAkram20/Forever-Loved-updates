@@ -1,5 +1,5 @@
-{
-    "archive":  "RELEASE-1.0.1.zip",
-    "description":  "Branding: customizable logo (SVG/PNG) and colors via Settings \u003e General.",
-    "version":  "1.0.1"
+﻿{
+    "archive":  "RELEASE-1.1.7.zip",
+    "description":  "Update to 1.1.7: fix zip extraction creating -X.Y.Z folders under project root (strip wrapper path segments).",
+    "version":  "1.1.7"
 }
