@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\SiteShareMetaHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\NotificationService;
@@ -20,7 +21,15 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        return view('pages.auth.signup', ['title' => 'Sign Up']);
+        return view('pages.auth.signup', [
+            'title' => 'Sign Up',
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Sign Up',
+                'register',
+                [],
+                'Create an account to build and manage online memorials for your loved ones.'
+            ),
+        ]);
     }
 
     /**

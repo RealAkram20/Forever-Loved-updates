@@ -16,7 +16,7 @@
     @state-selected.window="handleStateSelected($event)"
 >
     @if($label)
-        <label for="{{ $id }}" class="mb-1.5 block text-sm font-medium text-gray-700">{{ $label }}</label>
+        <label for="{{ $id }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $label }}</label>
     @endif
 
     <input type="hidden" name="{{ $name }}" :value="selectedName" x-ref="hiddenInput" />
@@ -37,9 +37,9 @@
             @blur="commitFreeform()"
             :placeholder="loading ? 'Loading...' : '{{ $placeholder }}'"
             autocomplete="off"
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-4 pr-10 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden"
+            class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent pl-4 pr-10 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden"
         />
-        <span class="absolute right-0 top-0 flex h-11 w-10 items-center justify-center text-gray-400">
+        <span class="absolute right-0 top-0 flex h-11 w-10 items-center justify-center text-gray-400 dark:text-gray-500">
             <svg x-show="!loading" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <svg x-show="loading" x-cloak class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         </span>
@@ -53,7 +53,7 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg"
+        class="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
         x-cloak
     >
         <ul x-ref="listbox" class="max-h-60 overflow-y-auto py-1" role="listbox">
@@ -62,10 +62,10 @@
                     @mousedown.prevent="selectCity(city)"
                     @mouseenter="highlightIndex = index"
                     :class="{
-                        'bg-brand-50 text-brand-700': highlightIndex === index,
-                        'font-semibold text-brand-600 bg-brand-50/50': selectedName === city.name && highlightIndex !== index
+                        'bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300': highlightIndex === index,
+                        'font-semibold text-brand-600 bg-brand-50/50 dark:bg-brand-500/15 dark:text-brand-300': selectedName === city.name && highlightIndex !== index
                     }"
-                    class="cursor-pointer px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    class="cursor-pointer px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/10"
                     role="option"
                     :id="'{{ $id }}-opt-' + index"
                 >

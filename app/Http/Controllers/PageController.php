@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SiteShareMetaHelper;
 use App\Models\Memorial;
 use App\Models\Page;
 use App\Models\SubscriptionPlan;
@@ -51,6 +52,7 @@ class PageController extends Controller
             'tagline' => $tagline,
             'popularMemorials' => $popularMemorials,
             'designations' => $designations,
+            'shareMeta' => SiteShareMetaHelper::forHome(),
         ]);
     }
 
@@ -66,6 +68,12 @@ class PageController extends Controller
             'title' => 'Pricing & Features',
             'plans' => $plans,
             'currency' => $currency,
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Pricing & Features',
+                'pricing',
+                [],
+                'Compare memorial plans and features. Choose the right way to honor and celebrate a life online.'
+            ),
         ]);
     }
 
@@ -76,6 +84,7 @@ class PageController extends Controller
         return view('pages.visitor.about', [
             'title' => $page?->title ?? 'About Us',
             'page' => $page,
+            'shareMeta' => SiteShareMetaHelper::forCmsPage($page, 'About Us', 'about'),
         ]);
     }
 
@@ -86,6 +95,7 @@ class PageController extends Controller
         return view('pages.visitor.privacy-policy', [
             'title' => $page?->title ?? 'Privacy Policy',
             'page' => $page,
+            'shareMeta' => SiteShareMetaHelper::forCmsPage($page, 'Privacy Policy', 'privacy-policy'),
         ]);
     }
 
@@ -96,6 +106,7 @@ class PageController extends Controller
         return view('pages.visitor.terms-of-use', [
             'title' => $page?->title ?? 'Terms of Use',
             'page' => $page,
+            'shareMeta' => SiteShareMetaHelper::forCmsPage($page, 'Terms of Use', 'terms-of-use'),
         ]);
     }
 }

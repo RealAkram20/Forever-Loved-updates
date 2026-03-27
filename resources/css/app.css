@@ -912,6 +912,14 @@ pre[class*='language-'] {
 }
 
 
+/* Prefer native dark UI for form controls (fixes select dropdown panels on Chrome/Edge/Safari) */
+html.dark {
+  color-scheme: dark;
+}
+html:not(.dark) {
+  color-scheme: light;
+}
+
 /* Dark mode form inputs */
 .dark input[type="text"],
 .dark input[type="email"],
@@ -928,6 +936,25 @@ pre[class*='language-'] {
 .dark input::placeholder,
 .dark textarea::placeholder {
   color: #9ca3af;
+}
+
+/* Native <select>: closed state + dropdown list contrast (option styling works in many browsers; color-scheme helps the rest) */
+.dark select {
+  color-scheme: dark;
+  background-color: rgb(17 24 39 / 0.92);
+}
+.dark select:focus {
+  background-color: rgb(17 24 39 / 0.95);
+}
+.dark select option,
+.dark select optgroup {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+.dark select option:checked,
+.dark select option:hover {
+  background-color: #374151;
+  color: #fff;
 }
 
 /* Quill editor dark mode */

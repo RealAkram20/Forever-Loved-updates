@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SiteShareMetaHelper;
 use App\Models\Memorial;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,12 @@ class MemorialDirectoryController extends Controller
 
         return view('pages.memorial-directory.index', [
             'title' => 'Find Memorial',
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Find Memorial',
+                'memorial.directory',
+                [],
+                'Search public memorials by name, location, and more. Honor and discover lives remembered on our platform.'
+            ),
         ]);
     }
 

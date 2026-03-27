@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\MemorialShareMetaHelper;
 use App\Helpers\MemorialStatsHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Models\Memorial;
@@ -63,7 +64,7 @@ class PublicMemorialController extends Controller
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => null,
             'scrollToChapterId' => null,
-            'shareMeta' => null,
+            'shareMeta' => MemorialShareMetaHelper::forMemorial($memorial),
         ]);
     }
 
@@ -105,12 +106,6 @@ class PublicMemorialController extends Controller
 
         $stats = MemorialStatsHelper::get($memorial);
 
-        $authorName = $tribute->user?->name ?? $tribute->guest_name ?? 'Anonymous';
-        $deceasedName = $memorial->full_name ?? 'Loved One';
-        $age = $this->getDeceasedAge($memorial);
-        $contentPreview = $tribute->message ? \Illuminate\Support\Str::limit(strip_tags($tribute->message), 150) : 'Left a ' . $tribute->type . ' in memory of ' . $deceasedName;
-        $shareUrl = url()->route('memorial.tribute.public', ['memorial_slug' => $memorial->slug, 'share_id' => $tribute->share_id]);
-
         $tributeCounts = $this->getTributeTypeCounts($memorial);
 
         return view('pages.memorials.public', [
@@ -125,12 +120,7 @@ class PublicMemorialController extends Controller
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => $tribute->id,
             'scrollToChapterId' => null,
-            'shareMeta' => [
-                'title' => "{$authorName} · {$deceasedName}" . ($age ? " ({$age})" : ''),
-                'description' => $contentPreview,
-                'url' => $shareUrl,
-                'image' => $memorial->profile_photo_url ? url($memorial->profile_photo_url) : null,
-            ],
+            'shareMeta' => MemorialShareMetaHelper::forTribute($memorial, $tribute),
         ]);
     }
 
@@ -171,12 +161,6 @@ class PublicMemorialController extends Controller
 
         $stats = MemorialStatsHelper::get($memorial);
 
-        $authorName = $post->user?->name ?? $memorial->full_name ?? 'Anonymous';
-        $deceasedName = $memorial->full_name ?? 'Loved One';
-        $age = $this->getDeceasedAge($memorial);
-        $contentPreview = $post->content ? \Illuminate\Support\Str::limit(strip_tags($post->content), 150) : ($post->title ?? 'A chapter in memory of ' . $deceasedName);
-        $shareUrl = url()->route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id]);
-
         $tributeCounts = $this->getTributeTypeCounts($memorial);
 
         return view('pages.memorials.public', [
@@ -190,12 +174,7 @@ class PublicMemorialController extends Controller
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => null,
             'scrollToChapterId' => $post->id,
-            'shareMeta' => [
-                'title' => "{$authorName} · {$deceasedName}" . ($age ? " ({$age})" : ''),
-                'description' => $contentPreview,
-                'url' => $shareUrl,
-                'image' => $memorial->profile_photo_url ? url($memorial->profile_photo_url) : null,
-            ],
+            'shareMeta' => MemorialShareMetaHelper::forChapter($memorial, $post),
         ]);
     }
 
@@ -213,26 +192,6 @@ class PublicMemorialController extends Controller
             'note' => (int) ($counts['note'] ?? 0),
             'total' => (int) $counts->sum(),
         ];
-    }
-
-    private function getDeceasedAge(Memorial $memorial): ?string
-    {
-        $birth = $memorial->date_of_birth;
-        $death = $memorial->date_of_passing;
-        if (!$birth || !$death) {
-            return null;
-        }
-
-        $days   = (int) abs($birth->diffInDays($death));
-        $months = (int) abs($birth->diffInMonths($death));
-        $years  = (int) abs($birth->diffInYears($death));
-
-        if ($years >= 1) {
-            return $years . ' year' . ($years !== 1 ? 's' : '');
-        } elseif ($months >= 1) {
-            return $months . ' month' . ($months !== 1 ? 's' : '');
-        }
-        return $days . ' day' . ($days !== 1 ? 's' : '');
     }
 
     private function visitorHash(Request $request): string

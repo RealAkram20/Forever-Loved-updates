@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\SiteShareMetaHelper;
 use App\Http\Controllers\Controller;
 use App\Models\LoginCode;
 use App\Services\SystemMailConfigurator;
@@ -71,7 +72,17 @@ class PasswordlessLoginController extends Controller
             return redirect()->route('login');
         }
 
-        return view('auth.passwordless-login', ['step' => 'code', 'email' => $email]);
+        return view('auth.passwordless-login', [
+            'title' => 'Enter login code',
+            'step' => 'code',
+            'email' => $email,
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Enter login code',
+                'login.code',
+                [],
+                'Enter the verification code we sent to your email to complete sign-in.'
+            ),
+        ]);
     }
 
     /**

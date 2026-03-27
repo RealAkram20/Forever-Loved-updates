@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SiteShareMetaHelper;
 use App\Models\SystemSetting;
 use App\Services\SystemMailConfigurator;
 use Illuminate\Http\Request;
@@ -17,6 +18,12 @@ class ContactController extends Controller
         return view('pages.visitor.contact', [
             'title' => 'Contact Us',
             'appName' => $appName,
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Contact Us',
+                'contact',
+                [],
+                'Get in touch with our team for questions about memorials, accounts, or support.'
+            ),
         ]);
     }
 

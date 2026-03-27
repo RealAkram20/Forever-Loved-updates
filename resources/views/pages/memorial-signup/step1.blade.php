@@ -1,12 +1,12 @@
 @extends('layouts.fullscreen-layout')
 
 @section('content')
-<div class="relative z-1 bg-white p-6 sm:p-0" x-data="step1Persist({{ json_encode($data) }})">
-    <div class="relative flex min-h-screen w-full flex-col justify-center py-12 sm:p-0">
+<div class="relative z-1 bg-white dark:bg-gray-900 px-6 pt-6 pb-[max(8rem,env(safe-area-inset-bottom,0px)+5rem)] sm:px-0 sm:pt-10 sm:pb-[max(8rem,env(safe-area-inset-bottom,0px)+3rem)] lg:pb-40" x-data="step1Persist({{ json_encode($data) }})">
+    <div class="relative flex min-h-screen w-full flex-col justify-start py-8 sm:py-12">
         <div class="flex w-full flex-1 flex-col">
-            <div class="mx-auto w-full max-w-2xl px-6 pt-10 lg:px-12">
+            <div class="mx-auto w-full max-w-2xl px-0 pt-4 pb-12 sm:px-6 sm:pt-10 sm:pb-16 lg:px-12 lg:pb-20">
                 <x-memorial-signup.step-tabs :currentStep="1" />
-                <a href="{{ route('home') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+                <a href="{{ route('home') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     <svg class="stroke-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <path d="M12.7083 5L7.5 10.2083L12.7083 15.4167" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
@@ -15,16 +15,16 @@
                 <div class="mt-8">
                     <div class="mb-6 flex items-center gap-2">
                         <span class="rounded-full bg-brand-500 px-3 py-1 text-xs font-medium text-white">Step 1 of 3</span>
-                        <span class="text-sm text-gray-500">Deceased details</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Deceased details</span>
                     </div>
-                    <h1 class="text-title-sm sm:text-title-md mb-2 font-semibold text-gray-800">This memorial is dedicated to</h1>
-                    <p class="mb-6 text-sm text-gray-500">Share information about your loved one. You can update this later.</p>
+                    <h1 class="text-title-sm sm:text-title-md mb-2 font-semibold text-gray-800 dark:text-white">This memorial is dedicated to</h1>
+                    <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">Share information about your loved one. You can update this later.</p>
 
                     @if (session('error'))
-                        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{{ session('error') }}</div>
+                        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{{ session('error') }}</div>
                     @endif
                     @if ($errors->any())
-                        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">{{ $errors->first() }}</div>
+                        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{{ $errors->first() }}</div>
                     @endif
 
                     <form id="step1-form" method="POST" action="{{ route('memorial.create.storeStep1') }}" class="space-y-6" @input="saveToStorage()" @change="saveToStorage()">
@@ -32,42 +32,42 @@
                         <div class="space-y-5">
                             <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700" for="first_name">First name</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="first_name">First name</label>
                                     <input type="text" id="first_name" name="first_name" value="{{ old('first_name', $data['first_name'] ?? '') }}" required
-                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700" for="middle_name">Middle name</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="middle_name">Middle name</label>
                                     <input type="text" id="middle_name" name="middle_name" value="{{ old('middle_name', $data['middle_name'] ?? '') }}"
-                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700" for="last_name">Last name</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="last_name">Last name</label>
                                     <input type="text" id="last_name" name="last_name" value="{{ old('last_name', $data['last_name'] ?? '') }}" required
-                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                             </div>
 
                             <div>
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700">Gender</label>
+                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Gender</label>
                                 <div class="flex flex-wrap items-center gap-6">
-                                    <label class="flex cursor-pointer items-center text-sm font-medium text-gray-700 select-none">
+                                    <label class="flex cursor-pointer items-center text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                                         <input type="radio" name="gender" value="male" {{ old('gender', $data['gender'] ?? '') === 'male' ? 'checked' : '' }}
-                                            class="border-gray-300 text-brand-600 focus:ring-brand-500" />
+                                            class="border-gray-300 dark:border-gray-600 text-brand-600 focus:ring-brand-500" />
                                         <span class="ml-2">Male</span>
                                     </label>
-                                    <label class="flex cursor-pointer items-center text-sm font-medium text-gray-700 select-none">
+                                    <label class="flex cursor-pointer items-center text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                                         <input type="radio" name="gender" value="female" {{ old('gender', $data['gender'] ?? '') === 'female' ? 'checked' : '' }}
-                                            class="border-gray-300 text-brand-600 focus:ring-brand-500" />
+                                            class="border-gray-300 dark:border-gray-600 text-brand-600 focus:ring-brand-500" />
                                         <span class="ml-2">Female</span>
                                     </label>
                                 </div>
                             </div>
 
                             <div>
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700" for="relationship">Relationship</label>
+                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="relationship">Relationship</label>
                                 @php $relVal = old('relationship', $data['relationship'] ?? ''); @endphp
-                                <select id="relationship" name="relationship" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden">
+                                <select id="relationship" name="relationship" class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:ring-3 focus:outline-hidden">
                                     <option value="">— Select relationship —</option>
                                     <option value="Father" {{ $relVal === 'Father' ? 'selected' : '' }}>Father</option>
                                     <option value="Mother" {{ $relVal === 'Mother' ? 'selected' : '' }}>Mother</option>
@@ -92,13 +92,13 @@
                         </div>
 
                         {{-- Do it later #1: Dates, location & designation --}}
-                        <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+                        <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
                             <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
-                                <p class="text-sm text-gray-600">Dates, location & designation:</p>
-                                <label class="flex cursor-pointer items-center gap-3 text-sm font-medium text-gray-700 select-none">
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Dates, location & designation:</p>
+                                <label class="flex cursor-pointer items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                                     <div class="relative">
                                         <input type="checkbox" class="sr-only" x-model="doDatesLater" @change="saveToStorage()" />
-                                        <div class="block h-6 w-11 rounded-full" :class="doDatesLater ? 'bg-brand-500' : 'bg-gray-200'"></div>
+                                        <div class="block h-6 w-11 rounded-full" :class="doDatesLater ? 'bg-brand-500' : 'bg-gray-200 dark:bg-gray-600'"></div>
                                         <div :class="doDatesLater ? 'translate-x-full' : 'translate-x-0'" class="shadow-theme-sm absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white duration-300 ease-linear"></div>
                                     </div>
                                     <span>Do this later</span>
@@ -106,7 +106,7 @@
                             </div>
                             <div class="space-y-5" x-show="!doDatesLater" x-collapse>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700">Born</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Born</label>
                                     <x-form.date-picker id="date_of_birth" name="date_of_birth" placeholder="Select date"
                                         :defaultDate="old('date_of_birth', $data['date_of_birth'] ?? null)" />
                                 </div>
@@ -125,7 +125,7 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700">Passed away</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Passed away</label>
                                     <x-form.date-picker id="date_of_passing" name="date_of_passing" placeholder="Select date"
                                         :defaultDate="old('date_of_passing', $data['date_of_passing'] ?? null)" />
                                 </div>
@@ -144,9 +144,9 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700" for="cause_of_death">Designation</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="cause_of_death">Designation</label>
                                     @php $causeVal = old('cause_of_death', $data['cause_of_death'] ?? ''); @endphp
-                                    <select id="cause_of_death" name="cause_of_death" class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden">
+                                    <select id="cause_of_death" name="cause_of_death" class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:ring-3 focus:outline-hidden">
                                         <option value="">— Select designation —</option>
                                         <option value="COVID-19 victim" {{ $causeVal === 'COVID-19 victim' ? 'selected' : '' }}>COVID-19 victim</option>
                                         <option value="War veteran" {{ $causeVal === 'War veteran' ? 'selected' : '' }}>War veteran</option>
@@ -163,21 +163,21 @@
                                     <label class="mt-2 flex cursor-pointer items-center gap-2">
                                         <input type="hidden" name="cause_of_death_private" value="0" />
                                         <input type="checkbox" name="cause_of_death_private" value="1" {{ old('cause_of_death_private', $data['cause_of_death_private'] ?? false) ? 'checked' : '' }}
-                                            class="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
-                                        <span class="text-sm text-gray-700">Keep designation private</span>
+                                            class="rounded border-gray-300 dark:border-gray-600 text-brand-600 focus:ring-brand-500" />
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">Keep designation private</span>
                                     </label>
                                 </div>
                             </div>
                         </div>
 
                         {{-- Do it later #2: Profile enrichment --}}
-                        <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
+                        <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
                             <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
-                                <p class="text-sm text-gray-600">Help us generate a richer memorial profile:</p>
-                                <label class="flex cursor-pointer items-center gap-3 text-sm font-medium text-gray-700 select-none">
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Help us generate a richer memorial profile:</p>
+                                <label class="flex cursor-pointer items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                                     <div class="relative">
                                         <input type="checkbox" class="sr-only" x-model="doProfileLater" @change="saveToStorage()" />
-                                        <div class="block h-6 w-11 rounded-full" :class="doProfileLater ? 'bg-brand-500' : 'bg-gray-200'"></div>
+                                        <div class="block h-6 w-11 rounded-full" :class="doProfileLater ? 'bg-brand-500' : 'bg-gray-200 dark:bg-gray-600'"></div>
                                         <div :class="doProfileLater ? 'translate-x-full' : 'translate-x-0'" class="shadow-theme-sm absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white duration-300 ease-linear"></div>
                                     </div>
                                     <span>Do this later</span>
@@ -185,34 +185,34 @@
                             </div>
                             <div class="space-y-5" x-show="!doProfileLater" x-collapse>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700" for="short_description">Short description</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="short_description">Short description</label>
                                     <input type="text" id="short_description" name="short_description" value="{{ old('short_description', $data['short_description'] ?? '') }}"
                                         placeholder="e.g. American businessman, co-inventor, investor"
-                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                                     <div x-data="{ nationalityVal: '{{ old('nationality', $data['nationality'] ?? '') }}' }" @nationality-detected.window="if ($event.detail.source === 'step1_birth_country') nationalityVal = $event.detail.nationality">
-                                        <label class="mb-1.5 block text-sm font-medium text-gray-700" for="nationality">Nationality</label>
+                                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="nationality">Nationality</label>
                                         <input type="text" id="nationality" name="nationality" x-model="nationalityVal"
                                             placeholder="Auto-filled from birth country"
-                                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                            class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                     </div>
                                     <div>
-                                        <label class="mb-1.5 block text-sm font-medium text-gray-700" for="primary_profession">Primary profession</label>
+                                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="primary_profession">Primary profession</label>
                                         <input type="text" id="primary_profession" name="primary_profession" value="{{ old('primary_profession', $data['primary_profession'] ?? '') }}"
                                             placeholder="e.g. Entrepreneur"
-                                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                                            class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700" for="major_achievements">Major achievements</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="major_achievements">Major achievements</label>
                                     <textarea id="major_achievements" name="major_achievements" rows="3" placeholder="e.g. Co-founded Apple Inc. with Steve Wozniak in 1976..."
-                                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden">{{ old('major_achievements', $data['major_achievements'] ?? '') }}</textarea>
+                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden">{{ old('major_achievements', $data['major_achievements'] ?? '') }}</textarea>
                                 </div>
                             </div>
                         </div>
 
-                        <button type="submit" class="w-full rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600">
+                        <button type="submit" class="mt-2 w-full rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600">
                             Continue
                         </button>
                     </form>

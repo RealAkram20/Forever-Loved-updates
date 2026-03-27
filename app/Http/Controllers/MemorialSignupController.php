@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SiteShareMetaHelper;
 use App\Models\Memorial;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
@@ -30,6 +31,12 @@ class MemorialSignupController extends Controller
         return view('pages.memorial-signup.step1', [
             'title' => 'Create Memorial - Step 1',
             'data' => $data,
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Create a memorial',
+                'memorial.create.step1',
+                [],
+                'Start a beautiful online memorial: enter details about your loved one to begin.'
+            ),
         ]);
     }
 
@@ -83,6 +90,12 @@ class MemorialSignupController extends Controller
         return view('pages.memorial-signup.step2', [
             'title' => 'Create Memorial - Create Account',
             'data' => $data,
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Create your account',
+                'memorial.create.step2',
+                [],
+                'Sign up or sign in to continue creating your memorial.'
+            ),
         ]);
     }
 
@@ -161,6 +174,12 @@ class MemorialSignupController extends Controller
             'currency' => $currency,
             'paymentsEnabled' => $paymentsEnabled,
             'pesapalEnabled' => $pesapalEnabled,
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Choose a memorial plan',
+                'memorial.create.step3',
+                [],
+                'Pick a free or paid plan to publish and customize your loved one’s memorial.'
+            ),
         ]);
     }
 
@@ -270,6 +289,12 @@ class MemorialSignupController extends Controller
         return view('pages.memorial-signup.preparing', [
             'title' => 'Preparing Memorial',
             'memorial' => $memorial,
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Preparing your memorial',
+                'memorial.create.preparing',
+                ['slug' => $slug],
+                'We’re finalizing the memorial page. You’ll be redirected shortly.'
+            ),
         ]);
     }
 

@@ -42,7 +42,7 @@ window.detectUserCountry = function() {
     @keydown.escape.prevent="close()"
 >
     @if($label)
-        <label for="{{ $id }}" class="mb-1.5 block text-sm font-medium text-gray-700">{{ $label }}</label>
+        <label for="{{ $id }}" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $label }}</label>
     @endif
 
     <input type="hidden" name="{{ $name }}" :value="selectedName" x-ref="hiddenInput" />
@@ -62,9 +62,9 @@ window.detectUserCountry = function() {
             @keydown.tab="close()"
             placeholder="{{ $placeholder }}"
             autocomplete="off"
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-4 pr-10 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden"
+            class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent pl-4 pr-10 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden"
         />
-        <button type="button" @click="open = !open; open && $nextTick(() => $refs.searchInput.focus())" class="absolute right-0 top-0 flex h-11 w-10 items-center justify-center text-gray-400 hover:text-gray-600" tabindex="-1">
+        <button type="button" @click="open = !open; open && $nextTick(() => $refs.searchInput.focus())" class="absolute right-0 top-0 flex h-11 w-10 items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" tabindex="-1">
             <svg class="h-4 w-4 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </button>
     </div>
@@ -77,7 +77,7 @@ window.detectUserCountry = function() {
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg"
+        class="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
         x-cloak
     >
         <ul x-ref="listbox" class="max-h-60 overflow-y-auto py-1" role="listbox">
@@ -86,19 +86,19 @@ window.detectUserCountry = function() {
                     @mousedown.prevent="selectCountry(country)"
                     @mouseenter="highlightIndex = index"
                     :class="{
-                        'bg-brand-50 text-brand-700': highlightIndex === index,
-                        'font-semibold text-brand-600 bg-brand-50/50': selectedName === country.name && highlightIndex !== index
+                        'bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300': highlightIndex === index,
+                        'font-semibold text-brand-600 bg-brand-50/50 dark:bg-brand-500/15 dark:text-brand-300': selectedName === country.name && highlightIndex !== index
                     }"
-                    class="cursor-pointer px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    class="cursor-pointer px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/10 flex items-center gap-2"
                     role="option"
                     :id="'{{ $id }}-opt-' + index"
                 >
                     <span class="shrink-0 text-base" x-text="country.emoji"></span>
                     <span x-text="country.name"></span>
-                    <span x-show="country.nationality" class="ml-auto text-xs text-gray-400" x-text="country.nationality"></span>
+                    <span x-show="country.nationality" class="ml-auto text-xs text-gray-400 dark:text-gray-500" x-text="country.nationality"></span>
                 </li>
             </template>
-            <li x-show="filtered.length === 0" class="px-4 py-3 text-sm text-gray-500 text-center">No countries found</li>
+            <li x-show="filtered.length === 0" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">No countries found</li>
         </ul>
     </div>
 </div>

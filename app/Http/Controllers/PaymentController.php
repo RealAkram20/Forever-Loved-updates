@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SiteShareMetaHelper;
 use App\Helpers\SubscriptionGuard;
 use App\Models\Memorial;
 use App\Models\PaymentOrder;
@@ -263,6 +264,14 @@ class PaymentController extends Controller
             $data['redirect_url'] = route('subscription.index');
             $data['redirect_label'] = 'Back to Subscription';
         }
+
+        $data['title'] = 'Payment status';
+        $data['shareMeta'] = SiteShareMetaHelper::forNamedRoute(
+            'Payment status',
+            'payment.complete',
+            [],
+            'Payment result and next steps for your subscription or memorial plan.'
+        );
 
         return view('pages.payment.complete', $data);
     }

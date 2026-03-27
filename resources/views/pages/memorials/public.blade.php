@@ -1,24 +1,13 @@
-@extends('layouts.fullscreen-layout')
+@extends('layouts.fullscreen-layout', ['hideFullscreenThemeToggle' => true])
 
 @push('head')
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-@if($shareMeta ?? null)
-<meta property="og:type" content="website">
-<meta property="og:title" content="{{ $shareMeta['title'] }}">
-<meta property="og:description" content="{{ $shareMeta['description'] }}">
-<meta property="og:url" content="{{ $shareMeta['url'] }}">
-@if($shareMeta['image'] ?? null)
-<meta property="og:image" content="{{ $shareMeta['image'] }}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-@endif
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ $shareMeta['title'] }}">
-<meta name="twitter:description" content="{{ $shareMeta['description'] }}">
-@if($shareMeta['image'] ?? null)
-<meta name="twitter:image" content="{{ $shareMeta['image'] }}">
-@endif
+@php
+    $personSchemaLd = \App\Helpers\MemorialSchemaHelper::personJsonLd($memorial);
+@endphp
+@if (!empty($personSchemaLd))
+<script type="application/ld+json">{!! json_encode($personSchemaLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
 @endif
 @endpush
 

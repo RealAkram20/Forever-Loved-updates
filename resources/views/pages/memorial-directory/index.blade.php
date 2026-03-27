@@ -1,4 +1,4 @@
-@extends('layouts.fullscreen-layout')
+@extends('layouts.fullscreen-layout', ['hideFullscreenThemeToggle' => true])
 
 @section('content')
 <div class="min-h-screen bg-white dark:bg-gray-900">

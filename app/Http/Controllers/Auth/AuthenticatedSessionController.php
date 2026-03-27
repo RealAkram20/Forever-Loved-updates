@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\SiteShareMetaHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +17,15 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): View
     {
-        return view('pages.auth.signin', ['title' => 'Sign In']);
+        return view('pages.auth.signin', [
+            'title' => 'Sign In',
+            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                'Sign In',
+                'login',
+                [],
+                'Sign in to manage memorials, tributes, and your account.'
+            ),
+        ]);
     }
 
     /**
