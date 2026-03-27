@@ -723,11 +723,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             article.className = 'relative overflow-visible rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]';
                             article.dataset.postId = p.id;
                             article.dataset.chapterId = '';
-                            const initial = (p.author || '?').charAt(0).toUpperCase();
                             article.innerHTML = `
                                 <div class="p-4">
                                     <div class="flex items-center gap-3">
-                                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-400 text-sm font-semibold">${escapeHtml(initial)}</div>
+                                        ${avatarHtml(p.author_photo, p.author)}
                                         <div>
                                             <p class="font-medium text-gray-900 dark:text-white/90">${escapeHtml(p.author)}</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">${p.created_at_iso ? `<span class="time-ago" data-created-at="${p.created_at_iso}">${p.created_at}</span>` : p.created_at} · ${escapeHtml(p.chapter || 'Life')}</p>
@@ -1239,6 +1238,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return name.split(/\s+/).map(w => w.charAt(0).toUpperCase()).slice(0, 2).join('');
     }
 
+    function avatarHtml(photo, name, size = 'h-10 w-10', fallbackClasses = 'bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-400 text-sm font-semibold') {
+        if (photo) {
+            return `<img src="${escapeHtml(photo)}" alt="${escapeHtml(name || '')}" class="${size} shrink-0 rounded-full object-cover" />`;
+        }
+        const initial = (name || '?').charAt(0).toUpperCase();
+        return `<div class="flex ${size} shrink-0 items-center justify-center rounded-full ${fallbackClasses}">${escapeHtml(initial)}</div>`;
+    }
+
     function appendTribute(t) {
         const list = document.querySelector('[data-tributes-list]');
         if (!list) return;
@@ -1250,6 +1257,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const shareUrl = t.share_id ? `${window.location.origin}/${memorialSlug}/tribute/${t.share_id}` : `${window.location.origin}/${memorialSlug}/tribute/${t.id || 'new'}`;
         const timeEl = t.created_at_iso ? `<p class="text-xs text-gray-500 dark:text-gray-400 time-ago" data-created-at="${t.created_at_iso}">${escapeHtml(t.created_at)}</p>` : `<p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(t.created_at)}</p>`;
         const initials = getInitials(t.author || 'A');
+        const tributeAvatarEl = t.author_photo
+            ? `<img src="${escapeHtml(t.author_photo)}" alt="${escapeHtml(t.author || '')}" class="h-10 w-10 shrink-0 rounded-full object-cover" />`
+            : `<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${cfg.avatar}">${escapeHtml(initials)}</div>`;
         const textContent = t.message
             ? `<p class="mb-1 text-xs font-semibold uppercase tracking-wider ${cfg.label}">${cfg.labelText}</p>
                <div class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">${t.message}</div>`
@@ -1266,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.className = `rounded-xl border p-4 transition ${cfg.card}`;
         div.innerHTML = `
             <div class="flex items-start gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${cfg.avatar}">${escapeHtml(initials)}</div>
+                ${tributeAvatarEl}
                 <div class="min-w-0 flex-1">
                     <p class="font-semibold text-gray-900 dark:text-white/90 truncate">${escapeHtml(t.author)}</p>
                     ${timeEl}
@@ -1455,9 +1465,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             const list = document.querySelector(`[data-tribute-comments-list="${tributeId}"]`);
                             const empty = document.querySelector(`[data-tribute-comments-empty="${tributeId}"]`);
                             if (list) {
+                                const tcAvatar = avatarHtml(data.comment.author_photo, data.comment.author, 'h-6 w-6', 'bg-gray-200 dark:bg-gray-700 text-[10px] font-semibold text-gray-500 dark:text-gray-400');
                                 const div = document.createElement('div');
                                 div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2';
-                                div.innerHTML = `<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
+                                div.innerHTML = `<div class="flex items-center gap-2 mb-1">${tcAvatar}<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p></div><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
                                 list.appendChild(div);
                             }
                             if (empty) empty.classList.add('hidden');
@@ -1510,12 +1521,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(r => r.json())
                     .then(data => {
                         if (data.success && data.comment) {
+                            const trAvatar = avatarHtml(data.comment.author_photo, data.comment.author, 'h-6 w-6', 'bg-gray-200 dark:bg-gray-700 text-[10px] font-semibold text-gray-500 dark:text-gray-400');
+                            const trReplyHtml = `<div class="flex items-center gap-2 mb-1">${trAvatar}<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p></div><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
                             const repliesList = document.querySelector(`[data-tribute-replies-list="${parentId}"]`);
                             const replyForm = document.querySelector(`[data-tribute-reply-form="${parentId}"]`);
                             if (repliesList) {
                                 const div = document.createElement('div');
                                 div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2 ml-3 sm:ml-4 border-l-2 border-gray-200 dark:border-gray-700';
-                                div.innerHTML = `<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
+                                div.innerHTML = trReplyHtml;
                                 repliesList.appendChild(div);
                             }
                             if (!repliesList) {
@@ -1530,7 +1543,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                     const div = document.createElement('div');
                                     div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2 ml-3 sm:ml-4 border-l-2 border-gray-200 dark:border-gray-700';
-                                    div.innerHTML = `<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
+                                    div.innerHTML = trReplyHtml;
                                     list.appendChild(div);
                                 }
                             }
@@ -1601,12 +1614,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                     repliesList.dataset.repliesList = parentId;
                                     contentWrap?.appendChild(repliesList);
                                 }
-                                const initial = data.comment.author ? data.comment.author.charAt(0).toUpperCase() : '?';
+                                const replyAvatar = avatarHtml(data.comment.author_photo, data.comment.author, 'h-7 w-7 sm:h-8 sm:w-8', 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[11px] sm:text-xs font-semibold');
                                 const deleteHtml = canEdit ? `<button type="button" data-delete-comment data-comment-id="${data.comment.id}" data-post-id="${postId}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition">Delete</button>` : '';
                                 const replyEl = document.createElement('div');
                                 replyEl.className = 'relative flex gap-2 sm:gap-3 ml-6 sm:ml-10';
                                 replyEl.dataset.commentId = data.comment.id;
-                                replyEl.innerHTML = `<div class="flex flex-col items-center shrink-0"><div class="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[11px] sm:text-xs font-semibold">${escapeHtml(initial)}</div></div><div class="min-w-0 flex-1 pb-3"><div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"><span class="truncate text-sm font-semibold text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</span><span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">${escapeHtml(data.comment.created_at)}</span></div><p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><div class="mt-1.5 flex items-center gap-3">${deleteHtml}</div></div>`;
+                                replyEl.innerHTML = `<div class="flex flex-col items-center shrink-0">${replyAvatar}</div><div class="min-w-0 flex-1 pb-3"><div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"><span class="truncate text-sm font-semibold text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</span><span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">${escapeHtml(data.comment.created_at)}</span></div><p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><div class="mt-1.5 flex items-center gap-3">${deleteHtml}</div></div>`;
                                 repliesList.appendChild(replyEl);
 
                                 const avatarCol = parentComment.querySelector(':scope > .flex.flex-col');
@@ -1654,12 +1667,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         const list = document.querySelector(`[data-comments-list="${postId}"]`);
                         const empty = document.querySelector(`[data-comments-empty="${postId}"]`);
                         if (list) {
-                            const initial = data.comment.author ? data.comment.author.charAt(0).toUpperCase() : '?';
+                            const commentAvatar = avatarHtml(data.comment.author_photo, data.comment.author, 'h-7 w-7 sm:h-8 sm:w-8', 'bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400 text-[11px] sm:text-xs font-semibold');
                             const deleteHtml = canEdit ? `<button type="button" data-delete-comment data-comment-id="${data.comment.id}" data-post-id="${postId}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition">Delete</button>` : '';
                             const el = document.createElement('div');
                             el.className = 'relative flex gap-2 sm:gap-3';
                             el.dataset.commentId = data.comment.id;
-                            el.innerHTML = `<div class="flex flex-col items-center shrink-0"><div class="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400 text-[11px] sm:text-xs font-semibold">${escapeHtml(initial)}</div></div><div class="min-w-0 flex-1 pb-3"><div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"><span class="truncate text-sm font-semibold text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</span><span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">${escapeHtml(data.comment.created_at)}</span></div><p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><div class="mt-1.5 flex items-center gap-3"><button type="button" data-reply-to data-comment-id="${data.comment.id}" data-post-id="${postId}" class="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">Reply</button>${deleteHtml}</div><div data-reply-form="${data.comment.id}" class="hidden mt-2"><div class="flex flex-wrap items-center gap-2"><div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"><svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></div><input type="text" data-reply-input="${data.comment.id}" placeholder="Write a reply..." class="h-9 min-w-0 flex-1 basis-40 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" /><button type="button" data-reply-submit data-comment-id="${data.comment.id}" data-post-id="${postId}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 text-xs font-semibold text-white hover:bg-brand-600 transition active:scale-95">Reply</button></div></div></div>`;
+                            el.innerHTML = `<div class="flex flex-col items-center shrink-0">${commentAvatar}</div><div class="min-w-0 flex-1 pb-3"><div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"><span class="truncate text-sm font-semibold text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</span><span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">${escapeHtml(data.comment.created_at)}</span></div><p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><div class="mt-1.5 flex items-center gap-3"><button type="button" data-reply-to data-comment-id="${data.comment.id}" data-post-id="${postId}" class="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">Reply</button>${deleteHtml}</div><div data-reply-form="${data.comment.id}" class="hidden mt-2"><div class="flex flex-wrap items-center gap-2"><div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"><svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg></div><input type="text" data-reply-input="${data.comment.id}" placeholder="Write a reply..." class="h-9 min-w-0 flex-1 basis-40 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" /><button type="button" data-reply-submit data-comment-id="${data.comment.id}" data-post-id="${postId}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 text-xs font-semibold text-white hover:bg-brand-600 transition active:scale-95">Reply</button></div></div></div>`;
                             list.appendChild(el);
                         }
                         if (empty) empty.classList.add('hidden');

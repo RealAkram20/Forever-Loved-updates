@@ -19,6 +19,16 @@ class SystemSetting extends Model
         'branding.primary_color' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
         'branding.secondary_color' => ['value' => '#1e3a5f', 'type' => 'string', 'group' => 'branding'],
         'branding.accent_color' => ['value' => '#f59e0b', 'type' => 'string', 'group' => 'branding'],
+        'branding.bg_light' => ['value' => '#f9fafb', 'type' => 'string', 'group' => 'branding'],
+        'branding.bg_dark' => ['value' => '#101828', 'type' => 'string', 'group' => 'branding'],
+        'branding.primary_light' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
+        'branding.primary_dark' => ['value' => '#1e3a5f', 'type' => 'string', 'group' => 'branding'],
+        'branding.accent_light' => ['value' => '#f59e0b', 'type' => 'string', 'group' => 'branding'],
+        'branding.accent_dark' => ['value' => '#f59e0b', 'type' => 'string', 'group' => 'branding'],
+        'branding.button1_color' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
+        'branding.button2_color' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_bg_light' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_bg_dark' => ['value' => '#3641f5', 'type' => 'string', 'group' => 'branding'],
 
         // AI
         'ai.enabled' => ['value' => '0', 'type' => 'boolean', 'group' => 'ai'],

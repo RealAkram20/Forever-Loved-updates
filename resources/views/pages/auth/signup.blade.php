@@ -1,8 +1,8 @@
 @extends('layouts.fullscreen-layout')
 
 @section('content')
-    <div class="relative z-1 bg-white p-6 sm:p-0 dark:bg-gray-900">
-        <div class="flex h-screen w-full flex-col justify-center sm:p-0 lg:flex-row dark:bg-gray-900">
+    <div class="relative z-1 bg-gradient-to-br from-gray-50 via-white to-brand-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 glass-bg-mesh p-6 sm:p-0">
+        <div class="flex h-screen w-full flex-col justify-center sm:p-0 lg:flex-row">
             <!-- Form -->
             <div class="flex w-full flex-1 flex-col lg:w-1/2">
                 <div class="mx-auto w-full max-w-md pt-5 sm:py-10">
@@ -57,7 +57,7 @@
                                 <div class="w-full border-t border-gray-200 dark:border-gray-800"></div>
                             </div>
                             <div class="relative flex justify-center text-sm">
-                                <span class="bg-white dark:bg-gray-900 p-2 text-gray-400 sm:px-5 sm:py-2">Or</span>
+                                <span class="bg-gray-50 dark:bg-gray-900 p-2 text-gray-400 sm:px-5 sm:py-2">Or</span>
                             </div>
                         </div>
                         <form method="POST" action="{{ route('register') }}">

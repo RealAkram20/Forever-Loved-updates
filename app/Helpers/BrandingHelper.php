@@ -104,6 +104,56 @@ class BrandingHelper
         return SystemSetting::get('branding.accent_color', '#f59e0b');
     }
 
+    public static function bgLight(): string
+    {
+        return SystemSetting::get('branding.bg_light', '#f9fafb');
+    }
+
+    public static function bgDark(): string
+    {
+        return SystemSetting::get('branding.bg_dark', '#101828');
+    }
+
+    public static function primaryLight(): string
+    {
+        return SystemSetting::get('branding.primary_light', '#465fff');
+    }
+
+    public static function primaryDark(): string
+    {
+        return SystemSetting::get('branding.primary_dark', '#1e3a5f');
+    }
+
+    public static function accentLight(): string
+    {
+        return SystemSetting::get('branding.accent_light', '#f59e0b');
+    }
+
+    public static function accentDark(): string
+    {
+        return SystemSetting::get('branding.accent_dark', '#f59e0b');
+    }
+
+    public static function button1Color(): string
+    {
+        return SystemSetting::get('branding.button1_color', '#465fff');
+    }
+
+    public static function button2Color(): string
+    {
+        return SystemSetting::get('branding.button2_color', '#ffffff');
+    }
+
+    public static function ctaBgLight(): string
+    {
+        return SystemSetting::get('branding.cta_bg_light', '#465fff');
+    }
+
+    public static function ctaBgDark(): string
+    {
+        return SystemSetting::get('branding.cta_bg_dark', '#3641f5');
+    }
+
     /**
      * Generate darker shade of hex color (simple - reduce brightness).
      */
@@ -185,6 +235,15 @@ class BrandingHelper
         $accent100 = self::lighten($accent, 55);
         $accent50 = self::lighten($accent, 65);
 
+        $bgLight = self::bgLight();
+        $bgDark = self::bgDark();
+        $accentLight = self::accentLight();
+        $accentDark = self::accentDark();
+        $btn1 = self::button1Color();
+        $btn2 = self::button2Color();
+        $ctaLight = self::ctaBgLight();
+        $ctaDark = self::ctaBgDark();
+
         return ":root {
   --color-brand-500: {$brand500};
   --color-brand-600: {$brand600};
@@ -203,6 +262,15 @@ class BrandingHelper
   --color-accent-400: {$accent400};
   --color-accent-100: {$accent100};
   --color-accent-50: {$accent50};
+  --color-bg-page: {$bgLight};
+  --color-accent-light: {$accentLight};
+  --color-accent-dark: {$accentDark};
+  --color-btn-primary: {$btn1};
+  --color-btn-primary-hover: " . self::darken($btn1, 8) . ";
+  --color-btn-secondary: {$btn2};
+  --color-btn-secondary-hover: " . self::darken($btn2, 5) . ";
+  --color-cta-bg: {$ctaLight};
+  --color-cta-bg-hover: " . self::darken($ctaLight, 8) . ";
 }
 html.dark {
   --color-brand-500: {$darkBrand500};
@@ -217,6 +285,14 @@ html.dark {
   --color-brand-800: {$darkBrand800};
   --color-brand-900: {$darkBrand900};
   --color-brand-950: {$darkBrand950};
+  --color-bg-page: {$bgDark};
+  --color-accent-500: " . self::lighten($accentDark, 0) . ";
+  --color-accent-600: " . self::darken($accentDark, 8) . ";
+  --color-accent-400: " . self::lighten($accentDark, 15) . ";
+  --color-accent-100: " . self::lighten($accentDark, 55) . ";
+  --color-accent-50: " . self::lighten($accentDark, 65) . ";
+  --color-cta-bg: {$ctaDark};
+  --color-cta-bg-hover: " . self::darken($ctaDark, 8) . ";
 }";
     }
 }

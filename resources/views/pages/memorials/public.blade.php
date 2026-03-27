@@ -23,7 +23,7 @@
 @endpush
 
 @section('content')
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900" data-memorial-slug="{{ $memorial->slug }}" data-tribute-url="{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}" data-can-edit="{{ $canEdit ? '1' : '0' }}" data-is-authenticated="{{ $isAuthenticated ? '1' : '0' }}" data-can-upload="{{ $canEdit ? '1' : '0' }}" data-scroll-tribute="{{ $scrollToTributeId ?? '' }}" data-scroll-chapter="{{ $scrollToChapterId ?? '' }}" data-deceased-first="{{ \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them') }}" data-user-initial="{{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}">
+<div class="min-h-screen bg-gradient-to-b from-gray-50 via-white/80 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 glass-bg-mesh" data-memorial-slug="{{ $memorial->slug }}" data-tribute-url="{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}" data-can-edit="{{ $canEdit ? '1' : '0' }}" data-is-authenticated="{{ $isAuthenticated ? '1' : '0' }}" data-can-upload="{{ $canEdit ? '1' : '0' }}" data-scroll-tribute="{{ $scrollToTributeId ?? '' }}" data-scroll-chapter="{{ $scrollToChapterId ?? '' }}" data-deceased-first="{{ \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them') }}" data-user-initial="{{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}">
     <x-home-header />
 
     @if ($canEdit)
@@ -71,7 +71,7 @@
             {{-- Column 1: Profile card (narrow) --}}
             <aside class="md:col-span-4 lg:col-span-3">
                 <div class="md:sticky md:top-16 space-y-4">
-                    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] shadow-theme-sm">
+                    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
                         <div class="p-4 sm:p-6">
                             <div class="flex flex-col items-center text-center">
                                 {{-- Profile photo with upload + age bubble --}}
@@ -220,7 +220,7 @@
 
             {{-- Column 2: Tabbed content (Life, Biography, Gallery, Tributes) --}}
             <section class="md:col-span-8 lg:col-span-6">
-                <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] shadow-theme-sm">
+                <div class="rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
                     {{-- Tab buttons (equal width) --}}
                     <div class="flex border-b border-gray-100 dark:border-gray-800">
                         <button type="button" data-tab-panel="biography" class="memorial-tab-btn min-w-0 flex-1 px-2 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 border-b-2 border-brand-500 bg-brand-50/50 dark:bg-brand-500/10">Biography</button>
@@ -321,12 +321,16 @@
                         <div class="space-y-4" id="life-feed">
                             @php $lifePosts = $memorial->posts->where('is_published', true)->sortByDesc('created_at'); @endphp
                             @foreach ($lifePosts as $post)
-                                <article id="chapter-{{ $post->id }}" class="group/post relative overflow-visible rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]" data-post-id="{{ $post->id }}" data-chapter-id="{{ $post->story_chapter_id ?? '' }}">
+                                <article id="chapter-{{ $post->id }}" class="group/post relative overflow-visible rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03]" data-post-id="{{ $post->id }}" data-chapter-id="{{ $post->story_chapter_id ?? '' }}">
                                     <div class="p-4">
                                         <div class="flex items-center gap-3">
-                                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-400 text-sm font-semibold">
-                                                {{ strtoupper(substr($post->user?->name ?? $memorial->full_name ?? '?', 0, 1)) }}
-                                            </div>
+                                            @if($post->user?->profile_photo_url)
+                                                <img src="{{ $post->user->profile_photo_url }}" alt="{{ $post->user->name }}" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+                                            @else
+                                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-400 text-sm font-semibold">
+                                                    {{ strtoupper(substr($post->user?->name ?? $memorial->full_name ?? '?', 0, 1)) }}
+                                                </div>
+                                            @endif
                                             <div class="flex-1">
                                                 <p class="font-medium text-gray-900 dark:text-white/90">{{ $post->user?->name ?? $memorial->full_name ?? 'Anonymous' }}</p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400"><span class="time-ago" data-created-at="{{ $post->created_at->toIso8601String() }}">{{ $post->created_at->diffForHumans() }}</span> · {{ $post->storyChapter?->title ?? 'Life' }}</p>
@@ -457,7 +461,7 @@
                             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Share your memories with text, photos, videos, or documents.</p>
                                 <form id="tribute-post-form" class="mt-3 space-y-3">
                                     <div>
-                                        <input type="text" name="title" placeholder="Title (optional)" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm" />
+                                        <input type="text" name="title" placeholder="Title (optional)" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-2 text-sm" />
                                     </div>
                                     <div>
                                         <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Your story</label>
@@ -815,24 +819,24 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                     <div>
                                         <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Your name</label>
-                                        <input type="text" id="tribute-note-name" class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm" placeholder="Your name" />
+                                        <input type="text" id="tribute-note-name" class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm" placeholder="Your name" />
                                     </div>
                                     <div>
                                         <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Your email</label>
-                                        <input type="email" id="tribute-note-email" class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm" placeholder="your@email.com" />
+                                        <input type="email" id="tribute-note-email" class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm" placeholder="your@email.com" />
                                     </div>
                                 </div>
                             @endif
                             <div>
                                 <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">What kind of tribute is this?</label>
                                 <div class="flex flex-wrap gap-2 mb-4">
-                                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-medium transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-500/20 border-gray-200 dark:border-gray-700">
+                                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-medium transition text-gray-700 dark:text-white has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-500/20 border-gray-200 dark:border-gray-700">
                                         <input type="radio" name="tribute-type" value="flower" class="sr-only" />Flower
                                     </label>
-                                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-medium transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-500/20 border-gray-200 dark:border-gray-700">
+                                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-medium transition text-gray-700 dark:text-white has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-500/20 border-gray-200 dark:border-gray-700">
                                         <input type="radio" name="tribute-type" value="candle" class="sr-only" />Candle
                                     </label>
-                                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-medium transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-500/20 border-gray-200 dark:border-gray-700">
+                                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-medium transition text-gray-700 dark:text-white has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-500/20 border-gray-200 dark:border-gray-700">
                                         <input type="radio" name="tribute-type" value="note" class="sr-only" checked />Note
                                     </label>
                                 </div>
@@ -850,7 +854,7 @@
             <aside class="md:col-span-12 lg:col-span-3">
                 <div class="lg:sticky lg:top-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6">
                     @php $stats = $memorialStats ?? ['views_today' => 0, 'views_last_week' => 0, 'views_all_time' => 0, 'shares_today' => 0, 'shares_last_week' => 0, 'shares_all_time' => 0]; @endphp
-                    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] shadow-theme-sm">
+                    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
                         <div class="border-b border-gray-100 dark:border-gray-800 px-4 py-3">
                             <h3 class="font-semibold text-gray-900 dark:text-white/90">Views & Shares</h3>
                             <p class="text-xs text-gray-500 dark:text-gray-400">Unique people who have visited or shared this memorial</p>
@@ -907,7 +911,7 @@
 
                     {{-- Subscribe to memorial (plan-gated) --}}
                     @if ($quotaInfo['guest_notifications'] ?? false)
-                    <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] shadow-theme-sm overflow-hidden"
+                    <div class="rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm overflow-hidden"
                          x-data="{
                             subscribed: false,
                             loading: true,
@@ -1103,7 +1107,7 @@
                     @endif
 
                     {{-- Leave a Tribute --}}
-                    <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-4 shadow-theme-sm">
+                    <div class="rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] p-4 shadow-theme-sm">
                         <h3 class="font-semibold text-gray-900 dark:text-white/90">Leave a Tribute</h3>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Honor their memory with a flower, candle, or note.</p>
                         @if (isset($quotaInfo) && $quotaInfo['tributes']['max'] > 0 && !$quotaInfo['tributes']['allowed'])

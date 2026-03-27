@@ -1,10 +1,17 @@
 @props(['comment', 'postId', 'isReply' => false, 'canDelete' => false])
-@php $initial = strtoupper(substr($comment->author_name, 0, 1)); @endphp
+@php
+    $initial = strtoupper(substr($comment->author_name, 0, 1));
+    $commentPhoto = $comment->user?->profile_photo_url;
+@endphp
 <div class="relative flex gap-2 sm:gap-3 {{ $isReply ? 'ml-6 sm:ml-10' : '' }}" data-comment-id="{{ $comment->id }}">
     <div class="flex flex-col items-center shrink-0">
-        <div class="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full {{ $isReply ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : 'bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400' }} text-[11px] sm:text-xs font-semibold">
-            {{ $initial }}
-        </div>
+        @if($commentPhoto)
+            <img src="{{ $commentPhoto }}" alt="{{ $comment->author_name }}" class="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover" />
+        @else
+            <div class="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full {{ $isReply ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400' : 'bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400' }} text-[11px] sm:text-xs font-semibold">
+                {{ $initial }}
+            </div>
+        @endif
         @if (!$isReply && $comment->replies && $comment->replies->isNotEmpty())
             <div class="mt-1 w-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
         @endif

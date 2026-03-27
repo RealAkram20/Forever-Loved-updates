@@ -43,12 +43,32 @@ class SettingsController extends Controller
             'branding.primary_color' => 'required|string|max:20',
             'branding.secondary_color' => 'required|string|max:20',
             'branding.accent_color' => 'required|string|max:20',
+            'branding.bg_light' => 'nullable|string|max:20',
+            'branding.bg_dark' => 'nullable|string|max:20',
+            'branding.primary_light' => 'nullable|string|max:20',
+            'branding.primary_dark' => 'nullable|string|max:20',
+            'branding.accent_light' => 'nullable|string|max:20',
+            'branding.accent_dark' => 'nullable|string|max:20',
+            'branding.button1_color' => 'nullable|string|max:20',
+            'branding.button2_color' => 'nullable|string|max:20',
+            'branding.cta_bg_light' => 'nullable|string|max:20',
+            'branding.cta_bg_dark' => 'nullable|string|max:20',
             'logo' => 'nullable|image|max:2048',
             'logo_dark' => 'nullable|image|max:2048',
             'favicon' => 'nullable|image|max:512',
         ]);
 
-        foreach (['branding.app_name', 'branding.tagline', 'branding.primary_color', 'branding.secondary_color', 'branding.accent_color'] as $key) {
+        $colorKeys = [
+            'branding.app_name', 'branding.tagline',
+            'branding.primary_color', 'branding.secondary_color', 'branding.accent_color',
+            'branding.bg_light', 'branding.bg_dark',
+            'branding.primary_light', 'branding.primary_dark',
+            'branding.accent_light', 'branding.accent_dark',
+            'branding.button1_color', 'branding.button2_color',
+            'branding.cta_bg_light', 'branding.cta_bg_dark',
+        ];
+
+        foreach ($colorKeys as $key) {
             if ($request->has($key)) {
                 SystemSetting::set($key, $request->input($key));
             }

@@ -28,6 +28,10 @@ class User extends Authenticatable
         'in_app_notifications_enabled',
     ];
 
+    protected $appends = [
+        'profile_photo_url',
+    ];
+
     protected $attributes = [
         'push_notifications_enabled' => true,
         'email_notifications_enabled' => true,

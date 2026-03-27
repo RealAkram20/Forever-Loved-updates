@@ -1,6 +1,7 @@
 @php
     $authorName = $tribute->user?->name ?? $tribute->guest_name ?? 'Anonymous';
     $initials = collect(explode(' ', $authorName))->map(fn($w) => mb_strtoupper(mb_substr($w, 0, 1)))->take(2)->join('');
+    $authorPhoto = $tribute->user?->profile_photo_url;
     $reactionCount = $tribute->reactions->count();
     $commentCount = $tribute->comments->count() + $tribute->comments->sum(fn($c) => $c->replies->count());
     $deceasedFirst = \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them');
@@ -25,16 +26,20 @@
 >
     {{-- Header: avatar, name, time, type icon --}}
     <div class="flex items-start gap-3">
-        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold
-            @if($tribute->type === 'flower')
-                bg-pink-200/70 dark:bg-pink-800/40 text-pink-700 dark:text-pink-300
-            @elseif($tribute->type === 'candle')
-                bg-amber-200/70 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300
-            @else
-                bg-gray-200/70 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300
-            @endif">
-            {{ $initials }}
-        </div>
+        @if($authorPhoto)
+            <img src="{{ $authorPhoto }}" alt="{{ $authorName }}" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+        @else
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold
+                @if($tribute->type === 'flower')
+                    bg-pink-200/70 dark:bg-pink-800/40 text-pink-700 dark:text-pink-300
+                @elseif($tribute->type === 'candle')
+                    bg-amber-200/70 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300
+                @else
+                    bg-gray-200/70 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300
+                @endif">
+                {{ $initials }}
+            </div>
+        @endif
         <div class="min-w-0 flex-1">
             <p class="font-semibold text-gray-900 dark:text-white/90 truncate">{{ $authorName }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400 time-ago" data-created-at="{{ $tribute->created_at->toIso8601String() }}">{{ $tribute->created_at->diffForHumans() }}</p>

@@ -12,9 +12,11 @@ import 'flatpickr/dist/flatpickr.min.css';
 // FullCalendar
 import { Calendar } from '@fullcalendar/core';
 
-
+// Color picker
+import { registerColorPicker } from './components/color-picker';
 
 Alpine.plugin(collapse);
+registerColorPicker(Alpine);
 window.Alpine = Alpine;
 window.ApexCharts = ApexCharts;
 window.Swiper = Swiper;

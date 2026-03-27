@@ -153,6 +153,7 @@ class MemorialApiController extends Controller
                 'type' => $tribute->type,
                 'message' => $tribute->message,
                 'author' => $authorName,
+                'author_photo' => $tribute->user?->profile_photo_url,
                 'created_at' => $tribute->created_at->diffForHumans(),
                 'created_at_iso' => $tribute->created_at->toIso8601String(),
             ],
@@ -512,6 +513,7 @@ class MemorialApiController extends Controller
                 'type' => $tribute->type,
                 'message' => $tribute->message,
                 'author' => $authorName,
+                'author_photo' => $tribute->user?->profile_photo_url,
             ],
         ]);
     }
@@ -759,12 +761,14 @@ class MemorialApiController extends Controller
             'parent_id' => $c->parent_id,
             'content' => $c->content,
             'author' => $c->author_name,
+            'author_photo' => $c->user?->profile_photo_url,
             'created_at' => $c->created_at->diffForHumans(),
             'replies' => $c->replies->map(fn ($r) => [
                 'id' => $r->id,
                 'parent_id' => $r->parent_id,
                 'content' => $r->content,
                 'author' => $r->author_name,
+                'author_photo' => $r->user?->profile_photo_url,
                 'created_at' => $r->created_at->diffForHumans(),
             ])->toArray(),
         ]);
@@ -825,6 +829,8 @@ class MemorialApiController extends Controller
 
         NotificationService::notifyCommentOnChapter($post, $comment, $userId);
 
+        $comment->load('user');
+
         return response()->json([
             'success' => true,
             'comment' => [
@@ -832,6 +838,7 @@ class MemorialApiController extends Controller
                 'parent_id' => $comment->parent_id,
                 'content' => $comment->content,
                 'author' => $comment->author_name,
+                'author_photo' => $comment->user?->profile_photo_url,
                 'created_at' => $comment->created_at->diffForHumans(),
             ],
         ]);
@@ -911,6 +918,8 @@ class MemorialApiController extends Controller
 
         NotificationService::notifyCommentOnTribute($tribute, $comment, $userId);
 
+        $comment->load('user');
+
         return response()->json([
             'success' => true,
             'comment' => [
@@ -918,6 +927,7 @@ class MemorialApiController extends Controller
                 'parent_id' => $comment->parent_id,
                 'content' => $comment->content,
                 'author' => $comment->author_name,
+                'author_photo' => $comment->user?->profile_photo_url,
                 'created_at' => $comment->created_at->diffForHumans(),
             ],
         ]);
@@ -991,6 +1001,7 @@ class MemorialApiController extends Controller
             'location' => $post->location,
             'chapter' => $post->storyChapter?->title,
             'author' => $post->user?->name ?? $post->memorial->full_name,
+            'author_photo' => $post->user?->profile_photo_url,
             'created_at' => $post->created_at->format('F j'),
             'created_at_human' => $post->created_at->diffForHumans(),
             'reaction_count' => (int) ($post->reactions_count ?? $post->reactions()->count()),
