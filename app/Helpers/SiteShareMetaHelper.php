@@ -26,7 +26,7 @@ class SiteShareMetaHelper
             && ! empty($shareMeta['title'])
             && ! empty($shareMeta['description'])
             && ! empty($shareMeta['url'])) {
-            return self::normalize($shareMeta);
+            return self::normalizeShareMeta($shareMeta);
         }
 
         $title = (is_string($pageTitle) && trim($pageTitle) !== '') ? trim($pageTitle) : 'Home';
@@ -38,7 +38,7 @@ class SiteShareMetaHelper
      * @param  array<string, mixed>  $meta
      * @return array<string, mixed>
      */
-    private static function normalize(array $meta): array
+    public static function normalizeShareMeta(array $meta): array
     {
         $meta['site_name'] = $meta['site_name'] ?? self::appDisplayName();
         if (! empty($meta['image'])) {
@@ -143,5 +143,22 @@ class SiteShareMetaHelper
         }
 
         return self::forNamedRoute($heading, $routeName, $parameters, $description);
+    }
+
+    /**
+     * CMS page with an explicit URL (no named route lookup).
+     *
+     * @return array{title: string, description: string, url: string, site_name: string, image?: string|null, image_alt?: string|null}
+     */
+    public static function forCmsPageDirect(?Page $page, string $canonicalUrl): array
+    {
+        $heading = $page?->title ?? 'Page';
+        $description = $page?->meta_description;
+        if (empty($description) && $page && ! empty($page->content)) {
+            $plain = preg_replace('/\s+/u', ' ', trim(strip_tags($page->content))) ?? '';
+            $description = $plain !== '' ? Str::limit($plain, 280, '…') : null;
+        }
+
+        return self::forGenericPage($heading, $description, $canonicalUrl);
     }
 }

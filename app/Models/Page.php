@@ -7,11 +7,74 @@ use Illuminate\Support\Facades\Cache;
 
 class Page extends Model
 {
+    /** Slugs that cannot be used (URL conflicts and app paths). */
+    /** System-managed layout pages (not deletable; may omit /p/{slug} URL). */
+    public const SLUG_VISITOR_HOME = 'visitor-home';
+
+    public const SLUG_FIND_MEMORIAL = 'find-memorial';
+
+    public static function reservedSlugs(): array
+    {
+        return [
+            'api', 'p', 'page', 'pages', 'login', 'register', 'logout', 'password', 'email',
+            'dashboard', 'settings', 'admin', 'install', 'updater', 'storage', 'sanctum',
+            'memorials', 'users', 'notifications', 'profile', 'subscription', 'calendar',
+            'create-memorial', 'find-memorial', 'pricing', 'about', 'contact',
+            'privacy-policy', 'terms-of-use', 'payment', 'm', 'layout',
+            self::SLUG_VISITOR_HOME,
+        ];
+    }
+
+    public static function systemLayoutSlugs(): array
+    {
+        return [
+            self::SLUG_VISITOR_HOME,
+            'pricing',
+            'contact',
+            self::SLUG_FIND_MEMORIAL,
+        ];
+    }
+
+    public function isSystemLayoutPage(): bool
+    {
+        return in_array($this->slug, self::systemLayoutSlugs(), true);
+    }
+
+    public function hasLayout(): bool
+    {
+        $layout = $this->layout;
+        if (! is_array($layout) || empty($layout['widgets']) || ! is_array($layout['widgets'])) {
+            return false;
+        }
+
+        return count($layout['widgets']) > 0;
+    }
+
+    /**
+     * Public URL for this CMS page (fixed routes vs /p/{slug}).
+     */
+    public function publicUrl(): string
+    {
+        return match ($this->slug) {
+            'about' => route('about'),
+            'privacy-policy' => route('privacy-policy'),
+            'terms-of-use' => route('terms-of-use'),
+            self::SLUG_VISITOR_HOME => route('home'),
+            'pricing' => route('pricing'),
+            'contact' => route('contact'),
+            self::SLUG_FIND_MEMORIAL => route('memorial.directory'),
+            default => url('/' . $this->slug),
+        };
+    }
+
     protected $fillable = [
         'slug',
         'title',
+        'meta_title',
         'content',
+        'layout',
         'meta_description',
+        'og_image',
         'is_published',
     ];
 
@@ -19,6 +82,7 @@ class Page extends Model
     {
         return [
             'is_published' => 'boolean',
+            'layout' => 'array',
         ];
     }
 

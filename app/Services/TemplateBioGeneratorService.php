@@ -41,16 +41,18 @@ class TemplateBioGeneratorService
     private function isValidChild($child, string $deceasedName): bool
     {
         $childName = is_array($child) ? ($child['child_name'] ?? $child) : $child;
+
         return $childName && strcasecmp(trim((string) $childName), trim($deceasedName)) !== 0;
     }
 
     private function stripDuplicateNationality(?string $text, string $nationality): string
     {
-        if (!$text || !$nationality) {
+        if (! $text || ! $nationality) {
             return $text ?? '';
         }
         $nat = preg_quote(trim($nationality), '/');
-        $stripped = preg_replace('/^' . $nat . '\s+/i', '', trim($text));
+        $stripped = preg_replace('/^'.$nat.'\s+/i', '', trim($text));
+
         return $stripped ?: $text;
     }
 
@@ -59,6 +61,7 @@ class TemplateBioGeneratorService
         if ($text === null || trim($text) === '') {
             return '';
         }
+
         return ucwords(strtolower(trim($text)));
     }
 
@@ -69,10 +72,11 @@ class TemplateBioGeneratorService
         }
         $text = trim($text);
         foreach (self::TYPO_MAP as $typo => $correct) {
-            $text = preg_replace('/\b' . preg_quote($typo, '/') . '\b/i', $correct, $text);
+            $text = preg_replace('/\b'.preg_quote($typo, '/').'\b/i', $correct, $text);
         }
         $text = preg_replace('/\s+/', ' ', $text);
         $text = preg_replace('/\s+([.,;:!?])/', '$1', $text);
+
         return trim($text);
     }
 
@@ -87,7 +91,7 @@ class TemplateBioGeneratorService
         ]))) ?: $memorial->full_name ?: 'Unknown';
 
         $nationality = $this->polishText($memorial->nationality ?? '');
-        $profession = $this->polishText($memorial->primary_profession ?: $memorial->short_description ?: $memorial->designation ?: '');
+        $profession = $this->polishText($memorial->primary_profession ?: $memorial->short_description ?: '');
         $profession = $this->stripDuplicateNationality($profession, $nationality);
         $knownFor = $this->polishText($memorial->known_for ?? '');
         $majorAchievements = $this->polishText($memorial->major_achievements ?? '');
@@ -96,11 +100,11 @@ class TemplateBioGeneratorService
         $parts = [];
         $rolePart = trim("{$nationality} {$profession}");
         $rolePart = preg_replace('/\b(\w+)\s+\1\b/i', '$1', $rolePart);
-        $intro = $fullName . ' was ' . ($rolePart ? "a {$rolePart}" : 'a notable figure') . '.';
+        $intro = $fullName.' was '.($rolePart ? "a {$rolePart}" : 'a notable figure').'.';
         $extra = array_filter([$notableTitle, $knownFor, $majorAchievements]);
-        if (!empty($extra)) {
-            $sentences = array_map(fn ($s) => trim($s, '. ') . (str_ends_with(trim($s), '.') ? '' : '.'), $extra);
-            $intro .= ' ' . implode(' ', $sentences);
+        if (! empty($extra)) {
+            $sentences = array_map(fn ($s) => trim($s, '. ').(str_ends_with(trim($s), '.') ? '' : '.'), $extra);
+            $intro .= ' '.implode(' ', $sentences);
         }
         $parts[] = trim(preg_replace('/\.\s*\.+/', '.', $intro));
 
@@ -113,7 +117,7 @@ class TemplateBioGeneratorService
             $memorial->date_of_birth?->format('F j, Y'),
             trim(implode(', ', array_filter([$memorial->birth_city, $memorial->birth_state, $memorial->birth_country]))),
         ]);
-        if (!empty($birthParts)) {
+        if (! empty($birthParts)) {
             $parts[] = '';
             $parts[] = '**Born**';
             $parts[] = implode(', ', $birthParts);
@@ -124,11 +128,11 @@ class TemplateBioGeneratorService
             : null;
         $deathParts = array_filter([
             $memorial->date_of_passing
-                ? $memorial->date_of_passing->format('F j, Y') . ($ageAtDeath ? " (aged {$ageAtDeath})" : '')
+                ? $memorial->date_of_passing->format('F j, Y').($ageAtDeath ? " (aged {$ageAtDeath})" : '')
                 : null,
             trim(implode(', ', array_filter([$memorial->death_city, $memorial->death_state, $memorial->death_country]))),
         ]);
-        if (!empty($deathParts)) {
+        if (! empty($deathParts)) {
             $parts[] = '';
             $parts[] = '**Died**';
             $parts[] = implode(', ', $deathParts);
@@ -148,20 +152,22 @@ class TemplateBioGeneratorService
 
         $spousesList = $memorial->spouses->map(function ($s) {
             $years = array_filter([$s->marriage_start_year, $s->marriage_end_year]);
-            $yearStr = !empty($years) ? ' (m. ' . implode('–', $years) . ')' : '';
-            return $s->spouse_name . $yearStr;
+            $yearStr = ! empty($years) ? ' (m. '.implode('–', $years).')' : '';
+
+            return $s->spouse_name.$yearStr;
         })->filter()->implode("\n");
         if ($spousesList) {
             $parts[] = '';
-            $parts[] = '**Spouse' . ($memorial->spouses->count() > 1 ? 's' : '') . '**';
+            $parts[] = '**Spouse'.($memorial->spouses->count() > 1 ? 's' : '').'**';
             $parts[] = $spousesList;
         }
 
         $educationList = $memorial->education->map(function ($e) {
             $years = array_filter([$e->start_year, $e->end_year]);
-            $yearStr = !empty($years) ? ' (' . implode('–', $years) . ')' : ' (attended)';
+            $yearStr = ! empty($years) ? ' ('.implode('–', $years).')' : ' (attended)';
             $degree = trim($e->degree ?? '');
-            return $e->institution_name . $yearStr . ($degree ? " - {$degree}" : '');
+
+            return $e->institution_name.$yearStr.($degree ? " - {$degree}" : '');
         })->filter()->implode("\n");
         if ($educationList) {
             $parts[] = '';
@@ -169,7 +175,7 @@ class TemplateBioGeneratorService
             $parts[] = $educationList;
         }
 
-        $parentsList = $memorial->parents->map(fn ($p) => $p->parent_name . ($p->relationship_type ? " ({$p->relationship_type})" : ''))->filter()->implode(', ');
+        $parentsList = $memorial->parents->map(fn ($p) => $p->parent_name.($p->relationship_type ? " ({$p->relationship_type})" : ''))->filter()->implode(', ');
         if ($parentsList) {
             $parts[] = '';
             $parts[] = '**Parents**';
@@ -234,15 +240,15 @@ class TemplateBioGeneratorService
         $rolePart = trim("{$nationality} {$profession}");
         $rolePart = preg_replace('/\b(\w+)\s+\1\b/i', '$1', $rolePart);
         $extra = array_filter([$notableTitle, $knownFor, $majorAchievements]);
-        $extraSentences = !empty($extra)
-            ? array_map(fn ($s) => trim($s, '. ') . (str_ends_with(trim($s), '.') ? '' : '.'), $extra)
+        $extraSentences = ! empty($extra)
+            ? array_map(fn ($s) => trim($s, '. ').(str_ends_with(trim($s), '.') ? '' : '.'), $extra)
             : [];
 
         $intro = match ($style) {
             'narrative' => $this->buildNarrativeIntro($name, $rolePart, $extraSentences),
             'formal' => $this->buildFormalIntro($name, $rolePart, $extraSentences),
             'impact' => $this->buildImpactIntro($name, $rolePart, $extraSentences, $d),
-            default => $name . ' was ' . ($rolePart ? "a {$rolePart}" : 'a notable figure') . '.',
+            default => $name.' was '.($rolePart ? "a {$rolePart}" : 'a notable figure').'.',
         };
         $parts = [trim(preg_replace('/\.\s*\.+/', '.', $intro))];
 
@@ -254,7 +260,7 @@ class TemplateBioGeneratorService
         }
         $deathDateStr = $deathDate;
         if ($deathDate && $ageAtDeath !== null) {
-            $deathDateStr = $deathDate . ' (aged ' . (int) $ageAtDeath . ')';
+            $deathDateStr = $deathDate.' (aged '.(int) $ageAtDeath.')';
         }
         $deathStr = trim(implode(', ', array_filter([$deathDateStr, $deathPlace])));
         if ($deathStr) {
@@ -263,25 +269,26 @@ class TemplateBioGeneratorService
             $parts[] = $deathStr;
         }
         $validChildren = array_filter($children, fn ($c) => $this->isValidChild($c, $name));
-        if (!empty($validChildren)) {
+        if (! empty($validChildren)) {
             $parts[] = '';
             $parts[] = '**Children**';
             $names = array_map(fn ($c) => is_array($c) ? ($c['child_name'] ?? $c) : $c, $validChildren);
             $parts[] = implode(', ', array_map(fn ($n) => $this->fixNameCase($this->polishText($n)), $names));
         }
-        if (!empty($spouses)) {
+        if (! empty($spouses)) {
             $parts[] = '';
-            $parts[] = '**Spouse' . (count($spouses) > 1 ? 's' : '') . '**';
+            $parts[] = '**Spouse'.(count($spouses) > 1 ? 's' : '').'**';
             $spouseLines = array_map(function ($s) {
                 $n = $this->fixNameCase($this->polishText(is_array($s) ? ($s['name'] ?? $s['spouse_name'] ?? '') : $s));
                 $start = $s['marriage_start_year'] ?? $s['start_year'] ?? null;
                 $end = $s['marriage_end_year'] ?? $s['end_year'] ?? null;
                 $years = array_filter([$start, $end]);
-                return $n . (!empty($years) ? ' (m. ' . implode('–', $years) . ')' : '');
+
+                return $n.(! empty($years) ? ' (m. '.implode('–', $years).')' : '');
             }, $spouses);
             $parts[] = implode("\n", $spouseLines);
         }
-        if (!empty($education)) {
+        if (! empty($education)) {
             $parts[] = '';
             $parts[] = '**Education**';
             $eduLines = array_map(function ($e) {
@@ -290,60 +297,66 @@ class TemplateBioGeneratorService
                 $end = $e['end_year'] ?? null;
                 $degree = $e['degree'] ?? null;
                 $years = array_filter([$start, $end]);
-                $yearStr = !empty($years) ? ' (' . implode('–', $years) . ')' : ' (attended)';
-                return $this->polishText($inst) . $yearStr . ($degree ? ' - ' . $this->polishText($degree) : '');
+                $yearStr = ! empty($years) ? ' ('.implode('–', $years).')' : ' (attended)';
+
+                return $this->polishText($inst).$yearStr.($degree ? ' - '.$this->polishText($degree) : '');
             }, $education);
             $parts[] = implode("\n", $eduLines);
         }
-        if (!empty($parents)) {
+        if (! empty($parents)) {
             $parts[] = '';
             $parts[] = '**Parents**';
             $names = array_map(fn ($p) => is_array($p) ? ($p['parent_name'] ?? $p) : $p, $parents);
             $parts[] = implode(', ', array_map(fn ($n) => $this->fixNameCase($this->polishText($n)), $names));
         }
-        if (!empty($siblings)) {
+        if (! empty($siblings)) {
             $parts[] = '';
             $parts[] = '**Siblings**';
             $names = array_map(fn ($s) => is_array($s) ? ($s['sibling_name'] ?? $s) : $s, $siblings);
             $parts[] = implode(', ', array_map(fn ($n) => $this->fixNameCase($this->polishText($n)), $names));
         }
-        if (!empty($companies)) {
+        if (! empty($companies)) {
             $parts[] = '';
             $parts[] = '**Notable Companies**';
             $names = array_map(fn ($c) => is_array($c) ? ($c['company_name'] ?? $c) : $c, $companies);
             $parts[] = implode(', ', array_map(fn ($n) => $this->polishText($n), $names));
         }
-        if (!empty($coFounders)) {
+        if (! empty($coFounders)) {
             $parts[] = '';
             $parts[] = '**Co-founders**';
             $names = array_map(fn ($c) => is_array($c) ? ($c['name'] ?? $c) : $c, $coFounders);
             $parts[] = implode(', ', array_map(fn ($n) => $this->polishText($n), $names));
         }
+
         return implode("\n", $parts);
     }
 
     private function buildNarrativeIntro(string $name, string $rolePart, array $extraSentences): string
     {
-        $base = $name . ' was ' . ($rolePart ? "a {$rolePart}" : 'a notable figure') . '.';
-        if (!empty($extraSentences)) {
-            $base .= ' ' . implode(' ', $extraSentences);
+        $base = $name.' was '.($rolePart ? "a {$rolePart}" : 'a notable figure').'.';
+        if (! empty($extraSentences)) {
+            $base .= ' '.implode(' ', $extraSentences);
         }
+
         return trim(preg_replace('/\.\s*\.+/', '.', $base));
     }
 
     private function buildFormalIntro(string $name, string $rolePart, array $extraSentences): string
     {
         $role = $rolePart ?: 'notable figure';
-        $intro = $name . ', ' . $role . '.';
-        if (!empty($extraSentences)) {
+        $intro = $name.', '.$role.'.';
+        if (! empty($extraSentences)) {
             $phrases = [];
             foreach ($extraSentences as $s) {
                 $s = trim($s, '. ');
-                if ($s) $phrases[] = $s;
+                if ($s) {
+                    $phrases[] = $s;
+                }
             }
             $joined = implode('; ', $phrases);
-            $intro .= ' ' . $joined . (str_ends_with($joined, '.') ? '' : '.');
+            $intro .= ' '.$joined.(str_ends_with($joined, '.') ? '' : '.');
         }
+
         return $intro;
     }
 
@@ -351,7 +364,7 @@ class TemplateBioGeneratorService
     {
         $companies = $d['companies'] ?? [];
         $firstCompany = '';
-        if (!empty($companies) && is_array($companies[0] ?? null)) {
+        if (! empty($companies) && is_array($companies[0] ?? null)) {
             $firstCompany = trim($companies[0]['company_name'] ?? '');
         }
         $knownFor = $this->polishText($d['known_for'] ?? '');
@@ -369,10 +382,11 @@ class TemplateBioGeneratorService
         }
 
         if ($achievementLead) {
-            $base = $achievementLead . ', ' . $name . ' was ' . ($rolePart ? "a {$rolePart}" : 'a notable figure') . '.';
-            return $base . (!empty($extraSentences) ? ' ' . implode(' ', $extraSentences) : '');
+            $base = $achievementLead.', '.$name.' was '.($rolePart ? "a {$rolePart}" : 'a notable figure').'.';
+
+            return $base.(! empty($extraSentences) ? ' '.implode(' ', $extraSentences) : '');
         }
 
-        return $name . ' was ' . ($rolePart ? "a {$rolePart}" : 'a notable figure') . '.' . (!empty($extraSentences) ? ' ' . implode(' ', $extraSentences) : '');
+        return $name.' was '.($rolePart ? "a {$rolePart}" : 'a notable figure').'.'.(! empty($extraSentences) ? ' '.implode(' ', $extraSentences) : '');
     }
 }

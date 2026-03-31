@@ -25,6 +25,7 @@
         "@fullcalendar/daygrid": "^6.1.19",
         "@fullcalendar/interaction": "^6.1.19",
         "@fullcalendar/list": "^6.1.19",
+        "@fullcalendar/multimonth": "^6.1.19",
         "@fullcalendar/timegrid": "^6.1.19",
         "@popperjs/core": "^2.11.8",
         "alpinejs": "^3.14.9",
@@ -32,6 +33,7 @@
         "flatpickr": "^4.6.13",
         "jsvectormap": "^1.7.0",
         "prismjs": "^1.30.0",
+        "sortablejs": "^1.15.7",
         "swiper": "^12.0.3"
     }
 }

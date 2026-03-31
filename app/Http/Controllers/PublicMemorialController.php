@@ -17,9 +17,15 @@ class PublicMemorialController extends Controller
 {
     /**
      * Display a public memorial by slug (no auth required).
+     * CMS pages are checked first so custom pages live at /{slug} without the /p/ prefix.
      */
     public function show(string $slug)
     {
+        $cmsPage = \App\Models\Page::getBySlug($slug);
+        if ($cmsPage && $cmsPage->is_published && ! $cmsPage->isSystemLayoutPage()) {
+            return app(\App\Http\Controllers\PageController::class)->showPage($slug);
+        }
+
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
 
         // Allow owner to view their own memorial even if private

@@ -65,6 +65,16 @@ class BrandingHelper
     }
 
     /**
+     * Default UI theme when the browser has no saved preference (localStorage `theme`).
+     */
+    public static function defaultTheme(): string
+    {
+        $v = SystemSetting::get('branding.default_theme', 'light');
+
+        return in_array($v, ['light', 'dark'], true) ? $v : 'light';
+    }
+
+    /**
      * Get the favicon URL.
      */
     public static function faviconUrl(): string

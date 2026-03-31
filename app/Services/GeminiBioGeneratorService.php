@@ -15,8 +15,8 @@ class GeminiBioGeneratorService
 
     public function generate(array $structuredData, ?int $memorialId = null, bool $noCache = false): array
     {
-        $cacheKey = (!$noCache && $memorialId && config('services.gemini.cache_ttl'))
-            ? 'memorial_bio_' . $memorialId . '_' . md5(json_encode($structuredData))
+        $cacheKey = (! $noCache && $memorialId && config('services.gemini.cache_ttl'))
+            ? 'memorial_bio_'.$memorialId.'_'.md5(json_encode($structuredData))
             : null;
 
         if ($cacheKey) {
@@ -26,7 +26,7 @@ class GeminiBioGeneratorService
             }
         }
 
-        if (!AiConfigHelper::isEnabled() || !AiConfigHelper::getApiKey()) {
+        if (! AiConfigHelper::isEnabled() || ! AiConfigHelper::getApiKey()) {
             return $this->templateGenerator->generate($structuredData);
         }
 
@@ -35,6 +35,7 @@ class GeminiBioGeneratorService
             if ($cacheKey && config('services.gemini.cache_ttl')) {
                 Cache::put($cacheKey, $result, config('services.gemini.cache_ttl'));
             }
+
             return $result;
         } catch (\Throwable $e) {
             Log::warning('Gemini bio generation failed, using template fallback', [
@@ -85,7 +86,7 @@ class GeminiBioGeneratorService
             $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
             $response = Http::timeout(30)->post($url, $payload);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $lastError = $response->body();
                 $body = $response->json() ?? [];
                 $errorMsg = $body['error']['message'] ?? $lastError;
@@ -107,13 +108,13 @@ class GeminiBioGeneratorService
             $body = $response->json();
             $text = $body['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
-            if (!$text) {
+            if (! $text) {
                 throw new \RuntimeException('AI_API_ERROR: Gemini returned no content');
             }
 
             $text = $this->extractJsonFromResponse($text);
             $decoded = json_decode($text, true);
-            if (!is_array($decoded) || !isset($decoded['option_1'], $decoded['option_2'], $decoded['option_3'])) {
+            if (! is_array($decoded) || ! isset($decoded['option_1'], $decoded['option_2'], $decoded['option_3'])) {
                 throw new \RuntimeException('AI_API_ERROR: Gemini returned an unexpected response format');
             }
 
@@ -133,6 +134,7 @@ class GeminiBioGeneratorService
         if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $text, $m)) {
             return trim($m[1]);
         }
+
         return $text;
     }
 
@@ -198,7 +200,7 @@ class GeminiBioGeneratorService
         return array_filter([
             'full_name' => $fullName,
             'nationality' => $nationality ?: null,
-            'occupation' => self::sanitizeText(trim($memorial->primary_profession ?? $memorial->short_description ?? $memorial->designation ?? ''), 255) ?: null,
+            'occupation' => self::sanitizeText(trim($memorial->primary_profession ?? $memorial->short_description ?? ''), 255) ?: null,
             'known_for' => self::sanitizeText(trim($memorial->known_for ?? ''), 500) ?: null,
             'major_achievements' => self::sanitizeText(trim($memorial->major_achievements ?? ''), 2000) ?: null,
             'notable_title' => self::sanitizeText(trim($memorial->notable_title ?? ''), 255) ?: null,
@@ -208,30 +210,32 @@ class GeminiBioGeneratorService
             'age_at_death' => $ageAtDeath,
             'birth_place' => $birthPlace,
             'death_place' => $deathPlace,
-            'children' => !empty($children) ? $children : null,
-            'spouses' => !empty($spouses) ? $spouses : null,
-            'education' => !empty($education) ? $education : null,
-            'parents' => !empty($parents) ? $parents : null,
-            'siblings' => !empty($siblings) ? $siblings : null,
-            'companies' => !empty($companies) ? $companies : null,
-            'co_founders' => !empty($coFounders) ? $coFounders : null,
+            'children' => ! empty($children) ? $children : null,
+            'spouses' => ! empty($spouses) ? $spouses : null,
+            'education' => ! empty($education) ? $education : null,
+            'parents' => ! empty($parents) ? $parents : null,
+            'siblings' => ! empty($siblings) ? $siblings : null,
+            'companies' => ! empty($companies) ? $companies : null,
+            'co_founders' => ! empty($coFounders) ? $coFounders : null,
         ], fn ($v) => $v !== null);
     }
 
     private static function sanitizeText(?string $text, int $maxLength = 255): string
     {
-        if (!$text) {
+        if (! $text) {
             return '';
         }
         $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text);
         $text = preg_replace('/\n{3,}/', "\n\n", $text);
         $text = preg_replace('/ {3,}/', '  ', $text);
+
         return mb_substr(trim($text), 0, $maxLength);
     }
 
     private static function cleanPlaceName(string $place): string
     {
         $place = preg_replace('/\b(\w[\w\s]*),\s*\1\b/i', '$1', $place);
+
         return trim($place, ', ');
     }
 }

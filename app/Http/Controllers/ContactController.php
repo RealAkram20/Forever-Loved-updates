@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\SiteShareMetaHelper;
+use App\Models\Page;
 use App\Models\SystemSetting;
 use App\Services\SystemMailConfigurator;
 use Illuminate\Http\Request;
@@ -14,6 +15,21 @@ class ContactController extends Controller
     public function show()
     {
         $appName = SystemSetting::get('branding.app_name', 'Forever Loved');
+
+        $layoutPage = Page::getBySlug('contact');
+        if ($layoutPage && $layoutPage->hasLayout()) {
+            return view('pages.visitor.page-layout', [
+                'title' => $layoutPage->title ?: 'Contact Us',
+                'widgets' => $layoutPage->layout['widgets'],
+                'layoutContext' => [],
+                'shareMeta' => SiteShareMetaHelper::forNamedRoute(
+                    'Contact Us',
+                    'contact',
+                    [],
+                    'Get in touch with our team for questions about memorials, accounts, or support.'
+                ),
+            ]);
+        }
 
         return view('pages.visitor.contact', [
             'title' => 'Contact Us',
@@ -39,7 +55,7 @@ class ContactController extends Controller
         $smtpEnabled = SystemSetting::get('smtp.enabled', false);
         $smtpHost = SystemSetting::get('smtp.host');
 
-        if (!$smtpEnabled || !$smtpHost) {
+        if (! $smtpEnabled || ! $smtpHost) {
             return back()->with('error', 'Email is not configured yet. Please try again later.');
         }
 
@@ -49,7 +65,7 @@ class ContactController extends Controller
             $appName = SystemSetting::get('branding.app_name', config('app.name'));
             $toAddress = SystemSetting::get('smtp.from_address');
 
-            if (!$toAddress) {
+            if (! $toAddress) {
                 return back()->with('error', 'No recipient email configured. Please try again later.');
             }
 
@@ -69,6 +85,7 @@ class ContactController extends Controller
             return back()->with('success', 'Your message has been sent. We\'ll get back to you soon.');
         } catch (\Throwable $e) {
             Log::error('Contact form email failed', ['error' => $e->getMessage()]);
+
             return back()->with('error', 'Failed to send your message. Please try again later.');
         }
     }

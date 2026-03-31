@@ -1,5 +1,5 @@
 <button
-    x-data="{ theme: localStorage.getItem('theme') || 'light' }"
+    x-data="{ theme: localStorage.getItem('theme') || (typeof window.__defaultTheme !== 'undefined' ? window.__defaultTheme : 'light') }"
     x-init="
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');

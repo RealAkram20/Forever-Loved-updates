@@ -8,7 +8,9 @@
         duration: 0,
         buffered: 0,
         loading: true,
-        fullscreen: false,
+        elementFs: false,
+        iosFs: false,
+        portraitFullscreenHint: false,
         showControls: true,
         controlTimeout: null,
         dragging: false,
@@ -21,6 +23,17 @@
             const sec = Math.floor(s % 60);
             return m + ':' + (sec < 10 ? '0' : '') + sec;
         },
+        syncFullscreenState() {
+            const el = this.$refs.container;
+            const active = document.fullscreenElement || document.webkitFullscreenElement;
+            this.elementFs = !!el && active === el;
+            this.updatePortraitHint();
+        },
+        updatePortraitHint() {
+            this.portraitFullscreenHint = this.elementFs && typeof window.matchMedia === 'function'
+                && window.matchMedia('(orientation: portrait)').matches
+                && Math.min(window.screen?.width || 0, window.innerWidth) < 1024;
+        },
         init() {
             const v = this.$refs.video;
             v.addEventListener('loadedmetadata', () => { this.duration = v.duration; this.loading = false; });
@@ -31,6 +44,8 @@
             v.addEventListener('ended', () => { this.playing = false; });
             v.addEventListener('waiting', () => { this.loading = true; });
             v.addEventListener('canplay', () => { this.loading = false; });
+            v.addEventListener('webkitbeginfullscreen', () => { this.iosFs = true; this.updatePortraitHint(); });
+            v.addEventListener('webkitendfullscreen', () => { this.iosFs = false; this.portraitFullscreenHint = false; });
         },
         toggle() {
             const v = this.$refs.video;
@@ -54,13 +69,30 @@
             this.$refs.video.muted = this.muted;
         },
         toggleFullscreen() {
+            const v = this.$refs.video;
             const el = this.$refs.container;
-            if (!document.fullscreenElement) {
-                el.requestFullscreen?.() || el.webkitRequestFullscreen?.();
-                this.fullscreen = true;
-            } else {
+            const docFs = document.fullscreenElement || document.webkitFullscreenElement;
+            if (docFs === el) {
                 document.exitFullscreen?.() || document.webkitExitFullscreen?.();
-                this.fullscreen = false;
+                this.elementFs = false;
+                this.portraitFullscreenHint = false;
+                return;
+            }
+            if (this.iosFs && typeof v.webkitExitFullscreen === 'function') {
+                try { v.webkitExitFullscreen(); return; } catch (e) { /* continue */ }
+            }
+            if (docFs) return;
+            const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
+            if (req) {
+                Promise.resolve(req.call(el)).then(() => this.syncFullscreenState()).catch(() => {
+                    if (typeof v.webkitEnterFullscreen === 'function') {
+                        try { v.webkitEnterFullscreen(); } catch (e2) {}
+                    }
+                });
+                return;
+            }
+            if (typeof v.webkitEnterFullscreen === 'function') {
+                try { v.webkitEnterFullscreen(); } catch (e) {}
             }
         },
         scheduleHide() {
@@ -73,13 +105,26 @@
     }"
     x-ref="container"
     @mousemove="scheduleHide()" @mouseleave="if (playing) showControls = false"
-    @fullscreenchange.window="fullscreen = !!document.fullscreenElement"
-    class="memorial-video-player group relative overflow-hidden rounded-xl bg-gray-900 shadow-lg">
+    @fullscreenchange.window="syncFullscreenState()"
+    @webkitfullscreenchange.window="syncFullscreenState()"
+    @orientationchange.window="updatePortraitHint()"
+    class="memorial-video-player group relative overflow-hidden rounded-xl bg-gray-900 shadow-lg"
+    :class="elementFs ? 'flex h-full min-h-[100dvh] w-full max-w-none flex-col items-center justify-center !rounded-none bg-black' : ''">
+
+    {{-- Portrait fullscreen: suggest landscape for a larger view (in-page fullscreen only) --}}
+    <div x-show="portraitFullscreenHint" x-cloak
+        x-transition
+        class="pointer-events-none absolute left-1/2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 w-[min(100%,20rem)] -translate-x-1/2 rounded-lg bg-black/75 px-3 py-2 text-center text-xs font-medium text-white shadow-lg backdrop-blur-sm">
+        Rotate your phone for a wider full-screen view
+    </div>
 
     {{-- Video element --}}
-    <video x-ref="video" preload="metadata" playsinline
+    <video x-ref="video" preload="metadata" playsinline webkit-playsinline
         @click="toggle()" @dblclick="toggleFullscreen()"
-        class="aspect-video w-full cursor-pointer object-contain bg-black">
+        class="cursor-pointer bg-black object-contain"
+        :class="elementFs
+            ? 'max-h-[calc(100dvh-6rem)] max-w-full w-full shrink-0'
+            : 'aspect-video w-full'">
         <source src="{{ $src }}" type="video/mp4">
     </video>
 
@@ -154,19 +199,19 @@
 
             {{-- Fullscreen --}}
             <button type="button" @click="toggleFullscreen()" class="shrink-0 transition hover:text-brand-300">
-                <template x-if="!fullscreen">
+                <template x-if="!elementFs && !iosFs">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
                 </template>
-                <template x-if="fullscreen">
+                <template x-if="elementFs || iosFs">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4H4m0 0l5 5M9 15v5H4m0 0l5-5m6-6V4h5m0 0l-5 5m5 6v5h-5m0 0l5-5"/></svg>
                 </template>
             </button>
         </div>
     </div>
 
-    {{-- Caption --}}
+    {{-- Caption (hidden in element fullscreen so video can stay vertically centered) --}}
     @if ($caption)
-        <div class="bg-gray-50 dark:bg-white/[0.03] px-3 py-2">
+        <div x-show="!elementFs" class="bg-gray-50 dark:bg-white/[0.03] px-3 py-2">
             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $caption }}</p>
         </div>
     @endif

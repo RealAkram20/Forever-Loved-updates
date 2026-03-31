@@ -37,6 +37,124 @@ document.addEventListener('DOMContentLoaded', () => {
         body,
     });
 
+    /** Full-screen strip below site header: upload % for large media on slow networks */
+    function getMemorialUploadProgressUi() {
+        const root = document.getElementById('memorial-upload-progress');
+        const bar = document.getElementById('memorial-upload-progress-bar');
+        const pctEl = document.getElementById('memorial-upload-progress-pct');
+        const labelEl = document.getElementById('memorial-upload-progress-label');
+        if (!root || !bar || !pctEl || !labelEl) {
+            return {
+                show() {},
+                hide() {},
+                setLabel() {},
+                setProgress() {},
+            };
+        }
+        return {
+            show(labelText = 'Uploading…') {
+                labelEl.textContent = labelText;
+                root.classList.remove('hidden');
+                root.setAttribute('aria-hidden', 'false');
+                root.setAttribute('aria-valuenow', '0');
+                bar.style.width = '0%';
+                bar.classList.remove('animate-pulse');
+                pctEl.textContent = '0%';
+            },
+            hide() {
+                root.classList.add('hidden');
+                root.setAttribute('aria-hidden', 'true');
+                bar.style.width = '0%';
+                bar.classList.remove('animate-pulse');
+                pctEl.textContent = '0%';
+                root.setAttribute('aria-valuenow', '0');
+            },
+            setLabel(text) {
+                labelEl.textContent = text;
+            },
+            setProgress(percent) {
+                if (percent == null || !Number.isFinite(percent)) {
+                    bar.style.width = '100%';
+                    bar.classList.add('animate-pulse');
+                    pctEl.textContent = '…';
+                    root.removeAttribute('aria-valuenow');
+                    return;
+                }
+                bar.classList.remove('animate-pulse');
+                const p = Math.min(100, Math.max(0, Math.round(percent)));
+                bar.style.width = `${p}%`;
+                pctEl.textContent = `${p}%`;
+                root.setAttribute('aria-valuenow', String(p));
+            },
+        };
+    }
+
+    /**
+     * POST multipart FormData with upload progress (fetch cannot report upload %).
+     * @param {string} url
+     * @param {FormData} formData
+     * @param {{ label?: string, timeoutMs?: number }} options
+     */
+    function postFormDataWithUploadProgress(url, formData, options = {}) {
+        const { label = 'Uploading…', timeoutMs = 600000 } = options;
+        const ui = getMemorialUploadProgressUi();
+        ui.show(label);
+
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.timeout = timeoutMs;
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable && e.total > 0) {
+                    ui.setProgress((e.loaded / e.total) * 100);
+                } else {
+                    ui.setProgress(null);
+                }
+            });
+
+            xhr.upload.addEventListener('loadend', () => {
+                ui.setProgress(100);
+            });
+
+            xhr.addEventListener('load', () => {
+                ui.hide();
+                let data = {};
+                try {
+                    data = JSON.parse(xhr.responseText || '{}');
+                } catch (_) {
+                    data = {};
+                }
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve(data);
+                } else {
+                    const msg = data.error || data.message || `Upload failed (${xhr.status})`;
+                    reject(new Error(msg));
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                ui.hide();
+                reject(new Error('Network error. Check your connection and try again.'));
+            });
+
+            xhr.addEventListener('abort', () => {
+                ui.hide();
+                reject(new Error('Upload cancelled.'));
+            });
+
+            xhr.addEventListener('timeout', () => {
+                ui.hide();
+                reject(new Error('Upload timed out. Try a smaller file or a stronger connection.'));
+            });
+
+            xhr.open('POST', url);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.setRequestHeader('X-CSRF-TOKEN', csrf || '');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.send(formData);
+        });
+    }
+
     function shareDropdownHtml(url) {
         return `<a href="#" data-share="whatsapp" data-share-url="${url}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition hover:bg-green-50 dark:hover:bg-green-950/30 text-gray-700 dark:text-gray-300 group">
             <svg class="h-5 w-5 text-[#25D366] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -76,21 +194,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('tab-' + panelId);
             if (panel) panel.classList.remove('hidden');
 
-            document.querySelectorAll('.memorial-tab').forEach(a => {
-                a.classList.remove('text-brand-600', 'dark:text-brand-400');
-                a.classList.add('text-gray-600', 'dark:text-gray-400');
-                if (a.dataset.tab === panelId) {
-                    a.classList.add('text-brand-600', 'dark:text-brand-400');
-                    a.classList.remove('text-gray-600', 'dark:text-gray-400');
-                }
-            });
         });
     });
-    document.querySelectorAll('.memorial-tab').forEach(a => {
-        a.addEventListener('click', (e) => {
+
+    document.addEventListener('click', (e) => {
+        const switchEl = e.target.closest('[data-switch-tab]');
+        if (switchEl) {
             e.preventDefault();
-            switchToTab(a.dataset.tab);
-        });
+            const panelId = switchEl.dataset.switchTab;
+            if (panelId) switchToTab(panelId);
+            return;
+        }
+        const previewLb = e.target.closest('[data-gallery-preview-lightbox]');
+        if (previewLb) {
+            e.preventDefault();
+            const idx = parseInt(previewLb.dataset.galleryPreviewLightbox ?? '0', 10);
+            switchToTab('gallery');
+            const openWhenReady = () => {
+                const galleryEl = document.getElementById('tab-gallery');
+                if (!galleryEl || typeof Alpine === 'undefined') return;
+                try {
+                    const d = Alpine.$data(galleryEl);
+                    if (d && typeof d.openLightbox === 'function') {
+                        if (Object.prototype.hasOwnProperty.call(d, 'subTab')) {
+                            d.subTab = 'images';
+                        }
+                        d.openLightbox(idx);
+                    }
+                } catch (_) { /* Alpine not ready */ }
+            };
+            requestAnimationFrame(() => {
+                requestAnimationFrame(openWhenReady);
+            });
+        }
     });
 
     // --- Chapter filter ---
@@ -102,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('bg-brand-50', 'dark:bg-brand-500/20', 'text-brand-600', 'dark:text-brand-400');
             btn.classList.remove('text-gray-600', 'dark:text-gray-400');
 
-            document.querySelectorAll('#life-feed article').forEach(article => {
+            document.querySelectorAll('article.life-feed-post').forEach(article => {
                 const artChapter = article.dataset.chapterId || '';
                 article.style.display = (chapterId === '' || artChapter === chapterId) ? '' : 'none';
             });
@@ -152,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 editBtn.dataset.chapterDesc = data.chapter.description || '';
                             }
                         }
-                        document.querySelectorAll(`#life-feed article[data-chapter-id="${chapterId}"]`).forEach(article => {
+                        document.querySelectorAll(`article.life-feed-post[data-chapter-id="${chapterId}"]`).forEach(article => {
                             const chapterLabel = article.querySelector('.text-xs.text-gray-500');
                             if (chapterLabel) {
                                 const parts = chapterLabel.innerHTML.split(' · ');
@@ -188,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.success) {
                         const pill = document.querySelector(`[data-chapter-pill="${chapterId}"]`);
                         pill?.remove();
-                        document.querySelectorAll(`#life-feed article[data-chapter-id="${chapterId}"]`).forEach(article => {
+                        document.querySelectorAll(`article.life-feed-post[data-chapter-id="${chapterId}"]`).forEach(article => {
                             article.dataset.chapterId = '';
                             const chapterLabel = article.querySelector('.text-xs.text-gray-500');
                             if (chapterLabel) {
@@ -236,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!trigger) return;
             e.stopPropagation();
             const postId = trigger.dataset.postEditTrigger;
-            const article = document.querySelector(`#life-feed article[data-post-id="${postId}"]`);
+            const article = document.querySelector(`#life-feed article.life-feed-post[data-post-id="${postId}"]`);
             if (!article) return;
 
             const displayEl = article.querySelector(`[data-post-display="${postId}"]`);
@@ -264,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!saveBtn) return;
             e.stopPropagation();
             const postId = saveBtn.dataset.postSave;
-            const article = document.querySelector(`#life-feed article[data-post-id="${postId}"]`);
+            const article = document.querySelector(`#life-feed article.life-feed-post[data-post-id="${postId}"]`);
             if (!article) return;
 
             const displayEl = article.querySelector(`[data-post-display="${postId}"]`);
@@ -279,6 +415,32 @@ document.addEventListener('DOMContentLoaded', () => {
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saving...';
 
+            const syncLifePostDisplay = (displayRoot, post) => {
+                const textMount = displayRoot.querySelector('[data-post-text-body]') || displayRoot;
+                let titleEl = textMount.querySelector('h3');
+                let proseEl = textMount.querySelector('.prose');
+                if (post.title) {
+                    if (!titleEl) {
+                        titleEl = document.createElement('h3');
+                        titleEl.className = 'mt-2 font-medium text-gray-900 dark:text-white/90';
+                        textMount.insertBefore(titleEl, textMount.firstChild);
+                    }
+                    titleEl.textContent = post.title;
+                } else if (titleEl) {
+                    titleEl.remove();
+                }
+                if (post.content) {
+                    if (!proseEl) {
+                        proseEl = document.createElement('div');
+                        proseEl.className = 'mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden';
+                        textMount.appendChild(proseEl);
+                    }
+                    proseEl.innerHTML = post.content;
+                } else if (proseEl) {
+                    proseEl.innerHTML = '';
+                }
+            };
+
             fetch(`${baseUrl}/posts/${postId}`, fetchOpts('PATCH', {
                 title: newTitle,
                 content: isEmpty ? null : newContent,
@@ -286,33 +448,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(r => r.json())
                 .then(data => {
                     if (data.success && data.post) {
-                        let titleEl = displayEl.querySelector('h3');
-                        let proseEl = displayEl.querySelector('.prose');
-
-                        if (data.post.title) {
-                            if (!titleEl) {
-                                titleEl = document.createElement('h3');
-                                titleEl.className = 'mt-2 font-medium text-gray-900 dark:text-white/90';
-                                displayEl.insertBefore(titleEl, displayEl.firstChild);
-                            }
-                            titleEl.textContent = data.post.title;
-                        } else if (titleEl) {
-                            titleEl.remove();
-                        }
-
-                        if (data.post.content) {
-                            if (!proseEl) {
-                                proseEl = document.createElement('div');
-                                proseEl.className = 'mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none';
-                                displayEl.appendChild(proseEl);
-                            }
-                            proseEl.innerHTML = data.post.content;
-                        } else if (proseEl) {
-                            proseEl.innerHTML = '';
-                        }
-
+                        syncLifePostDisplay(displayEl, data.post);
                         displayEl.classList.remove('hidden');
                         editEl.classList.add('hidden');
+                        document.querySelectorAll(`article.life-feed-post[data-post-id="${postId}"]`).forEach((art) => {
+                            if (art === article) return;
+                            const d = art.querySelector(`[data-post-display="${postId}"]`);
+                            if (d) syncLifePostDisplay(d, data.post);
+                        });
                     } else if (data.error) {
                         $toast('error', data.error);
                     }
@@ -330,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!cancelBtn) return;
             e.stopPropagation();
             const postId = cancelBtn.dataset.postCancel;
-            const article = document.querySelector(`#life-feed article[data-post-id="${postId}"]`);
+            const article = document.querySelector(`#life-feed article.life-feed-post[data-post-id="${postId}"]`);
             if (!article) return;
 
             const displayEl = article.querySelector(`[data-post-display="${postId}"]`);
@@ -351,8 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        const article = document.querySelector(`#life-feed article[data-post-id="${postId}"]`);
-                        article?.remove();
+                        document.querySelectorAll(`article.life-feed-post[data-post-id="${postId}"]`).forEach(a => a.remove());
                     } else if (data.error) {
                         $toast('error', data.error);
                     }
@@ -369,16 +511,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData();
             fd.append('photo', file);
             fd.append('_token', csrf);
-            fetch(`${baseUrl}/profile-photo`, formDataOpts(fd))
-                .then(r => r.json())
+            postFormDataWithUploadProgress(`${baseUrl}/profile-photo`, fd, { label: 'Uploading profile photo…' })
                 .then(data => {
                     if (data.success) {
                         const container = document.querySelector('.relative.group.mb-4 > div');
                         if (container) {
                             container.innerHTML = `<img src="${data.url}" alt="" class="h-full w-full object-cover" />`;
                         }
+                    } else if (data.error) {
+                        $toast('error', data.error);
                     }
-                });
+                })
+                .catch(err => { $toast('error', err.message || 'Photo upload failed.'); });
             e.target.value = '';
         });
     }
@@ -391,12 +535,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData();
             fd.append('file', file);
             fd.append('_token', csrf);
-            fetch(`${baseUrl}/gallery`, formDataOpts(fd))
-                .then(r => r.json())
+            const isVideo = file.type.startsWith('video/');
+            const label = isVideo ? 'Uploading video to gallery…' : 'Uploading photo to gallery…';
+            postFormDataWithUploadProgress(`${baseUrl}/gallery`, fd, { label })
                 .then(data => {
                     if (data.success && data.media) {
-                        const isVideo = data.media.type === 'video';
-                        if (isVideo) {
+                        const video = data.media.type === 'video';
+                        if (video) {
                             const grid = document.getElementById('gallery-grid-videos');
                             if (grid) {
                                 const el = buildVideoPlayerHtml(data.media.url, data.media.caption);
@@ -424,7 +569,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (data.error) {
                         $toast('error', data.error);
                     }
-                });
+                })
+                .catch(err => { $toast('error', err.message || 'Gallery upload failed.'); });
             e.target.value = '';
         });
     }
@@ -437,61 +583,70 @@ document.addEventListener('DOMContentLoaded', () => {
         const mediaId = deleteBtn.dataset.galleryDelete;
         if (!await $confirm('This media will be permanently removed.', { title: 'Delete this gallery item?', confirmText: 'Delete' })) return;
         deleteBtn.disabled = true;
-        fetch(`${baseUrl}/gallery/${mediaId}`, fetchOpts('DELETE'))
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    const item = deleteBtn.closest('[data-gallery-item]');
-                    const type = item?.dataset.mediaType;
 
-                    if (type === 'photo') {
-                        const galleryEl = document.getElementById('tab-gallery');
-                        const alpineData = galleryEl?.__x?.$data || (typeof Alpine !== 'undefined' ? Alpine.$data(galleryEl) : null);
+        const item = deleteBtn.closest('[data-gallery-item]');
+        const type = item?.dataset.mediaType;
+
+        try {
+            const r = await fetch(`${baseUrl}/gallery/${mediaId}`, fetchOpts('DELETE'));
+            const data = r.ok ? await r.json() : null;
+
+            if (!r.ok || !data?.success) {
+                const msg = data?.error || data?.message || `Delete failed (${r.status})`;
+                $toast('error', msg);
+                deleteBtn.disabled = false;
+                return;
+            }
+
+            item?.remove();
+
+            // Sync Alpine lightbox data for photos
+            if (type === 'photo') {
+                try {
+                    const galleryEl = document.getElementById('tab-gallery');
+                    const alpineData = galleryEl && typeof Alpine !== 'undefined' ? Alpine.$data(galleryEl) : null;
+                    if (alpineData?.images) {
                         const idx = parseInt(item?.dataset.galleryIndex ?? -1);
-                        if (alpineData && idx >= 0) {
+                        if (idx >= 0) {
                             alpineData.images.splice(idx, 1);
-                            // Re-index remaining image items
-                            document.querySelectorAll('#gallery-grid-images [data-gallery-item][data-media-type="photo"]').forEach((el, i) => {
-                                el.dataset.galleryIndex = i;
-                                const btn = el.querySelector('button[\\@click]');
-                                if (btn) btn.setAttribute('@click', `openLightbox(${i})`);
-                            });
                         }
+                        document.querySelectorAll('#gallery-grid-images [data-gallery-item][data-media-type="photo"]').forEach((el, i) => {
+                            el.dataset.galleryIndex = i;
+                        });
                     }
+                } catch (_) { /* lightbox state will self-correct on next open */ }
+            }
 
-                    item?.remove();
+            // Update quota counter
+            const quotaAttr = type === 'photo' ? 'data-quota-images' : 'data-quota-videos';
+            const quotaEl = document.querySelector(`[${quotaAttr}]`);
+            if (quotaEl) {
+                const current = Math.max(0, parseInt(quotaEl.dataset.current || 0) - 1);
+                const max = quotaEl.dataset.max;
+                quotaEl.dataset.current = current;
+                const label = type === 'photo' ? 'Images' : 'Videos';
+                quotaEl.textContent = `${label}: ${current}/${max}`;
+                quotaEl.classList.remove('text-red-500', 'dark:text-red-400', 'font-medium');
+            }
 
-                    // Update quota counter
-                    const quotaAttr = type === 'photo' ? 'data-quota-images' : 'data-quota-videos';
-                    const quotaEl = document.querySelector(`[${quotaAttr}]`);
-                    if (quotaEl) {
-                        const current = Math.max(0, parseInt(quotaEl.dataset.current || 0) - 1);
-                        const max = quotaEl.dataset.max;
-                        quotaEl.dataset.current = current;
-                        const label = type === 'photo' ? 'Images' : 'Videos';
-                        quotaEl.textContent = `${label}: ${current}/${max}`;
-                        quotaEl.classList.remove('text-red-500', 'dark:text-red-400', 'font-medium');
-                    }
-
-                    // Show empty state if grid is now empty
-                    if (type === 'photo') {
-                        const grid = document.getElementById('gallery-grid-images');
-                        if (grid && !grid.children.length) {
-                            document.getElementById('gallery-images-empty')?.classList.remove('hidden');
-                        }
-                    } else {
-                        const grid = document.getElementById('gallery-grid-videos');
-                        if (grid && !grid.children.length) {
-                            document.getElementById('gallery-videos-empty')?.classList.remove('hidden');
-                        }
-                    }
-
-                    $toast('success', 'Gallery item deleted.');
-                } else if (data.error) {
-                    $toast('error', data.error);
+            // Show empty state if grid is now empty
+            if (type === 'photo') {
+                const grid = document.getElementById('gallery-grid-images');
+                if (grid && !grid.children.length) {
+                    document.getElementById('gallery-images-empty')?.classList.remove('hidden');
                 }
-            })
-            .catch(() => { $toast('error', 'Something went wrong.'); deleteBtn.disabled = false; });
+            } else {
+                const grid = document.getElementById('gallery-grid-videos');
+                if (grid && !grid.children.length) {
+                    document.getElementById('gallery-videos-empty')?.classList.remove('hidden');
+                }
+            }
+
+            $toast('success', 'Gallery item deleted.');
+        } catch {
+            $toast('error', 'Something went wrong. Please try again.');
+            deleteBtn.disabled = false;
+        }
     });
 
     // --- Gallery caption edit ---
@@ -537,11 +692,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const item = document.querySelector(`[data-gallery-item][data-media-id="${mediaId}"][data-media-type="photo"]`);
                     if (item) {
                         const idx = parseInt(item.dataset.galleryIndex ?? -1);
-                        const galleryEl = document.getElementById('tab-gallery');
-                        const alpineData = galleryEl?.__x?.$data || (typeof Alpine !== 'undefined' ? Alpine.$data(galleryEl) : null);
-                        if (alpineData && idx >= 0 && alpineData.images[idx]) {
-                            alpineData.images[idx].caption = caption || 'Photo';
-                        }
+                        try {
+                            const galleryEl = document.getElementById('tab-gallery');
+                            const alpineData = galleryEl && typeof Alpine !== 'undefined' ? Alpine.$data(galleryEl) : null;
+                            if (alpineData?.images?.[idx]) {
+                                alpineData.images[idx].caption = caption || 'Photo';
+                            }
+                        } catch (_) { /* lightbox will use alt text as fallback */ }
                         const img = item.querySelector('img');
                         if (img) img.alt = caption || 'Photo';
                     }
@@ -705,8 +862,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     fd.append('files[]', files[i]);
                 }
             }
-            fetch(`${baseUrl}/tribute-post`, formDataOpts(fd))
-                .then(r => r.json())
+            const hasMedia = !!(files && files.length);
+            const uploadLabel = hasMedia
+                ? 'Uploading your chapter and media…'
+                : 'Publishing your chapter…';
+            postFormDataWithUploadProgress(`${baseUrl}/tribute-post`, fd, { label: uploadLabel })
                 .then(data => {
                     if (data.success && data.post) {
                         const feed = document.getElementById('life-feed');
@@ -720,7 +880,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }).join('');
                             const article = document.createElement('article');
                             article.id = 'chapter-' + p.id;
-                            article.className = 'relative overflow-visible rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]';
+                            article.className = 'life-feed-post relative overflow-visible rounded-xl border border-gray-300 dark:border-gray-800 bg-white dark:bg-white/[0.03]';
                             article.dataset.postId = p.id;
                             article.dataset.chapterId = '';
                             article.innerHTML = `
@@ -776,7 +936,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const doR = (name, email) => {
                                     fetch(`${baseUrl}/reaction`, fetchOpts('POST', { ...payload, guest_name: name, guest_email: email }))
                                         .then(r => r.json())
-                                        .then(d => { if (d.success) { const el = article.querySelector(`[data-reaction-container="${p.id}"] [data-reaction-count]`); if (el) el.textContent = d.count; } });
+                                        .then(d => {
+                                            if (d.success) {
+                                                document.querySelectorAll(`[data-reaction-container="${p.id}"] [data-reaction-count]`).forEach(el => {
+                                                    el.textContent = d.count;
+                                                });
+                                            }
+                                        });
                                 };
                                 isAuthenticated ? doR() : showGuestModal({ type: 'reaction', payload, callback: doR });
                             });
@@ -789,8 +955,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     resetButton();
                 })
-                .catch(() => {
-                    $toast('error', 'Something went wrong. Please try again.');
+                .catch(err => {
+                    $toast('error', err.message || 'Something went wrong. Please try again.');
                     resetButton();
                 });
         });
@@ -1001,11 +1167,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }))
             .then(r => r.json())
             .then(data => {
-                if (data.success) {
+                if (data.success && data.tribute) {
                     if (displayEl) displayEl.classList.remove('hidden');
                     if (editEl) editEl.classList.add('hidden');
-                    // Reload the page to reflect type-dependent styling changes
-                    window.location.reload();
+                    const oldType = wrapper.dataset.tributeType;
+                    syncTributeCardAfterSave(wrapper, data.tribute);
+                    if (oldType && data.tribute.type && oldType !== data.tribute.type) {
+                        updateTributeFilterCounts(oldType, -1);
+                        updateTributeFilterCounts(data.tribute.type, 1);
+                    }
                 } else if (data.error) {
                     $toast('error', data.error);
                 }
@@ -1044,8 +1214,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    const wrapper = document.querySelector(`#tribute-${tributeId}`);
-                    wrapper?.remove();
+                    document.querySelector(`#tribute-${tributeId}`)?.remove();
+                    document.querySelector(`#tribute-preview-${tributeId}`)?.remove();
                     const countEl = document.querySelector('[data-tribute-count]');
                     if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent || 0) - 1);
                     const list = document.querySelector('[data-tributes-list]');
@@ -1246,6 +1416,57 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<div class="flex ${size} shrink-0 items-center justify-center rounded-full ${fallbackClasses}">${escapeHtml(initial)}</div>`;
     }
 
+    function syncTributeCardAfterSave(wrapper, t) {
+        const id = wrapper.dataset.tributeId;
+        const type = t.type || 'note';
+        const cfg = tributeCardConfig[type] || tributeCardConfig.note;
+        const df = escapeHtml(deceasedFirst);
+        wrapper.dataset.tributeType = type;
+        wrapper.className = `group rounded-xl border p-4 transition ${cfg.card}`;
+        const body = wrapper.querySelector('[data-tribute-body]');
+        if (body) {
+            body.className = `mt-3 flex items-start gap-3 rounded-lg p-3 ${cfg.inner}`;
+        }
+        const iconCol = wrapper.querySelector('[data-tribute-inline-icon]');
+        if (iconCol) {
+            iconCol.innerHTML = cfg.inlineIcon;
+        }
+        const display = id ? wrapper.querySelector(`[data-tribute-display="${id}"]`) : null;
+        if (display) {
+            const msg = t.message && String(t.message).trim() && t.message !== '<p><br></p>';
+            const labelHtml = `<p class="mb-1 text-xs font-semibold uppercase tracking-wider ${cfg.label}">${cfg.labelText}</p>`;
+            display.innerHTML = msg
+                ? `${labelHtml}<div class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">${t.message}</div>`
+                : `${labelHtml}<p class="text-sm italic ${cfg.label}" style="opacity:0.8">${cfg.fallback(df)}</p>`;
+        }
+        const footer = wrapper.querySelector('[data-tribute-footer]');
+        if (footer) {
+            footer.className = `relative z-10 mt-3 border-t pt-3 ${cfg.border}`;
+        }
+        const avFallback = wrapper.querySelector('[data-tribute-avatar-fallback]');
+        if (avFallback) {
+            avFallback.className = `flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${cfg.avatar}`;
+        }
+        const iconsWrap = wrapper.querySelector('[data-tribute-header-icons]');
+        if (iconsWrap) {
+            const editBtn = iconsWrap.querySelector('[data-tribute-edit-trigger]');
+            const editHtml = editBtn ? editBtn.outerHTML : '';
+            iconsWrap.innerHTML = editHtml + cfg.icon;
+        }
+    }
+
+    function buildTributeCommentTopHtml(c, tributeId) {
+        const tcAvatar = avatarHtml(c.author_photo, c.author, 'h-6 w-6', 'bg-gray-200 dark:bg-gray-700 text-[10px] font-semibold text-gray-500 dark:text-gray-400');
+        const del = canEdit ? `<button type="button" data-delete-tribute-comment data-comment-id="${c.id}" data-tribute-id="${tributeId}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400">Delete</button>` : '';
+        return `<div class="mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2" data-tribute-comment-id="${c.id}"><div class="flex items-center gap-2 mb-1">${tcAvatar}<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(c.author)}</p></div><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(c.content)}</p><div class="flex flex-wrap items-center gap-2 mt-1"><p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(c.created_at)}</p><button type="button" data-tribute-reply-to data-comment-id="${c.id}" data-tribute-id="${tributeId}" class="text-xs text-brand-500 hover:text-brand-600 dark:hover:text-brand-400">Reply</button>${del}</div><div data-tribute-reply-form="${c.id}" class="mt-2 hidden"><div class="flex flex-wrap items-center gap-2"><input type="text" data-tribute-reply-input="${c.id}" placeholder="Write a reply..." class="h-9 min-w-0 flex-1 basis-36 rounded-full border border-gray-300 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white" /><button type="button" data-tribute-reply-submit data-comment-id="${c.id}" data-tribute-id="${tributeId}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 text-xs font-semibold text-white transition hover:bg-brand-600 active:scale-95 sm:text-sm">Post</button></div></div></div>`;
+    }
+
+    function buildTributeReplyHtml(c, tributeId) {
+        const trAvatar = avatarHtml(c.author_photo, c.author, 'h-6 w-6', 'bg-gray-200 dark:bg-gray-700 text-[10px] font-semibold text-gray-500 dark:text-gray-400');
+        const del = canEdit ? `<button type="button" data-delete-tribute-comment data-comment-id="${c.id}" data-tribute-id="${tributeId}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400">Delete</button>` : '';
+        return `<div class="mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2 ml-3 sm:ml-4 border-l-2 border-gray-200 dark:border-gray-700" data-tribute-comment-id="${c.id}"><div class="flex items-center gap-2 mb-1">${trAvatar}<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(c.author)}</p></div><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(c.content)}</p><div class="flex flex-wrap items-center gap-2 mt-1"><p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(c.created_at)}</p>${del}</div></div>`;
+    }
+
     function appendTribute(t) {
         const list = document.querySelector('[data-tributes-list]');
         if (!list) return;
@@ -1342,8 +1563,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.json())
                     .then(data => {
                         if (data.success) {
-                            const countEl = document.querySelector(`[data-reaction-container="${payload.reactionable_id}"] [data-reaction-count]`);
-                            if (countEl) countEl.textContent = data.count;
+                            document.querySelectorAll(`[data-reaction-container="${payload.reactionable_id}"] [data-reaction-count]`).forEach(el => {
+                                el.textContent = data.count;
+                            });
                         }
                     });
     }
@@ -1364,8 +1586,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(r => r.json())
                     .then(data => {
                         if (data.success) {
-                            const countEl = document.querySelector(`[data-reaction-container="${payload.reactionable_id}"] [data-reaction-count]`);
-                            if (countEl) countEl.textContent = data.count;
+                            document.querySelectorAll(`[data-reaction-container="${payload.reactionable_id}"] [data-reaction-count]`).forEach(el => {
+                                el.textContent = data.count;
+                            });
+                        } else if (data.requires_login) {
+                            $toast('warning', (data.error || 'Please sign in.') + ' ' + window.location.origin + '/login/code');
+                        } else if (data.error) {
+                            $toast('error', data.error);
                         }
                     });
             };
@@ -1378,13 +1605,48 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    document.addEventListener('click', (e) => {
+        const reactBtn = e.target.closest('[data-tribute-react]');
+        if (!reactBtn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const tributeId = parseInt(reactBtn.dataset.tributeReact, 10);
+        if (!tributeId) return;
+        const payload = { reactionable_type: 'tribute', reactionable_id: tributeId, type: 'like' };
+        const doReaction = (name, email) => {
+            const body = { ...payload };
+            if (name) body.guest_name = name;
+            if (email) body.guest_email = email;
+            fetch(`${baseUrl}/reaction`, fetchOpts('POST', body))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.querySelectorAll(`[data-tribute-reaction-count="${tributeId}"]`).forEach(el => { el.textContent = data.count; });
+                    } else if (data.requires_guest_info) {
+                        showGuestModal({ type: 'reaction', payload, callback: (n, em) => doReaction(n, em) });
+                    } else if (data.requires_login) {
+                        $toast('warning', (data.error || 'Please sign in.') + ' ' + window.location.origin + '/login/code');
+                    } else if (data.error) {
+                        $toast('error', data.error);
+                    }
+                })
+                .catch(() => $toast('error', 'Something went wrong.'));
+        };
+        if (isAuthenticated) {
+            doReaction();
+        } else {
+            showGuestModal({ type: 'reaction', payload, callback: (name, email) => doReaction(name, email) });
+        }
+    });
+
     // --- Comment toggle (inline section) ---
     document.addEventListener('click', (e) => {
         const toggleBtn = e.target.closest('[data-comment-toggle]');
         if (!toggleBtn) return;
         e.stopPropagation();
         const postId = toggleBtn.dataset.postId;
-        const section = document.querySelector(`[data-comment-section="${postId}"]`);
+        const article = toggleBtn.closest('article.life-feed-post');
+        const section = article?.querySelector(`[data-comment-section="${postId}"]`) || document.querySelector(`#life-feed [data-comment-section="${postId}"]`);
         if (section) {
             section.classList.toggle('hidden');
             if (!section.classList.contains('hidden')) {
@@ -1394,15 +1656,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Biography preview: open Life tab + comments for this post ---
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-open-life-comments]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const postId = btn.dataset.openLifeComments;
+        switchToTab('life');
+        const openSection = () => {
+            const section = document.querySelector(`#life-feed [data-comment-section="${postId}"]`);
+            const anchor = document.getElementById('chapter-' + postId);
+            anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            section?.classList.remove('hidden');
+            const input = section?.querySelector(`[data-comment-input="${postId}"]`);
+            if (input) setTimeout(() => input.focus(), 200);
+        };
+        requestAnimationFrame(() => requestAnimationFrame(openSection));
+    });
+
+    // --- Biography preview: open Tributes tab + scroll to tribute ---
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-open-tributes-tribute]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const tributeId = btn.dataset.openTributesTribute;
+        switchToTab('tributes');
+        const scrollTo = () => {
+            document.getElementById('tribute-' + tributeId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        requestAnimationFrame(() => requestAnimationFrame(scrollTo));
+    });
+
     // --- Enter to submit comment/reply ---
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter') return;
         const commentInput = e.target.closest('[data-comment-input]');
+        const tributeCommentInput = e.target.closest('[data-tribute-comment-input]');
         const replyInput = e.target.closest('[data-reply-input]');
         if (commentInput) {
             e.preventDefault();
             const section = commentInput.closest('[data-comment-section]');
             section?.querySelector('[data-comment-submit]')?.click();
+        } else if (tributeCommentInput) {
+            e.preventDefault();
+            const tributeId = tributeCommentInput.dataset.tributeCommentInput;
+            const panel = tributeCommentInput.closest('[data-tribute-comment-dropdown]');
+            panel?.querySelector(`[data-tribute-comment-submit][data-tribute-id="${tributeId}"]`)?.click();
+        } else if (e.target.closest('[data-tribute-reply-input]')) {
+            e.preventDefault();
+            const inp = e.target.closest('[data-tribute-reply-input]');
+            inp.closest('[data-tribute-reply-form]')?.querySelector('[data-tribute-reply-submit]')?.click();
         } else if (replyInput) {
             e.preventDefault();
             const form = replyInput.closest('[data-reply-form]');
@@ -1446,7 +1751,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-tribute-comment-submit]').forEach(btn => {
         btn.addEventListener('click', function() {
             const tributeId = parseInt(this.dataset.tributeId);
-            const input = document.querySelector(`[data-tribute-comment-input="${tributeId}"]`);
+            const panel = this.closest('[data-tribute-comment-dropdown]');
+            const input = panel?.querySelector(`[data-tribute-comment-input="${tributeId}"]`) ?? document.querySelector(`[data-tribute-comment-input="${tributeId}"]`);
             const content = input?.value?.trim();
             if (!content) return;
             if (this.disabled) return;
@@ -1465,11 +1771,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             const list = document.querySelector(`[data-tribute-comments-list="${tributeId}"]`);
                             const empty = document.querySelector(`[data-tribute-comments-empty="${tributeId}"]`);
                             if (list) {
-                                const tcAvatar = avatarHtml(data.comment.author_photo, data.comment.author, 'h-6 w-6', 'bg-gray-200 dark:bg-gray-700 text-[10px] font-semibold text-gray-500 dark:text-gray-400');
-                                const div = document.createElement('div');
-                                div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2';
-                                div.innerHTML = `<div class="flex items-center gap-2 mb-1">${tcAvatar}<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p></div><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
-                                list.appendChild(div);
+                                const wrap = document.createElement('div');
+                                wrap.innerHTML = buildTributeCommentTopHtml(data.comment, tributeId);
+                                list.appendChild(wrap.firstElementChild);
                             }
                             if (empty) empty.classList.add('hidden');
                             const countEl = document.querySelector(`[data-tribute-comment-container="${tributeId}"] [data-tribute-comment-count]`);
@@ -1505,7 +1809,8 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             const tributeId = parseInt(submitBtn.dataset.tributeId);
             const parentId = parseInt(submitBtn.dataset.commentId);
-            const input = document.querySelector(`[data-tribute-reply-input="${parentId}"]`);
+            const replyFormEl = submitBtn.closest('[data-tribute-reply-form]');
+            const input = replyFormEl?.querySelector(`[data-tribute-reply-input="${parentId}"]`) ?? document.querySelector(`[data-tribute-reply-input="${parentId}"]`);
             const content = input?.value?.trim();
             if (!content) return;
             if (submitBtn.disabled) return;
@@ -1521,30 +1826,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(r => r.json())
                     .then(data => {
                         if (data.success && data.comment) {
-                            const trAvatar = avatarHtml(data.comment.author_photo, data.comment.author, 'h-6 w-6', 'bg-gray-200 dark:bg-gray-700 text-[10px] font-semibold text-gray-500 dark:text-gray-400');
-                            const trReplyHtml = `<div class="flex items-center gap-2 mb-1">${trAvatar}<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(data.comment.author)}</p></div><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapeHtml(data.comment.created_at)}</p>`;
                             const repliesList = document.querySelector(`[data-tribute-replies-list="${parentId}"]`);
                             const replyForm = document.querySelector(`[data-tribute-reply-form="${parentId}"]`);
+                            const appendReply = (listEl) => {
+                                const wrap = document.createElement('div');
+                                wrap.innerHTML = buildTributeReplyHtml(data.comment, tributeId);
+                                listEl.appendChild(wrap.firstElementChild);
+                            };
                             if (repliesList) {
-                                const div = document.createElement('div');
-                                div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2 ml-3 sm:ml-4 border-l-2 border-gray-200 dark:border-gray-700';
-                                div.innerHTML = trReplyHtml;
-                                repliesList.appendChild(div);
-                            }
-                            if (!repliesList) {
+                                appendReply(repliesList);
+                            } else {
                                 const parentComment = document.querySelector(`[data-tribute-comment-id="${parentId}"]`);
                                 if (parentComment) {
                                     let list = parentComment.querySelector(`[data-tribute-replies-list="${parentId}"]`);
                                     if (!list) {
                                         list = document.createElement('div');
                                         list.className = 'mt-2 space-y-2';
-                                        list.dataset.tributeRepliesList = parentId;
+                                        list.setAttribute('data-tribute-replies-list', String(parentId));
                                         parentComment.appendChild(list);
                                     }
-                                    const div = document.createElement('div');
-                                    div.className = 'mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2 ml-3 sm:ml-4 border-l-2 border-gray-200 dark:border-gray-700';
-                                    div.innerHTML = trReplyHtml;
-                                    list.appendChild(div);
+                                    appendReply(list);
                                 }
                             }
                             const countEl = document.querySelector(`[data-tribute-comment-container="${tributeId}"] [data-tribute-comment-count]`);
@@ -1563,7 +1864,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Click outside to close dropdowns (share/tribute only, comments are inline now) ---
     document.addEventListener('click', (e) => {
-        if (e.target.closest('[data-share-container], [data-tribute-comment-container], #invite-share-btn, #invite-share-dropdown')) return;
+        if (e.target.closest('[data-share-container], [data-tribute-comment-container], [data-tribute-comment-dropdown], #invite-share-btn, #invite-share-dropdown')) return;
         document.querySelectorAll('[data-share-dropdown], [data-share-dropdown-tribute], [data-tribute-comment-dropdown]').forEach(d => d.classList.add('hidden'));
         document.getElementById('invite-share-dropdown')?.classList.add('hidden');
     });
@@ -1629,8 +1930,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     avatarCol.appendChild(line);
                                 }
                             }
-                            const countEl = document.querySelector(`[data-comment-container="${postId}"] [data-comment-count]`);
-                            if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
+                            const countEls = document.querySelectorAll(`[data-comment-container="${postId}"] [data-comment-count]`);
+                            const nextCount = parseInt((countEls[0]?.textContent || '0').replace(/\D/g, '') || 0) + 1;
+                            countEls.forEach(el => { el.textContent = nextCount; });
                             input.value = '';
                             document.querySelector(`[data-reply-form="${parentId}"]`)?.classList.add('hidden');
                         } else if (data.error) $toast('error', data.error);
@@ -1648,7 +1950,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = e.target.closest('[data-comment-submit]');
         if (!btn || btn.closest('[data-reply-form]')) return;
         const postId = parseInt(btn.dataset.postId);
-        const input = document.querySelector(`[data-comment-input="${postId}"]`);
+        const commentSection = btn.closest('[data-comment-section]');
+        const input = commentSection?.querySelector(`[data-comment-input="${postId}"]`) ?? document.querySelector(`[data-comment-input="${postId}"]`);
         const content = input?.value?.trim();
         if (!content) return;
         if (btn.disabled) return;
@@ -1664,8 +1967,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(r => r.json())
                 .then(data => {
                     if (data.success && data.comment) {
-                        const list = document.querySelector(`[data-comments-list="${postId}"]`);
-                        const empty = document.querySelector(`[data-comments-empty="${postId}"]`);
+                        const list = commentSection?.querySelector(`[data-comments-list="${postId}"]`) ?? document.querySelector(`[data-comments-list="${postId}"]`);
+                        const empty = commentSection?.querySelector(`[data-comments-empty="${postId}"]`) ?? document.querySelector(`[data-comments-empty="${postId}"]`);
                         if (list) {
                             const commentAvatar = avatarHtml(data.comment.author_photo, data.comment.author, 'h-7 w-7 sm:h-8 sm:w-8', 'bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400 text-[11px] sm:text-xs font-semibold');
                             const deleteHtml = canEdit ? `<button type="button" data-delete-comment data-comment-id="${data.comment.id}" data-post-id="${postId}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition">Delete</button>` : '';
@@ -1676,8 +1979,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             list.appendChild(el);
                         }
                         if (empty) empty.classList.add('hidden');
-                        const countEl = document.querySelector(`[data-comment-container="${postId}"] [data-comment-count]`);
-                        if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
+                        const countEls = document.querySelectorAll(`[data-comment-container="${postId}"] [data-comment-count]`);
+                        const nextCount = parseInt((countEls[0]?.textContent || '0').replace(/\D/g, '') || 0) + 1;
+                        countEls.forEach(el => { el.textContent = nextCount; });
                         input.value = '';
                     } else if (data.error) $toast('error', data.error);
                     resetBtn();
@@ -1702,17 +2006,16 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    const commentEl = document.querySelector(`[data-comment-id="${commentId}"]`);
+                    const commentEl = btn.closest('[data-comment-id]');
+                    const commentSection = commentEl?.closest('[data-comment-section]');
                     const deletedCount = data.deleted_count || 1;
                     commentEl?.remove();
-                    const countEl = document.querySelector(`[data-comment-container="${postId}"] [data-comment-count]`);
-                    if (countEl) {
-                        const current = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0);
-                        countEl.textContent = Math.max(0, current - deletedCount);
-                    }
-                    const list = document.querySelector(`[data-comments-list="${postId}"]`);
+                    const countEls = document.querySelectorAll(`[data-comment-container="${postId}"] [data-comment-count]`);
+                    const nextCount = Math.max(0, parseInt((countEls[0]?.textContent || '0').replace(/\D/g, '') || 0) - deletedCount);
+                    countEls.forEach(el => { el.textContent = nextCount; });
+                    const list = commentSection?.querySelector(`[data-comments-list="${postId}"]`) ?? document.querySelector(`[data-comments-list="${postId}"]`);
                     if (list && list.children.length === 0) {
-                        const empty = document.querySelector(`[data-comments-empty="${postId}"]`);
+                        const empty = commentSection?.querySelector(`[data-comments-empty="${postId}"]`) ?? document.querySelector(`[data-comments-empty="${postId}"]`);
                         if (empty) empty.classList.remove('hidden');
                     }
                 } else if (data.error) {
@@ -1724,6 +2027,39 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(() => { $toast('error', 'Something went wrong.'); btn.disabled = false; btn.textContent = 'Delete'; });
     });
 
+    document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-delete-tribute-comment]');
+        if (!btn) return;
+        e.stopPropagation();
+        const commentId = parseInt(btn.dataset.commentId, 10);
+        const tributeId = parseInt(btn.dataset.tributeId, 10);
+        if (!await $confirm('This comment will be permanently removed.', { title: 'Delete this comment?', confirmText: 'Delete comment' })) return;
+        btn.disabled = true;
+        const prevText = btn.textContent;
+        btn.textContent = '...';
+        fetch(`${baseUrl}/tribute-comments/${commentId}`, fetchOpts('DELETE'))
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const commentEl = btn.closest('[data-tribute-comment-id]');
+                    commentEl?.remove();
+                    const deletedCount = data.deleted_count || 1;
+                    const countEls = document.querySelectorAll(`[data-tribute-comment-container="${tributeId}"] [data-tribute-comment-count]`);
+                    const nextCount = Math.max(0, parseInt((countEls[0]?.textContent || '0').replace(/\D/g, '') || 0) - deletedCount);
+                    countEls.forEach(el => { el.textContent = nextCount; });
+                    const list = document.querySelector(`[data-tribute-comments-list="${tributeId}"]`);
+                    if (list && list.children.length === 0) {
+                        document.querySelector(`[data-tribute-comments-empty="${tributeId}"]`)?.classList.remove('hidden');
+                    }
+                } else if (data.error) {
+                    $toast('error', data.error);
+                    btn.disabled = false;
+                    btn.textContent = prevText;
+                }
+            })
+            .catch(() => { $toast('error', 'Something went wrong.'); btn.disabled = false; btn.textContent = prevText; });
+    });
+
     function escapeHtml(s) {
         if (!s) return '';
         const div = document.createElement('div');
@@ -1732,21 +2068,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildVideoPlayerHtml(src, caption) {
-        const cap = caption ? `<div class="bg-gray-50 dark:bg-white/[0.03] px-3 py-2"><p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(caption)}</p></div>` : '';
+        const cap = caption ? `<div x-show="!elementFs" class="bg-gray-50 dark:bg-white/[0.03] px-3 py-2"><p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(caption)}</p></div>` : '';
         return `<div x-data="{
-            playing:false,muted:false,volume:1,currentTime:0,duration:0,buffered:0,loading:true,fullscreen:false,showControls:true,controlTimeout:null,dragging:false,showVolume:false,
+            playing:false,muted:false,volume:1,currentTime:0,duration:0,buffered:0,loading:true,elementFs:false,iosFs:false,portraitFullscreenHint:false,showControls:true,controlTimeout:null,dragging:false,showVolume:false,
             get progress(){return this.duration?(this.currentTime/this.duration)*100:0},
             get bufferProgress(){return this.duration?(this.buffered/this.duration)*100:0},
             formatTime(s){if(isNaN(s))return '0:00';const m=Math.floor(s/60);const sec=Math.floor(s%60);return m+':'+(sec<10?'0':'')+sec},
-            init(){const v=this.$refs.video;v.addEventListener('loadedmetadata',()=>{this.duration=v.duration;this.loading=false});v.addEventListener('timeupdate',()=>{if(!this.dragging)this.currentTime=v.currentTime});v.addEventListener('progress',()=>{if(v.buffered.length>0)this.buffered=v.buffered.end(v.buffered.length-1)});v.addEventListener('ended',()=>{this.playing=false});v.addEventListener('waiting',()=>{this.loading=true});v.addEventListener('canplay',()=>{this.loading=false})},
+            syncFullscreenState(){const el=this.$refs.container;const a=document.fullscreenElement||document.webkitFullscreenElement;this.elementFs=!!el&&a===el;this.updatePortraitHint()},
+            updatePortraitHint(){this.portraitFullscreenHint=this.elementFs&&typeof window.matchMedia==='function'&&window.matchMedia('(orientation: portrait)').matches&&Math.min(window.screen?.width||0,window.innerWidth)<1024},
+            init(){const v=this.$refs.video;v.addEventListener('loadedmetadata',()=>{this.duration=v.duration;this.loading=false});v.addEventListener('timeupdate',()=>{if(!this.dragging)this.currentTime=v.currentTime});v.addEventListener('progress',()=>{if(v.buffered.length>0)this.buffered=v.buffered.end(v.buffered.length-1)});v.addEventListener('ended',()=>{this.playing=false});v.addEventListener('waiting',()=>{this.loading=true});v.addEventListener('canplay',()=>{this.loading=false});v.addEventListener('webkitbeginfullscreen',()=>{this.iosFs=true;this.updatePortraitHint()});v.addEventListener('webkitendfullscreen',()=>{this.iosFs=false;this.portraitFullscreenHint=false})},
             toggle(){const v=this.$refs.video;if(v.paused){v.play();this.playing=true}else{v.pause();this.playing=false}},
             seek(e){const r=this.$refs.progressBar.getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));this.$refs.video.currentTime=p*this.duration;this.currentTime=this.$refs.video.currentTime},
             setVolume(e){const r=this.$refs.volumeBar.getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));this.volume=p;this.$refs.video.volume=p;this.muted=p===0},
             toggleMute(){this.muted=!this.muted;this.$refs.video.muted=this.muted},
-            toggleFullscreen(){const el=this.$refs.container;if(!document.fullscreenElement){el.requestFullscreen?.()}else{document.exitFullscreen?.()}},
+            toggleFullscreen(){const v=this.$refs.video;const el=this.$refs.container;const docFs=document.fullscreenElement||document.webkitFullscreenElement;if(docFs===el){document.exitFullscreen?.()||document.webkitExitFullscreen?.();this.elementFs=false;this.portraitFullscreenHint=false;return}if(this.iosFs&&typeof v.webkitExitFullscreen==='function'){try{v.webkitExitFullscreen();return}catch(e){}}if(docFs)return;const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;if(req){Promise.resolve(req.call(el)).then(()=>this.syncFullscreenState()).catch(()=>{if(typeof v.webkitEnterFullscreen==='function'){try{v.webkitEnterFullscreen()}catch(e2){}}});return}if(typeof v.webkitEnterFullscreen==='function'){try{v.webkitEnterFullscreen()}catch(e){}}},
             scheduleHide(){clearTimeout(this.controlTimeout);this.showControls=true;if(this.playing){this.controlTimeout=setTimeout(()=>{this.showControls=false},2500)}}
-        }" x-ref="container" @mousemove="scheduleHide()" @mouseleave="if(playing)showControls=false" class="memorial-video-player group relative overflow-hidden rounded-xl bg-gray-900 shadow-lg">
-            <video x-ref="video" preload="metadata" playsinline @click="toggle()" @dblclick="toggleFullscreen()" class="aspect-video w-full cursor-pointer object-contain bg-black"><source src="${src}" type="video/mp4"></video>
+        }" x-ref="container" @mousemove="scheduleHide()" @mouseleave="if(playing)showControls=false" @fullscreenchange.window="syncFullscreenState()" @webkitfullscreenchange.window="syncFullscreenState()" @orientationchange.window="updatePortraitHint()" class="memorial-video-player group relative overflow-hidden rounded-xl bg-gray-900 shadow-lg" :class="elementFs ? 'flex h-full min-h-[100dvh] w-full max-w-none flex-col items-center justify-center !rounded-none bg-black' : ''">
+            <div x-show="portraitFullscreenHint" x-cloak x-transition class="pointer-events-none absolute left-1/2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 w-[min(100%,20rem)] -translate-x-1/2 rounded-lg bg-black/75 px-3 py-2 text-center text-xs font-medium text-white shadow-lg backdrop-blur-sm">Rotate your phone for a wider full-screen view</div>
+            <video x-ref="video" preload="metadata" playsinline webkit-playsinline @click="toggle()" @dblclick="toggleFullscreen()" class="cursor-pointer bg-black object-contain" :class="elementFs ? 'max-h-[calc(100dvh-6rem)] max-w-full w-full shrink-0' : 'aspect-video w-full'"><source src="${src}" type="video/mp4"></video>
             <div x-show="loading" x-cloak class="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none"><div class="h-10 w-10 animate-spin rounded-full border-3 border-white/30 border-t-brand-400"></div></div>
             <div x-show="!playing&&showControls" x-cloak @click="toggle()" class="absolute inset-0 flex cursor-pointer items-center justify-center"><div class="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500/90 text-white shadow-xl backdrop-blur-sm transition hover:bg-brand-600 hover:scale-110"><svg class="ml-1 h-7 w-7" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
             <div x-show="showControls||!playing" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-3 pt-10">
@@ -1762,7 +2101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button type="button" @click="toggleMute()" class="shrink-0 transition hover:text-brand-300"><template x-if="muted||volume===0"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg></template><template x-if="!muted&&volume>0"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg></template></button>
                         <div x-show="showVolume" x-cloak x-transition class="ml-2 flex w-20 items-center"><div x-ref="volumeBar" @click="setVolume($event)" class="h-1 w-full cursor-pointer rounded-full bg-white/20"><div class="h-full rounded-full bg-brand-400" :style="'width:'+(muted?0:volume*100)+'%'"></div></div></div>
                     </div>
-                    <button type="button" @click="toggleFullscreen()" class="shrink-0 transition hover:text-brand-300"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg></button>
+                    <button type="button" @click="toggleFullscreen()" class="shrink-0 transition hover:text-brand-300"><template x-if="!(elementFs||iosFs)"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg></template><template x-if="elementFs||iosFs"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4H4m0 0l5 5M9 15v5H4m0 0l5-5m6-6V4h5m0 0l-5 5m5 6v5h-5m0 0l5-5"/></svg></template></button>
                 </div>
             </div>
             ${cap}

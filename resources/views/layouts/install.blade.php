@@ -18,6 +18,17 @@
         /* Fallback if Vite assets are unavailable */
         .install-fallback { font-family: system-ui, -apple-system, sans-serif; }
     </style>
+    @php
+        $installDefaultTheme = 'light';
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('system_settings')) {
+                $installDefaultTheme = \App\Helpers\BrandingHelper::defaultTheme();
+            }
+        } catch (\Throwable $e) {
+            $installDefaultTheme = 'light';
+        }
+    @endphp
+    <script>window.__defaultTheme = @json($installDefaultTheme);</script>
 </head>
 
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 antialiased">
@@ -109,8 +120,11 @@
     <script>
         (function() {
             const saved = localStorage.getItem('theme');
-            if (saved === 'dark') {
+            const theme = saved || window.__defaultTheme || 'light';
+            if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
             }
         })();
     </script>

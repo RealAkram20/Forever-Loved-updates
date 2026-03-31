@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ?? 'Dashboard' }} | {{ config('app.name', 'Forever-Loved') }}</title>
+    <title>{{ $seoDocumentTitle ?? (($title ?? 'Dashboard').' | '.config('app.name', 'Forever-Loved')) }}</title>
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -24,6 +24,7 @@
 
     <!-- App base URL for JS fetch calls -->
     <script>window.__appBaseUrl = @json(rtrim(config('app.url'), '/'));</script>
+    <script>window.__defaultTheme = @json(\App\Helpers\BrandingHelper::defaultTheme());</script>
 
     <!-- Theme Store -->
     <script>
@@ -31,7 +32,7 @@
             Alpine.store('theme', {
                 init() {
                     const savedTheme = localStorage.getItem('theme');
-                    this.theme = savedTheme || 'light';
+                    this.theme = savedTheme || window.__defaultTheme || 'light';
                     this.updateTheme();
                 },
                 theme: 'light',
@@ -84,17 +85,17 @@
         });
     </script>
 
-    <!-- Apply theme immediately to prevent flash (default: light) -->
+    <!-- Apply theme immediately to prevent flash -->
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
-            const theme = savedTheme || 'light';
+            const theme = savedTheme || window.__defaultTheme || 'light';
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
-                document.body.classList.add('dark', 'bg-gray-900');
+                if (document.body) document.body.classList.add('dark', 'bg-gray-900');
             } else {
                 document.documentElement.classList.remove('dark');
-                document.body.classList.remove('dark', 'bg-gray-900');
+                if (document.body) document.body.classList.remove('dark', 'bg-gray-900');
             }
         })();
     </script>

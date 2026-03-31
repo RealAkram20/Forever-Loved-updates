@@ -16,6 +16,7 @@
 
     <!-- App base URL for JS fetch calls -->
     <script>window.__appBaseUrl = @json(rtrim(config('app.url'), '/'));</script>
+    <script>window.__defaultTheme = @json(\App\Helpers\BrandingHelper::defaultTheme());</script>
 
     <!-- Theme Store -->
     <script>
@@ -23,7 +24,7 @@
             Alpine.store('theme', {
                 init() {
                     const savedTheme = localStorage.getItem('theme');
-                    this.theme = savedTheme || 'light';
+                    this.theme = savedTheme || window.__defaultTheme || 'light';
                     this.updateTheme();
                 },
                 theme: 'light',
@@ -72,17 +73,17 @@
         });
     </script>
 
-    <!-- Apply theme immediately to prevent flash (default: light) -->
+    <!-- Apply theme immediately to prevent flash -->
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
-            const theme = savedTheme || 'light';
+            const theme = savedTheme || window.__defaultTheme || 'light';
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
-                document.body.classList.add('dark', 'bg-gray-900');
+                if (document.body) document.body.classList.add('dark', 'bg-gray-900');
             } else {
                 document.documentElement.classList.remove('dark');
-                document.body.classList.remove('dark', 'bg-gray-900');
+                if (document.body) document.body.classList.remove('dark', 'bg-gray-900');
             }
         })();
     </script>
@@ -284,6 +285,65 @@
     </div>
     @endif
     @endauth
+
+    {{-- Global confirm dialog (same pattern as fullscreen visitor layout) --}}
+    <div id="app-confirm-dialog-backdrop" class="fixed inset-0 z-[99998] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="mx-4 w-full max-w-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl">
+            <div class="p-5">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
+                        <svg class="h-5 w-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="app-confirm-dialog-title" class="text-base font-semibold text-gray-900 dark:text-white">Are you sure?</h3>
+                        <p id="app-confirm-dialog-message" class="mt-1 text-sm text-gray-500 dark:text-gray-400"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-700 px-5 py-3">
+                <button type="button" id="app-confirm-dialog-cancel" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">Cancel</button>
+                <button type="button" id="app-confirm-dialog-ok" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition">Delete</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        window.$confirm = window.$confirm || function(message, { title = 'Are you sure?', confirmText = 'Delete', cancelText = 'Cancel' } = {}) {
+            return new Promise((resolve) => {
+                const backdrop = document.getElementById('app-confirm-dialog-backdrop');
+                const titleEl = document.getElementById('app-confirm-dialog-title');
+                const msgEl = document.getElementById('app-confirm-dialog-message');
+                const okBtn = document.getElementById('app-confirm-dialog-ok');
+                const cancelBtn = document.getElementById('app-confirm-dialog-cancel');
+                if (!backdrop || !titleEl || !msgEl || !okBtn || !cancelBtn) {
+                    resolve(window.confirm(message));
+                    return;
+                }
+                titleEl.textContent = title;
+                msgEl.textContent = message;
+                okBtn.textContent = confirmText;
+                cancelBtn.textContent = cancelText;
+                backdrop.classList.remove('hidden');
+                backdrop.classList.add('flex');
+                okBtn.focus();
+                function cleanup() {
+                    backdrop.classList.add('hidden');
+                    backdrop.classList.remove('flex');
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    backdrop.removeEventListener('click', onBackdrop);
+                    document.removeEventListener('keydown', onKey);
+                }
+                function onOk() { cleanup(); resolve(true); }
+                function onCancel() { cleanup(); resolve(false); }
+                function onBackdrop(e) { if (e.target === backdrop) { cleanup(); resolve(false); } }
+                function onKey(e) { if (e.key === 'Escape') { cleanup(); resolve(false); } }
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+                backdrop.addEventListener('click', onBackdrop);
+                document.addEventListener('keydown', onKey);
+            });
+        };
+    </script>
 
     @include('vendor.laraupdater.notification')
 </body>

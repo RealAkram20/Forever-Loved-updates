@@ -9,15 +9,13 @@ use App\Models\Comment;
 use App\Models\Memorial;
 use App\Models\MemorialShare;
 use App\Models\MemorialSubscription;
-use App\Models\TributeComment;
 use App\Models\Post;
 use App\Models\Reaction;
-use App\Models\StoryChapter;
 use App\Models\Tribute;
+use App\Models\TributeComment;
 use App\Models\User;
 use App\Services\NotificationService;
 use App\Services\SystemMailConfigurator;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -31,12 +29,12 @@ class MemorialApiController extends Controller
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
 
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $validated = $request->validate([
-            'section' => ['required', 'string', 'in:full_name,designation,biography,date_of_birth,date_of_passing,dates'],
+            'section' => ['required', 'string', 'in:full_name,biography,date_of_birth,date_of_passing,dates'],
             'value' => ['nullable', 'string', 'max:50000'],
             'date_of_birth' => ['nullable', 'date'],
             'date_of_passing' => ['nullable', 'date'],
@@ -47,8 +45,6 @@ class MemorialApiController extends Controller
 
         if ($section === 'full_name') {
             $memorial->update(['full_name' => trim($value)]);
-        } elseif ($section === 'designation') {
-            $memorial->update(['designation' => trim($value) ?: null]);
         } elseif ($section === 'biography') {
             $memorial->update(['biography' => trim($value) ?: null]);
         } elseif ($section === 'date_of_birth') {
@@ -72,7 +68,7 @@ class MemorialApiController extends Controller
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
 
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Memorial is not public'], 404);
         }
 
@@ -91,12 +87,12 @@ class MemorialApiController extends Controller
         $guestName = $request->user()?->name ?? $validated['guest_name'] ?? null;
         $guestEmail = $request->user()?->email ?? $validated['guest_email'] ?? null;
 
-        if (!$userId && (!$guestName || !$guestEmail)) {
+        if (! $userId && (! $guestName || ! $guestEmail)) {
             return response()->json(['error' => 'Name and email are required for guests'], 422);
         }
 
         // If guest: use existing user's name when email exists, else create new user
-        if (!$userId && $guestEmail) {
+        if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
                 $userId = $existingUser->id;
@@ -115,7 +111,7 @@ class MemorialApiController extends Controller
                     if (SystemMailConfigurator::mailDeliveryConfigured()) {
                         $setupUrl = route('password.request');
                         Mail::raw(
-                            "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: " . route('login.passwordless'),
+                            "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: ".route('login.passwordless'),
                             function ($message) use ($guestEmail) {
                                 $message->to($guestEmail)->subject('Welcome to Forever-Loved - Complete your account');
                             }
@@ -167,7 +163,7 @@ class MemorialApiController extends Controller
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
 
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Memorial is not public'], 404);
         }
 
@@ -183,7 +179,7 @@ class MemorialApiController extends Controller
         $guestName = $validated['guest_name'] ?? null;
         $guestEmail = $validated['guest_email'] ?? null;
 
-        if (!$userId && (!$guestName || !$guestEmail)) {
+        if (! $userId && (! $guestName || ! $guestEmail)) {
             return response()->json([
                 'error' => 'Name and email required',
                 'requires_guest_info' => true,
@@ -191,7 +187,7 @@ class MemorialApiController extends Controller
         }
 
         // If guest with existing account, ask them to log in
-        if (!$userId && $guestEmail) {
+        if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
                 return response()->json([
@@ -211,7 +207,7 @@ class MemorialApiController extends Controller
                 SystemMailConfigurator::applyFromSettings();
                 if (SystemMailConfigurator::mailDeliveryConfigured()) {
                     Mail::raw(
-                        "Welcome to Forever-Loved! You can sign in with a one-time code at: " . route('login.passwordless'),
+                        'Welcome to Forever-Loved! You can sign in with a one-time code at: '.route('login.passwordless'),
                         function ($message) use ($guestEmail) {
                             $message->to($guestEmail)->subject('Welcome to Forever-Loved');
                         }
@@ -230,7 +226,7 @@ class MemorialApiController extends Controller
         $existing = Reaction::where('reactionable_type', $modelClass)
             ->where('reactionable_id', $reactionable->id)
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
-            ->when(!$userId, fn ($q) => $q->where('guest_email', $guestEmail))
+            ->when(! $userId, fn ($q) => $q->where('guest_email', $guestEmail))
             ->where('type', $validated['type'])
             ->first();
 
@@ -283,6 +279,7 @@ class MemorialApiController extends Controller
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
         $chapters = $memorial->storyChapters()->orderBy('sort_order')->get();
+
         return response()->json(['chapters' => $chapters]);
     }
 
@@ -292,11 +289,11 @@ class MemorialApiController extends Controller
     public function storeChapter(Request $request, string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -306,7 +303,7 @@ class MemorialApiController extends Controller
         ]);
 
         $chapterCheck = PlanLimitsHelper::canAddChapter($memorial);
-        if (!$chapterCheck['allowed']) {
+        if (! $chapterCheck['allowed']) {
             return response()->json([
                 'error' => "Chapter limit reached ({$chapterCheck['current']}/{$chapterCheck['max']}). Upgrade your plan for more.",
             ], 422);
@@ -329,11 +326,11 @@ class MemorialApiController extends Controller
     public function updateChapter(Request $request, string $slug, int $chapterId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -359,11 +356,11 @@ class MemorialApiController extends Controller
     public function deleteChapter(string $slug, int $chapterId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -382,11 +379,11 @@ class MemorialApiController extends Controller
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
 
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -421,11 +418,11 @@ class MemorialApiController extends Controller
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
         $post = $memorial->posts()->findOrFail($postId);
 
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -448,11 +445,11 @@ class MemorialApiController extends Controller
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
         $post = $memorial->posts()->findOrFail($postId);
 
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -488,7 +485,7 @@ class MemorialApiController extends Controller
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
         $tribute = $memorial->tributes()->findOrFail($tributeId);
 
-        if (!$this->canEditTribute($memorial, $tribute)) {
+        if (! $this->canEditTribute($memorial, $tribute)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -526,7 +523,7 @@ class MemorialApiController extends Controller
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
         $tribute = $memorial->tributes()->findOrFail($tributeId);
 
-        if (!$this->canEditTribute($memorial, $tribute)) {
+        if (! $this->canEditTribute($memorial, $tribute)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -543,12 +540,13 @@ class MemorialApiController extends Controller
     private function canEditTribute(Memorial $memorial, Tribute $tribute): bool
     {
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
         if ($this->canEdit($memorial)) {
             return true;
         }
+
         return $tribute->user_id && $tribute->user_id === $user->id;
     }
 
@@ -559,7 +557,7 @@ class MemorialApiController extends Controller
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
 
-        if (!PlanLimitsHelper::canUseGuestNotifications($memorial)) {
+        if (! PlanLimitsHelper::canUseGuestNotifications($memorial)) {
             return response()->json(['error' => 'Guest notifications are not available on this memorial\'s plan.'], 422);
         }
 
@@ -574,7 +572,7 @@ class MemorialApiController extends Controller
         $guestName = $validated['guest_name'] ?? null;
         $guestEmail = $validated['guest_email'] ?? null;
 
-        if (!$userId && $guestEmail) {
+        if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
                 $userId = $existingUser->id;
@@ -583,7 +581,7 @@ class MemorialApiController extends Controller
             }
         }
 
-        if (!$userId && !$guestEmail) {
+        if (! $userId && ! $guestEmail) {
             return response()->json(['error' => 'Email is required'], 422);
         }
 
@@ -627,7 +625,7 @@ class MemorialApiController extends Controller
         $userId = $request->user()?->id;
         $guestEmail = $validated['guest_email'] ?? null;
 
-        if (!$userId && $guestEmail) {
+        if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
                 $userId = $existingUser->id;
@@ -639,7 +637,7 @@ class MemorialApiController extends Controller
             ? MemorialSubscription::where('memorial_id', $memorial->id)->where('user_id', $userId)->first()
             : MemorialSubscription::where('memorial_id', $memorial->id)->where('guest_email', strtolower($guestEmail))->first();
 
-        if (!$sub) {
+        if (! $sub) {
             return response()->json(['error' => 'Subscription not found'], 404);
         }
 
@@ -661,7 +659,7 @@ class MemorialApiController extends Controller
         $userId = $request->user()?->id;
         $guestEmail = $request->input('guest_email');
 
-        if (!$userId && $guestEmail) {
+        if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
                 $userId = $existingUser->id;
@@ -686,7 +684,7 @@ class MemorialApiController extends Controller
         $userId = $request->user()?->id;
         $guestEmail = $request->query('email');
 
-        if (!$userId && $guestEmail) {
+        if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
                 $userId = $existingUser->id;
@@ -698,7 +696,7 @@ class MemorialApiController extends Controller
             ? MemorialSubscription::where('memorial_id', $memorial->id)->where('user_id', $userId)->first()
             : ($guestEmail ? MemorialSubscription::where('memorial_id', $memorial->id)->where('guest_email', strtolower($guestEmail))->first() : null);
 
-        if (!$sub) {
+        if (! $sub) {
             return response()->json(['subscribed' => false]);
         }
 
@@ -719,7 +717,7 @@ class MemorialApiController extends Controller
     public function deleteComment(Request $request, string $slug, int $commentId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -727,7 +725,7 @@ class MemorialApiController extends Controller
             ->whereHas('post', fn ($q) => $q->where('memorial_id', $memorial->id))
             ->first();
 
-        if (!$comment) {
+        if (! $comment) {
             return response()->json(['error' => 'Comment not found'], 404);
         }
 
@@ -752,7 +750,7 @@ class MemorialApiController extends Controller
     public function comments(string $slug, int $postId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Not found'], 404);
         }
         $post = $memorial->posts()->findOrFail($postId);
@@ -772,6 +770,7 @@ class MemorialApiController extends Controller
                 'created_at' => $r->created_at->diffForHumans(),
             ])->toArray(),
         ]);
+
         return response()->json(['comments' => $comments]);
     }
 
@@ -781,7 +780,7 @@ class MemorialApiController extends Controller
     public function storeComment(Request $request, string $slug, int $postId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Memorial is not public'], 404);
         }
         $post = $memorial->posts()->findOrFail($postId);
@@ -797,11 +796,11 @@ class MemorialApiController extends Controller
         $guestName = $request->user()?->name ?? $validated['guest_name'] ?? null;
         $guestEmail = $request->user()?->email ?? $validated['guest_email'] ?? null;
 
-        if (!$userId && (!$guestName || !$guestEmail)) {
+        if (! $userId && (! $guestName || ! $guestEmail)) {
             return response()->json(['error' => 'Name and email are required for guests'], 422);
         }
 
-        if (!$userId && $guestEmail) {
+        if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
                 $userId = $existingUser->id;
@@ -812,7 +811,7 @@ class MemorialApiController extends Controller
         $parentId = $validated['parent_id'] ?? null;
         if ($parentId) {
             $parent = Comment::where('post_id', $post->id)->find($parentId);
-            if (!$parent) {
+            if (! $parent) {
                 return response()->json(['error' => 'Invalid parent comment'], 422);
             }
         }
@@ -850,7 +849,7 @@ class MemorialApiController extends Controller
     public function reactions(string $slug, int $postId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Not found'], 404);
         }
         $post = $memorial->posts()->findOrFail($postId);
@@ -858,6 +857,7 @@ class MemorialApiController extends Controller
             'type' => $r->type,
             'name' => $r->user?->name ?? $r->guest_name ?? 'Anonymous',
         ]);
+
         return response()->json([
             'reactions' => $reactions,
             'count' => $reactions->count(),
@@ -870,7 +870,7 @@ class MemorialApiController extends Controller
     public function storeTributeComment(Request $request, string $slug, int $tributeId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Memorial is not public'], 404);
         }
         $tribute = $memorial->tributes()->findOrFail($tributeId);
@@ -886,11 +886,11 @@ class MemorialApiController extends Controller
         $guestName = $request->user()?->name ?? $validated['guest_name'] ?? null;
         $guestEmail = $request->user()?->email ?? $validated['guest_email'] ?? null;
 
-        if (!$userId && (!$guestName || !$guestEmail)) {
+        if (! $userId && (! $guestName || ! $guestEmail)) {
             return response()->json(['error' => 'Name and email are required for guests'], 422);
         }
 
-        if (!$userId && $guestEmail) {
+        if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
                 $userId = $existingUser->id;
@@ -901,7 +901,7 @@ class MemorialApiController extends Controller
         $parentId = $validated['parent_id'] ?? null;
         if ($parentId) {
             $parent = TributeComment::where('tribute_id', $tribute->id)->find($parentId);
-            if (!$parent) {
+            if (! $parent) {
                 return response()->json(['error' => 'Invalid parent comment'], 422);
             }
         }
@@ -934,17 +934,55 @@ class MemorialApiController extends Controller
     }
 
     /**
+     * Delete a tribute comment (and its replies). Memorial editors only — same as chapter comments.
+     */
+    public function deleteTributeComment(string $slug, int $commentId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (! $this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $comment = TributeComment::query()
+            ->where('id', $commentId)
+            ->whereHas('tribute', fn ($q) => $q->where('memorial_id', $memorial->id))
+            ->first();
+
+        if (! $comment) {
+            return response()->json(['error' => 'Comment not found'], 404);
+        }
+
+        if ($comment->parent_id === null) {
+            $replyCount = TributeComment::where('parent_id', $comment->id)->count();
+            TributeComment::where('parent_id', $comment->id)->delete();
+            $comment->delete();
+
+            return response()->json([
+                'success' => true,
+                'deleted_count' => 1 + $replyCount,
+            ]);
+        }
+
+        $comment->delete();
+
+        return response()->json([
+            'success' => true,
+            'deleted_count' => 1,
+        ]);
+    }
+
+    /**
      * Record a memorial profile share (deduped: one record per visitor per type per day).
      * Returns updated stats so the frontend can refresh counters immediately.
      */
     public function trackShare(Request $request, string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
-        if (!PlanLimitsHelper::canShareMemories($memorial)) {
+        if (! PlanLimitsHelper::canShareMemories($memorial)) {
             return response()->json(['error' => 'Sharing is not available on this memorial\'s plan.'], 422);
         }
 
@@ -952,7 +990,7 @@ class MemorialApiController extends Controller
             'share_type' => ['required', 'in:whatsapp,facebook,linkedin,copy,invite'],
         ]);
 
-        $hash = hash('sha256', ($request->ip() ?? '') . '|' . ($request->userAgent() ?? ''));
+        $hash = hash('sha256', ($request->ip() ?? '').'|'.($request->userAgent() ?? ''));
         $today = \Carbon\Carbon::today();
 
         $alreadyShared = MemorialShare::where('memorial_id', $memorial->id)
@@ -961,7 +999,7 @@ class MemorialApiController extends Controller
             ->where('shared_at', '>=', $today)
             ->exists();
 
-        if (!$alreadyShared) {
+        if (! $alreadyShared) {
             MemorialShare::create([
                 'memorial_id' => $memorial->id,
                 'visitor_hash' => $hash,
@@ -982,7 +1020,7 @@ class MemorialApiController extends Controller
     public function stats(string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -992,6 +1030,7 @@ class MemorialApiController extends Controller
     private function formatPost(Post $post): array
     {
         $media = $post->relationLoaded('media') ? $post->media : $post->media;
+
         return [
             'id' => $post->id,
             'share_id' => $post->share_id,

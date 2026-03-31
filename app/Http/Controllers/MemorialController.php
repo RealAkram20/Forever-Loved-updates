@@ -36,13 +36,13 @@ class MemorialController extends Controller
         $base = Memorial::query()
             ->where(function ($q) use ($query) {
                 $q->where('full_name', 'like', "%{$query}%")
-                  ->orWhere('first_name', 'like', "%{$query}%")
-                  ->orWhere('last_name', 'like', "%{$query}%")
-                  ->orWhere('primary_profession', 'like', "%{$query}%")
-                  ->orWhere('nationality', 'like', "%{$query}%")
-                  ->orWhere('birth_city', 'like', "%{$query}%")
-                  ->orWhere('death_city', 'like', "%{$query}%")
-                  ->orWhere('known_for', 'like', "%{$query}%");
+                    ->orWhere('first_name', 'like', "%{$query}%")
+                    ->orWhere('last_name', 'like', "%{$query}%")
+                    ->orWhere('primary_profession', 'like', "%{$query}%")
+                    ->orWhere('nationality', 'like', "%{$query}%")
+                    ->orWhere('birth_city', 'like', "%{$query}%")
+                    ->orWhere('death_city', 'like', "%{$query}%")
+                    ->orWhere('known_for', 'like', "%{$query}%");
             });
 
         if ($context === 'super_admin' && $user?->hasRole('super-admin')) {
@@ -55,13 +55,13 @@ class MemorialController extends Controller
             }
         } else {
             $base->where('is_public', true)
-                 ->where('status', Memorial::STATUS_ACTIVE)
-                 ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
+                ->where('status', Memorial::STATUS_ACTIVE)
+                ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
         }
 
         $memorials = $base
             ->select(['id', 'slug', 'full_name', 'primary_profession', 'profile_photo_path', 'birth_year', 'death_year', 'date_of_birth', 'date_of_passing'])
-            ->orderByRaw("CASE WHEN full_name LIKE ? THEN 0 ELSE 1 END", ["{$query}%"])
+            ->orderByRaw('CASE WHEN full_name LIKE ? THEN 0 ELSE 1 END', ["{$query}%"])
             ->orderBy('full_name')
             ->limit(8)
             ->get();
@@ -136,9 +136,6 @@ class MemorialController extends Controller
             'death_city' => ['nullable', 'string', 'max:255'],
             'death_state' => ['nullable', 'string', 'max:255'],
             'death_country' => ['nullable', 'string', 'max:255'],
-            'cause_of_death' => ['nullable', 'string', 'max:255'],
-            'cause_of_death_private' => ['nullable', 'boolean'],
-            'designation' => ['nullable', 'string', 'max:255'],
             'is_public' => ['nullable', 'boolean'],
             'biography' => ['nullable', 'string', 'max:50000'],
             'theme' => ['required', Rule::in(['free', 'premium', 'classic', 'modern', 'garden'])],
@@ -167,7 +164,6 @@ class MemorialController extends Controller
         ]);
 
         $validated['user_id'] = $request->user()->id;
-        $validated['cause_of_death_private'] = $request->boolean('cause_of_death_private');
         $validated['plan'] = $validated['plan'] ?? ($validated['theme'] === 'premium' ? 'paid' : 'free');
         $validated['completion_status'] = Memorial::COMPLETION_PENDING;
         $validated['full_name'] = trim(implode(' ', array_filter([
@@ -175,13 +171,9 @@ class MemorialController extends Controller
             $validated['middle_name'] ?? '',
             $validated['last_name'],
         ])));
-        $validated['title'] = 'In Loving Memory of ' . $validated['full_name'];
+        $validated['title'] = 'In Loving Memory of '.$validated['full_name'];
         $validated['slug'] = static::generateUniqueSlug($validated['full_name']);
         $validated['is_public'] = $request->boolean('is_public', true);
-
-        if (!empty($validated['cause_of_death']) && trim($validated['cause_of_death']) !== '' && $validated['cause_of_death'] !== 'No designation') {
-            $validated['designation'] = $validated['cause_of_death'];
-        }
 
         $bio = trim($validated['biography'] ?? '');
         $validated['biography'] = $bio ?: null;
@@ -191,6 +183,7 @@ class MemorialController extends Controller
         $memorial = DB::transaction(function () use ($scalarData, $validated) {
             $memorial = Memorial::create($scalarData);
             static::syncMemorialRelations($memorial, $validated);
+
             return $memorial;
         });
 
@@ -253,7 +246,6 @@ class MemorialController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'relationship' => ['nullable', 'string', 'max:255'],
-            'designation' => ['nullable', 'string', 'max:255'],
             'short_description' => ['nullable', 'string', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:255'],
             'primary_profession' => ['nullable', 'string', 'max:255'],
@@ -270,8 +262,6 @@ class MemorialController extends Controller
             'death_city' => ['nullable', 'string', 'max:255'],
             'death_state' => ['nullable', 'string', 'max:255'],
             'death_country' => ['nullable', 'string', 'max:255'],
-            'cause_of_death' => ['nullable', 'string', 'max:255'],
-            'cause_of_death_private' => ['nullable', 'boolean'],
             'theme' => ['required', Rule::in(['free', 'premium', 'classic', 'modern', 'garden'])],
             'plan' => ['nullable', Rule::in(['free', 'paid'])],
             'companies' => ['nullable', 'array'],
@@ -302,18 +292,8 @@ class MemorialController extends Controller
             $validated['middle_name'] ?? '',
             $validated['last_name'],
         ])));
-        $validated['title'] = 'In Loving Memory of ' . $validated['full_name'];
+        $validated['title'] = 'In Loving Memory of '.$validated['full_name'];
         $validated['is_public'] = $request->boolean('is_public', true);
-        $validated['cause_of_death_private'] = $request->boolean('cause_of_death_private');
-
-        if (array_key_exists('cause_of_death', $validated)) {
-            $cause = $validated['cause_of_death'];
-            if (!empty($cause) && trim($cause) !== '' && $cause !== 'No designation') {
-                $validated['designation'] = $cause;
-            } elseif ($cause === 'No designation' || (empty($cause) && !$memorial->designation)) {
-                $validated['designation'] = null;
-            }
-        }
 
         if ($memorial->full_name !== $validated['full_name']) {
             $validated['slug'] = static::generateUniqueSlug($validated['full_name'], $memorial->id);
@@ -359,7 +339,7 @@ class MemorialController extends Controller
             if ($section === 'identity') {
                 $identityData = collect($sectionData)->only([
                     'first_name', 'middle_name', 'last_name', 'short_description', 'nationality',
-                    'primary_profession', 'notable_title', 'gender', 'relationship'
+                    'primary_profession', 'notable_title', 'gender', 'relationship',
                 ])->toArray();
                 $fullName = trim(implode(' ', array_filter([
                     $sectionData['first_name'] ?? '',
@@ -368,11 +348,11 @@ class MemorialController extends Controller
                 ])));
                 $memorial->update(array_merge($identityData, [
                     'full_name' => $fullName,
-                    'title' => 'In Loving Memory of ' . $fullName,
+                    'title' => 'In Loving Memory of '.$fullName,
                 ]));
             } elseif ($section === 'biography_summary') {
                 $memorial->update(collect($sectionData)->only([
-                    'major_achievements', 'known_for', 'active_year_start', 'active_year_end'
+                    'major_achievements', 'known_for', 'active_year_start', 'active_year_end',
                 ])->toArray());
                 static::syncMemorialRelations($memorial, [
                     'companies' => $sectionData['companies'] ?? [],
@@ -380,25 +360,15 @@ class MemorialController extends Controller
                 ]);
             } elseif ($section === 'birth') {
                 $memorial->update(collect($sectionData)->only([
-                    'date_of_birth', 'birth_city', 'birth_state', 'birth_country'
+                    'date_of_birth', 'birth_city', 'birth_state', 'birth_country',
                 ])->toArray());
             } elseif ($section === 'death') {
-                $cause = $sectionData['cause_of_death'] ?? null;
-                $cleanCause = $cause && trim((string) $cause) !== '' ? trim($cause) : null;
-                $updateData = [
+                $memorial->update([
                     'date_of_passing' => $sectionData['date_of_passing'] ?? null,
                     'death_city' => $sectionData['death_city'] ?? null,
                     'death_state' => $sectionData['death_state'] ?? null,
                     'death_country' => $sectionData['death_country'] ?? null,
-                    'cause_of_death' => $cleanCause,
-                    'cause_of_death_private' => !empty($sectionData['cause_of_death_private']),
-                ];
-                if ($cleanCause && $cleanCause !== 'No designation') {
-                    $updateData['designation'] = $cleanCause;
-                } elseif ($cleanCause === 'No designation' || (!$cleanCause && !$memorial->designation)) {
-                    $updateData['designation'] = null;
-                }
-                $memorial->update($updateData);
+                ]);
             } elseif ($section === 'family') {
                 static::syncMemorialRelations($memorial, [
                     'children' => $sectionData['children'] ?? [],
@@ -414,7 +384,7 @@ class MemorialController extends Controller
                 $memorial->update([
                     'theme' => $sectionData['theme'] ?? 'free',
                     'plan' => $sectionData['plan'] ?? 'free',
-                    'is_public' => !empty($sectionData['is_public']),
+                    'is_public' => ! empty($sectionData['is_public']),
                 ]);
             }
         });
@@ -458,8 +428,6 @@ class MemorialController extends Controller
             'death_city' => ['nullable', 'string', 'max:255'],
             'death_state' => ['nullable', 'string', 'max:255'],
             'death_country' => ['nullable', 'string', 'max:255'],
-            'cause_of_death' => ['nullable', 'string', 'max:255'],
-            'cause_of_death_private' => ['nullable'],
             'is_public' => ['nullable'],
             'theme' => ['nullable', Rule::in(['free', 'premium', 'classic', 'modern', 'garden'])],
             'plan' => ['nullable', Rule::in(['free', 'paid'])],
@@ -491,7 +459,7 @@ class MemorialController extends Controller
         foreach ($relationKeys as $rel) {
             if (isset($input[$rel])) {
                 foreach ($allRules as $key => $rule) {
-                    if (str_starts_with($key, $rel . '.')) {
+                    if (str_starts_with($key, $rel.'.')) {
                         $rules[$key] = $rule;
                     }
                 }
@@ -504,7 +472,7 @@ class MemorialController extends Controller
         $relationData = collect($validated)->only($relationKeys)->toArray();
 
         DB::transaction(function () use ($memorial, $scalarData, $relationData) {
-            if (!empty($scalarData)) {
+            if (! empty($scalarData)) {
                 if (isset($scalarData['first_name']) || isset($scalarData['middle_name']) || isset($scalarData['last_name'])) {
                     $fullName = trim(implode(' ', array_filter([
                         $scalarData['first_name'] ?? $memorial->first_name ?? '',
@@ -512,27 +480,14 @@ class MemorialController extends Controller
                         $scalarData['last_name'] ?? $memorial->last_name ?? '',
                     ])));
                     $scalarData['full_name'] = $fullName;
-                    $scalarData['title'] = 'In Loving Memory of ' . $fullName;
-                }
-                if (array_key_exists('cause_of_death_private', $scalarData)) {
-                    $scalarData['cause_of_death_private'] = !empty($scalarData['cause_of_death_private']);
+                    $scalarData['title'] = 'In Loving Memory of '.$fullName;
                 }
                 if (array_key_exists('is_public', $scalarData)) {
-                    $scalarData['is_public'] = !empty($scalarData['is_public']);
-                }
-                if (array_key_exists('cause_of_death', $scalarData)) {
-                    $cause = $scalarData['cause_of_death'];
-                    $cleanCause = $cause && trim((string) $cause) !== '' ? trim($cause) : null;
-                    $scalarData['cause_of_death'] = $cleanCause;
-                    if ($cleanCause && $cleanCause !== 'No designation') {
-                        $scalarData['designation'] = $cleanCause;
-                    } elseif ($cleanCause === 'No designation' || (!$cleanCause && !$memorial->designation)) {
-                        $scalarData['designation'] = null;
-                    }
+                    $scalarData['is_public'] = ! empty($scalarData['is_public']);
                 }
                 $memorial->update($scalarData);
             }
-            if (!empty($relationData)) {
+            if (! empty($relationData)) {
                 static::syncMemorialRelations($memorial, $relationData);
             }
         });
@@ -569,8 +524,6 @@ class MemorialController extends Controller
             'death_city' => ['nullable', 'string', 'max:255'],
             'death_state' => ['nullable', 'string', 'max:255'],
             'death_country' => ['nullable', 'string', 'max:255'],
-            'cause_of_death' => ['nullable', 'string', 'max:255'],
-            'cause_of_death_private' => ['nullable'],
             'theme' => ['nullable', Rule::in(['free', 'premium', 'classic', 'modern', 'garden'])],
             'plan' => ['nullable', Rule::in(['free', 'paid'])],
             'is_public' => ['nullable'],
@@ -601,7 +554,7 @@ class MemorialController extends Controller
             'identity' => ['first_name', 'middle_name', 'last_name', 'short_description', 'nationality', 'primary_profession', 'notable_title', 'gender', 'relationship'],
             'biography_summary' => ['major_achievements', 'known_for', 'active_year_start', 'active_year_end', 'companies', 'companies.*.company_name', 'co_founders', 'co_founders.*.name'],
             'birth' => ['date_of_birth', 'birth_city', 'birth_state', 'birth_country'],
-            'death' => ['date_of_passing', 'death_city', 'death_state', 'death_country', 'cause_of_death', 'cause_of_death_private'],
+            'death' => ['date_of_passing', 'death_city', 'death_state', 'death_country'],
             'family' => ['children', 'children.*.child_name', 'children.*.birth_year', 'spouses', 'spouses.*.spouse_name', 'spouses.*.marriage_start_year', 'spouses.*.marriage_end_year', 'parents', 'parents.*.parent_name', 'parents.*.relationship_type', 'siblings', 'siblings.*.sibling_name'],
             'education' => ['education', 'education.*.institution_name', 'education.*.start_year', 'education.*.end_year', 'education.*.degree'],
             'settings' => ['theme', 'plan', 'is_public'],
@@ -614,6 +567,7 @@ class MemorialController extends Controller
                 $flat[$k] = $base[$k];
             }
         }
+
         return $flat;
     }
 
@@ -649,7 +603,7 @@ class MemorialController extends Controller
         $this->authorize('update', $memorial);
 
         $reservation = PlanLimitsHelper::reserveAiBioUsage($memorial);
-        if (!$reservation['allowed']) {
+        if (! $reservation['allowed']) {
             return response()->json([
                 'message' => $reservation['reason'],
                 'current' => $reservation['current'],
@@ -668,7 +622,7 @@ class MemorialController extends Controller
 
         $aiProvider = $this->getActiveAiProvider();
 
-        if (!$aiProvider) {
+        if (! $aiProvider) {
             return response()->json([
                 'message' => 'No AI provider is enabled. Please enable OpenAI, Claude, or Gemini in your configuration.',
             ], 422);
@@ -685,6 +639,7 @@ class MemorialController extends Controller
             $options = $service->generate($structuredData, $memorial->id, $noCache);
         } catch (\Throwable $e) {
             $userMessage = $this->parseAiErrorMessage($e->getMessage());
+
             return response()->json([
                 'message' => $userMessage,
             ], 422);
@@ -694,7 +649,7 @@ class MemorialController extends Controller
         $o2 = strip_tags(trim($options['option_2'] ?? ''));
         $o3 = strip_tags(trim($options['option_3'] ?? ''));
 
-        if (!$o1 && !$o2 && !$o3) {
+        if (! $o1 && ! $o2 && ! $o3) {
             return response()->json([
                 'message' => 'AI returned empty results. Please add more details and try again.',
             ], 422);
@@ -741,6 +696,7 @@ class MemorialController extends Controller
         if (str_starts_with($message, 'AI_API_ERROR:')) {
             return 'AI generation encountered an error. Template suggestions are shown instead.';
         }
+
         return 'AI generation failed. Template suggestions are shown instead.';
     }
 
@@ -752,7 +708,6 @@ class MemorialController extends Controller
             'last_name' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'relationship' => ['nullable', 'string', 'max:255'],
-            'designation' => ['nullable', 'string', 'max:255'],
             'short_description' => ['nullable', 'string', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:255'],
             'primary_profession' => ['nullable', 'string', 'max:255'],
@@ -769,7 +724,6 @@ class MemorialController extends Controller
             'death_city' => ['nullable', 'string', 'max:255'],
             'death_state' => ['nullable', 'string', 'max:255'],
             'death_country' => ['nullable', 'string', 'max:255'],
-            'cause_of_death' => ['nullable', 'string', 'max:255'],
             'companies' => ['nullable', 'array'],
             'companies.*.company_name' => ['nullable', 'string', 'max:255'],
             'co_founders' => ['nullable', 'array'],
@@ -795,14 +749,13 @@ class MemorialController extends Controller
         $validated = validator($data, $rules)->validate();
 
         $scalar = collect($validated)->except(['companies', 'co_founders', 'children', 'spouses', 'parents', 'siblings', 'education'])->toArray();
-        $scalar['cause_of_death_private'] = !empty($data['cause_of_death_private']);
         $fullName = trim(implode(' ', array_filter([
             $validated['first_name'] ?? '',
             $validated['middle_name'] ?? '',
             $validated['last_name'] ?? '',
         ])));
         $scalar['full_name'] = $fullName ?: $memorial->full_name;
-        $scalar['title'] = 'In Loving Memory of ' . $scalar['full_name'];
+        $scalar['title'] = 'In Loving Memory of '.$scalar['full_name'];
 
         $memorial->update($scalar);
         static::syncMemorialRelations($memorial, $validated);
@@ -842,7 +795,7 @@ class MemorialController extends Controller
      */
     public function updateStatus(Request $request, Memorial $memorial)
     {
-        if (!$request->user()?->hasRole(['admin', 'super-admin'])) {
+        if (! $request->user()?->hasRole(['admin', 'super-admin'])) {
             abort(403);
         }
 
@@ -854,17 +807,21 @@ class MemorialController extends Controller
             case 'activate':
                 $memorial->update(['status' => Memorial::STATUS_ACTIVE, 'is_public' => true]);
                 NotificationService::notifyMemorialStatusChange($memorial, 'active');
+
                 return back()->with('status', 'Memorial activated.');
             case 'deactivate':
                 $memorial->update(['status' => Memorial::STATUS_DEACTIVATED, 'is_public' => false]);
                 NotificationService::notifyMemorialStatusChange($memorial, 'deactivated');
+
                 return back()->with('status', 'Memorial deactivated.');
             case 'suspend':
                 $memorial->update(['status' => Memorial::STATUS_SUSPENDED, 'is_public' => false]);
                 NotificationService::notifyMemorialStatusChange($memorial, 'suspended');
+
                 return back()->with('status', 'Memorial suspended.');
             case 'delete':
                 $memorial->delete();
+
                 return back()->with('status', 'Memorial deleted.');
         }
 
@@ -879,42 +836,42 @@ class MemorialController extends Controller
     {
         if (array_key_exists('companies', $validated)) {
             $memorial->notableCompanies()->delete();
-            foreach (array_filter($validated['companies'] ?? [], fn ($c) => !empty(trim($c['company_name'] ?? ''))) as $i => $c) {
+            foreach (array_filter($validated['companies'] ?? [], fn ($c) => ! empty(trim($c['company_name'] ?? ''))) as $i => $c) {
                 $memorial->notableCompanies()->create(['company_name' => trim($c['company_name']), 'sort_order' => $i]);
             }
         }
 
         if (array_key_exists('co_founders', $validated)) {
             $memorial->coFounders()->delete();
-            foreach (array_filter($validated['co_founders'] ?? [], fn ($c) => !empty(trim($c['name'] ?? ''))) as $i => $c) {
+            foreach (array_filter($validated['co_founders'] ?? [], fn ($c) => ! empty(trim($c['name'] ?? ''))) as $i => $c) {
                 $memorial->coFounders()->create(['name' => trim($c['name']), 'sort_order' => $i]);
             }
         }
 
         if (array_key_exists('children', $validated)) {
             $memorial->children()->delete();
-            foreach (array_filter($validated['children'] ?? [], fn ($c) => !empty(trim($c['child_name'] ?? ''))) as $c) {
+            foreach (array_filter($validated['children'] ?? [], fn ($c) => ! empty(trim($c['child_name'] ?? ''))) as $c) {
                 $memorial->children()->create([
                     'child_name' => trim($c['child_name']),
-                    'birth_year' => !empty($c['birth_year']) ? (int) $c['birth_year'] : null,
+                    'birth_year' => ! empty($c['birth_year']) ? (int) $c['birth_year'] : null,
                 ]);
             }
         }
 
         if (array_key_exists('spouses', $validated)) {
             $memorial->spouses()->delete();
-            foreach (array_filter($validated['spouses'] ?? [], fn ($c) => !empty(trim($c['spouse_name'] ?? ''))) as $c) {
+            foreach (array_filter($validated['spouses'] ?? [], fn ($c) => ! empty(trim($c['spouse_name'] ?? ''))) as $c) {
                 $memorial->spouses()->create([
                     'spouse_name' => trim($c['spouse_name']),
-                    'marriage_start_year' => !empty($c['marriage_start_year']) ? (int) $c['marriage_start_year'] : null,
-                    'marriage_end_year' => !empty($c['marriage_end_year']) ? (int) $c['marriage_end_year'] : null,
+                    'marriage_start_year' => ! empty($c['marriage_start_year']) ? (int) $c['marriage_start_year'] : null,
+                    'marriage_end_year' => ! empty($c['marriage_end_year']) ? (int) $c['marriage_end_year'] : null,
                 ]);
             }
         }
 
         if (array_key_exists('parents', $validated)) {
             $memorial->parents()->delete();
-            foreach (array_filter($validated['parents'] ?? [], fn ($c) => !empty(trim($c['parent_name'] ?? ''))) as $c) {
+            foreach (array_filter($validated['parents'] ?? [], fn ($c) => ! empty(trim($c['parent_name'] ?? ''))) as $c) {
                 $memorial->parents()->create([
                     'parent_name' => trim($c['parent_name']),
                     'relationship_type' => in_array($c['relationship_type'] ?? '', ['biological', 'adoptive']) ? $c['relationship_type'] : 'biological',
@@ -924,19 +881,19 @@ class MemorialController extends Controller
 
         if (array_key_exists('siblings', $validated)) {
             $memorial->siblings()->delete();
-            foreach (array_filter($validated['siblings'] ?? [], fn ($c) => !empty(trim($c['sibling_name'] ?? ''))) as $c) {
+            foreach (array_filter($validated['siblings'] ?? [], fn ($c) => ! empty(trim($c['sibling_name'] ?? ''))) as $c) {
                 $memorial->siblings()->create(['sibling_name' => trim($c['sibling_name'])]);
             }
         }
 
         if (array_key_exists('education', $validated)) {
             $memorial->education()->delete();
-            foreach (array_filter($validated['education'] ?? [], fn ($c) => !empty(trim($c['institution_name'] ?? ''))) as $c) {
+            foreach (array_filter($validated['education'] ?? [], fn ($c) => ! empty(trim($c['institution_name'] ?? ''))) as $c) {
                 $memorial->education()->create([
                     'institution_name' => trim($c['institution_name']),
-                    'start_year' => !empty($c['start_year']) ? (int) $c['start_year'] : null,
-                    'end_year' => !empty($c['end_year']) ? (int) $c['end_year'] : null,
-                    'degree' => !empty($c['degree']) ? trim($c['degree']) : null,
+                    'start_year' => ! empty($c['start_year']) ? (int) $c['start_year'] : null,
+                    'end_year' => ! empty($c['end_year']) ? (int) $c['end_year'] : null,
+                    'degree' => ! empty($c['degree']) ? trim($c['degree']) : null,
                 ]);
             }
         }
@@ -958,7 +915,7 @@ class MemorialController extends Controller
                 ->exists()
         ) {
             $suffix++;
-            $slug = $baseSlug . '-' . $suffix;
+            $slug = $baseSlug.'-'.$suffix;
         }
 
         return $slug;

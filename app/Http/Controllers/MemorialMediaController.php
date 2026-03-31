@@ -413,12 +413,12 @@ class MemorialMediaController extends Controller
         if (!$this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
-            return response()->json(['error' => $mediaCheck['reason']], 403);
+
+        $media = $memorial->media()->find($mediaId);
+        if (!$media) {
+            return response()->json(['success' => true, 'type' => 'unknown']);
         }
 
-        $media = $memorial->media()->findOrFail($mediaId);
         $type = $media->type;
 
         Storage::disk('public')->delete($media->path);

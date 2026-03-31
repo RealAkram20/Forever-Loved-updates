@@ -28,6 +28,7 @@ class MemorialSignupController extends Controller
     public function step1(Request $request)
     {
         $data = session(self::SESSION_KEY, []);
+
         return view('pages.memorial-signup.step1', [
             'title' => 'Create Memorial - Step 1',
             'data' => $data,
@@ -60,17 +61,14 @@ class MemorialSignupController extends Controller
             'death_city' => ['nullable', 'string', 'max:255'],
             'death_state' => ['nullable', 'string', 'max:255'],
             'death_country' => ['nullable', 'string', 'max:255'],
-            'cause_of_death' => ['nullable', 'string', 'max:255'],
-            'cause_of_death_private' => ['nullable'],
         ]);
-
-        $validated['cause_of_death_private'] = $request->boolean('cause_of_death_private');
 
         session([self::SESSION_KEY => array_merge(session(self::SESSION_KEY, []), $validated)]);
 
         if ($request->user()) {
             return redirect()->route('memorial.create.step3');
         }
+
         return redirect()->route('memorial.create.step2');
     }
 
@@ -87,6 +85,7 @@ class MemorialSignupController extends Controller
             return redirect()->route('memorial.create.step1')
                 ->with('error', 'Please complete Step 1 first.');
         }
+
         return view('pages.memorial-signup.step2', [
             'title' => 'Create Memorial - Create Account',
             'data' => $data,
@@ -106,6 +105,7 @@ class MemorialSignupController extends Controller
     {
         $email = $request->input('email') ?? $request->json('email');
         $exists = $email ? User::where('email', $email)->exists() : false;
+
         return response()->json(['exists' => $exists]);
     }
 
@@ -116,7 +116,7 @@ class MemorialSignupController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -145,6 +145,7 @@ class MemorialSignupController extends Controller
 
         if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $request->session()->regenerate();
+
             return redirect()->route('memorial.create.step3');
         }
 
@@ -156,7 +157,7 @@ class MemorialSignupController extends Controller
      */
     public function step3(Request $request)
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return redirect()->route('memorial.create.step2');
         }
         $data = session(self::SESSION_KEY, []);
@@ -167,6 +168,7 @@ class MemorialSignupController extends Controller
         $currency = SystemSetting::get('payments.currency', 'USD');
         $paymentsEnabled = (bool) SystemSetting::get('payments.enabled', false);
         $pesapalEnabled = (bool) SystemSetting::get('payments.pesapal_enabled', false);
+
         return view('pages.memorial-signup.step3', [
             'title' => 'Create Memorial - Choose Plan',
             'data' => $data,
@@ -185,13 +187,14 @@ class MemorialSignupController extends Controller
 
     public function storeStep3(Request $request)
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return redirect()->route('memorial.create.step2');
         }
         $validated = $request->validate([
             'plan_id' => ['required', 'exists:subscription_plans,id'],
         ]);
         session([self::SESSION_KEY => array_merge(session(self::SESSION_KEY, []), $validated)]);
+
         return redirect()->route('memorial.create.complete');
     }
 
@@ -200,7 +203,7 @@ class MemorialSignupController extends Controller
      */
     public function preparePaidCheckout(Request $request)
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 401);
         }
         $data = session(self::SESSION_KEY, []);
@@ -210,7 +213,7 @@ class MemorialSignupController extends Controller
 
         $planId = (int) ($request->input('plan_id') ?? $data['plan_id'] ?? 0);
         $plan = SubscriptionPlan::find($planId);
-        if (!$plan || $plan->isFree()) {
+        if (! $plan || $plan->isFree()) {
             return response()->json(['success' => false, 'error' => 'Please select a paid plan.'], 400);
         }
 
@@ -235,7 +238,7 @@ class MemorialSignupController extends Controller
      */
     public function complete(Request $request)
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return redirect()->route('memorial.create.step2');
         }
         $data = session(self::SESSION_KEY, []);
@@ -265,6 +268,7 @@ class MemorialSignupController extends Controller
                 'subscription_plan_id' => $plan->id,
                 'user_subscription_id' => $subscription->id,
             ]);
+
             return redirect()->route('memorial.create.preparing', ['slug' => $memorial->slug]);
         }
 
@@ -306,12 +310,12 @@ class MemorialSignupController extends Controller
             $data['last_name'],
         ])));
 
-        $planLabel = ($plan && !$plan->isFree()) ? 'paid' : 'free';
+        $planLabel = ($plan && ! $plan->isFree()) ? 'paid' : 'free';
 
         $memorial = Memorial::create([
             'user_id' => $user->id,
             'slug' => $this->generateSlug($fullName),
-            'title' => 'In Loving Memory of ' . $fullName,
+            'title' => 'In Loving Memory of '.$fullName,
             'full_name' => $fullName,
             'first_name' => $data['first_name'],
             'middle_name' => $data['middle_name'] ?? null,
@@ -330,9 +334,6 @@ class MemorialSignupController extends Controller
             'death_city' => $data['death_city'] ?? null,
             'death_state' => $data['death_state'] ?? null,
             'death_country' => $data['death_country'] ?? null,
-            'cause_of_death' => $data['cause_of_death'] ?? null,
-            'designation' => (!empty($data['cause_of_death']) && $data['cause_of_death'] !== 'No designation') ? $data['cause_of_death'] : null,
-            'cause_of_death_private' => $data['cause_of_death_private'] ?? false,
             'biography' => null,
             'theme' => $planLabel,
             'plan' => $planLabel,
@@ -360,8 +361,9 @@ class MemorialSignupController extends Controller
         $suffix = 0;
         while (Memorial::where('slug', $slug)->exists()) {
             $suffix++;
-            $slug = $baseSlug . '-' . $suffix;
+            $slug = $baseSlug.'-'.$suffix;
         }
+
         return $slug;
     }
 }

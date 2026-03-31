@@ -67,6 +67,64 @@
                         <p class="mt-1 text-xs text-gray-500">Current: {{ $settings['branding.favicon_path'] }}</p>
                     @endif
                 </div>
+
+                <div class="lg:col-span-2">
+                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Default appearance</label>
+                    <select name="branding[default_theme]"
+                        class="h-11 w-full max-w-md rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden">
+                        @php
+                            $defaultTheme = old('branding.default_theme', $settings['branding.default_theme'] ?? 'light');
+                        @endphp
+                        <option value="light" @selected($defaultTheme === 'light')>Light mode</option>
+                        <option value="dark" @selected($defaultTheme === 'dark')>Dark mode</option>
+                    </select>
+                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        Used for visitors who have not toggled the theme yet. Anyone who already chose light or dark keeps their saved preference.
+                    </p>
+                </div>
+            </div>
+        </x-common.component-card>
+
+        @php
+            $rawOauthOn = old('oauth.google_enabled');
+            if ($rawOauthOn === null) {
+                $v = $oauth['oauth.google_enabled'] ?? '0';
+                $oauthGoogleOn = $v === true || $v === 1 || $v === '1';
+            } else {
+                $oauthGoogleOn = in_array($rawOauthOn, [true, 1, '1', 'true'], true);
+            }
+            $googleSecretStored = ! empty($oauth['oauth.google_client_secret'] ?? '');
+        @endphp
+        <x-common.component-card title="Sign in with Google" desc="OAuth 2.0 for the login and sign-up pages. Create credentials in Google Cloud Console → APIs & Services → Credentials → OAuth client (Web application).">
+            <div class="space-y-5">
+                <div class="flex items-center gap-3">
+                    <input type="hidden" name="oauth[google_enabled]" value="0" />
+                    <input type="checkbox" id="oauth_google_enabled" name="oauth[google_enabled]" value="1"
+                        class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-900"
+                        {{ $oauthGoogleOn ? 'checked' : '' }} />
+                    <label for="oauth_google_enabled" class="text-sm font-medium text-gray-800 dark:text-white/90">Enable Google sign-in</label>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Authorized redirect URI in Google Cloud must be exactly:
+                    <code class="rounded bg-gray-100 px-1.5 py-0.5 text-gray-800 dark:bg-white/10 dark:text-gray-200">{{ url('/auth/google/callback') }}</code>
+                </p>
+                <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    <div class="lg:col-span-2">
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client ID</label>
+                        <input type="text" name="oauth[google_client_id]" autocomplete="off"
+                            value="{{ old('oauth.google_client_id', $oauth['oauth.google_client_id'] ?? '') }}"
+                            placeholder="xxxxx.apps.googleusercontent.com"
+                            class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden font-mono text-xs" />
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client secret</label>
+                        <input type="password" name="oauth[google_client_secret]" autocomplete="new-password"
+                            value="{{ $googleSecretStored ? '••••••••' : '' }}"
+                            placeholder="GOCSPX-…"
+                            class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden font-mono text-xs" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave as dots to keep the existing secret. Optional: you can instead set <code class="text-gray-600 dark:text-gray-300">GOOGLE_CLIENT_ID</code> and <code class="text-gray-600 dark:text-gray-300">GOOGLE_CLIENT_SECRET</code> in <code class="text-gray-600 dark:text-gray-300">.env</code> (still turn on “Enable Google sign-in” above).</p>
+                    </div>
+                </div>
             </div>
         </x-common.component-card>
 

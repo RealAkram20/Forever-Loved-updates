@@ -1,5 +1,6 @@
 import { Calendar } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import multiMonthPlugin from "@fullcalendar/multimonth";
 import listPlugin from "@fullcalendar/list";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -88,6 +89,84 @@ export function calendarInit() {
   }
 
   // ── Calendar setup ──
+  let calendar;
+
+  const toolbarEl = document.getElementById("calendar-toolbar");
+  const yearWrapEl = document.getElementById("calendar-year-wrap");
+  const yearSelectEl = document.getElementById("calendar-year-select");
+  const navTitleEl = document.getElementById("calendar-nav-title");
+  const viewSelectEl = document.getElementById("calendar-view-select");
+  const btnPrevEl = document.getElementById("calendar-btn-prev");
+  const btnNextEl = document.getElementById("calendar-btn-next");
+  const btnTodayEl = document.getElementById("calendar-btn-today");
+  const toolbarAddEventEl = document.getElementById("calendar-toolbar-add-event");
+
+  if (yearSelectEl) {
+    const nowY = new Date().getFullYear();
+    const fromY = nowY - 100;
+    const toY = nowY + 30;
+    for (let y = toY; y >= fromY; y -= 1) {
+      const opt = document.createElement("option");
+      opt.value = String(y);
+      opt.textContent = String(y);
+      yearSelectEl.appendChild(opt);
+    }
+  }
+
+  function ensureYearOption(y) {
+    if (!yearSelectEl) return;
+    const s = String(y);
+    if ([...yearSelectEl.options].some((o) => o.value === s)) return;
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    yearSelectEl.insertBefore(opt, yearSelectEl.firstChild);
+  }
+
+  function syncToolbar() {
+    if (!calendar) return;
+    const view = calendar.view;
+    const type = view.type;
+
+    if (viewSelectEl) viewSelectEl.value = type;
+
+    if (type === "multiMonthYear") {
+      yearWrapEl?.classList.remove("hidden");
+      navTitleEl?.classList.add("hidden");
+      const y = view.currentStart.getFullYear();
+      ensureYearOption(y);
+      if (yearSelectEl && yearSelectEl.value !== String(y)) {
+        yearSelectEl.value = String(y);
+      }
+    } else {
+      yearWrapEl?.classList.add("hidden");
+      navTitleEl?.classList.remove("hidden");
+      if (navTitleEl) {
+        if (type === "dayGridMonth") {
+          navTitleEl.textContent = calendar.formatDate(view.currentStart, {
+            month: "long",
+            year: "numeric",
+          });
+        } else if (type === "timeGridWeek") {
+          navTitleEl.textContent = calendar.formatRange(view.currentStart, view.currentEnd, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            separator: " – ",
+          });
+        } else if (type === "timeGridDay") {
+          navTitleEl.textContent = calendar.formatDate(view.currentStart, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          });
+        } else {
+          navTitleEl.textContent = "";
+        }
+      }
+    }
+  }
 
   const calendarSelect = (info) => {
     resetModalFields();
@@ -185,14 +264,19 @@ export function calendarInit() {
     openModal();
   };
 
-  const calendar = new Calendar(calendarEl, {
-    plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
+  calendar = new Calendar(calendarEl, {
+    plugins: [dayGridPlugin, multiMonthPlugin, timeGridPlugin, listPlugin, interactionPlugin],
     selectable: true,
     initialView: "dayGridMonth",
-    headerToolbar: {
-      left: "prev,next addEventButton",
-      center: "title",
-      right: "dayGridMonth,timeGridWeek,timeGridDay",
+    headerToolbar: false,
+    views: {
+      multiMonthYear: {
+        multiMonthMaxColumns: 3,
+        multiMonthMinWidth: 200,
+      },
+    },
+    datesSet() {
+      syncToolbar();
     },
     events: (fetchInfo, successCallback, failureCallback) => {
       fetch(eventsUrl, {
@@ -208,12 +292,6 @@ export function calendarInit() {
     select: calendarSelect,
     eventClick: calendarEventClick,
     displayEventTime: false,
-    customButtons: {
-      addEventButton: {
-        text: "Add Event +",
-        click: calendarAddEvent,
-      },
-    },
     eventContent(eventInfo) {
       const props = eventInfo.event.extendedProps;
       const colorClass = `fc-bg-${(props.calendar || "primary").toLowerCase()}`;
@@ -323,7 +401,23 @@ export function calendarInit() {
     });
   }
 
+  if (toolbarEl) {
+    btnPrevEl?.addEventListener("click", () => calendar.prev());
+    btnNextEl?.addEventListener("click", () => calendar.next());
+    btnTodayEl?.addEventListener("click", () => calendar.today());
+    viewSelectEl?.addEventListener("change", () => {
+      const v = viewSelectEl.value;
+      if (v && calendar.view.type !== v) calendar.changeView(v);
+    });
+    yearSelectEl?.addEventListener("change", () => {
+      const y = parseInt(yearSelectEl.value, 10);
+      if (!Number.isNaN(y)) calendar.gotoDate(new Date(y, 0, 1));
+    });
+    toolbarAddEventEl?.addEventListener("click", () => calendarAddEvent());
+  }
+
   calendar.render();
+  syncToolbar();
 
   // ── Modal close handlers ──
   document.querySelectorAll(".modal-close-btn").forEach((btn) => {

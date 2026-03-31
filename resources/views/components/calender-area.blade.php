@@ -11,13 +11,89 @@
             </div>
         @endunless
         <div class="custom-calendar overflow-x-auto">
-            <div id="calendar" class="min-h-screen"
-                 data-events-url="{{ $eventsUrl }}"
-                 data-store-url="{{ $storeUrl }}"
-                 data-update-url-base="{{ $updateUrlBase }}"
-                 data-destroy-url-base="{{ $destroyUrlBase }}"
-                 data-csrf-token="{{ csrf_token() }}"
-            ></div>
+            <div class="flex min-h-screen flex-col">
+                <header
+                    id="calendar-toolbar"
+                    class="flex flex-col gap-4 border-b border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-white/[0.02] sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6"
+                >
+                    <div class="min-h-[2.75rem] min-w-0 shrink-0 lg:max-w-[min(100%,28rem)]">
+                        <div id="calendar-year-wrap" class="hidden min-h-[2.75rem]">
+                            <label for="calendar-year-select" class="sr-only">Select year</label>
+                            <select
+                                id="calendar-year-select"
+                                class="calendar-year-select block w-full max-w-[14rem] cursor-pointer text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:max-w-none sm:text-4xl"
+                            ></select>
+                        </div>
+                        <h2
+                            id="calendar-nav-title"
+                            class="text-2xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-3xl"
+                        ></h2>
+                    </div>
+                    <div
+                        class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3 lg:shrink-0"
+                    >
+                        <div
+                            class="inline-flex w-full overflow-hidden rounded-xl border border-gray-200 shadow-sm dark:border-gray-700 sm:w-auto"
+                        >
+                            <button
+                                type="button"
+                                id="calendar-btn-prev"
+                                class="flex flex-1 items-center justify-center px-3 py-2.5 text-gray-600 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:flex-initial sm:px-3.5"
+                                aria-label="Previous period"
+                            >
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <button
+                                type="button"
+                                id="calendar-btn-today"
+                                class="border-x border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800/80"
+                            >
+                                Today
+                            </button>
+                            <button
+                                type="button"
+                                id="calendar-btn-next"
+                                class="flex flex-1 items-center justify-center px-3 py-2.5 text-gray-600 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:flex-initial sm:px-3.5"
+                                aria-label="Next period"
+                            >
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-end sm:gap-2">
+                            <label for="calendar-view-select" class="sr-only">Calendar view</label>
+                            <select
+                                id="calendar-view-select"
+                                class="h-11 w-full min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/15 dark:border-gray-700 dark:bg-gray-900 dark:text-white sm:min-w-[10.5rem]"
+                            >
+                                <option value="timeGridDay">Day view</option>
+                                <option value="timeGridWeek">Week view</option>
+                                <option value="dayGridMonth" selected>Month view</option>
+                                <option value="multiMonthYear">Year view</option>
+                            </select>
+                            <button
+                                type="button"
+                                id="calendar-toolbar-add-event"
+                                class="inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl bg-brand-500 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 sm:w-auto"
+                            >
+                                Add event
+                            </button>
+                        </div>
+                    </div>
+                </header>
+                <div
+                    id="calendar"
+                    class="min-h-0 flex-1 p-3 sm:p-4 lg:p-6"
+                    data-events-url="{{ $eventsUrl }}"
+                    data-store-url="{{ $storeUrl }}"
+                    data-update-url-base="{{ $updateUrlBase }}"
+                    data-destroy-url-base="{{ $destroyUrlBase }}"
+                    data-csrf-token="{{ csrf_token() }}"
+                ></div>
+            </div>
         </div>
     </div>
 

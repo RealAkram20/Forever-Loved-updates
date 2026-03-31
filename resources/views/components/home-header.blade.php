@@ -2,6 +2,7 @@
     $isAdmin = auth()->user()?->hasRole(['admin', 'super-admin']);
     $appName = \App\Models\SystemSetting::get('branding.app_name', 'Forever-Loved');
     $currentRoute = request()->route()?->getName();
+    $headerNavItems = $headerNavItems ?? collect();
 @endphp
 
 <header class="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm" x-data="{ mobileOpen: false }">
@@ -14,16 +15,22 @@
 
         {{-- Desktop nav --}}
         <nav class="hidden lg:flex items-center gap-1">
-            <a href="{{ route('home') }}"
-               class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Home</a>
-            <a href="{{ route('about') }}"
-               class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'about' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">About</a>
-            <a href="{{ route('pricing') }}"
-               class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'pricing' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Pricing</a>
-            <a href="{{ route('memorial.directory') }}"
-               class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'memorial.directory' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Find Memorial</a>
-            <a href="{{ route('contact') }}"
-               class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'contact' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Contact</a>
+            @forelse ($headerNavItems as $navItem)
+                <a href="{{ $navItem->resolvedUrl() }}"
+                   @if($navItem->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif
+                   class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $navItem->isActive($currentRoute) ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">{{ $navItem->label }}</a>
+            @empty
+                <a href="{{ route('home') }}"
+                   class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Home</a>
+                <a href="{{ route('about') }}"
+                   class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'about' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">About</a>
+                <a href="{{ route('pricing') }}"
+                   class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'pricing' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Pricing</a>
+                <a href="{{ route('memorial.directory') }}"
+                   class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'memorial.directory' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Find Memorial</a>
+                <a href="{{ route('contact') }}"
+                   class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'contact' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Contact</a>
+            @endforelse
         </nav>
 
         {{-- Desktop search + actions --}}
@@ -226,11 +233,17 @@
 
         {{-- Mobile nav links --}}
         <nav class="space-y-0.5 px-4 pb-3">
-            <a href="{{ route('home') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Home</a>
-            <a href="{{ route('about') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'about' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">About</a>
-            <a href="{{ route('pricing') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'pricing' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Pricing</a>
-            <a href="{{ route('memorial.directory') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'memorial.directory' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Find Memorial</a>
-            <a href="{{ route('contact') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'contact' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Contact</a>
+            @forelse ($headerNavItems as $navItem)
+                <a href="{{ $navItem->resolvedUrl() }}"
+                   @if($navItem->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif
+                   class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $navItem->isActive($currentRoute) ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">{{ $navItem->label }}</a>
+            @empty
+                <a href="{{ route('home') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Home</a>
+                <a href="{{ route('about') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'about' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">About</a>
+                <a href="{{ route('pricing') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'pricing' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Pricing</a>
+                <a href="{{ route('memorial.directory') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'memorial.directory' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Find Memorial</a>
+                <a href="{{ route('contact') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'contact' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Contact</a>
+            @endforelse
 
             @if (auth()->check())
                 <div class="my-1.5 border-t border-gray-100 dark:border-gray-800"></div>

@@ -37,13 +37,13 @@
                                         class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="middle_name">Middle name</label>
-                                    <input type="text" id="middle_name" name="middle_name" value="{{ old('middle_name', $data['middle_name'] ?? '') }}"
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="last_name">Last name</label>
+                                    <input type="text" id="last_name" name="last_name" value="{{ old('last_name', $data['last_name'] ?? '') }}" required
                                         class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="last_name">Last name</label>
-                                    <input type="text" id="last_name" name="last_name" value="{{ old('last_name', $data['last_name'] ?? '') }}" required
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="middle_name">Middle name (optional)</label>
+                                    <input type="text" id="middle_name" name="middle_name" value="{{ old('middle_name', $data['middle_name'] ?? '') }}"
                                         class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                             </div>
@@ -91,10 +91,10 @@
                             </div>
                         </div>
 
-                        {{-- Do it later #1: Dates, location & designation --}}
+                        {{-- Do it later #1: Dates & location --}}
                         <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
                             <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Dates, location & designation:</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Dates & location:</p>
                                 <label class="flex cursor-pointer items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                                     <div class="relative">
                                         <input type="checkbox" class="sr-only" x-model="doDatesLater" @change="saveToStorage()" />
@@ -142,30 +142,6 @@
                                         <x-form.city-select id="step1_death_city" name="death_city"
                                             :value="old('death_city', $data['death_city'] ?? '')" stateFieldId="step1_death_state" />
                                     </div>
-                                </div>
-                                <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="cause_of_death">Designation</label>
-                                    @php $causeVal = old('cause_of_death', $data['cause_of_death'] ?? ''); @endphp
-                                    <select id="cause_of_death" name="cause_of_death" class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:ring-3 focus:outline-hidden">
-                                        <option value="">— Select designation —</option>
-                                        <option value="COVID-19 victim" {{ $causeVal === 'COVID-19 victim' ? 'selected' : '' }}>COVID-19 victim</option>
-                                        <option value="War veteran" {{ $causeVal === 'War veteran' ? 'selected' : '' }}>War veteran</option>
-                                        <option value="First responder" {{ $causeVal === 'First responder' ? 'selected' : '' }}>First responder</option>
-                                        <option value="Substance abuse victim" {{ $causeVal === 'Substance abuse victim' ? 'selected' : '' }}>Substance abuse victim</option>
-                                        <option value="Cancer victim" {{ $causeVal === 'Cancer victim' ? 'selected' : '' }}>Cancer victim</option>
-                                        <option value="Victim of an accident" {{ $causeVal === 'Victim of an accident' ? 'selected' : '' }}>Victim of an accident</option>
-                                        <option value="Crime victim" {{ $causeVal === 'Crime victim' ? 'selected' : '' }}>Crime victim</option>
-                                        <option value="Miscarriage, stillborn and infant loss" {{ $causeVal === 'Miscarriage, stillborn and infant loss' ? 'selected' : '' }}>Miscarriage, stillborn and infant loss</option>
-                                        <option value="Child loss" {{ $causeVal === 'Child loss' ? 'selected' : '' }}>Child loss</option>
-                                        <option value="Other" {{ $causeVal === 'Other' ? 'selected' : '' }}>Other</option>
-                                        <option value="No designation" {{ $causeVal === 'No designation' ? 'selected' : '' }}>No designation</option>
-                                    </select>
-                                    <label class="mt-2 flex cursor-pointer items-center gap-2">
-                                        <input type="hidden" name="cause_of_death_private" value="0" />
-                                        <input type="checkbox" name="cause_of_death_private" value="1" {{ old('cause_of_death_private', $data['cause_of_death_private'] ?? false) ? 'checked' : '' }}
-                                            class="rounded border-gray-300 dark:border-gray-600 text-brand-600 focus:ring-brand-500" />
-                                        <span class="text-sm text-gray-700 dark:text-gray-300">Keep designation private</span>
-                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -247,7 +223,7 @@ function step1Persist(serverData) {
                 form.addEventListener('submit', () => {
                     try { localStorage.removeItem(STEP1_STORAGE_KEY); } catch (e) {}
                     if (this.doDatesLater) {
-                        const dateFields = ['date_of_birth', 'date_of_passing', 'birth_city', 'birth_state', 'birth_country', 'death_city', 'death_state', 'death_country', 'cause_of_death', 'cause_of_death_private'];
+                        const dateFields = ['date_of_birth', 'date_of_passing', 'birth_city', 'birth_state', 'birth_country', 'death_city', 'death_state', 'death_country'];
                         dateFields.forEach(name => {
                             const el = form.querySelector(`[name="${name}"]`);
                             if (el) { el.disabled = true; }

@@ -2,19 +2,19 @@
 
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\MemorialApiController;
 use App\Http\Controllers\MemorialController;
 use App\Http\Controllers\MemorialDirectoryController;
 use App\Http\Controllers\MemorialMediaController;
 use App\Http\Controllers\MemorialSignupController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicMemorialController;
-use App\Http\Controllers\ContactController;
-use App\Http\Controllers\PageController;
 use App\Http\Controllers\SubscriptionController;
-use App\Http\Controllers\CalendarController;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes (login, register, password reset, etc.)
@@ -34,6 +34,7 @@ Route::get('/pricing', [PageController::class, 'pricing'])->name('pricing');
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->name('privacy-policy');
 Route::get('/terms-of-use', [PageController::class, 'termsOfUse'])->name('terms-of-use');
+Route::get('/p/{slug}', fn (string $slug) => redirect("/{$slug}", 301))->where('slug', '[a-z0-9\-]+');
 Route::get('/contact', [ContactController::class, 'show'])->name('contact');
 Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:10,1')->name('contact.send');
 
@@ -64,91 +65,108 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('memorials/{memorial}/biography', [MemorialController::class, 'saveBiography'])->name('memorials.save-biography');
     Route::resource('memorials', MemorialController::class);
 
-// Notifications
-Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-Route::get('/notifications/dropdown', [NotificationController::class, 'dropdown'])->name('notifications.dropdown');
-Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
-Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
-Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
-Route::post('/notifications/push/subscribe', [NotificationController::class, 'subscribePush'])->name('notifications.push.subscribe');
-Route::post('/notifications/push/unsubscribe', [NotificationController::class, 'unsubscribePush'])->name('notifications.push.unsubscribe');
-Route::post('/notifications/push/reset', [NotificationController::class, 'resetPush'])->name('notifications.push.reset');
-Route::post('/notifications/push/test', [NotificationController::class, 'testPush'])->middleware('role:admin|super-admin')->name('notifications.push.test');
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/dropdown', [NotificationController::class, 'dropdown'])->name('notifications.dropdown');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::post('/notifications/push/subscribe', [NotificationController::class, 'subscribePush'])->name('notifications.push.subscribe');
+    Route::post('/notifications/push/unsubscribe', [NotificationController::class, 'unsubscribePush'])->name('notifications.push.unsubscribe');
+    Route::post('/notifications/push/reset', [NotificationController::class, 'resetPush'])->name('notifications.push.reset');
+    Route::post('/notifications/push/test', [NotificationController::class, 'testPush'])->middleware('role:admin|super-admin')->name('notifications.push.test');
 
-// Subscription & Billing (user)
-Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
-Route::post('/payment/create-order', [PaymentController::class, 'createOrder'])->name('payment.create-order');
+    // Subscription & Billing (user)
+    Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/payment/create-order', [PaymentController::class, 'createOrder'])->name('payment.create-order');
 
-// Profile
-Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
-Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo');
-Route::delete('/profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.remove');
-Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
-Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo');
+    Route::delete('/profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.remove');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-// Calendar
-Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar');
-Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events');
-Route::post('/calendar/events', [CalendarController::class, 'store'])->name('calendar.events.store');
-Route::put('/calendar/events/{calendarEvent}', [CalendarController::class, 'update'])->name('calendar.events.update');
-Route::delete('/calendar/events/{calendarEvent}', [CalendarController::class, 'destroy'])->name('calendar.events.destroy');
+    // Calendar
+    Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar');
+    Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events');
+    Route::post('/calendar/events', [CalendarController::class, 'store'])->name('calendar.events.store');
+    Route::put('/calendar/events/{calendarEvent}', [CalendarController::class, 'update'])->name('calendar.events.update');
+    Route::delete('/calendar/events/{calendarEvent}', [CalendarController::class, 'destroy'])->name('calendar.events.destroy');
 
-// ─── Users Management (admin only) ──────────────────────────────
-Route::middleware('role:admin|super-admin')->group(function () {
-    Route::resource('users', UserController::class)->except(['show']);
-});
+    // ─── Users Management (admin only) ──────────────────────────────
+    Route::middleware('role:admin|super-admin')->group(function () {
+        Route::resource('users', UserController::class)->except(['show']);
+    });
 
-// Admin push onboarding dismiss
-Route::post('/admin/dismiss-push-onboarding', function (\Illuminate\Http\Request $request) {
-    $request->session()->put('admin_push_onboarding_dismissed', true);
-    return response()->json(['success' => true]);
-})->middleware(['auth', 'role:admin|super-admin'])->name('admin.dismiss-push-onboarding');
+    // Admin push onboarding dismiss
+    Route::post('/admin/dismiss-push-onboarding', function (\Illuminate\Http\Request $request) {
+        $request->session()->put('admin_push_onboarding_dismissed', true);
 
-// ─── Admin Settings ──────────────────────────────────────────────
-Route::prefix('settings')->name('settings.')->middleware('role:admin|super-admin')->group(function () {
-    Route::get('/', [SettingsController::class, 'general'])->name('general');
-    Route::put('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
+        return response()->json(['success' => true]);
+    })->middleware(['auth', 'role:admin|super-admin'])->name('admin.dismiss-push-onboarding');
 
-    Route::get('/ai', [SettingsController::class, 'ai'])->name('ai');
-    Route::put('/ai', [SettingsController::class, 'updateAi'])->name('ai.update');
+    // ─── Admin Settings ──────────────────────────────────────────────
+    Route::prefix('settings')->name('settings.')->middleware('role:admin|super-admin')->group(function () {
+        Route::get('/', [SettingsController::class, 'general'])->name('general');
+        Route::put('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
 
-    Route::get('/permissions', [SettingsController::class, 'permissions'])->name('permissions');
-    Route::post('/permissions/roles', [SettingsController::class, 'storeRole'])->name('roles.store');
-    Route::put('/permissions/users/{user}/role', [SettingsController::class, 'updateUserRole'])->name('users.role');
-    Route::delete('/permissions/roles/{role}', [SettingsController::class, 'destroyRole'])->name('roles.destroy');
+        Route::get('/ai', [SettingsController::class, 'ai'])->name('ai');
+        Route::put('/ai', [SettingsController::class, 'updateAi'])->name('ai.update');
 
-    Route::get('/payments', [SettingsController::class, 'payments'])->name('payments');
-    Route::put('/payments', [SettingsController::class, 'updatePayments'])->name('payments.update');
+        Route::get('/permissions', [SettingsController::class, 'permissions'])->name('permissions');
+        Route::post('/permissions/roles', [SettingsController::class, 'storeRole'])->name('roles.store');
+        Route::put('/permissions/users/{user}/role', [SettingsController::class, 'updateUserRole'])->name('users.role');
+        Route::delete('/permissions/roles/{role}', [SettingsController::class, 'destroyRole'])->name('roles.destroy');
 
-    Route::get('/payment-orders', [SettingsController::class, 'paymentOrders'])->name('payment-orders');
-    Route::post('/payment-orders/bulk', [SettingsController::class, 'bulkPaymentOrders'])->name('payment-orders.bulk');
-    Route::post('/payment-orders', [SettingsController::class, 'storePaymentOrder'])->name('payment-orders.store');
-    Route::put('/payment-orders/{order}', [SettingsController::class, 'updatePaymentOrder'])->name('payment-orders.update');
-    Route::delete('/payment-orders/{order}', [SettingsController::class, 'destroyPaymentOrder'])->name('payment-orders.destroy');
+        Route::get('/payments', [SettingsController::class, 'payments'])->name('payments');
+        Route::put('/payments', [SettingsController::class, 'updatePayments'])->name('payments.update');
 
-    Route::get('/smtp', [SettingsController::class, 'smtp'])->name('smtp');
-    Route::put('/smtp', [SettingsController::class, 'updateSmtp'])->name('smtp.update');
+        Route::get('/payment-orders', [SettingsController::class, 'paymentOrders'])->name('payment-orders');
+        Route::post('/payment-orders/bulk', [SettingsController::class, 'bulkPaymentOrders'])->name('payment-orders.bulk');
+        Route::post('/payment-orders', [SettingsController::class, 'storePaymentOrder'])->name('payment-orders.store');
+        Route::put('/payment-orders/{order}', [SettingsController::class, 'updatePaymentOrder'])->name('payment-orders.update');
+        Route::delete('/payment-orders/{order}', [SettingsController::class, 'destroyPaymentOrder'])->name('payment-orders.destroy');
 
-    Route::get('/notifications', [SettingsController::class, 'notifications'])->name('notifications');
-    Route::put('/notifications', [SettingsController::class, 'updateNotifications'])->name('notifications.update');
+        Route::get('/smtp', [SettingsController::class, 'smtp'])->name('smtp');
+        Route::put('/smtp', [SettingsController::class, 'updateSmtp'])->name('smtp.update');
 
-    Route::get('/subscriptions', [SettingsController::class, 'subscriptions'])->name('subscriptions');
-    Route::post('/subscriptions', [SettingsController::class, 'storeSubscription'])->name('subscriptions.store');
-    Route::put('/subscriptions/{subscription}', [SettingsController::class, 'updateSubscription'])->name('subscriptions.update');
+        Route::get('/notifications', [SettingsController::class, 'notifications'])->name('notifications');
+        Route::put('/notifications', [SettingsController::class, 'updateNotifications'])->name('notifications.update');
 
-    Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
-    Route::post('/plans', [SettingsController::class, 'storePlan'])->name('plans.store');
-    Route::put('/plans/{plan}', [SettingsController::class, 'updatePlan'])->name('plans.update');
-    Route::delete('/plans/{plan}', [SettingsController::class, 'destroyPlan'])->name('plans.destroy');
+        Route::get('/subscriptions', [SettingsController::class, 'subscriptions'])->name('subscriptions');
+        Route::post('/subscriptions', [SettingsController::class, 'storeSubscription'])->name('subscriptions.store');
+        Route::put('/subscriptions/{subscription}', [SettingsController::class, 'updateSubscription'])->name('subscriptions.update');
 
-    Route::get('/updates', [SettingsController::class, 'updates'])->name('updates');
+        Route::get('/plans', [SettingsController::class, 'plans'])->name('plans');
+        Route::post('/plans', [SettingsController::class, 'storePlan'])->name('plans.store');
+        Route::put('/plans/{plan}', [SettingsController::class, 'updatePlan'])->name('plans.update');
+        Route::delete('/plans/{plan}', [SettingsController::class, 'destroyPlan'])->name('plans.destroy');
 
-    // Editable Pages
-    Route::get('/pages', [\App\Http\Controllers\Admin\PageController::class, 'index'])->name('pages.index');
-    Route::get('/pages/{slug}/edit', [\App\Http\Controllers\Admin\PageController::class, 'edit'])->name('pages.edit');
-    Route::put('/pages/{slug}', [\App\Http\Controllers\Admin\PageController::class, 'update'])->name('pages.update');
-});
+        Route::get('/updates', [SettingsController::class, 'updates'])->name('updates');
+
+        Route::get('/menus', [\App\Http\Controllers\Admin\MenuController::class, 'edit'])->name('menus.edit');
+        Route::post('/menus/items', [\App\Http\Controllers\Admin\MenuController::class, 'storeItem'])->name('menus.items.store');
+        Route::put('/menus/items/{item}', [\App\Http\Controllers\Admin\MenuController::class, 'updateItem'])->name('menus.items.update');
+        Route::delete('/menus/items/{item}', [\App\Http\Controllers\Admin\MenuController::class, 'destroyItem'])->name('menus.items.destroy');
+        Route::post('/menus/reorder', [\App\Http\Controllers\Admin\MenuController::class, 'reorder'])->name('menus.reorder');
+
+        Route::get('/site-layout/{key}/edit', [\App\Http\Controllers\Admin\SiteLayoutController::class, 'edit'])->name('site-layout.edit');
+        Route::put('/site-layout/{key}', [\App\Http\Controllers\Admin\SiteLayoutController::class, 'update'])->name('site-layout.update');
+
+        // Editable Pages (route-based SEO lives under /pages/seo/..., not a separate Settings section)
+        Route::get('/pages', [\App\Http\Controllers\Admin\PageController::class, 'index'])->name('pages.index');
+        Route::get('/pages/create', [\App\Http\Controllers\Admin\PageController::class, 'create'])->name('pages.create');
+        Route::post('/pages', [\App\Http\Controllers\Admin\PageController::class, 'store'])->name('pages.store');
+        Route::get('/pages/seo/{routeKey}/edit', [\App\Http\Controllers\Admin\PageController::class, 'editSeoRoute'])->name('pages.seo.edit')->where('routeKey', '[A-Za-z0-9._\-]+');
+        Route::put('/pages/seo/{routeKey}', [\App\Http\Controllers\Admin\PageController::class, 'updateSeoRoute'])->name('pages.seo.update')->where('routeKey', '[A-Za-z0-9._\-]+');
+        Route::get('/pages/{slug}/layout', [\App\Http\Controllers\Admin\PageController::class, 'editLayout'])->name('pages.layout.edit');
+        Route::put('/pages/{slug}/layout', [\App\Http\Controllers\Admin\PageController::class, 'updateLayout'])->name('pages.layout.update');
+        Route::post('/pages/{slug}/meta', [\App\Http\Controllers\Admin\PageController::class, 'updatePageMeta'])->name('pages.meta.update');
+        Route::get('/pages/{slug}/edit', [\App\Http\Controllers\Admin\PageController::class, 'edit'])->name('pages.edit');
+        Route::delete('/pages/{slug}', [\App\Http\Controllers\Admin\PageController::class, 'destroy'])->name('pages.destroy');
+    });
 });
 
 // Memorial API (AJAX - no page reload)
@@ -168,6 +186,7 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::get('/posts/{postId}/reactions', [MemorialApiController::class, 'reactions'])->name('posts.reactions');
     Route::get('/tributes', [MemorialApiController::class, 'tributes'])->name('tributes');
     Route::post('/tributes/{tributeId}/comments', [MemorialApiController::class, 'storeTributeComment'])->name('tributes.comments.store');
+    Route::delete('/tribute-comments/{commentId}', [MemorialApiController::class, 'deleteTributeComment'])->name('tributes.comments.delete');
     Route::patch('/tributes/{tributeId}', [MemorialApiController::class, 'updateTribute'])->name('tributes.update');
     Route::delete('/tributes/{tributeId}', [MemorialApiController::class, 'deleteTribute'])->name('tributes.delete');
     Route::get('/chapters', [MemorialApiController::class, 'chapters'])->name('chapters');
@@ -205,23 +224,3 @@ Route::get('/{memorial_slug}/chapter/{share_id}', [PublicMemorialController::cla
 // Public memorial by profile slug (e.g. /miiro-rio-akram) - MUST be last to avoid matching /login, /dashboard, etc.
 Route::get('/{slug}', [PublicMemorialController::class, 'show'])->name('memorial.public')->where('slug', '[a-z0-9\-]+');
 Route::post('/{slug}/tribute', [PublicMemorialController::class, 'storeTribute'])->middleware('throttle:20,1')->name('memorial.tribute.store')->where('slug', '[a-z0-9\-]+');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

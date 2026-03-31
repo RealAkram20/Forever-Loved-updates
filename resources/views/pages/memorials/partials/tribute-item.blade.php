@@ -1,4 +1,5 @@
 @php
+    $tributeEmbedPreview = $tributeEmbedPreview ?? false;
     $authorName = $tribute->user?->name ?? $tribute->guest_name ?? 'Anonymous';
     $initials = collect(explode(' ', $authorName))->map(fn($w) => mb_strtoupper(mb_substr($w, 0, 1)))->take(2)->join('');
     $authorPhoto = $tribute->user?->profile_photo_url;
@@ -6,12 +7,13 @@
     $commentCount = $tribute->comments->count() + $tribute->comments->sum(fn($c) => $c->replies->count());
     $deceasedFirst = \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them');
     $canEditTribute = ($canEdit ?? false) || (auth()->id() && $tribute->user_id === auth()->id());
+    $canDeleteTributeComments = ($canEdit ?? false) && ! $tributeEmbedPreview;
 @endphp
 <div
-    id="tribute-{{ $tribute->id }}"
+    id="tribute-{{ $tributeEmbedPreview ? 'preview-' : '' }}{{ $tribute->id }}"
     data-tribute-id="{{ $tribute->id }}"
     data-tribute-type="{{ $tribute->type }}"
-    x-show="tributeFilter === 'all' || tributeFilter === '{{ $tribute->type }}'"
+    x-show="tributeFilter === 'all' || tributeFilter === $el.dataset.tributeType"
     x-transition:enter="transition ease-out duration-200"
     x-transition:enter-start="opacity-0 scale-95"
     x-transition:enter-end="opacity-100 scale-100"
@@ -27,9 +29,9 @@
     {{-- Header: avatar, name, time, type icon --}}
     <div class="flex items-start gap-3">
         @if($authorPhoto)
-            <img src="{{ $authorPhoto }}" alt="{{ $authorName }}" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+            <img src="{{ $authorPhoto }}" alt="{{ $authorName }}" data-tribute-avatar class="h-10 w-10 shrink-0 rounded-full object-cover" />
         @else
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold
+            <div data-tribute-avatar-fallback class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold
                 @if($tribute->type === 'flower')
                     bg-pink-200/70 dark:bg-pink-800/40 text-pink-700 dark:text-pink-300
                 @elseif($tribute->type === 'candle')
@@ -44,8 +46,8 @@
             <p class="font-semibold text-gray-900 dark:text-white/90 truncate">{{ $authorName }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400 time-ago" data-created-at="{{ $tribute->created_at->toIso8601String() }}">{{ $tribute->created_at->diffForHumans() }}</p>
         </div>
-        <div class="flex items-center gap-1 shrink-0">
-            @if($canEditTribute)
+        <div data-tribute-header-icons class="flex items-center gap-1 shrink-0">
+            @if($canEditTribute && !$tributeEmbedPreview)
                 <button type="button" data-tribute-edit-trigger="{{ $tribute->id }}" class="memorial-edit-fab rounded-lg border border-brand-300/90 bg-white p-1.5 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit tribute">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
@@ -62,7 +64,7 @@
     </div>
 
     {{-- Content block with inline icon --}}
-    <div class="mt-3 flex items-start gap-3 rounded-lg p-3
+    <div data-tribute-body class="mt-3 flex items-start gap-3 rounded-lg p-3
         @if($tribute->type === 'flower')
             bg-pink-100/50 dark:bg-pink-900/20 border border-pink-200/40 dark:border-pink-800/30
         @elseif($tribute->type === 'candle')
@@ -72,7 +74,7 @@
         @endif">
 
         {{-- Animated inline icon --}}
-        <div class="shrink-0 mt-0.5">
+        <div data-tribute-inline-icon class="shrink-0 mt-0.5">
             @if($tribute->type === 'flower')
                 {{-- Multi-petal flower with sway --}}
                 <svg class="h-10 w-10 tribute-icon-sway" viewBox="0 0 48 48" fill="none">
@@ -113,6 +115,43 @@
 
         {{-- Text content --}}
         <div class="min-w-0 flex-1">
+            @if ($tributeEmbedPreview)
+                <div x-data="{ expanded: false }" class="min-w-0">
+                    <div
+                        data-tribute-display="{{ $tribute->id }}"
+                        class="transition-[max-height] duration-200"
+                        :class="expanded ? 'max-h-none overflow-visible' : 'max-h-[5.25rem] overflow-hidden'"
+                    >
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wider
+                            @if($tribute->type === 'flower') text-pink-600 dark:text-pink-400
+                            @elseif($tribute->type === 'candle') text-amber-600 dark:text-amber-400
+                            @else text-gray-500 dark:text-gray-400
+                            @endif">
+                            @if($tribute->type === 'flower') Flower Left
+                            @elseif($tribute->type === 'candle') Candle Lit
+                            @else Note Left
+                            @endif
+                        </p>
+                        @if($tribute->message)
+                            <div class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">{!! \App\Helpers\HtmlHelper::sanitize($tribute->message) !!}</div>
+                        @else
+                            <p class="text-sm italic
+                                @if($tribute->type === 'flower') text-pink-600/80 dark:text-pink-400/80
+                                @elseif($tribute->type === 'candle') text-amber-600/80 dark:text-amber-400/80
+                                @else text-gray-500 dark:text-gray-400
+                                @endif">
+                                @if($tribute->type === 'flower') A flower placed in memory of {{ $deceasedFirst }}.
+                                @elseif($tribute->type === 'candle') A flame lit in honour of {{ $deceasedFirst }}.
+                                @else A note left for {{ $deceasedFirst }}.
+                                @endif
+                            </p>
+                        @endif
+                    </div>
+                    <button type="button" @click="expanded = !expanded" class="mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
+                        <span x-text="expanded ? 'Show less' : 'Read all'"></span>
+                    </button>
+                </div>
+            @else
             <div data-tribute-display="{{ $tribute->id }}">
                 <p class="mb-1 text-xs font-semibold uppercase tracking-wider
                     @if($tribute->type === 'flower') text-pink-600 dark:text-pink-400
@@ -139,7 +178,8 @@
                     </p>
                 @endif
             </div>
-            @if($canEditTribute)
+            @endif
+            @if($canEditTribute && !$tributeEmbedPreview)
                 <div data-tribute-edit="{{ $tribute->id }}" class="hidden mt-2 space-y-3">
                     <div>
                         <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Type</label>
@@ -175,50 +215,75 @@
         </div>
     </div>
 
-    {{-- Footer: reactions, comments, share --}}
-    <div class="mt-3 flex items-center justify-between border-t pt-3
+    {{-- Footer: reactions, comments, share (relative = full card width for comment dropdown, like life chapter inline comments) --}}
+    <div data-tribute-footer class="relative z-10 mt-3 border-t pt-3
         @if($tribute->type === 'flower') border-pink-200/40 dark:border-pink-800/30
         @elseif($tribute->type === 'candle') border-amber-200/40 dark:border-amber-800/30
         @else border-gray-200/50 dark:border-gray-700/40
         @endif">
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3 sm:gap-4">
             <button type="button" data-tribute-react="{{ $tribute->id }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition">
                 <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
                 <span data-tribute-reaction-count="{{ $tribute->id }}">{{ $reactionCount }}</span>
             </button>
-            <div class="relative" data-tribute-comment-container="{{ $tribute->id }}">
-                <button type="button" data-tribute-comment-toggle data-tribute-id="{{ $tribute->id }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">
-                    <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                    <span data-tribute-id="{{ $tribute->id }}" data-tribute-comment-count>{{ $commentCount }}</span>
-                </button>
-                <div data-tribute-comment-dropdown="{{ $tribute->id }}" class="absolute left-0 top-full z-[9999] mt-1 hidden w-[calc(100vw-2rem)] max-w-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl sm:w-80">
-                    <div class="border-b border-gray-100 dark:border-gray-700 p-3">
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Add your comment</p>
-                        <div class="flex gap-2">
-                            <input type="text" data-tribute-comment-input="{{ $tribute->id }}" placeholder="Write a comment..." class="min-w-0 flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm dark:text-white" />
-                            <button type="button" data-tribute-comment-submit data-tribute-id="{{ $tribute->id }}" class="shrink-0 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600">Post</button>
-                        </div>
-                    </div>
-                    <div class="max-h-48 overflow-y-auto p-3" data-tribute-comments-list="{{ $tribute->id }}">
-                        @foreach ($tribute->comments as $comment)
-                            @include('pages.memorials.partials.tribute-comment-item', ['comment' => $comment, 'tributeId' => $tribute->id])
-                        @endforeach
-                    </div>
-                    <p data-tribute-comments-empty="{{ $tribute->id }}" class="px-3 py-4 text-center text-sm text-gray-500 {{ $tribute->comments->isEmpty() ? '' : 'hidden' }}">No comments yet. Add a comment.</p>
+            @if ($tributeEmbedPreview)
+                <div class="relative" data-tribute-comment-container="{{ $tribute->id }}">
+                    <button type="button" data-open-tributes-tribute="{{ $tribute->id }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">
+                        <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        <span data-tribute-id="{{ $tribute->id }}" data-tribute-comment-count>{{ $commentCount }}</span>
+                    </button>
                 </div>
-            </div>
+            @else
+                <div data-tribute-comment-container="{{ $tribute->id }}">
+                    <button type="button" data-tribute-comment-toggle data-tribute-id="{{ $tribute->id }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">
+                        <svg class="h-4.5 w-4.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        <span class="whitespace-nowrap tabular-nums" data-tribute-id="{{ $tribute->id }}" data-tribute-comment-count>{{ $commentCount }}</span>
+                    </button>
+                </div>
+            @endif
         </div>
         @if ($quotaInfo['share_memories'] ?? false)
-            <div class="flex items-center gap-3">
-                <div class="relative" data-share-container data-tribute-id="{{ $tribute->id }}">
-                    <button type="button" data-share-toggle data-share-url="{{ $shareUrl }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">
-                        <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                        Share
-                    </button>
-                    <div data-share-dropdown-tribute="{{ $tribute->id }}" class="absolute right-0 top-full z-[9999] mt-1 hidden w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-1.5">
-                        @include('pages.memorials.partials.share-dropdown', ['shareUrl' => $shareUrl])
+            <div class="flex shrink-0 items-center gap-3">
+                @if ($tributeEmbedPreview)
+                    <div class="relative" data-share-container>
+                        <button type="button" data-share-toggle data-share-url="{{ $shareUrl }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">
+                            <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                            Share
+                        </button>
+                        <div data-share-dropdown class="absolute right-0 top-full z-[9999] mt-1 hidden w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-1.5">
+                            @include('pages.memorials.partials.share-dropdown', ['shareUrl' => $shareUrl])
+                        </div>
+                    </div>
+                @else
+                    <div class="relative" data-share-container data-tribute-id="{{ $tribute->id }}">
+                        <button type="button" data-share-toggle data-share-url="{{ $shareUrl }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">
+                            <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                            Share
+                        </button>
+                        <div data-share-dropdown-tribute="{{ $tribute->id }}" class="absolute right-0 top-full z-[9999] mt-1 hidden w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-1.5">
+                            @include('pages.memorials.partials.share-dropdown', ['shareUrl' => $shareUrl])
+                        </div>
+                    </div>
+                @endif
+            </div>
+        @endif
+        </div>
+        @if (! $tributeEmbedPreview)
+            <div data-tribute-comment-dropdown="{{ $tribute->id }}" class="absolute inset-x-0 top-full z-[9999] mt-1 hidden w-full min-w-0 rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                <div class="border-b border-gray-100 p-3 dark:border-gray-700">
+                    <p class="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">Add your comment</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="text" data-tribute-comment-input="{{ $tribute->id }}" placeholder="Write a comment..." class="h-9 min-w-0 flex-1 basis-36 rounded-full border border-gray-300 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+                        <button type="button" data-tribute-comment-submit data-tribute-id="{{ $tribute->id }}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 text-xs font-semibold text-white transition hover:bg-brand-600 active:scale-95 sm:px-4 sm:text-sm">Post</button>
                     </div>
                 </div>
+                <div class="max-h-48 overflow-y-auto overflow-x-hidden p-3" data-tribute-comments-list="{{ $tribute->id }}">
+                    @foreach ($tribute->comments as $comment)
+                        @include('pages.memorials.partials.tribute-comment-item', ['comment' => $comment, 'tributeId' => $tribute->id, 'canDelete' => $canDeleteTributeComments])
+                    @endforeach
+                </div>
+                <p data-tribute-comments-empty="{{ $tribute->id }}" class="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400 {{ $tribute->comments->isEmpty() ? '' : 'hidden' }}">No comments yet. Add a comment.</p>
             </div>
         @endif
     </div>

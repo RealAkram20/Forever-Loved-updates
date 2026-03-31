@@ -79,12 +79,7 @@
                                                 <div>
                                                     <span class="block font-medium text-gray-800 dark:text-white/90 text-theme-sm">{{ $memorial->full_name }}</span>
                                                     <span class="block text-gray-500 dark:text-gray-400 text-theme-xs">
-                                                        @php $designation = $memorial->designation ?? $memorial->cause_of_death; @endphp
-                                                        @if ($designation && $memorial->birth_death_years)
-                                                            {{ $designation }} · {{ $memorial->birth_death_years }}
-                                                        @else
-                                                            {{ $designation ?? $memorial->birth_death_years ?? '—' }}
-                                                        @endif
+                                                        {{ $memorial->birth_death_years ?? '—' }}
                                                     </span>
                                                 </div>
                                             </div>

@@ -15,6 +15,22 @@
 <div class="min-h-screen bg-gradient-to-b from-gray-50 via-white/80 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 glass-bg-mesh" data-memorial-slug="{{ $memorial->slug }}" data-tribute-url="{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}" data-can-edit="{{ $canEdit ? '1' : '0' }}" data-is-authenticated="{{ $isAuthenticated ? '1' : '0' }}" data-can-upload="{{ $canEdit ? '1' : '0' }}" data-scroll-tribute="{{ $scrollToTributeId ?? '' }}" data-scroll-chapter="{{ $scrollToChapterId ?? '' }}" data-deceased-first="{{ \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them') }}" data-user-initial="{{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}">
     <x-home-header />
 
+    {{-- Global upload progress (large media / slow connections); driven by memorial-public.js --}}
+    <div id="memorial-upload-progress" class="fixed left-0 right-0 top-16 z-[45] hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-hidden="true" aria-labelledby="memorial-upload-progress-label">
+        <div class="mx-auto max-w-7xl px-4 pt-2 sm:px-6 lg:px-8">
+            <div class="rounded-lg border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/95">
+                <div class="flex items-center justify-between gap-3">
+                    <p id="memorial-upload-progress-label" class="text-sm font-semibold text-gray-900 dark:text-white/90">Uploading…</p>
+                    <span id="memorial-upload-progress-pct" class="tabular-nums text-sm font-medium text-brand-600 dark:text-brand-400">0%</span>
+                </div>
+                <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                    <div id="memorial-upload-progress-bar" class="h-full rounded-full bg-brand-500 transition-[width] duration-200 ease-out" style="width: 0%"></div>
+                </div>
+                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Keep this page open until the upload finishes. On slow connections this may take several minutes for large videos.</p>
+            </div>
+        </div>
+    </div>
+
     @if ($canEdit)
         {{-- Owner edit affordance: hover-only controls are invisible on touch; banner + mobile-visible pencils fix that --}}
         <div class="sticky top-14 z-30 border-b border-amber-300/80 bg-amber-50 px-4 py-2.5 shadow-sm dark:border-amber-500/45 dark:bg-amber-950/95 sm:px-6" role="status" aria-live="polite">
@@ -114,24 +130,6 @@
                                         <h2 data-display class="text-lg font-semibold text-gray-900 dark:text-white/90">{{ $memorial->full_name ?: 'Full name' }}</h2>
                                     @endif
                                 </div>
-                                @if ($canEdit || ($memorial->designation && !$memorial->cause_of_death_private))
-                                    <div data-editable="designation" class="relative group mt-0.5 w-full @if($canEdit) rounded-lg border border-dashed border-brand-400/45 bg-brand-50/35 px-2 py-1.5 dark:border-brand-400/35 dark:bg-brand-500/[0.06] @endif">
-                                        @if ($canEdit)
-                                            <div class="flex items-start justify-center gap-1.5">
-                                                <p data-display class="min-w-0 flex-1 text-center text-sm text-gray-600 dark:text-gray-300">{{ $memorial->designation ?: 'Add designation' }}</p>
-                                                <button type="button" data-edit-trigger class="memorial-edit-fab shrink-0 rounded-md border border-brand-300/90 bg-white p-1 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit designation">
-                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                </button>
-                                            </div>
-                                            <div data-edit class="hidden mt-1">
-                                                <input type="text" value="{{ $memorial->designation }}" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white" placeholder="Designation" />
-                                                <button type="button" data-save class="mt-2 rounded-md bg-brand-500 px-3 py-1.5 text-xs font-medium text-white">Save</button>
-                                            </div>
-                                        @else
-                                            <p data-display class="text-sm text-gray-500 dark:text-gray-400">{{ $memorial->designation }}</p>
-                                        @endif
-                                    </div>
-                                @endif
                                 <div class="mt-2 flex flex-wrap items-center justify-center gap-1.5">
                                     <span class="inline-flex items-center gap-1.5 rounded-full bg-success-50 dark:bg-success-500/20 px-3 py-1 text-xs font-medium text-success-700 dark:text-success-400">
                                         <span class="h-1.5 w-1.5 rounded-full bg-success-500"></span>
@@ -197,12 +195,6 @@
                                 </div>
                             @endif
                         </div>
-                        <div class="flex border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-white/[0.02] p-2">
-                            <a href="#tab-biography" data-tab="biography" class="memorial-tab min-w-0 flex-1 rounded-lg px-2 py-2 text-center text-xs font-medium text-brand-600 dark:text-brand-400 hover:bg-white dark:hover:bg-white/10">Biography</a>
-                            <a href="#tab-life" data-tab="life" class="memorial-tab min-w-0 flex-1 rounded-lg px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-white/10 hover:text-brand-600 dark:hover:text-brand-400">Life</a>
-                            <a href="#tab-gallery" data-tab="gallery" class="memorial-tab min-w-0 flex-1 rounded-lg px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-white/10 hover:text-brand-600 dark:hover:text-brand-400">Gallery</a>
-                            <a href="#tab-tributes" data-tab="tributes" class="memorial-tab min-w-0 flex-1 rounded-lg px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-white/10 hover:text-brand-600 dark:hover:text-brand-400">Tributes</a>
-                        </div>
                     </div>
                 </div>
             </aside>
@@ -217,6 +209,25 @@
                         <button type="button" data-tab-panel="gallery" class="memorial-tab-btn min-w-0 flex-1 px-2 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Gallery</button>
                         <button type="button" data-tab-panel="tributes" class="memorial-tab-btn min-w-0 flex-1 px-2 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Tributes</button>
                     </div>
+
+                    @php
+                        $galleryItems = $memorial->galleryMedia()->orderBy('sort_order')->get();
+                        $galleryImages = $galleryItems->where('type', 'photo')->values();
+                        $galleryVideos = $galleryItems->where('type', 'video')->values();
+                        $lifePostsForPreview = $memorial->posts->where('is_published', true)->sortByDesc('created_at')->values()->take(3);
+                        $lifePostsTotal = $memorial->posts->where('is_published', true)->count();
+                        $previewTributes = collect();
+                        if (isset($highlightTribute)) {
+                            $previewTributes->push($highlightTribute);
+                        }
+                        foreach ($tributes as $t) {
+                            if ($previewTributes->count() >= 3) {
+                                break;
+                            }
+                            $previewTributes->push($t);
+                        }
+                        $tributesTotalCount = $tributes->total() + (isset($highlightTribute) ? 1 : 0);
+                    @endphp
 
                     {{-- Tab: Biography (first) --}}
                     <div id="tab-biography" class="memorial-tab-panel p-4 sm:p-6">
@@ -246,6 +257,66 @@
                                 </div>
                             @endif
                         </div>
+
+                        @if ($lifePostsTotal > 0)
+                            <div class="mt-8 border-t border-gray-100 pt-8 dark:border-gray-800">
+                                <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white/90">Life Stories <span class="font-normal text-gray-500 dark:text-gray-400">({{ $lifePostsTotal }})</span></h3>
+                                <div class="flex flex-col gap-4">
+                                    @foreach ($lifePostsForPreview as $post)
+                                        <div class="min-w-0">
+                                            @include('pages.memorials.partials.life-post-article', [
+                                                'post' => $post,
+                                                'memorial' => $memorial,
+                                                'canEdit' => $canEdit,
+                                                'quotaInfo' => $quotaInfo,
+                                                'embedInBiography' => true,
+                                            ])
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-4">
+                                    <button type="button" data-switch-tab="life" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-white/[0.03] dark:text-brand-400 dark:hover:bg-white/10 sm:py-1.5 sm:text-sm">View all {{ $lifePostsTotal }} {{ Str::plural('item', $lifePostsTotal) }}</button>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($tributesTotalCount > 0)
+                            <div class="mt-8 border-t border-gray-100 pt-8 dark:border-gray-800">
+                                <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white/90">Tributes <span class="font-normal text-gray-500 dark:text-gray-400">({{ $tributesTotalCount }})</span></h3>
+                                <div class="flex flex-col gap-4" x-data="{ tributeFilter: 'all' }">
+                                    @foreach ($previewTributes as $tribute)
+                                        <div class="min-w-0">
+                                            @include('pages.memorials.partials.tribute-item', [
+                                                'tribute' => $tribute,
+                                                'shareUrl' => route('memorial.tribute.public', ['memorial_slug' => $memorial->slug, 'share_id' => $tribute->share_id]),
+                                                'tributeEmbedPreview' => true,
+                                            ])
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-4">
+                                    <button type="button" data-switch-tab="tributes" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-white/[0.03] dark:text-brand-400 dark:hover:bg-white/10 sm:py-1.5 sm:text-sm">View all {{ $tributesTotalCount }} {{ Str::plural('item', $tributesTotalCount) }}</button>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($galleryImages->isNotEmpty())
+                            @php $galleryImageCount = $galleryImages->count(); @endphp
+                            <div class="mt-8 border-t border-gray-100 pt-8 dark:border-gray-800">
+                                <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white/90">Gallery <span class="font-normal text-gray-500 dark:text-gray-400">({{ $galleryImageCount }})</span></h3>
+                                <div class="grid grid-cols-3 gap-2">
+                                    @foreach ($galleryImages->take(9) as $previewIdx => $media)
+                                        <button type="button" data-gallery-preview-lightbox="{{ $previewIdx }}" class="group relative aspect-square overflow-hidden rounded-lg bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-gray-700">
+                                            <img src="{{ $media->url }}" alt="{{ $media->caption ?? 'Photo' }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
+                                            <span class="absolute inset-0 bg-black/0 transition group-hover:bg-black/10" aria-hidden="true"></span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                <div class="mt-4">
+                                    <button type="button" data-switch-tab="gallery" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-white/[0.03] dark:text-brand-400 dark:hover:bg-white/10 sm:py-1.5 sm:text-sm">View all {{ $galleryImageCount }} {{ Str::plural('item', $galleryImageCount) }}</button>
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
                     {{-- Tab: Life (Story chapters + posts) --}}
@@ -310,118 +381,13 @@
                         <div class="space-y-4" id="life-feed">
                             @php $lifePosts = $memorial->posts->where('is_published', true)->sortByDesc('created_at'); @endphp
                             @foreach ($lifePosts as $post)
-                                <article id="chapter-{{ $post->id }}" class="group/post relative overflow-visible rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03]" data-post-id="{{ $post->id }}" data-chapter-id="{{ $post->story_chapter_id ?? '' }}">
-                                    <div class="p-4">
-                                        <div class="flex items-center gap-3">
-                                            @if($post->user?->profile_photo_url)
-                                                <img src="{{ $post->user->profile_photo_url }}" alt="{{ $post->user->name }}" class="h-10 w-10 shrink-0 rounded-full object-cover" />
-                                            @else
-                                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-400 text-sm font-semibold">
-                                                    {{ strtoupper(substr($post->user?->name ?? $memorial->full_name ?? '?', 0, 1)) }}
-                                                </div>
-                                            @endif
-                                            <div class="flex-1">
-                                                <p class="font-medium text-gray-900 dark:text-white/90">{{ $post->user?->name ?? $memorial->full_name ?? 'Anonymous' }}</p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400"><span class="time-ago" data-created-at="{{ $post->created_at->toIso8601String() }}">{{ $post->created_at->diffForHumans() }}</span> · {{ $post->storyChapter?->title ?? 'Life' }}</p>
-                                            </div>
-                                            @if ($canEdit)
-                                                <button type="button" data-post-edit-trigger="{{ $post->id }}" class="memorial-edit-fab rounded-lg border border-brand-300/90 bg-white p-1.5 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit post">
-                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                </button>
-                                            @endif
-                                        </div>
-                                        <div data-post-display="{{ $post->id }}">
-                                            @if ($post->title)
-                                                <h3 class="mt-2 font-medium text-gray-900 dark:text-white/90">{{ $post->title }}</h3>
-                                            @endif
-                                            @if ($post->content)
-                                                <div class="mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">{!! \App\Helpers\HtmlHelper::sanitize($post->content) !!}</div>
-                                            @endif
-                                            @if ($post->media->isNotEmpty())
-                                                <div class="mt-3 space-y-3">
-                                                    @foreach ($post->media as $m)
-                                                        @if ($m->type === 'photo')
-                                                            <img src="{{ $m->url }}" alt="{{ $m->caption }}" class="max-w-full rounded-lg" />
-                                                        @elseif ($m->type === 'video')
-                                                            <x-media.video-player :src="$m->url" :caption="$m->caption" />
-                                                        @elseif ($m->type === 'music')
-                                                            <x-media.audio-player :src="$m->url" :caption="$m->caption" :filename="$m->filename" />
-                                                        @endif
-                                                    @endforeach
-                                                </div>
-                                            @endif
-                                            @if ($post->location)
-                                                <div class="mt-3 flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                                                    <svg class="h-4 w-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ $post->location }}</span>
-                                                </div>
-                                            @endif
-                                        </div>
-                                        @if ($canEdit)
-                                            <div data-post-edit="{{ $post->id }}" class="hidden mt-3 space-y-3">
-                                                <div>
-                                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Title</label>
-                                                    <input type="text" data-post-edit-title="{{ $post->id }}" value="{{ $post->title ?? '' }}" placeholder="Post title (optional)" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-                                                </div>
-                                                <div>
-                                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Content</label>
-                                                    <div id="post-editor-{{ $post->id }}" class="min-h-[120px] rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900"></div>
-                                                </div>
-                                                <div class="flex flex-wrap items-center gap-3">
-                                                    <button type="button" data-post-save="{{ $post->id }}" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">Save</button>
-                                                    <button type="button" data-post-cancel="{{ $post->id }}" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition">Cancel</button>
-                                                    <button type="button" data-post-delete="{{ $post->id }}" class="ml-auto inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 transition">
-                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <div class="relative z-10 flex items-center gap-4 border-t border-gray-100 dark:border-gray-800 px-4 py-2">
-                                        <div class="flex items-center gap-1" data-reaction-container="{{ $post->id }}">
-                                            <button type="button" data-reaction-btn data-reactionable-type="post" data-reactionable-id="{{ $post->id }}" data-reaction-type="like" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-rose-500 dark:hover:text-rose-400">
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                                                <span data-post-id="{{ $post->id }}" data-reaction-count class="text-sm text-gray-600 dark:text-gray-400">{{ $post->reactions->count() }}</span>
-                                            </button>
-                                        </div>
-                                        <div class="flex items-center gap-1" data-comment-container="{{ $post->id }}">
-                                            <button type="button" data-comment-toggle data-post-id="{{ $post->id }}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                                                <span data-post-id="{{ $post->id }}" data-comment-count class="text-sm text-gray-600 dark:text-gray-400">{{ $post->comments->count() + $post->comments->sum(fn($c) => $c->replies->count()) }}</span>
-                                            </button>
-                                        </div>
-                                        @if ($quotaInfo['share_memories'] ?? false)
-                                            <div class="relative ml-auto" data-share-container="{{ $post->id }}">
-                                                <button type="button" data-share-toggle data-share-url="{{ route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id]) }}" data-post-id="{{ $post->id }}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                                                    Share
-                                                </button>
-                                                <div data-share-dropdown="{{ $post->id }}" class="absolute right-0 top-full z-[9999] mt-1 hidden w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-1.5">
-                                                    @include('pages.memorials.partials.share-dropdown', ['shareUrl' => route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id])])
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    {{-- Inline comment thread (hidden by default, toggled by comment button) --}}
-                                    <div data-comment-section="{{ $post->id }}" class="hidden border-t border-gray-100 dark:border-gray-800 overflow-hidden">
-                                        {{-- Comment input --}}
-                                        <div class="flex flex-wrap items-center gap-2 px-3 py-3 sm:px-4">
-                                            <div class="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/25 text-brand-600 dark:text-brand-400 text-[11px] sm:text-xs font-semibold">
-                                                {{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}
-                                            </div>
-                                            <input type="text" data-comment-input="{{ $post->id }}" placeholder="Add a comment..." class="h-9 min-w-0 flex-1 basis-36 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-                                            <button type="button" data-comment-submit data-post-id="{{ $post->id }}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 sm:px-4 text-xs font-semibold text-white hover:bg-brand-600 transition active:scale-95">Post</button>
-                                        </div>
-                                        {{-- Thread list --}}
-                                        <div class="px-3 pb-3 space-y-0 sm:px-4" data-comments-list="{{ $post->id }}">
-                                            @foreach ($post->comments as $comment)
-                                                @include('pages.memorials.partials.comment-item', ['comment' => $comment, 'postId' => $post->id, 'canDelete' => $canEdit])
-                                            @endforeach
-                                        </div>
-                                        <p data-comments-empty="{{ $post->id }}" class="px-3 pb-4 text-center text-xs text-gray-400 dark:text-gray-500 sm:px-4 {{ $post->comments->isEmpty() ? '' : 'hidden' }}">No comments yet. Be the first to comment.</p>
-                                    </div>
-                                </article>
+                                @include('pages.memorials.partials.life-post-article', [
+                                    'post' => $post,
+                                    'memorial' => $memorial,
+                                    'canEdit' => $canEdit,
+                                    'quotaInfo' => $quotaInfo,
+                                    'embedInBiography' => false,
+                                ])
                             @endforeach
                             @if ($lifePosts->isEmpty())
                                 <div class="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center">
@@ -471,11 +437,6 @@
                     </div>
 
                     {{-- Tab: Gallery with Images/Videos sub-tabs + lightbox --}}
-                    @php
-                        $galleryItems = $memorial->galleryMedia()->orderBy('sort_order')->get();
-                        $galleryImages = $galleryItems->where('type', 'photo')->values();
-                        $galleryVideos = $galleryItems->where('type', 'video')->values();
-                    @endphp
                     <div id="tab-gallery" class="memorial-tab-panel hidden p-4 sm:p-6"
                         x-data="{
                             subTab: 'images',
@@ -669,25 +630,21 @@
                                 x-transition:leave-end="opacity-0"
                                 class="fixed inset-0 z-[99999] flex flex-col bg-black/95" @click.self="closeLightbox()">
 
-                                {{-- Top bar --}}
-                                <div class="flex items-center justify-between px-4 py-3 text-white">
-                                    <span class="text-sm font-medium" x-text="(currentIndex + 1) + ' / ' + total"></span>
-                                    <div class="flex items-center gap-3">
-                                        {{-- Slideshow toggle --}}
+                                {{-- Top bar: no flex-wrap on small screens (avoids pagination jumping under controls); scroll controls instead --}}
+                                <div class="flex w-full min-h-[2.75rem] items-center gap-3 px-4 py-3 text-white">
+                                    <span class="shrink-0 select-none whitespace-nowrap text-sm font-medium tabular-nums" x-text="(currentIndex + 1) + ' / ' + total"></span>
+                                    <div class="flex min-h-[2.25rem] min-w-0 flex-1 flex-nowrap items-center justify-end gap-2 overflow-x-auto overscroll-x-contain py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-3 [&::-webkit-scrollbar]:hidden">
+                                        {{-- Slideshow toggle (x-show icons — avoids x-if remount layout jump on open) --}}
                                         <button type="button" @click="toggleSlideshow()"
                                             :class="playing ? 'bg-white/20' : 'hover:bg-white/10'"
-                                            class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
+                                            class="inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
                                             :title="playing ? 'Pause slideshow' : 'Start slideshow'">
-                                            <template x-if="!playing">
-                                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                            </template>
-                                            <template x-if="playing">
-                                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                                            </template>
-                                            <span x-text="playing ? 'Pause' : 'Slideshow'"></span>
+                                            <svg x-show="!playing" class="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                                            <svg x-show="playing" class="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                                            <span class="whitespace-nowrap" x-text="playing ? 'Pause' : 'Slideshow'"></span>
                                         </button>
                                         {{-- Speed control --}}
-                                        <div class="flex items-center gap-1.5 rounded-lg bg-white/10 px-2 py-1">
+                                        <div class="flex shrink-0 items-center gap-1.5 rounded-lg bg-white/10 px-2 py-1">
                                             <svg class="h-3.5 w-3.5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             <button type="button" @click="setSpeed(1500)"
                                                 :class="speed === 1500 ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'"
@@ -703,7 +660,7 @@
                                                 class="rounded px-1.5 py-0.5 text-xs font-medium transition">8s</button>
                                         </div>
                                         {{-- Close --}}
-                                        <button type="button" @click="closeLightbox()" class="rounded-lg p-1.5 hover:bg-white/10 transition">
+                                        <button type="button" @click="closeLightbox()" class="shrink-0 rounded-lg p-1.5 hover:bg-white/10 transition">
                                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
                                     </div>
@@ -844,51 +801,51 @@
                 <div class="lg:sticky lg:top-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6">
                     @php $stats = $memorialStats ?? ['views_today' => 0, 'views_last_week' => 0, 'views_all_time' => 0, 'shares_today' => 0, 'shares_last_week' => 0, 'shares_all_time' => 0]; @endphp
                     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
-                        <div class="border-b border-gray-100 dark:border-gray-800 px-4 py-3">
-                            <h3 class="font-semibold text-gray-900 dark:text-white/90">Views & Shares</h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Unique people who have visited or shared this memorial</p>
+                        <div class="border-b border-gray-100 dark:border-gray-800 px-3 py-2 sm:px-4 sm:py-3">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white/90 sm:text-base">Views & Shares</h3>
+                            <p class="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:text-xs">Unique people who have visited or shared this memorial</p>
                         </div>
-                        <div class="p-4 space-y-4">
+                        <div class="space-y-3 p-3 sm:space-y-4 sm:p-4">
                             <div>
-                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Views</label>
-                                <div class="mt-2 grid grid-cols-3 gap-2 text-center">
-                                    <div class="rounded-lg bg-gray-50 dark:bg-white/[0.03] p-2">
-                                        <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-stats-views-today>{{ $stats['views_today'] }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">Today</p>
+                                <label class="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 sm:text-xs">Views</label>
+                                <div class="mt-1.5 grid grid-cols-3 gap-1.5 text-center sm:mt-2 sm:gap-2">
+                                    <div class="rounded-lg bg-gray-50 p-1.5 dark:bg-white/[0.03] sm:p-2">
+                                        <p class="text-base font-semibold tabular-nums text-gray-900 dark:text-white/90 sm:text-lg" data-stats-views-today>{{ $stats['views_today'] }}</p>
+                                        <p class="mt-0.5 text-[10px] leading-tight text-gray-500 dark:text-gray-400 sm:text-xs">Today</p>
                                     </div>
-                                    <div class="rounded-lg bg-gray-50 dark:bg-white/[0.03] p-2">
-                                        <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-stats-views-week>{{ $stats['views_last_week'] }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">Last Week</p>
+                                    <div class="rounded-lg bg-gray-50 p-1.5 dark:bg-white/[0.03] sm:p-2">
+                                        <p class="text-base font-semibold tabular-nums text-gray-900 dark:text-white/90 sm:text-lg" data-stats-views-week>{{ $stats['views_last_week'] }}</p>
+                                        <p class="mt-0.5 text-[10px] leading-tight text-gray-500 dark:text-gray-400 sm:text-xs"><span class="sm:hidden">Week</span><span class="hidden sm:inline">Last Week</span></p>
                                     </div>
-                                    <div class="rounded-lg bg-gray-50 dark:bg-white/[0.03] p-2">
-                                        <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-stats-views-all>{{ $stats['views_all_time'] }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">All Time</p>
+                                    <div class="rounded-lg bg-gray-50 p-1.5 dark:bg-white/[0.03] sm:p-2">
+                                        <p class="text-base font-semibold tabular-nums text-gray-900 dark:text-white/90 sm:text-lg" data-stats-views-all>{{ $stats['views_all_time'] }}</p>
+                                        <p class="mt-0.5 text-[10px] leading-tight text-gray-500 dark:text-gray-400 sm:text-xs"><span class="sm:hidden">All</span><span class="hidden sm:inline">All Time</span></p>
                                     </div>
                                 </div>
                             </div>
                             <div>
-                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Shares</label>
-                                <div class="mt-2 grid grid-cols-3 gap-2 text-center">
-                                    <div class="rounded-lg bg-gray-50 dark:bg-white/[0.03] p-2">
-                                        <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-stats-shares-today>{{ $stats['shares_today'] }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">Today</p>
+                                <label class="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 sm:text-xs">Shares</label>
+                                <div class="mt-1.5 grid grid-cols-3 gap-1.5 text-center sm:mt-2 sm:gap-2">
+                                    <div class="rounded-lg bg-gray-50 p-1.5 dark:bg-white/[0.03] sm:p-2">
+                                        <p class="text-base font-semibold tabular-nums text-gray-900 dark:text-white/90 sm:text-lg" data-stats-shares-today>{{ $stats['shares_today'] }}</p>
+                                        <p class="mt-0.5 text-[10px] leading-tight text-gray-500 dark:text-gray-400 sm:text-xs">Today</p>
                                     </div>
-                                    <div class="rounded-lg bg-gray-50 dark:bg-white/[0.03] p-2">
-                                        <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-stats-shares-week>{{ $stats['shares_last_week'] }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">Last Week</p>
+                                    <div class="rounded-lg bg-gray-50 p-1.5 dark:bg-white/[0.03] sm:p-2">
+                                        <p class="text-base font-semibold tabular-nums text-gray-900 dark:text-white/90 sm:text-lg" data-stats-shares-week>{{ $stats['shares_last_week'] }}</p>
+                                        <p class="mt-0.5 text-[10px] leading-tight text-gray-500 dark:text-gray-400 sm:text-xs"><span class="sm:hidden">Week</span><span class="hidden sm:inline">Last Week</span></p>
                                     </div>
-                                    <div class="rounded-lg bg-gray-50 dark:bg-white/[0.03] p-2">
-                                        <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-stats-shares-all>{{ $stats['shares_all_time'] }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">All Time</p>
+                                    <div class="rounded-lg bg-gray-50 p-1.5 dark:bg-white/[0.03] sm:p-2">
+                                        <p class="text-base font-semibold tabular-nums text-gray-900 dark:text-white/90 sm:text-lg" data-stats-shares-all>{{ $stats['shares_all_time'] }}</p>
+                                        <p class="mt-0.5 text-[10px] leading-tight text-gray-500 dark:text-gray-400 sm:text-xs"><span class="sm:hidden">All</span><span class="hidden sm:inline">All Time</span></p>
                                     </div>
                                 </div>
                             </div>
                             @if ($quotaInfo['share_memories'] ?? false)
                                 @php $deceasedFirstName = \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'their'); @endphp
-                                <div class="border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
-                                    <button type="button" id="invite-share-btn" data-share-url="{{ url()->current() }}" class="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand-400 dark:border-brand-500 bg-brand-50/30 dark:bg-brand-500/10 px-4 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-500/20 transition">
-                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                                        Invite {{ $deceasedFirstName }}'s family and friends
+                                <div class="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800 sm:pt-4">
+                                    <button type="button" id="invite-share-btn" data-share-url="{{ url()->current() }}" class="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-brand-400 bg-brand-50/30 px-3 py-2 text-xs font-medium text-brand-600 transition hover:bg-brand-100 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
+                                        <svg class="h-4 w-4 shrink-0 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                                        <span class="text-left leading-snug">Invite {{ $deceasedFirstName }}'s family and friends</span>
                                     </button>
                                     <div id="invite-share-dropdown" class="mt-2 hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2">
                                         <button type="button" data-share="invite" data-share-url="{{ url()->current() }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Copy link</button>

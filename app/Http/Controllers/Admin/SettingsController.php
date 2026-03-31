@@ -28,18 +28,24 @@ class SettingsController extends Controller
     public function general()
     {
         $settings = SystemSetting::getByGroup('branding');
+        $oauth = SystemSetting::getByGroup('oauth');
 
         return view('pages.settings.general', [
             'title' => 'General Settings',
             'settings' => $settings,
+            'oauth' => $oauth,
         ]);
     }
 
     public function updateGeneral(Request $request)
     {
         $request->validate([
+            'oauth.google_enabled' => 'nullable|in:0,1',
+            'oauth.google_client_id' => 'nullable|string|max:512',
+            'oauth.google_client_secret' => 'nullable|string|max:512',
             'branding.app_name' => 'required|string|max:100',
             'branding.tagline' => 'nullable|string|max:255',
+            'branding.default_theme' => 'required|in:light,dark',
             'branding.primary_color' => 'required|string|max:20',
             'branding.secondary_color' => 'required|string|max:20',
             'branding.accent_color' => 'required|string|max:20',
@@ -59,7 +65,7 @@ class SettingsController extends Controller
         ]);
 
         $colorKeys = [
-            'branding.app_name', 'branding.tagline',
+            'branding.app_name', 'branding.tagline', 'branding.default_theme',
             'branding.primary_color', 'branding.secondary_color', 'branding.accent_color',
             'branding.bg_light', 'branding.bg_dark',
             'branding.primary_light', 'branding.primary_dark',
@@ -72,6 +78,13 @@ class SettingsController extends Controller
             if ($request->has($key)) {
                 SystemSetting::set($key, $request->input($key));
             }
+        }
+
+        SystemSetting::set('oauth.google_enabled', $request->boolean('oauth.google_enabled') ? '1' : '0');
+        SystemSetting::set('oauth.google_client_id', trim((string) $request->input('oauth.google_client_id', '')));
+        $googleSecret = $request->input('oauth.google_client_secret');
+        if ($googleSecret && $googleSecret !== '••••••••') {
+            SystemSetting::set('oauth.google_client_secret', $googleSecret);
         }
 
         if ($request->hasFile('logo')) {

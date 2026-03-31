@@ -1,4 +1,5 @@
 import './bootstrap';
+import './page-builder-alpine';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import ApexCharts from 'apexcharts';

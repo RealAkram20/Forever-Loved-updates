@@ -1,6 +1,8 @@
 @php
     $appName = \App\Models\SystemSetting::get('branding.app_name', 'Forever Loved');
     $tagline = \App\Models\SystemSetting::get('branding.tagline', 'Celebrate lives that matter');
+    $footerQuickItems = $footerQuickItems ?? collect();
+    $footerCompanyItems = $footerCompanyItems ?? collect();
 @endphp
 
 <footer class="border-t border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
@@ -20,23 +22,39 @@
 
             {{-- Quick Links --}}
             <div>
-                <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-white/90">Quick Links</h4>
+                <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-white/90">{{ ($footerQuickMenu ?? null)?->label ?? 'Quick Links' }}</h4>
                 <ul class="mt-4 space-y-2.5">
-                    <li><a href="{{ route('home') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Home</a></li>
-                    <li><a href="{{ route('memorial.directory') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Find Memorial</a></li>
-                    <li><a href="{{ route('memorial.create.step1') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Create Memorial</a></li>
-                    <li><a href="{{ route('pricing') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Pricing</a></li>
+                    @forelse ($footerQuickItems as $item)
+                        <li>
+                            <a href="{{ $item->resolvedUrl() }}"
+                               @if($item->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif
+                               class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">{{ $item->label }}</a>
+                        </li>
+                    @empty
+                        <li><a href="{{ route('home') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Home</a></li>
+                        <li><a href="{{ route('memorial.directory') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Find Memorial</a></li>
+                        <li><a href="{{ route('memorial.create.step1') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Create Memorial</a></li>
+                        <li><a href="{{ route('pricing') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Pricing</a></li>
+                    @endforelse
                 </ul>
             </div>
 
             {{-- Company --}}
             <div>
-                <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-white/90">Company</h4>
+                <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-white/90">{{ ($footerCompanyMenu ?? null)?->label ?? 'Company' }}</h4>
                 <ul class="mt-4 space-y-2.5">
-                    <li><a href="{{ route('about') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">About Us</a></li>
-                    <li><a href="{{ route('contact') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Contact Us</a></li>
-                    <li><a href="{{ route('privacy-policy') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Privacy Policy</a></li>
-                    <li><a href="{{ route('terms-of-use') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Terms of Use</a></li>
+                    @forelse ($footerCompanyItems as $item)
+                        <li>
+                            <a href="{{ $item->resolvedUrl() }}"
+                               @if($item->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif
+                               class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">{{ $item->label }}</a>
+                        </li>
+                    @empty
+                        <li><a href="{{ route('about') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">About Us</a></li>
+                        <li><a href="{{ route('contact') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Contact Us</a></li>
+                        <li><a href="{{ route('privacy-policy') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Privacy Policy</a></li>
+                        <li><a href="{{ route('terms-of-use') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Terms of Use</a></li>
+                    @endforelse
                 </ul>
             </div>
 

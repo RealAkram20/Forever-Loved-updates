@@ -3,11 +3,11 @@
 namespace App\Models;
 
 use App\Helpers\StorageHelper;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Memorial extends Model
 {
@@ -23,7 +23,6 @@ class Memorial extends Model
         'last_name',
         'gender',
         'relationship',
-        'designation',
         'short_description',
         'nationality',
         'primary_profession',
@@ -47,8 +46,6 @@ class Memorial extends Model
         'death_city',
         'death_state',
         'death_country',
-        'cause_of_death',
-        'cause_of_death_private',
         'biography',
         'theme',
         'plan',
@@ -64,13 +61,17 @@ class Memorial extends Model
     ];
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_DEACTIVATED = 'deactivated';
+
     public const STATUS_SUSPENDED = 'suspended';
 
     public const COMPLETION_PENDING = 'pending';
+
     public const COMPLETION_COMPLETED = 'completed';
 
     public const PLAN_FREE = 'free';
+
     public const PLAN_PAID = 'paid';
 
     /** Theme display names for design themes (extend as needed). */
@@ -92,7 +93,6 @@ class Memorial extends Model
             'date_of_birth' => 'date',
             'date_of_passing' => 'date',
             'is_public' => 'boolean',
-            'cause_of_death_private' => 'boolean',
             'expires_at' => 'datetime',
         ];
     }
@@ -129,16 +129,16 @@ class Memorial extends Model
 
         // Section 1: Identity (first_name, last_name required; nationality, profession, gender, description optional)
         $identityChecks = array_filter([
-            !empty(trim($this->first_name ?? '')),
-            !empty(trim($this->last_name ?? '')),
-            !empty(trim($this->nationality ?? '')),
-            !empty(trim($this->primary_profession ?? '')) || !empty(trim($this->short_description ?? '')),
+            ! empty(trim($this->first_name ?? '')),
+            ! empty(trim($this->last_name ?? '')),
+            ! empty(trim($this->nationality ?? '')),
+            ! empty(trim($this->primary_profession ?? '')) || ! empty(trim($this->short_description ?? '')),
         ]);
         $sectionScores[] = count($identityChecks) / 4;
 
         // Section 2: Biography Summary (known_for, achievements, companies)
         $bioChecks = array_filter([
-            !empty(trim($this->known_for ?? '')) || !empty(trim($this->major_achievements ?? '')),
+            ! empty(trim($this->known_for ?? '')) || ! empty(trim($this->major_achievements ?? '')),
             $this->relationLoaded('notableCompanies') ? $this->notableCompanies->isNotEmpty() : $this->notableCompanies()->exists(),
         ]);
         $sectionScores[] = count($bioChecks) / 2;
@@ -146,14 +146,14 @@ class Memorial extends Model
         // Section 3: Birth (date + place)
         $birthChecks = array_filter([
             $this->date_of_birth !== null,
-            !empty(trim($this->birth_city ?? '')) || !empty(trim($this->birth_country ?? '')),
+            ! empty(trim($this->birth_city ?? '')) || ! empty(trim($this->birth_country ?? '')),
         ]);
         $sectionScores[] = count($birthChecks) / 2;
 
         // Section 4: Death (date + place)
         $deathChecks = array_filter([
             $this->date_of_passing !== null,
-            !empty(trim($this->death_city ?? '')) || !empty(trim($this->death_country ?? '')),
+            ! empty(trim($this->death_city ?? '')) || ! empty(trim($this->death_country ?? '')),
         ]);
         $sectionScores[] = count($deathChecks) / 2;
 
@@ -254,7 +254,7 @@ class Memorial extends Model
      */
     public function canBeEditedBy(?User $user): bool
     {
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -276,9 +276,10 @@ class Memorial extends Model
     public function galleryMedia()
     {
         $usedInPosts = DB::table('post_media')->pluck('media_id')->toArray();
+
         return $this->media()
             ->whereIn('type', ['photo', 'video'])
-            ->when(!empty($usedInPosts), fn ($q) => $q->whereNotIn('id', $usedInPosts));
+            ->when(! empty($usedInPosts), fn ($q) => $q->whereNotIn('id', $usedInPosts));
     }
 
     /**
@@ -290,6 +291,7 @@ class Memorial extends Model
             return $value;
         }
         $parts = $this->parseFullName();
+
         return $parts['first'] ?? '';
     }
 
@@ -302,6 +304,7 @@ class Memorial extends Model
             return $value;
         }
         $parts = $this->parseFullName();
+
         return $parts['middle'] ?? null;
     }
 
@@ -314,6 +317,7 @@ class Memorial extends Model
             return $value;
         }
         $parts = $this->parseFullName();
+
         return $parts['last'] ?? '';
     }
 
@@ -327,6 +331,7 @@ class Memorial extends Model
         if (count($parts) === 1) {
             return ['first' => $parts[0], 'middle' => null, 'last' => ''];
         }
+
         return [
             'first' => $parts[0],
             'middle' => count($parts) > 2 ? implode(' ', array_slice($parts, 1, -1)) : null,
@@ -371,9 +376,10 @@ class Memorial extends Model
     {
         $birth = $this->date_of_birth;
         $death = $this->date_of_passing;
-        if (!$birth || !$death) {
+        if (! $birth || ! $death) {
             return null;
         }
+
         return (int) abs($birth->diffInYears($death));
     }
 
@@ -384,10 +390,11 @@ class Memorial extends Model
     {
         $birth = $this->birth_year ?? $this->date_of_birth?->year;
         $death = $this->death_year ?? $this->date_of_passing?->year;
-        if (!$birth && !$death) {
+        if (! $birth && ! $death) {
             return null;
         }
-        return trim(($birth ?? '') . '-' . ($death ?? ''));
+
+        return trim(($birth ?? '').'-'.($death ?? ''));
     }
 
     /**

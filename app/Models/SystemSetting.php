@@ -29,6 +29,12 @@ class SystemSetting extends Model
         'branding.button2_color' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
         'branding.cta_bg_light' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
         'branding.cta_bg_dark' => ['value' => '#3641f5', 'type' => 'string', 'group' => 'branding'],
+        'branding.default_theme' => ['value' => 'light', 'type' => 'string', 'group' => 'branding'],
+
+        // OAuth (Google sign-in — credentials can also be set via .env)
+        'oauth.google_enabled' => ['value' => '0', 'type' => 'boolean', 'group' => 'oauth'],
+        'oauth.google_client_id' => ['value' => '', 'type' => 'string', 'group' => 'oauth'],
+        'oauth.google_client_secret' => ['value' => '', 'type' => 'encrypted', 'group' => 'oauth'],
 
         // AI
         'ai.enabled' => ['value' => '0', 'type' => 'boolean', 'group' => 'ai'],
@@ -134,7 +140,7 @@ class SystemSetting extends Model
     private static function castValue(string $value, string $type): mixed
     {
         return match ($type) {
-            'boolean' => (bool) $value,
+            'boolean' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
             'integer' => (int) $value,
             'float' => (float) $value,
             'json' => json_decode($value, true),

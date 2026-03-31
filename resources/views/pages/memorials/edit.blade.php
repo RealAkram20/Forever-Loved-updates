@@ -56,15 +56,18 @@
                             @enderror
                         </div>
                         <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="middle_name">Middle name</label>
-                            <input type="text" id="middle_name" name="middle_name" value="{{ old('middle_name', $memorial->middle_name) }}"
-                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
-                        </div>
-                        <div>
                             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="last_name">Last name</label>
                             <input type="text" id="last_name" name="last_name" value="{{ old('last_name', $memorial->last_name) }}" required
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                             @error('last_name')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="middle_name">Middle name (optional)</label>
+                            <input type="text" id="middle_name" name="middle_name" value="{{ old('middle_name', $memorial->middle_name) }}"
+                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                            @error('middle_name')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
@@ -255,33 +258,6 @@
                             <x-form.city-select id="edit_death_city" name="death_city"
                                 :value="old('death_city', $memorial->death_city)" stateFieldId="edit_death_state" />
                         </div>
-                    </div>
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="cause_of_death">Designation</label>
-                        @php $causeVal = old('cause_of_death', $memorial->cause_of_death); $causeOptions = ['COVID-19 victim','War veteran','First responder','Substance abuse victim','Cancer victim','Victim of an accident','Crime victim','Miscarriage, stillborn and infant loss','Child loss','Other','No designation']; @endphp
-                        <select id="cause_of_death" name="cause_of_death" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent dark:bg-gray-900/80 px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:ring-3 focus:outline-hidden">
-                            <option value="">— Select designation —</option>
-                            @if($causeVal && !in_array($causeVal, $causeOptions))
-                            <option value="{{ e($causeVal) }}" selected>{{ $causeVal }}</option>
-                            @endif
-                            <option value="COVID-19 victim" {{ $causeVal === 'COVID-19 victim' ? 'selected' : '' }}>COVID-19 victim</option>
-                            <option value="War veteran" {{ old('cause_of_death', $memorial->cause_of_death) === 'War veteran' ? 'selected' : '' }}>War veteran</option>
-                            <option value="First responder" {{ old('cause_of_death', $memorial->cause_of_death) === 'First responder' ? 'selected' : '' }}>First responder</option>
-                            <option value="Substance abuse victim" {{ old('cause_of_death', $memorial->cause_of_death) === 'Substance abuse victim' ? 'selected' : '' }}>Substance abuse victim</option>
-                            <option value="Cancer victim" {{ old('cause_of_death', $memorial->cause_of_death) === 'Cancer victim' ? 'selected' : '' }}>Cancer victim</option>
-                            <option value="Victim of an accident" {{ old('cause_of_death', $memorial->cause_of_death) === 'Victim of an accident' ? 'selected' : '' }}>Victim of an accident</option>
-                            <option value="Crime victim" {{ old('cause_of_death', $memorial->cause_of_death) === 'Crime victim' ? 'selected' : '' }}>Crime victim</option>
-                            <option value="Miscarriage, stillborn and infant loss" {{ old('cause_of_death', $memorial->cause_of_death) === 'Miscarriage, stillborn and infant loss' ? 'selected' : '' }}>Miscarriage, stillborn and infant loss</option>
-                            <option value="Child loss" {{ old('cause_of_death', $memorial->cause_of_death) === 'Child loss' ? 'selected' : '' }}>Child loss</option>
-                            <option value="Other" {{ old('cause_of_death', $memorial->cause_of_death) === 'Other' ? 'selected' : '' }}>Other</option>
-                            <option value="No designation" {{ old('cause_of_death', $memorial->cause_of_death) === 'No designation' ? 'selected' : '' }}>No designation</option>
-                        </select>
-                        <label class="mt-2 flex cursor-pointer items-center gap-2">
-                            <input type="hidden" name="cause_of_death_private" value="0" />
-                            <input type="checkbox" name="cause_of_death_private" value="1" {{ old('cause_of_death_private', $memorial->cause_of_death_private) ? 'checked' : '' }}
-                                class="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
-                            <span class="text-sm text-gray-700">Keep designation private</span>
-                        </label>
                     </div>
                 </div>
             </x-common.component-card>
@@ -687,8 +663,6 @@
                             obj[key] = value;
                         }
                     }
-                    const cdp = form.querySelector('input[name="cause_of_death_private"][type="checkbox"]');
-                    obj.cause_of_death_private = cdp ? (cdp.checked ? 1 : 0) : 0;
                     const ip = form.querySelector('input[name="is_public"][type="checkbox"]');
                     obj.is_public = ip ? (ip.checked ? 1 : 0) : 0;
                     return obj;
