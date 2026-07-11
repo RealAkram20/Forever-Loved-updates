@@ -62,24 +62,24 @@ function clearError(input) {
 
 function validateEmail(input) {
     const value = input.value.trim();
-    if (!value) return input.required ? 'Please enter your email address.' : null;
-    if (!EMAIL_RE.test(value)) return 'That email address doesn’t look right — please check it.';
+    if (!value) return input.required ? 'Enter your email address.' : null;
+    if (!EMAIL_RE.test(value)) return 'Enter a valid email address.';
     return null;
 }
 
 function validatePhone(input) {
     const raw = input.value.trim();
-    if (!raw) return input.required ? 'Please enter your phone number.' : null;
+    if (!raw) return input.required ? 'Enter your phone number.' : null;
 
     const normalized = normalizePhone(raw);
     if (normalized.startsWith('+')) {
         const parsed = parsePhoneNumberFromString(normalized);
-        if (!parsed || !parsed.isValid()) return 'That phone number doesn’t look valid — check the country code and digits.';
+        if (!parsed || !parsed.isValid()) return 'Enter a valid phone number, e.g. +256 700 123456';
         return null;
     }
 
     const digits = normalized.replace(/\D/g, '');
-    if (digits.length < 6 || digits.length > 15) return 'Please enter a valid phone number (6–15 digits).';
+    if (digits.length < 6 || digits.length > 15) return 'Enter a valid phone number, e.g. 0700 123 456';
     return null;
 }
 
@@ -91,8 +91,8 @@ function validateRequired(input) {
 function validateConfirmation(input) {
     const form = input.form;
     const original = form?.querySelector('input[name="password"]');
-    if (original && input.value && input.value !== original.value) return 'Passwords don’t match yet.';
-    if (input.required && !input.value) return 'Please confirm your password.';
+    if (original && input.value && input.value !== original.value) return 'Passwords do not match.';
+    if (input.required && !input.value) return 'Re-enter your password to confirm it.';
     return null;
 }
 

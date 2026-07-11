@@ -951,7 +951,7 @@
                     }
                     this.aiProviderName = data.ai_provider || 'AI';
                     if (data.fallback_used) {
-                        $toast('info', 'AI was temporarily unavailable — showing template suggestions instead.' + (data.fallback_reason ? ' (' + data.fallback_reason + ')' : ''));
+                        $toast('info', 'AI is unavailable right now. These are template suggestions.' + (data.fallback_reason ? ' (' + data.fallback_reason + ')' : ''));
                     }
                     this.aiOptions = [
                         { text: o1 || 'No content generated for this option.' },

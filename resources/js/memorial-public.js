@@ -1066,10 +1066,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             editEl.classList.add('hidden');
                         } else {
                             // Keep the edit form open so the user's input survives the retry.
-                            $toast('error', data.error || 'Could not save your changes — please try again.');
+                            $toast('error', data.error || 'Saving failed. Try again.');
                         }
                     })
-                    .catch(() => $toast('error', 'Could not save your changes — please try again.'))
+                    .catch(() => $toast('error', 'Saving failed. Check your connection and try again.'))
                     .finally(() => {
                         if (saveBtn) {
                             saveBtn.textContent = saveBtn.dataset.saveText || origText;
