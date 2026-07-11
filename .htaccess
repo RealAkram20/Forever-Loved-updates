@@ -10,6 +10,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Already inside public/ — leave it alone (prevents public/public/...).
+    RewriteRule ^public/ - [L]
+
     RewriteRule ^\.git - [F,L]
     RewriteRule ^vendor/ - [F,L]
     # Public uploads: /storage/* maps to the public disk (storage/app/public/*).

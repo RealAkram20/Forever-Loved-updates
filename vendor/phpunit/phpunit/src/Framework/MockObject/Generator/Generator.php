@@ -64,20 +64,9 @@ final class Generator
     use TemplateLoader;
 
     /**
-     * @var non-empty-array<non-empty-string, true>
+     * @var null|non-empty-array<non-empty-string, true>
      */
-    private const array EXCLUDED_METHOD_NAMES = [
-        '__CLASS__'       => true,
-        '__DIR__'         => true,
-        '__FILE__'        => true,
-        '__FUNCTION__'    => true,
-        '__LINE__'        => true,
-        '__METHOD__'      => true,
-        '__NAMESPACE__'   => true,
-        '__TRAIT__'       => true,
-        '__clone'         => true,
-        '__halt_compiler' => true,
-    ];
+    private static ?array $excludedMethodNames = null;
 
     /**
      * @var array<non-empty-string, DoubledClass>
@@ -91,9 +80,11 @@ final class Generator
      * @param ?list<non-empty-string> $methods
      * @param array<mixed>            $arguments
      *
+     * @throws ClassIsAnonymousException
      * @throws ClassIsEnumerationException
      * @throws ClassIsFinalException
      * @throws DuplicateMethodException
+     * @throws InvalidClassNameException
      * @throws InvalidMethodNameException
      * @throws NameAlreadyInUseException
      * @throws ReflectionException
@@ -108,6 +99,7 @@ final class Generator
 
         $this->ensureKnownType($type);
         $this->ensureValidMethods($methods);
+        $this->ensureValidNameForTestDoubleClass($mockClassName);
         $this->ensureNameForTestDoubleClassIsAvailable($mockClassName);
 
         $mock = $this->generate(
@@ -120,6 +112,7 @@ final class Generator
 
         $object = $this->instantiate(
             $mock,
+            $mockObject,
             $callOriginalConstructor,
             $arguments,
             $returnValueGeneration,
@@ -207,6 +200,7 @@ final class Generator
      * @param class-string            $type
      * @param ?list<non-empty-string> $methods
      *
+     * @throws ClassIsAnonymousException
      * @throws ClassIsEnumerationException
      * @throws ClassIsFinalException
      * @throws ReflectionException
@@ -298,7 +292,7 @@ final class Generator
      * @throws ReflectionException
      * @throws RuntimeException
      */
-    private function instantiate(DoubledClass $mockClass, bool $callOriginalConstructor = false, array $arguments = [], bool $returnValueGeneration = true): object
+    private function instantiate(DoubledClass $mockClass, bool $mockObject, bool $callOriginalConstructor = false, array $arguments = [], bool $returnValueGeneration = true): object
     {
         $className = $mockClass->generate();
 
@@ -321,7 +315,7 @@ final class Generator
          */
         $reflector->getProperty('__phpunit_state')->setValue(
             $object,
-            new TestDoubleState($mockClass->configurableMethods(), $returnValueGeneration),
+            new TestDoubleState($mockClass->configurableMethods(), $returnValueGeneration, $mockObject),
         );
 
         if ($callOriginalConstructor && $reflector->getConstructor() !== null) {
@@ -345,6 +339,7 @@ final class Generator
      * @param class-string            $type
      * @param ?list<non-empty-string> $explicitMethods
      *
+     * @throws ClassIsAnonymousException
      * @throws ClassIsEnumerationException
      * @throws ClassIsFinalException
      * @throws MethodNamedMethodException
@@ -376,6 +371,10 @@ final class Generator
         }
 
         $class = $this->reflectClass($_mockClassName['fullClassName']);
+
+        if ($class->isAnonymous()) {
+            throw new ClassIsAnonymousException($_mockClassName['fullClassName']);
+        }
 
         if ($class->isEnum()) {
             throw new ClassIsEnumerationException($_mockClassName['fullClassName']);
@@ -651,7 +650,27 @@ final class Generator
 
     private function isMethodNameExcluded(string $name): bool
     {
-        return isset(self::EXCLUDED_METHOD_NAMES[$name]);
+        if (self::$excludedMethodNames === null) {
+            self::$excludedMethodNames = [
+                '__CLASS__'       => true,
+                '__DIR__'         => true,
+                '__FILE__'        => true,
+                '__FUNCTION__'    => true,
+                '__LINE__'        => true,
+                '__METHOD__'      => true,
+                '__NAMESPACE__'   => true,
+                '__TRAIT__'       => true,
+                '__clone'         => true,
+                '__halt_compiler' => true,
+            ];
+
+            if (version_compare(PHP_VERSION, '8.5', '>=')) {
+                self::$excludedMethodNames['__sleep']  = true;
+                self::$excludedMethodNames['__wakeup'] = true;
+            }
+        }
+
+        return isset(self::$excludedMethodNames[$name]);
     }
 
     /**
@@ -677,13 +696,27 @@ final class Generator
         }
 
         foreach ($methods as $method) {
-            if (!preg_match('~[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*~', (string) $method)) {
+            if (!preg_match('~\A[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\z~', (string) $method)) {
                 throw new InvalidMethodNameException((string) $method);
             }
         }
 
         if ($methods !== array_unique($methods)) {
             throw new DuplicateMethodException($methods);
+        }
+    }
+
+    /**
+     * @throws InvalidClassNameException
+     */
+    private function ensureValidNameForTestDoubleClass(string $className): void
+    {
+        if ($className === '') {
+            return;
+        }
+
+        if (!preg_match('~\A[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\z~', $className)) {
+            throw new InvalidClassNameException($className);
         }
     }
 
@@ -705,11 +738,15 @@ final class Generator
     }
 
     /**
-     * @param class-string $className
+     * @template T of object
+     *
+     * @param class-string<T> $className
      *
      * @throws ReflectionException
      *
-     * @phpstan-ignore missingType.generics, throws.unusedType
+     * @return ReflectionClass<T>
+     *
+     * @phpstan-ignore throws.unusedType
      */
     private function reflectClass(string $className): ReflectionClass
     {
@@ -789,7 +826,7 @@ final class Generator
         }
 
         foreach ($propertiesWithHooks as $property) {
-            if ($property->hasGetHook()) {
+            if ($property->shouldGenerateGetHook()) {
                 $configurable[] = new ConfigurableMethod(
                     sprintf(
                         '$%s::get',
@@ -801,7 +838,7 @@ final class Generator
                 );
             }
 
-            if ($property->hasSetHook()) {
+            if ($property->shouldGenerateSetHook()) {
                 $configurable[] = new ConfigurableMethod(
                     sprintf(
                         '$%s::set',
@@ -850,8 +887,9 @@ final class Generator
                 continue;
             }
 
-            $hasGetHook = false;
-            $hasSetHook = false;
+            $hasGetHook                 = false;
+            $hasSetHook                 = false;
+            $setHookMethodParameterType = null;
 
             if ($property->hasHook(PropertyHookType::Get) &&
                 !$property->getHook(PropertyHookType::Get)->isFinal()) {
@@ -860,7 +898,8 @@ final class Generator
 
             if ($property->hasHook(PropertyHookType::Set) &&
                 !$property->getHook(PropertyHookType::Set)->isFinal()) {
-                $hasSetHook = true;
+                $hasSetHook                 = true;
+                $setHookMethodParameterType = $mapper->fromParameterTypes($property->getHook(PropertyHookType::Set))[0]->type();
             }
 
             if (!$hasGetHook && !$hasSetHook) {
@@ -872,6 +911,8 @@ final class Generator
                 $mapper->fromPropertyType($property),
                 $hasGetHook,
                 $hasSetHook,
+                $property->isVirtual(),
+                $setHookMethodParameterType,
             );
         }
 

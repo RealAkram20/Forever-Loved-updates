@@ -7,6 +7,7 @@ namespace ParaTest\WrapperRunner;
 use Generator;
 use ParaTest\Options;
 use PHPUnit\Event\Facade as EventFacade;
+use PHPUnit\Framework\Test;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\TestSuite;
 use PHPUnit\Runner\Extension\ExtensionBootstrapper;
@@ -27,8 +28,13 @@ use ReflectionClass;
 use ReflectionProperty;
 use Symfony\Component\Console\Output\OutputInterface;
 
+use function array_filter;
 use function array_keys;
+use function array_merge;
+use function array_slice;
+use function array_values;
 use function assert;
+use function ceil;
 use function count;
 use function is_int;
 use function is_string;
@@ -40,6 +46,8 @@ use function sprintf;
 use function str_starts_with;
 use function strlen;
 use function substr;
+
+use const ARRAY_FILTER_USE_KEY;
 
 /** @internal */
 final readonly class SuiteLoader
@@ -86,6 +94,10 @@ final readonly class SuiteLoader
         EventFacade::instance()->seal();
 
         $testSuite = (new TestSuiteBuilder())->build($this->options->configuration);
+
+        if ($this->options->hasShard()) {
+            $this->shardTests($testSuite);
+        }
 
         if ($this->options->configuration->executionOrder() === TestSuiteSorter::ORDER_RANDOMIZED) {
             mt_srand($this->options->configuration->randomOrderSeed());
@@ -213,5 +225,36 @@ final readonly class SuiteLoader
         assert($substr !== '');
 
         return $substr;
+    }
+
+    private function shardTests(TestSuite $suite): void
+    {
+        $tests   = $this->extractTestsInSuite($suite);
+        $shards  = $this->options->totalShards;
+        $current = $this->options->currentShard - 1; // 0 indexed. Shard 1 is in reality shard 0
+
+        $shardedTests = match ($this->options->shardDistribution) {
+            ShardDistribution::Sequential => array_slice($tests, (int) ceil(count($tests) / $shards) * $current, (int) ceil(count($tests) / $shards)),
+            ShardDistribution::RoundRobin => array_values(array_filter($tests, static fn (int $i): bool => $i % $shards === $current, ARRAY_FILTER_USE_KEY)),
+        };
+
+        $suite->setTests($shardedTests);
+    }
+
+    /** @return list<Test> */
+    private function extractTestsInSuite(TestSuite $suite): array
+    {
+        $extractedTests = [];
+        $suiteItems     = $suite->tests();
+
+        foreach ($suiteItems as $item) {
+            if ($item instanceof TestSuite) {
+                $extractedTests = array_merge($extractedTests, $this->extractTestsInSuite($item));
+            } else {
+                $extractedTests[] = $item;
+            }
+        }
+
+        return $extractedTests;
     }
 }

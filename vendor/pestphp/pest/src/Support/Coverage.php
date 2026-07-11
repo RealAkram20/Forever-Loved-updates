@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pest\Support;
 
 use Pest\Exceptions\ShouldNotHappen;
+use Pest\Plugins\Tia\CoverageMerger;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 use SebastianBergmann\CodeCoverage\Node\Directory;
 use SebastianBergmann\CodeCoverage\Node\File;
@@ -74,7 +75,7 @@ final class Coverage
      * Reports the code coverage report to the
      * console and returns the result in float.
      */
-    public static function report(OutputInterface $output, bool $compact = false): float
+    public static function report(OutputInterface $output, bool $compact = false, bool $showOnlyCovered = false): float
     {
         if (! file_exists($reportPath = self::getPath())) {
             if (self::usingXdebug()) {
@@ -87,6 +88,8 @@ final class Coverage
 
             throw ShouldNotHappen::fromMessage(sprintf('Coverage not found in path: %s.', $reportPath));
         }
+
+        CoverageMerger::applyIfMarked($reportPath);
 
         /** @var CodeCoverage $codeCoverage */
         $codeCoverage = require $reportPath;
@@ -108,6 +111,10 @@ final class Coverage
                 $dirname,
                 $basename,
             ]);
+
+            if ($showOnlyCovered && $file->percentageOfExecutedLines()->asFloat() === 0.0) {
+                continue;
+            }
 
             $percentage = $file->numberOfExecutableLines() === 0
                 ? '100.0'

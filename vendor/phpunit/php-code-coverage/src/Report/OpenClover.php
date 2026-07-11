@@ -12,13 +12,10 @@ namespace SebastianBergmann\CodeCoverage\Report;
 use function assert;
 use function basename;
 use function count;
-use function dirname;
-use function file_put_contents;
 use function is_string;
 use function ksort;
 use function max;
 use function range;
-use function str_contains;
 use function str_replace;
 use function time;
 use DOMDocument;
@@ -26,6 +23,7 @@ use DOMElement;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 use SebastianBergmann\CodeCoverage\Node\File;
 use SebastianBergmann\CodeCoverage\Util\Filesystem;
+use SebastianBergmann\CodeCoverage\Util\Xml;
 use SebastianBergmann\CodeCoverage\Version;
 use SebastianBergmann\CodeCoverage\WriteOperationFailedException;
 
@@ -80,53 +78,53 @@ final class OpenClover
                 $classMethods           = 0;
 
                 // Assumption: one namespace per file
-                if ($class['namespace'] !== '') {
-                    $namespace = $class['namespace'];
+                if ($class->namespace !== '') {
+                    $namespace = $class->namespace;
                 }
 
-                foreach ($class['methods'] as $methodName => $method) {
+                foreach ($class->methods as $methodName => $method) {
                     /** @phpstan-ignore equal.notAllowed */
-                    if ($method['executableLines'] == 0) {
+                    if ($method->executableLines == 0) {
                         continue;
                     }
 
                     $classMethods++;
-                    $classStatements        += $method['executableLines'];
-                    $coveredClassStatements += $method['executedLines'];
+                    $classStatements        += $method->executableLines;
+                    $coveredClassStatements += $method->executedLines;
 
                     /** @phpstan-ignore equal.notAllowed */
-                    if ($method['coverage'] == 100) {
+                    if ($method->coverage == 100) {
                         $coveredMethods++;
                     }
 
                     $methodCount = 0;
 
-                    foreach (range($method['startLine'], $method['endLine']) as $line) {
+                    foreach (range($method->startLine, $method->endLine) as $line) {
                         if (isset($coverageData[$line])) {
                             $methodCount = max($methodCount, count($coverageData[$line]));
                         }
                     }
 
-                    $lines[$method['startLine']] = [
-                        'ccn'        => $method['ccn'],
+                    $lines[$method->startLine] = [
+                        'ccn'        => $method->ccn,
                         'count'      => $methodCount,
                         'type'       => 'method',
-                        'signature'  => $method['signature'],
-                        'visibility' => $method['visibility'],
+                        'signature'  => $method->signature,
+                        'visibility' => $method->visibility,
                     ];
                 }
 
                 $xmlClass = $xmlDocument->createElement('class');
-                $xmlClass->setAttribute('name', str_replace($class['namespace'] . '\\', '', $className));
+                $xmlClass->setAttribute('name', str_replace($class->namespace . '\\', '', $className));
 
                 $xmlFile->appendChild($xmlClass);
 
                 $xmlMetrics = $xmlDocument->createElement('metrics');
-                $xmlMetrics->setAttribute('complexity', (string) $class['ccn']);
-                $xmlMetrics->setAttribute('elements', (string) ($classMethods + $classStatements + $class['executableBranches']));
-                $xmlMetrics->setAttribute('coveredelements', (string) ($coveredMethods + $coveredClassStatements + $class['executedBranches']));
-                $xmlMetrics->setAttribute('conditionals', (string) $class['executableBranches']);
-                $xmlMetrics->setAttribute('coveredconditionals', (string) $class['executedBranches']);
+                $xmlMetrics->setAttribute('complexity', (string) $class->ccn);
+                $xmlMetrics->setAttribute('elements', (string) ($classMethods + $classStatements + $class->executableBranches));
+                $xmlMetrics->setAttribute('coveredelements', (string) ($coveredMethods + $coveredClassStatements + $class->executedBranches));
+                $xmlMetrics->setAttribute('conditionals', (string) $class->executableBranches);
+                $xmlMetrics->setAttribute('coveredconditionals', (string) $class->executedBranches);
                 $xmlMetrics->setAttribute('statements', (string) $classStatements);
                 $xmlMetrics->setAttribute('coveredstatements', (string) $coveredClassStatements);
                 $xmlMetrics->setAttribute('methods', (string) $classMethods);
@@ -240,16 +238,10 @@ final class OpenClover
         $xmlMetrics->setAttribute('coveredmethods', (string) $report->numberOfTestedMethods());
         $xmlProject->insertBefore($xmlMetrics, $xmlProject->firstChild);
 
-        $buffer = $xmlDocument->saveXML();
+        $buffer = Xml::asString($xmlDocument);
 
         if ($target !== null) {
-            if (!str_contains($target, '://')) {
-                Filesystem::createDirectory(dirname($target));
-            }
-
-            if (@file_put_contents($target, $buffer) === false) {
-                throw new WriteOperationFailedException($target);
-            }
+            Filesystem::write($target, $buffer);
         }
 
         return $buffer;

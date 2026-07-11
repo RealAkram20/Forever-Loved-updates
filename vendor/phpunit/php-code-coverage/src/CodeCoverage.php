@@ -39,7 +39,7 @@ use SebastianBergmann\CodeCoverage\Test\TestStatus\TestStatus;
 /**
  * Provides collection functionality for PHP code coverage information.
  *
- * @phpstan-type TestType array{size: string, status: string}
+ * @phpstan-type TestType array{size: string, status: string, time: float}
  * @phpstan-type TargetedLines array<non-empty-string, list<positive-int>>
  */
 final class CodeCoverage
@@ -47,33 +47,54 @@ final class CodeCoverage
     private const string UNCOVERED_FILES = 'UNCOVERED_FILES';
     private readonly Driver $driver;
     private readonly Filter $filter;
+    private ?FileAnalyser $analyser                  = null;
     private ?Mapper $targetMapper                    = null;
+    private ?string $cacheDirectory                  = null;
     private bool $checkForUnintentionallyCoveredCode = false;
+    private bool $collectBranchAndPathCoverage       = false;
     private bool $includeUncoveredFiles              = true;
     private bool $ignoreDeprecatedCode               = false;
-    private ?string $currentId                       = null;
-    private ?TestSize $currentSize                   = null;
-    private ProcessedCodeCoverageData $data;
-    private bool $useAnnotationsForIgnoringCode = true;
-
-    /**
-     * @var array<string, TestType>
-     */
-    private array $tests = [];
+    private bool $useAnnotationsForIgnoringCode      = true;
 
     /**
      * @var list<class-string>
      */
     private array $parentClassesExcludedFromUnintentionallyCoveredCodeCheck = [];
-    private ?FileAnalyser $analyser                                         = null;
-    private ?string $cacheDirectory                                         = null;
-    private ?Directory $cachedReport                                        = null;
+    private ?string $currentId                                              = null;
+    private ?TestSize $currentSize                                          = null;
+    private ProcessedCodeCoverageData $data;
+
+    /**
+     * @var array<string, TestType>
+     */
+    private array $tests             = [];
+    private ?Directory $cachedReport = null;
 
     public function __construct(Driver $driver, Filter $filter)
     {
         $this->driver = $driver;
         $this->filter = $filter;
         $this->data   = new ProcessedCodeCoverageData;
+    }
+
+    public function __serialize(): array
+    {
+        $prefix = "\x00" . self::class . "\x00";
+
+        return [
+            // Configuration
+            $prefix . 'cacheDirectory'                                           => $this->cacheDirectory,
+            $prefix . 'checkForUnintentionallyCoveredCode'                       => $this->checkForUnintentionallyCoveredCode,
+            $prefix . 'includeUncoveredFiles'                                    => $this->includeUncoveredFiles,
+            $prefix . 'ignoreDeprecatedCode'                                     => $this->ignoreDeprecatedCode,
+            $prefix . 'parentClassesExcludedFromUnintentionallyCoveredCodeCheck' => $this->parentClassesExcludedFromUnintentionallyCoveredCodeCheck,
+            $prefix . 'useAnnotationsForIgnoringCode'                            => $this->useAnnotationsForIgnoringCode,
+            $prefix . 'filter'                                                   => $this->filter,
+
+            // Data
+            $prefix . 'data'  => $this->data,
+            $prefix . 'tests' => $this->tests,
+        ];
     }
 
     /**
@@ -168,11 +189,11 @@ final class CodeCoverage
         $this->cachedReport = null;
     }
 
-    public function stop(bool $append = true, ?TestStatus $status = null, null|false|TargetCollection $covers = null, ?TargetCollection $uses = null): RawCodeCoverageData
+    public function stop(bool $append = true, ?TestStatus $status = null, null|false|TargetCollection $covers = null, ?TargetCollection $uses = null, float $time = 0.0): RawCodeCoverageData
     {
         $data = $this->driver->stop();
 
-        $this->append($data, null, $append, $status, $covers, $uses);
+        $this->append($data, null, $append, $status, $covers, $uses, $time);
 
         $this->currentId    = null;
         $this->currentSize  = null;
@@ -186,7 +207,7 @@ final class CodeCoverage
      * @throws TestIdMissingException
      * @throws UnintentionallyCoveredCodeException
      */
-    public function append(RawCodeCoverageData $rawData, ?string $id = null, bool $append = true, ?TestStatus $status = null, null|false|TargetCollection $covers = null, ?TargetCollection $uses = null): void
+    public function append(RawCodeCoverageData $rawData, ?string $id = null, bool $append = true, ?TestStatus $status = null, null|false|TargetCollection $covers = null, ?TargetCollection $uses = null, float $time = 0.0): void
     {
         if ($id === null) {
             $id = $this->currentId;
@@ -259,6 +280,7 @@ final class CodeCoverage
         $this->tests[$id] = [
             'size'   => $size->asString(),
             'status' => $status->asString(),
+            'time'   => $time,
         ];
 
         $this->data->markCodeAsExecutedByTestCase($id, $rawData);
@@ -363,21 +385,43 @@ final class CodeCoverage
     public function enableBranchAndPathCoverage(): void
     {
         $this->driver->enableBranchAndPathCoverage();
+
+        $this->collectBranchAndPathCoverage = true;
     }
 
     public function disableBranchAndPathCoverage(): void
     {
         $this->driver->disableBranchAndPathCoverage();
+
+        $this->collectBranchAndPathCoverage = false;
     }
 
     public function collectsBranchAndPathCoverage(): bool
     {
-        return $this->driver->collectsBranchAndPathCoverage();
+        return $this->collectBranchAndPathCoverage;
     }
 
     public function validate(TargetCollection $targets): ValidationResult
     {
         return (new TargetCollectionValidator)->validate($this->targetMapper(), $targets);
+    }
+
+    /**
+     * @internal
+     */
+    public function driverIsPcov(): bool
+    {
+        /** @phpstan-ignore isset.initializedProperty */
+        return isset($this->driver) && $this->driver->isPcov();
+    }
+
+    /**
+     * @internal
+     */
+    public function driverIsXdebug(): bool
+    {
+        /** @phpstan-ignore isset.initializedProperty */
+        return isset($this->driver) && $this->driver->isXdebug();
     }
 
     /**

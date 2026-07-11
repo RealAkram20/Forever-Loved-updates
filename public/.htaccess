@@ -4,8 +4,9 @@
     </IfModule>
 
     RewriteEngine On
-    # Local dev (htdocs root): /  |  Subdirectory: /Forever-love/
-    RewriteBase /
+    # No RewriteBase: mod_rewrite infers the per-directory prefix, so this works
+    # whether the app is served from the htdocs root or a subdirectory. A hardcoded
+    # "RewriteBase /" sends the front-controller rewrite to the docroot's index.php.
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -20,9 +21,12 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Public disk: when public/storage symlink is missing/broken, serve files from storage/app/public
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^storage/(.*)$ ../storage/app/public/$1 [L]
+    # NOTE: no ^storage/ fallback here. The root .htaccess already rewrites /storage/*
+    # into public/storage/*, which the `php artisan storage:link` symlink resolves. A
+    # "RewriteRule ^storage/(.*)$ ../storage/app/public/$1" fallback at this level bounces
+    # the request back out to /storage/*, which the root .htaccess rewrites back in —
+    # an internal-redirect loop that turns every MISSING /storage/* file into a 500
+    # instead of a 404. Missing files now fall through to the front controller below.
 
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d

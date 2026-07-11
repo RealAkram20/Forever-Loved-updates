@@ -9,10 +9,12 @@ use Closure;
 use Countable;
 use DateTimeInterface;
 use Error;
+use Illuminate\Testing\TestResponse;
 use InvalidArgumentException;
 use JsonSerializable;
 use Pest\Exceptions\InvalidExpectationValue;
 use Pest\Matchers\Any;
+use Pest\Plugins\Snapshot;
 use Pest\Support\Arr;
 use Pest\Support\Exporter;
 use Pest\Support\NullClosure;
@@ -842,7 +844,7 @@ final class Expectation
             is_object($this->value) && method_exists($this->value, 'toSnapshot') => $this->value->toSnapshot(),
             is_object($this->value) && method_exists($this->value, '__toString') => $this->value->__toString(),
             is_object($this->value) && method_exists($this->value, 'toString') => $this->value->toString(),
-            $this->value instanceof \Illuminate\Testing\TestResponse => $this->value->getContent(), // @phpstan-ignore-line
+            $this->value instanceof TestResponse => $this->value->getContent(), // @phpstan-ignore-line
             is_array($this->value) => json_encode($this->value, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT),
             $this->value instanceof Traversable => json_encode(iterator_to_array($this->value), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT),
             $this->value instanceof JsonSerializable => json_encode($this->value->jsonSerialize(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT),
@@ -850,18 +852,31 @@ final class Expectation
             default => InvalidExpectationValue::expected('array|object|string'),
         };
 
-        if ($snapshots->has()) {
-            [$filename, $content] = $snapshots->get();
-
-            Assert::assertSame(
-                strtr($content, ["\r\n" => "\n", "\r" => "\n"]),
-                strtr($string, ["\r\n" => "\n", "\r" => "\n"]),
-                $message === '' ? "Failed asserting that the string value matches its snapshot ($filename)." : $message
-            );
-        } else {
+        if (! $snapshots->has()) {
             $filename = $snapshots->save($string);
 
             TestSuite::getInstance()->registerSnapshotChange("Snapshot created at [$filename]");
+        } else {
+            [$filename, $content] = $snapshots->get();
+
+            $normalizedContent = strtr($content, ["\r\n" => "\n", "\r" => "\n"]);
+            $normalizedString = strtr($string, ["\r\n" => "\n", "\r" => "\n"]);
+
+            if (Snapshot::$updateSnapshots && $normalizedContent !== $normalizedString) {
+                $snapshots->save($string);
+
+                TestSuite::getInstance()->registerSnapshotChange("Snapshot updated at [$filename]");
+            } else {
+                if (Snapshot::$updateSnapshots) {
+                    TestSuite::getInstance()->registerSnapshotChange("Snapshot unchanged at [$filename]");
+                }
+
+                Assert::assertSame(
+                    $normalizedContent,
+                    $normalizedString,
+                    $message === '' ? "Failed asserting that the string value matches its snapshot ($filename)." : $message
+                );
+            }
         }
 
         return $this;
@@ -939,6 +954,7 @@ final class Expectation
         } catch (Throwable $e) {
 
             if ($exception instanceof Throwable) {
+                // @phpstan-ignore-next-line
                 expect($e)
                     ->toBeInstanceOf($exception::class, $message)
                     ->and($e->getMessage())->toBe($exceptionMessage ?? $exception->getMessage(), $message);
@@ -983,7 +999,7 @@ final class Expectation
      */
     private function export(mixed $value): string
     {
-        if (! $this->exporter instanceof \Pest\Support\Exporter) {
+        if (! $this->exporter instanceof Exporter) {
             $this->exporter = Exporter::default();
         }
 

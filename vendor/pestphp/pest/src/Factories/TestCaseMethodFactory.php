@@ -9,10 +9,14 @@ use Pest\Evaluators\Attributes;
 use Pest\Exceptions\ShouldNotHappen;
 use Pest\Factories\Concerns\HigherOrderable;
 use Pest\Repositories\DatasetsRepository;
+use Pest\Support\Description;
 use Pest\Support\Str;
 use Pest\TestSuite;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Depends;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -32,7 +36,7 @@ final class TestCaseMethodFactory
     /**
      * The test's describing, if any.
      *
-     * @var array<int, \Pest\Support\Description>
+     * @var array<int, Description>
      */
     public array $describing = [];
 
@@ -45,6 +49,11 @@ final class TestCaseMethodFactory
      * The test's number of repetitions.
      */
     public int $repetitions = 1;
+
+    /**
+     * The test's number of flaky retry tries.
+     */
+    public ?int $flakyTries = null;
 
     /**
      * Determines if the test is a "todo".
@@ -192,11 +201,11 @@ final class TestCaseMethodFactory
 
         $this->attributes = [
             new Attribute(
-                \PHPUnit\Framework\Attributes\Test::class,
+                Test::class,
                 [],
             ),
             new Attribute(
-                \PHPUnit\Framework\Attributes\TestDox::class,
+                TestDox::class,
                 [str_replace('*/', '{@*}', $this->description)],
             ),
             ...$this->attributes,
@@ -206,7 +215,7 @@ final class TestCaseMethodFactory
             $depend = Str::evaluable($this->describing === [] ? $depend : Str::describe($this->describing, $depend));
 
             $this->attributes[] = new Attribute(
-                \PHPUnit\Framework\Attributes\Depends::class,
+                Depends::class,
                 [$depend],
             );
         }

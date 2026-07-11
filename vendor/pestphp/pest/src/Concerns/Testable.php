@@ -7,13 +7,21 @@ namespace Pest\Concerns;
 use Closure;
 use Pest\Exceptions\DatasetArgumentsMismatch;
 use Pest\Panic;
+use Pest\Plugins\Tia;
+use Pest\Plugins\Tia\Collectors;
+use Pest\Plugins\Tia\Enums\ReplayType;
+use Pest\Plugins\Tia\Recorder;
 use Pest\Preset;
 use Pest\Support\ChainableClosure;
+use Pest\Support\Container;
 use Pest\Support\ExceptionTrace;
 use Pest\Support\Reflection;
 use Pest\Support\Shell;
 use Pest\TestSuite;
+use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\Attributes\PostCondition;
+use PHPUnit\Framework\IncompleteTest;
+use PHPUnit\Framework\SkippedTest;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use ReflectionFunction;
@@ -74,6 +82,17 @@ trait Testable
     public bool $__ran = false;
 
     /**
+     * The active replay mode for this test, set in `setUp()` and checked
+     * in `__runTest()` / `tearDown()` to skip the body and after-each.
+     */
+    private ReplayType $__replay = ReplayType::None;
+
+    /**
+     * The cached assertion count to replay, captured when entering replay mode.
+     */
+    private int $__replayAssertions = 0;
+
+    /**
      * The test's test closure.
      */
     private Closure $__test;
@@ -129,7 +148,7 @@ trait Testable
      */
     public function __addBeforeAll(?Closure $hook): void
     {
-        if (! $hook instanceof \Closure) {
+        if (! $hook instanceof Closure) {
             return;
         }
 
@@ -143,7 +162,7 @@ trait Testable
      */
     public function __addAfterAll(?Closure $hook): void
     {
-        if (! $hook instanceof \Closure) {
+        if (! $hook instanceof Closure) {
             return;
         }
 
@@ -173,7 +192,7 @@ trait Testable
      */
     private function __addHook(string $property, ?Closure $hook): void
     {
-        if (! $hook instanceof \Closure) {
+        if (! $hook instanceof Closure) {
             return;
         }
 
@@ -257,7 +276,34 @@ trait Testable
         self::$__latestIssues = $method->issues;
         self::$__latestPrs = $method->prs;
 
+        /** @var Tia $tia */
+        $tia = Container::getInstance()->get(Tia::class);
+        $status = $tia->getStatus(self::$__filename, $this::class.'::'.$this->name());
+        $replay = ReplayType::fromStatus($status);
+
+        if ($replay !== ReplayType::None) {
+            assert($status !== null);
+
+            match ($replay) {
+                ReplayType::Pass, ReplayType::Risky => $this->__beginReplay($replay, $tia),
+                ReplayType::Skipped => $this->markTestSkipped($status->message()),
+                ReplayType::Incomplete => $this->markTestIncomplete($status->message()),
+                ReplayType::Failure => throw new AssertionFailedError($status->message() ?: 'Cached failure'),
+            };
+
+            return;
+        }
+
+        $recorder = Container::getInstance()->get(Recorder::class);
+        assert($recorder instanceof Recorder);
+
+        if ($recorder->isActive()) {
+            $recorder->beginTest($this::class, $this->name(), self::$__filename);
+        }
+
         parent::setUp();
+
+        Collectors::armAll($recorder);
 
         $beforeEach = TestSuite::getInstance()->beforeEach->get(self::$__filename)[1];
 
@@ -266,6 +312,13 @@ trait Testable
         }
 
         $this->__callClosure($beforeEach, $arguments);
+    }
+
+    private function __beginReplay(ReplayType $replay, Tia $tia): void
+    {
+        $this->__replay = $replay;
+        $this->__replayAssertions = $tia->getAssertionCount($this::class.'::'.$this->name());
+        $this->__ran = true;
     }
 
     /**
@@ -300,6 +353,12 @@ trait Testable
      */
     protected function tearDown(...$arguments): void
     {
+        if ($this->__replay !== ReplayType::None) {
+            TestSuite::getInstance()->test = null;
+
+            return;
+        }
+
         $afterEach = TestSuite::getInstance()->afterEach->get(self::$__filename);
 
         if ($this->__afterEach instanceof Closure) {
@@ -325,10 +384,98 @@ trait Testable
      */
     private function __runTest(Closure $closure, ...$args): mixed
     {
+        if ($this->__replay === ReplayType::Pass || $this->__replay === ReplayType::Risky) {
+            if ($this->__replay === ReplayType::Pass && $this->__replayAssertions === 0) {
+                $this->expectNotToPerformAssertions();
+            }
+
+            $this->addToAssertionCount($this->__replayAssertions);
+
+            return null;
+        }
+
         $arguments = $this->__resolveTestArguments($args);
         $this->__ensureDatasetArgumentNameAndNumberMatches($arguments);
 
-        return $this->__callClosure($closure, $arguments);
+        $method = TestSuite::getInstance()->tests->get(self::$__filename)->getMethod($this->name());
+
+        if ($method->flakyTries === null) {
+            return $this->__callClosure($closure, $arguments);
+        }
+
+        $lastException = null;
+        $initialProperties = get_object_vars($this);
+
+        for ($attempt = 1; $attempt <= $method->flakyTries; $attempt++) {
+            try {
+                return $this->__callClosure($closure, $arguments);
+            } catch (Throwable $e) {
+                if ($e instanceof SkippedTest
+                    || $e instanceof IncompleteTest
+                    || $this->__isExpectedException($e)) {
+                    throw $e;
+                }
+
+                $lastException = $e;
+
+                if ($attempt < $method->flakyTries) {
+                    if ($this->__snapshotChanges !== []) {
+                        throw $e;
+                    }
+
+                    $this->tearDown();
+
+                    Closure::bind(fn (): array => $this->mockObjects = [], $this, TestCase::class)();
+
+                    foreach (array_keys(array_diff_key(get_object_vars($this), $initialProperties)) as $property) {
+                        unset($this->{$property});
+                    }
+
+                    $hasOutputExpectation = Closure::bind(fn (): bool => is_string($this->outputExpectedString) || is_string($this->outputExpectedRegex), $this, TestCase::class)();
+
+                    if ($hasOutputExpectation) {
+                        ob_clean();
+
+                        Closure::bind(function (): void {
+                            $this->outputExpectedString = null;
+                            $this->outputExpectedRegex = null;
+                        }, $this, TestCase::class)();
+                    }
+
+                    $this->setUp();
+                }
+            }
+        }
+
+        throw $lastException;
+    }
+
+    /**
+     * Determines if the given exception matches PHPUnit's expected exception.
+     */
+    private function __isExpectedException(Throwable $e): bool
+    {
+        $read = fn (string $property): mixed => Closure::bind(fn () => $this->{$property}, $this, TestCase::class)();
+
+        $expectedClass = $read('expectedException');
+
+        if ($expectedClass !== null) {
+            return $e instanceof $expectedClass;
+        }
+
+        $expectedMessage = $read('expectedExceptionMessage');
+
+        if ($expectedMessage !== null) {
+            return str_contains($e->getMessage(), (string) $expectedMessage);
+        }
+
+        $expectedCode = $read('expectedExceptionCode');
+
+        if ($expectedCode !== null) {
+            return $e->getCode() === $expectedCode;
+        }
+
+        return false;
     }
 
     /**
@@ -350,7 +497,8 @@ trait Testable
         }
 
         $underlyingTest = Reflection::getFunctionVariable($this->__test, 'closure');
-        $testParameterTypes = array_values(Reflection::getFunctionArguments($underlyingTest));
+        $testParameterTypesByName = Reflection::getFunctionArguments($underlyingTest);
+        $testParameterTypes = array_values($testParameterTypesByName);
 
         if (count($arguments) !== 1) {
             foreach ($arguments as $argumentIndex => $argumentValue) {
@@ -358,7 +506,11 @@ trait Testable
                     continue;
                 }
 
-                if (in_array($testParameterTypes[$argumentIndex], [Closure::class, 'callable', 'mixed'])) {
+                $parameterType = is_string($argumentIndex)
+                    ? $testParameterTypesByName[$argumentIndex]
+                    : $testParameterTypes[$argumentIndex];
+
+                if (in_array($parameterType, [Closure::class, 'callable', 'mixed'])) {
                     continue;
                 }
 
@@ -384,7 +536,7 @@ trait Testable
             return [$boundDatasetResult];
         }
 
-        return array_values($boundDatasetResult);
+        return $boundDatasetResult;
     }
 
     /**

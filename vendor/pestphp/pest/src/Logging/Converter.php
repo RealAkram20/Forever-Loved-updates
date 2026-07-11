@@ -12,7 +12,9 @@ use PHPUnit\Event\Code\Test;
 use PHPUnit\Event\Code\TestMethod;
 use PHPUnit\Event\Code\Throwable;
 use PHPUnit\Event\Test\AfterLastTestMethodErrored;
+use PHPUnit\Event\Test\AfterLastTestMethodFailed;
 use PHPUnit\Event\Test\BeforeFirstTestMethodErrored;
+use PHPUnit\Event\Test\BeforeFirstTestMethodFailed;
 use PHPUnit\Event\Test\ConsideredRisky;
 use PHPUnit\Event\Test\Errored;
 use PHPUnit\Event\Test\Failed;
@@ -131,7 +133,7 @@ final readonly class Converter
 
         // clean the paths of each frame.
         $frames = array_map(
-            fn (string $frame): string => $this->toRelativePath($frame),
+            $this->toRelativePath(...),
             $frames
         );
 
@@ -151,7 +153,7 @@ final readonly class Converter
     {
         if ($testSuite instanceof TestSuiteForTestMethodWithDataProvider) {
             $firstTest = $this->getFirstTest($testSuite);
-            if ($firstTest instanceof \PHPUnit\Event\Code\TestMethod) {
+            if ($firstTest instanceof TestMethod) {
                 return $this->getTestMethodNameWithoutDatasetSuffix($firstTest);
             }
         }
@@ -179,7 +181,7 @@ final readonly class Converter
     public function getTestSuiteLocation(TestSuite $testSuite): ?string
     {
         $firstTest = $this->getFirstTest($testSuite);
-        if (! $firstTest instanceof \PHPUnit\Event\Code\TestMethod) {
+        if (! $firstTest instanceof TestMethod) {
             return null;
         }
         $path = $firstTest->testDox()->prettifiedClassName();
@@ -255,9 +257,11 @@ final readonly class Converter
         $numberOfNotPassedTests = count(
             array_unique(
                 array_map(
-                    function (AfterLastTestMethodErrored|BeforeFirstTestMethodErrored|Errored|Failed|Skipped|ConsideredRisky|MarkedIncomplete $event): string {
+                    function (AfterLastTestMethodErrored|AfterLastTestMethodFailed|BeforeFirstTestMethodErrored|BeforeFirstTestMethodFailed|Errored|Failed|Skipped|ConsideredRisky|MarkedIncomplete $event): string {
                         if ($event instanceof BeforeFirstTestMethodErrored
-                            || $event instanceof AfterLastTestMethodErrored) {
+                            || $event instanceof AfterLastTestMethodErrored
+                            || $event instanceof BeforeFirstTestMethodFailed
+                            || $event instanceof AfterLastTestMethodFailed) {
                             return $event->testClassName();
                         }
 

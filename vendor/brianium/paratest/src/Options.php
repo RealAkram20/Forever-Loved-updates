@@ -6,6 +6,8 @@ namespace ParaTest;
 
 use Fidry\CpuCoreCounter\CpuCoreCounter;
 use Fidry\CpuCoreCounter\NumberOfCpuCoreNotFound;
+use InvalidArgumentException;
+use ParaTest\WrapperRunner\ShardDistribution;
 use PHPUnit\TextUI\Configuration\Builder;
 use PHPUnit\TextUI\Configuration\Configuration;
 use RuntimeException;
@@ -28,6 +30,8 @@ use function is_array;
 use function is_bool;
 use function is_numeric;
 use function is_string;
+use function min;
+use function preg_match;
 use function realpath;
 use function sprintf;
 use function str_starts_with;
@@ -46,21 +50,37 @@ use const PHP_BINARY;
  */
 final readonly class Options
 {
-    public const ENV_KEY_TOKEN        = 'TEST_TOKEN';
-    public const ENV_KEY_UNIQUE_TOKEN = 'UNIQUE_TEST_TOKEN';
+    public const string ENV_KEY_TOKEN        = 'TEST_TOKEN';
+    public const string ENV_KEY_UNIQUE_TOKEN = 'UNIQUE_TEST_TOKEN';
 
-    private const OPTIONS_TO_KEEP_FOR_PHPUNIT_IN_WORKER = [
+    private const array OPTIONS_TO_KEEP_FOR_PHPUNIT_IN_WORKER = [
         'bootstrap' => true,
         'cache-directory' => true,
         'configuration' => true,
         'coverage-filter' => true,
-        'dont-report-useless-tests' => true,
+        'do-not-report-useless-tests' => true,
         'exclude-group' => true,
-        'fail-on-incomplete' => true,
-        'fail-on-risky' => true,
-        'fail-on-skipped' => true,
+        'fail-on-empty-test-suite' => true,
         'fail-on-warning' => true,
+        'fail-on-risky' => true,
         'fail-on-deprecation' => true,
+        'fail-on-phpunit-deprecation' => true,
+        'fail-on-phpunit-notice' => true,
+        'fail-on-phpunit-warning' => true,
+        'fail-on-notice' => true,
+        'fail-on-skipped' => true,
+        'fail-on-incomplete' => true,
+        'fail-on-all-issues' => true,
+        'do-not-fail-on-empty-test-suite' => true,
+        'do-not-fail-on-warning' => true,
+        'do-not-fail-on-risky' => true,
+        'do-not-fail-on-deprecation' => true,
+        'do-not-fail-on-phpunit-deprecation' => true,
+        'do-not-fail-on-phpunit-notice' => true,
+        'do-not-fail-on-phpunit-warning' => true,
+        'do-not-fail-on-notice' => true,
+        'do-not-fail-on-skipped' => true,
+        'do-not-fail-on-incomplete' => true,
         'filter' => true,
         'group' => true,
         'no-configuration' => true,
@@ -69,8 +89,11 @@ final readonly class Options
         'random-order-seed' => true,
         'stop-on-defect' => true,
         'stop-on-error' => true,
+        'stop-on-failure' => true,
         'stop-on-warning' => true,
         'stop-on-risky' => true,
+        'stop-on-deprecation' => true,
+        'stop-on-notice' => true,
         'stop-on-skipped' => true,
         'stop-on-incomplete' => true,
         'strict-coverage' => true,
@@ -78,9 +101,12 @@ final readonly class Options
         'disallow-test-output' => true,
         'enforce-time-limit' => true,
         'default-time-limit' => true,
+        'exclude-source-from-xml-coverage' => true,
+        'only-summary-for-coverage-text' => true,
     ];
 
-    public readonly bool $needsTeamcity;
+    public bool $needsTeamcity;
+    public bool $needsTestdox;
 
     /**
      * @param non-empty-string                                                      $phpunit
@@ -103,8 +129,12 @@ final readonly class Options
         public string $tmpDir,
         public bool $verbose,
         public bool $functional,
+        public int $currentShard,
+        public int $totalShards,
+        public ShardDistribution $shardDistribution,
     ) {
         $this->needsTeamcity = $configuration->outputIsTeamCity() || $configuration->hasLogfileTeamcity();
+        $this->needsTestdox  = $configuration->outputIsTestDox() || $configuration->hasLogfileTestdoxText() || $configuration->hasLogfileTestdoxHtml();
     }
 
     /** @param non-empty-string $cwd */
@@ -123,11 +153,22 @@ final readonly class Options
         $passthruPhp = self::parsePassthru($options['passthru-php']);
         unset($options['passthru-php']);
 
+        assert($options['max-processes'] === null || is_string($options['max-processes']));
+        $maxProcesses = is_numeric($options['max-processes'])
+            ? (int) $options['max-processes']
+            : null;
+        unset($options['max-processes']);
+
         assert(is_string($options['processes']));
         $processes = is_numeric($options['processes'])
             ? (int) $options['processes']
-            : self::getNumberOfCPUCores();
+            : null;
         unset($options['processes']);
+
+        if ($processes === null) {
+            $numberOfCPUCores = self::getNumberOfCPUCores();
+            $processes        = $maxProcesses === null ? $numberOfCPUCores : min($numberOfCPUCores, $maxProcesses);
+        }
 
         assert(is_string($options['runner']) && $options['runner'] !== '');
         $runner = $options['runner'];
@@ -155,6 +196,42 @@ final readonly class Options
         assert(array_key_exists('coverage-text', $options));
         if ($options['coverage-text'] === null) {
             $options['coverage-text'] = 'php://stdout';
+        }
+
+        $shard = $options['shard'];
+        unset($options['shard']);
+        $currentShard = $totalShards = 0;
+        if (is_string($shard)) {
+            $parts     = [];
+            $pregMatch = preg_match('/^(?<current>\d+)\/(?<total>\d+)$/', $shard, $parts);
+            if ($pregMatch !== 1) {
+                throw new InvalidArgumentException('Invalid shard parameter format: ' . $shard);
+            }
+
+            $currentShard = (int) $parts['current'];
+            $totalShards  = (int) $parts['total'];
+            if ($currentShard <= 0) {
+                throw new InvalidArgumentException('Current shard must be a positive integer: ' . $shard);
+            }
+
+            if ($totalShards <= 1) {
+                throw new InvalidArgumentException('Total shards must be an integer greater than 1: ' . $shard);
+            }
+
+            if ($currentShard > $totalShards) {
+                throw new InvalidArgumentException('Current shard must be less or equal to total shards: ' . $shard);
+            }
+        }
+
+        $shardDistributionValue = $options['shard-test-distribution'];
+        unset($options['shard-test-distribution']);
+        assert(is_string($shardDistributionValue));
+        $shardDistribution = ShardDistribution::tryFrom($shardDistributionValue);
+        if ($shardDistribution === null) {
+            throw new InvalidArgumentException(sprintf(
+                'Invalid shard-test-distribution value: %s. Valid values are: sequential, round-robin',
+                $shardDistributionValue,
+            ));
         }
 
         // Must be a static non-customizable reference because ParaTest code
@@ -208,6 +285,9 @@ final readonly class Options
             $tmpDir,
             $verbose,
             $functional,
+            $currentShard,
+            $totalShards,
+            $shardDistribution,
         );
     }
 
@@ -256,6 +336,12 @@ final readonly class Options
                 'auto',
             ),
             new InputOption(
+                'max-processes',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'The maximum number of test processes to run when "auto" is used for the number of processes.',
+            ),
+            new InputOption(
                 'runner',
                 null,
                 InputOption::VALUE_REQUIRED,
@@ -274,6 +360,19 @@ final readonly class Options
                 'v',
                 InputOption::VALUE_NONE,
                 'Output more verbose information',
+            ),
+            new InputOption(
+                'shard',
+                null,
+                InputOption::VALUE_OPTIONAL,
+                '<current>/<total> Run a specific part of the suite',
+            ),
+            new InputOption(
+                'shard-test-distribution',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Distribution strategy for sharding: sequential (default) or round-robin',
+                'sequential',
             ),
 
             // PHPUnit options
@@ -369,7 +468,7 @@ final readonly class Options
                 '0',
             ),
             new InputOption(
-                'dont-report-useless-tests',
+                'do-not-report-useless-tests',
                 null,
                 InputOption::VALUE_NONE,
                 '@see PHPUnit guide, chapter: ' . $chapter,
@@ -405,6 +504,18 @@ final readonly class Options
                 '@see PHPUnit guide, chapter: ' . $chapter,
             ),
             new InputOption(
+                'stop-on-deprecation',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'stop-on-notice',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
                 'stop-on-skipped',
                 null,
                 InputOption::VALUE_NONE,
@@ -417,19 +528,7 @@ final readonly class Options
                 '@see PHPUnit guide, chapter: ' . $chapter,
             ),
             new InputOption(
-                'fail-on-incomplete',
-                null,
-                InputOption::VALUE_NONE,
-                '@see PHPUnit guide, chapter: ' . $chapter,
-            ),
-            new InputOption(
-                'fail-on-risky',
-                null,
-                InputOption::VALUE_NONE,
-                '@see PHPUnit guide, chapter: ' . $chapter,
-            ),
-            new InputOption(
-                'fail-on-skipped',
+                'fail-on-empty-test-suite',
                 null,
                 InputOption::VALUE_NONE,
                 '@see PHPUnit guide, chapter: ' . $chapter,
@@ -441,7 +540,115 @@ final readonly class Options
                 '@see PHPUnit guide, chapter: ' . $chapter,
             ),
             new InputOption(
+                'fail-on-risky',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
                 'fail-on-deprecation',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'fail-on-phpunit-deprecation',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'fail-on-phpunit-notice',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'fail-on-phpunit-warning',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'fail-on-notice',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'fail-on-skipped',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'fail-on-incomplete',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'fail-on-all-issues',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-empty-test-suite',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-warning',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-risky',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-deprecation',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-phpunit-deprecation',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-phpunit-notice',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-phpunit-warning',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-notice',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-skipped',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'do-not-fail-on-incomplete',
                 null,
                 InputOption::VALUE_NONE,
                 '@see PHPUnit guide, chapter: ' . $chapter,
@@ -490,6 +697,18 @@ final readonly class Options
                 '@see PHPUnit guide, chapter: ' . $chapter,
             ),
             new InputOption(
+                'display-phpunit-deprecations',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'display-phpunit-notices',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
                 'display-errors',
                 null,
                 InputOption::VALUE_NONE,
@@ -508,6 +727,18 @@ final readonly class Options
                 '@see PHPUnit guide, chapter: ' . $chapter,
             ),
             new InputOption(
+                'display-all-issues',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'reverse-list',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
                 'teamcity',
                 null,
                 InputOption::VALUE_NONE,
@@ -520,6 +751,12 @@ final readonly class Options
                 '@see PHPUnit guide, chapter: ' . $chapter,
             ),
             new InputOption(
+                'testdox-summary',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
                 'log-junit',
                 null,
                 InputOption::VALUE_REQUIRED,
@@ -527,6 +764,18 @@ final readonly class Options
             ),
             new InputOption(
                 'log-teamcity',
+                null,
+                InputOption::VALUE_REQUIRED,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'testdox-text',
+                null,
+                InputOption::VALUE_REQUIRED,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'testdox-html',
                 null,
                 InputOption::VALUE_REQUIRED,
                 '@see PHPUnit guide, chapter: ' . $chapter,
@@ -575,9 +824,22 @@ final readonly class Options
                 false,
             ),
             new InputOption(
+                'only-summary-for-coverage-text',
+                null,
+                InputOption::VALUE_NONE,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+                null,
+            ),
+            new InputOption(
                 'coverage-xml',
                 null,
                 InputOption::VALUE_REQUIRED,
+                '@see PHPUnit guide, chapter: ' . $chapter,
+            ),
+            new InputOption(
+                'exclude-source-from-xml-coverage',
+                null,
+                InputOption::VALUE_NONE,
                 '@see PHPUnit guide, chapter: ' . $chapter,
             ),
             new InputOption(
@@ -660,5 +922,10 @@ final readonly class Options
         }
 
         return $env;
+    }
+
+    public function hasShard(): bool
+    {
+        return $this->currentShard > 0 && $this->totalShards > 0;
     }
 }

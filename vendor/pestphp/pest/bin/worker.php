@@ -6,6 +6,7 @@ use ParaTest\WrapperRunner\ApplicationForWrapperWorker;
 use ParaTest\WrapperRunner\WrapperWorker;
 use Pest\Kernel;
 use Pest\Plugins\Actions\CallsHandleArguments;
+use Pest\Support\Container;
 use Pest\TestSuite;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -58,6 +59,15 @@ $bootPest = (static function (): void {
         }
     }
 
+    $container = Container::getInstance();
+    $rootPath = dirname(PHPUNIT_COMPOSER_INSTALL, 2);
+
+    foreach (Kernel::RESTARTERS as $restarterClass) {
+        $restarter = $container->get($restarterClass);
+
+        $restarter->maybeRestart($rootPath, $_SERVER['argv']);
+    }
+
     assert(isset($getopt['status-file']) && is_string($getopt['status-file']));
     $statusFile = fopen($getopt['status-file'], 'wb');
     assert(is_resource($statusFile));
@@ -86,7 +96,7 @@ $bootPest = (static function (): void {
         $getopt['teamcity-file'] ?? null,
         $getopt['testdox-file'] ?? null,
         isset($getopt['testdox-color']),
-        (int) $getopt['testdox-columns'] ?? null,
+        (int) ($getopt['testdox-columns'] ?? null),
     );
 
     while (true) {
