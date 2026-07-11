@@ -25,14 +25,23 @@ const TOUCHED = 'inputGuardTouched';
 
 // ── messaging ───────────────────────────────────────────────────────────────
 
+// Error elements are tied to their input directly (never located by DOM
+// search): re-lookups can't miss and duplicate, and the message is inserted
+// right after the field — only stepping over the input's IMMEDIATE .relative
+// wrapper (icon/toggle overlays), never a distant positioned ancestor.
+const errorEls = new WeakMap();
+
 function errorEl(input) {
-    let el = input.parentElement?.querySelector(`.${ERROR_CLASS}`);
-    if (!el) {
-        el = document.createElement('p');
-        el.className = `${ERROR_CLASS} mt-1.5 text-sm text-red-500`;
-        const anchor = input.closest('.relative') || input;
-        anchor.insertAdjacentElement('afterend', el);
-    }
+    const existing = errorEls.get(input);
+    if (existing && existing.isConnected) return existing;
+
+    const el = document.createElement('p');
+    el.className = `${ERROR_CLASS} mt-1.5 text-sm text-red-500`;
+    const parent = input.parentElement;
+    const anchor = parent && parent.classList.contains('relative') ? parent : input;
+    anchor.insertAdjacentElement('afterend', el);
+    errorEls.set(input, el);
+
     return el;
 }
 
@@ -43,7 +52,7 @@ function setError(input, message) {
 }
 
 function clearError(input) {
-    const el = input.parentElement?.querySelector(`.${ERROR_CLASS}`);
+    const el = errorEls.get(input);
     if (el) el.textContent = '';
     input.classList.remove('border-red-500');
     input.removeAttribute('aria-invalid');
