@@ -48,11 +48,11 @@
                                             <div class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-500 px-4 py-1 text-xs font-semibold text-white shadow-sm">Most Popular</div>
                                         @endif
 
-                                        {{-- Checkmark indicator --}}
-                                        <div class="absolute top-4 right-4 hidden peer-checked:group-[]:flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white">
+                                        {{-- Checkmark indicator (group-has, not peer-checked: these sit inside a sibling of the input) --}}
+                                        <div class="absolute top-4 right-4 hidden group-has-[:checked]:flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white">
                                             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                                         </div>
-                                        <div class="peer-checked:group-[]:hidden absolute top-4 right-4 h-6 w-6 rounded-full border-2 border-gray-300 dark:border-gray-600"></div>
+                                        <div class="absolute top-4 right-4 h-6 w-6 rounded-full border-2 border-gray-300 group-has-[:checked]:hidden dark:border-gray-600"></div>
 
                                         {{-- Plan name --}}
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ $plan->name }}</h3>
@@ -70,7 +70,7 @@
                                             @else
                                                 <div class="flex items-baseline gap-1">
                                                     <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $currency ?? 'USD' }}</span>
-                                                    <span class="text-4xl font-bold text-gray-900 dark:text-white">{{ number_format($plan->price, 2) }}</span>
+                                                    <span class="text-4xl font-bold text-gray-900 dark:text-white">{{ \App\Helpers\PriceHelper::format($plan->price) }}</span>
                                                     <span class="text-sm text-gray-500 dark:text-gray-400">/{{ $plan->interval }}</span>
                                                 </div>
                                             @endif
@@ -138,8 +138,8 @@
                                             {{ $isPopular ? 'bg-brand-500 text-white group-has-[:checked]:bg-brand-600' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-100 group-has-[:checked]:bg-brand-500 group-has-[:checked]:text-white' }}">
                                             <span class="group-has-[:checked]:hidden">{{ $isFree ? 'Start Free' : 'Select Plan' }}</span>
                                             <span class="hidden group-has-[:checked]:inline-flex items-center gap-1.5">
-                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                                Selected
+                                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                Selected {{ $plan->name }}
                                             </span>
                                         </div>
                                     </div>
@@ -151,23 +151,23 @@
                             <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
 
-                        {{-- Payment gateway selector (only when paid plan selected and payments enabled) --}}
+                        {{-- Payment methods (only when paid plan selected and payments enabled) --}}
                         @if ($hasPaidPlans && $paymentsEnabled)
                             <div x-show="selectedPlanIsPaid()" x-cloak class="rounded-xl border border-gray-200 bg-gray-50/50 p-5 dark:border-gray-700 dark:bg-gray-800/50">
-                                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Payment method</label>
-                                <select x-model="gateway" class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:bg-gray-900/80 dark:text-gray-100 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden">
-                                    @if ($pesapalEnabled)
-                                        <option value="pesapal">Pesapal (Mobile Money, Card)</option>
-                                    @endif
-                                    <option value="manual">Manual (Admin will process)</option>
-                                </select>
-                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Pesapal: pay now via card or mobile money. Manual: admin will process your request.</p>
+                                <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Payment method</p>
+                                @if ($pesapalEnabled)
+                                    <p class="text-sm text-gray-800 dark:text-gray-100">Mobile Money (MTN, Airtel), Visa, MasterCard etc</p>
+                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">You will be redirected to a secure payment window to complete your payment.</p>
+                                @else
+                                    <p class="text-sm text-gray-800 dark:text-gray-100">Online payments are temporarily unavailable.</p>
+                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Please choose the free plan for now, or contact us to arrange payment.</p>
+                                @endif
                             </div>
                         @endif
 
                         <div x-show="error" class="rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400" x-text="error" x-cloak></div>
 
-                        <button type="submit" class="mt-2 w-full rounded-xl bg-brand-500 px-4 py-3.5 text-sm font-semibold text-white hover:bg-brand-600 transition shadow-sm shadow-brand-500/20" :disabled="submitting">
+                        <button type="submit" class="btn btn-primary btn-md btn-block w-full mt-2" :disabled="submitting">
                             <span x-show="!submitting">Continue</span>
                             <span x-show="submitting" class="inline-flex items-center gap-2">
                                 <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -190,7 +190,7 @@
         <div class="relative w-full max-w-lg rounded-2xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
             @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-                <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Complete Payment (Pesapal)</h3>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Complete Payment</h3>
                 <button type="button" @click="closePesapal()"
                     class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -205,7 +205,7 @@
                         <p class="text-sm">Redirecting to payment...</p>
                     </div>
                 </div>
-                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Pay by card or mobile money. You will be redirected when complete.</p>
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Pay with Mobile Money (MTN, Airtel), Visa, MasterCard etc. You will be redirected when complete.</p>
             </div>
         </div>
     </div>
@@ -219,7 +219,8 @@
 function step3Checkout(plansData, pesapalEnabled, paymentsEnabled) {
     const plans = plansData || {};
     return {
-        gateway: pesapalEnabled ? 'pesapal' : 'manual',
+        // Pesapal is the only customer-facing gateway; manual orders are an admin tool.
+        gateway: 'pesapal',
         checkoutOpen: false,
         pesapalOpen: false,
         pesapalError: null,
@@ -270,6 +271,10 @@ function step3Checkout(plansData, pesapalEnabled, paymentsEnabled) {
                 return;
             }
             e.preventDefault();
+            if (!this.pesapalEnabled) {
+                this.error = 'Online payments are temporarily unavailable. Please choose the free plan or contact us.';
+                return;
+            }
             this.prepareAndOpenCheckout(planId);
         },
 
@@ -315,11 +320,7 @@ function step3Checkout(plansData, pesapalEnabled, paymentsEnabled) {
                     this.memorialSlug = data.memorial_slug;
                     this.selectedPlan = data.plan.id;
 
-                    if (this.gateway === 'manual') {
-                        await this.submitManualPayment();
-                    } else {
-                        await this.submitPesapalPayment();
-                    }
+                    await this.submitPesapalPayment();
                 } else {
                     this.error = data.error || 'Something went wrong.';
                 }
@@ -327,43 +328,6 @@ function step3Checkout(plansData, pesapalEnabled, paymentsEnabled) {
                 this.error = err.message || 'Network error. Please check your connection and try again.';
             } finally {
                 this.submitting = false;
-            }
-        },
-
-        async submitManualPayment() {
-            this.error = null;
-            try {
-                const formData = new FormData();
-                formData.append('plan_id', this.selectedPlan);
-                formData.append('payment_gateway', 'manual');
-                formData.append('from_signup', '1');
-                formData.append('memorial_slug', this.memorialSlug || '');
-                formData.append('_token', '{{ csrf_token() }}');
-
-                const res = await fetch('{{ route("payment.create-order") }}', {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                });
-
-                const contentType = res.headers.get('content-type');
-                let data;
-                if (contentType && contentType.includes('application/json')) {
-                    data = await res.json();
-                } else {
-                    this.error = 'Request failed. Please try again.';
-                    return;
-                }
-
-                if (data.success && data.reload) {
-                    if (window.$toast) window.$toast('success', data.message || 'Payment request submitted.');
-                    window.location.href = '{{ route("memorial.create.preparing", ["slug" => "___SLUG___"]) }}'.replace('___SLUG___', encodeURIComponent(this.memorialSlug));
-                } else {
-                    this.error = data.error || data.message || 'Payment failed. Please try again.';
-                }
-            } catch (e) {
-                this.error = 'Network error. Please try again.';
             }
         },
 

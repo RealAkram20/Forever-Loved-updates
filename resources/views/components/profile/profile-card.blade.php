@@ -65,7 +65,7 @@
             </div>
 
             <button @click="$dispatch('open-profile-info-modal')"
-                class="shadow-theme-xs flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-800 lg:inline-flex lg:w-auto">
+                class="btn btn-secondary btn-md btn-block w-full lg:w-auto">
                 <svg class="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none"
                     xmlns="http://www.w3.org/2000/svg">
                     <path fill-rule="evenodd" clip-rule="evenodd"
@@ -180,11 +180,11 @@
                 </div>
                 <div class="flex items-center gap-3 px-2 mt-6 lg:justify-end">
                     <button @click="open = false" type="button"
-                        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:w-auto">
+                        class="btn btn-secondary btn-md btn-block w-full sm:w-auto">
                         Close
                     </button>
                     <button @click="saveProfile" type="button"
-                        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto">
+                        class="btn btn-primary btn-md btn-block w-full sm:w-auto">
                         Save Changes
                     </button>
                 </div>

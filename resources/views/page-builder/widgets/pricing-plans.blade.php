@@ -41,7 +41,7 @@
                             <span class="text-4xl font-bold text-gray-900 dark:text-white">Free</span>
                         @else
                             <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $currency }}</span>
-                            <span class="text-4xl font-bold text-gray-900 dark:text-white">{{ number_format($plan->price, 2) }}</span>
+                            <span class="text-4xl font-bold text-gray-900 dark:text-white">{{ \App\Helpers\PriceHelper::format($plan->price) }}</span>
                             <span class="text-sm text-gray-500 dark:text-gray-400">/{{ $plan->interval }}</span>
                         @endif
                     </div>
@@ -100,7 +100,7 @@
                 </ul>
 
                 <a href="{{ route('memorial.create.step1') }}"
-                   class="block w-full rounded-xl {{ $isPopular ? 'bg-brand-500 text-white hover:bg-brand-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600' }} py-3 text-center text-sm font-semibold transition">
+                   class="btn {{ $isPopular ? 'btn-primary' : 'btn-secondary' }} btn-md btn-block w-full">
                     {{ $isFree ? 'Get Started Free' : 'Select Plan' }}
                 </a>
             </div>

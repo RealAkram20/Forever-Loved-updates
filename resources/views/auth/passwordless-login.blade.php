@@ -18,7 +18,7 @@
                             <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
                     </div>
-                    <button type="submit" class="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">
+                    <button type="submit" class="btn btn-primary btn-md btn-block w-full">
                         Send login code
                     </button>
                 </form>
@@ -35,7 +35,7 @@
                             <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
                     </div>
-                    <button type="submit" class="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">
+                    <button type="submit" class="btn btn-primary btn-md btn-block w-full">
                         Sign in
                     </button>
                     <a href="{{ route('login.passwordless') }}" class="block text-center text-sm text-brand-500 hover:text-brand-600">Use a different email</a>

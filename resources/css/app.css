@@ -198,6 +198,291 @@
   }
 }
 
+/* ─── Buttons ──────────────────────────────────────────────────────────────
+   One button identity for the whole app: the hero's rounded, semibold, glowing
+   shape. Colors come from --color-btn-* which BrandingHelper emits from the admin
+   settings, so a button never hardcodes a color.
+
+   Lives in @layer components so that a Tailwind utility on the same element
+   (w-full, rounded-full, mt-4 …) still wins.
+   ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.15s ease,
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-btn-primary-ring, rgba(70, 95, 255, 0.35));
+  }
+
+  .btn:disabled,
+  .btn[aria-disabled='true'],
+  .btn.btn-disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* Sizes — btn-lg matches the hero button exactly (px-6 py-3.5). */
+  .btn-sm {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    border-radius: 0.625rem;
+    gap: 0.375rem;
+  }
+
+  .btn-md {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-lg {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-block {
+    display: flex;
+    width: 100%;
+  }
+
+  /* Icon-only: square, no text padding. */
+  .btn-icon {
+    padding: 0.625rem;
+    gap: 0;
+    aspect-ratio: 1 / 1;
+  }
+
+  .btn-icon.btn-sm {
+    padding: 0.5rem;
+  }
+
+  .btn-icon.btn-lg {
+    padding: 0.875rem;
+  }
+
+  /* ── Primary — the glowing hero button ── */
+  .btn-primary {
+    background-color: var(--color-btn-primary, #465fff);
+    color: var(--color-btn-primary-text, #ffffff);
+    box-shadow:
+      0 10px 15px -3px var(--color-btn-primary-glow, rgba(70, 95, 255, 0.35)),
+      0 4px 6px -4px var(--color-btn-primary-glow, rgba(70, 95, 255, 0.35));
+  }
+
+  .btn-primary:hover:not(:disabled):not(.btn-disabled) {
+    background-color: var(--color-btn-primary-hover, #3641f5);
+    box-shadow:
+      0 14px 24px -4px var(--color-btn-primary-glow-strong, rgba(70, 95, 255, 0.5)),
+      0 6px 10px -6px var(--color-btn-primary-glow-strong, rgba(70, 95, 255, 0.5));
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:active:not(:disabled):not(.btn-disabled) {
+    transform: translateY(0);
+    box-shadow:
+      0 6px 10px -3px var(--color-btn-primary-glow, rgba(70, 95, 255, 0.35)),
+      0 2px 4px -4px var(--color-btn-primary-glow, rgba(70, 95, 255, 0.35));
+  }
+
+  /* ── Secondary ── */
+  .btn-secondary {
+    background-color: var(--color-btn-secondary, #ffffff);
+    color: var(--color-btn-secondary-text, #374151);
+    border-color: var(--color-btn-secondary-border, rgba(55, 65, 81, 0.25));
+    box-shadow:
+      0 10px 15px -3px var(--color-btn-secondary-glow, rgba(55, 65, 81, 0.28)),
+      0 4px 6px -4px var(--color-btn-secondary-glow, rgba(55, 65, 81, 0.28));
+  }
+
+  .btn-secondary:hover:not(:disabled):not(.btn-disabled) {
+    background-color: var(--color-btn-secondary-hover, #f3f4f6);
+    box-shadow:
+      0 14px 24px -4px var(--color-btn-secondary-glow-strong, rgba(55, 65, 81, 0.38)),
+      0 6px 10px -6px var(--color-btn-secondary-glow-strong, rgba(55, 65, 81, 0.38));
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary:active:not(:disabled):not(.btn-disabled) {
+    transform: translateY(0);
+  }
+
+  .btn-secondary:focus-visible {
+    box-shadow: 0 0 0 3px var(--color-btn-secondary-ring, rgba(55, 65, 81, 0.25));
+  }
+
+  /* ── CTA banner buttons — the banner has its own colored background, so its two
+        buttons are themed independently of the site-wide primary/secondary pair. ── */
+  .btn-cta-primary {
+    background-color: var(--color-btn-cta-primary, #ffffff);
+    color: var(--color-btn-cta-primary-text, #465fff);
+    box-shadow:
+      0 10px 15px -3px var(--color-btn-cta-primary-glow, rgba(70, 95, 255, 0.35)),
+      0 4px 6px -4px var(--color-btn-cta-primary-glow, rgba(70, 95, 255, 0.35));
+  }
+
+  .btn-cta-primary:hover:not(:disabled):not(.btn-disabled) {
+    background-color: var(--color-btn-cta-primary-hover, #ebebeb);
+    box-shadow:
+      0 14px 24px -4px var(--color-btn-cta-primary-glow-strong, rgba(70, 95, 255, 0.5)),
+      0 6px 10px -6px var(--color-btn-cta-primary-glow-strong, rgba(70, 95, 255, 0.5));
+    transform: translateY(-1px);
+  }
+
+  .btn-cta-primary:active:not(:disabled):not(.btn-disabled) {
+    transform: translateY(0);
+  }
+
+  .btn-cta-primary:focus-visible {
+    box-shadow: 0 0 0 3px var(--color-btn-cta-primary-ring, rgba(255, 255, 255, 0.5));
+  }
+
+  .btn-cta-secondary {
+    background-color: var(--color-btn-cta-secondary, #3641f5);
+    color: var(--color-btn-cta-secondary-text, #ffffff);
+    border-color: var(--color-btn-cta-secondary-border, rgba(255, 255, 255, 0.25));
+    box-shadow:
+      0 10px 15px -3px var(--color-btn-cta-secondary-glow, rgba(54, 65, 245, 0.35)),
+      0 4px 6px -4px var(--color-btn-cta-secondary-glow, rgba(54, 65, 245, 0.35));
+  }
+
+  .btn-cta-secondary:hover:not(:disabled):not(.btn-disabled) {
+    background-color: var(--color-btn-cta-secondary-hover, #2f39d8);
+    box-shadow:
+      0 14px 24px -4px var(--color-btn-cta-secondary-glow-strong, rgba(54, 65, 245, 0.5)),
+      0 6px 10px -6px var(--color-btn-cta-secondary-glow-strong, rgba(54, 65, 245, 0.5));
+    transform: translateY(-1px);
+  }
+
+  .btn-cta-secondary:active:not(:disabled):not(.btn-disabled) {
+    transform: translateY(0);
+  }
+
+  .btn-cta-secondary:focus-visible {
+    box-shadow: 0 0 0 3px var(--color-btn-cta-secondary-ring, rgba(255, 255, 255, 0.5));
+  }
+
+  /* ── Danger — same shape and glow, fixed red so a destructive action always reads
+        as destructive regardless of the brand colors an admin picks. ── */
+  .btn-danger {
+    background-color: #dc2626;
+    color: #ffffff;
+    box-shadow:
+      0 10px 15px -3px rgba(220, 38, 38, 0.35),
+      0 4px 6px -4px rgba(220, 38, 38, 0.35);
+  }
+
+  .btn-danger:hover:not(:disabled):not(.btn-disabled) {
+    background-color: #b91c1c;
+    box-shadow:
+      0 14px 24px -4px rgba(220, 38, 38, 0.5),
+      0 6px 10px -6px rgba(220, 38, 38, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-danger:active:not(:disabled):not(.btn-disabled) {
+    transform: translateY(0);
+  }
+
+  .btn-danger:focus-visible {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.4);
+  }
+
+  /* ── Danger, quiet — for inline "remove this row" affordances where a solid red
+        block would dominate the form. Keeps the shape, drops the fill. ── */
+  .btn-danger-soft {
+    background-color: transparent;
+    color: #dc2626;
+    box-shadow: none;
+  }
+
+  .btn-danger-soft:hover:not(:disabled):not(.btn-disabled) {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #b91c1c;
+  }
+
+  .dark .btn-danger-soft {
+    color: #f87171;
+  }
+
+  .dark .btn-danger-soft:hover:not(:disabled):not(.btn-disabled) {
+    background-color: rgba(248, 113, 113, 0.12);
+    color: #fca5a5;
+  }
+
+  /* ── Ghost — icon buttons, toolbar actions, close buttons. No glow: a halo on a
+        16px close icon reads as a rendering artifact. ── */
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--color-gray-500, #667085);
+    box-shadow: none;
+  }
+
+  .btn-ghost:hover:not(:disabled):not(.btn-disabled) {
+    background-color: var(--color-gray-100, #f2f4f7);
+    color: var(--color-gray-700, #344054);
+  }
+
+  .dark .btn-ghost {
+    color: var(--color-gray-400, #98a2b3);
+  }
+
+  .dark .btn-ghost:hover:not(:disabled):not(.btn-disabled) {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: var(--color-gray-200, #e4e7ec);
+  }
+
+  /* ── Link — text-only actions that still need the button rhythm. ── */
+  .btn-link {
+    background-color: transparent;
+    color: var(--color-btn-primary, #465fff);
+    box-shadow: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .btn-link:hover:not(:disabled):not(.btn-disabled) {
+    color: var(--color-btn-primary-hover, #3641f5);
+    text-decoration: underline;
+  }
+
+  /* Icons inside buttons should never be squashed by flex. */
+  .btn > svg {
+    flex-shrink: 0;
+  }
+
+  /* Users who ask for less motion get the glow, not the lift. */
+  @media (prefers-reduced-motion: reduce) {
+    .btn {
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: none !important;
+    }
+  }
+}
+
 @utility menu-item {
   @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
 }
@@ -460,6 +745,27 @@
 .flatpickr-current-month .cur-month,
 .flatpickr-current-month input.cur-year {
   @apply !h-auto !pt-0 !text-lg !font-medium !text-gray-800 dark:!text-white/90;
+}
+
+/* Month + year dropdowns (see x-form.date-picker) */
+.flatpickr-current-month {
+  @apply !flex !items-center !justify-center gap-2 !p-0;
+}
+.flatpickr-calendar.has-year-select .flatpickr-current-month .numInputWrapper {
+  @apply !hidden;
+}
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month .flatpickr-year-select {
+  @apply !h-auto !cursor-pointer !appearance-none !rounded-lg !border !border-transparent !py-1 !pl-2 !pr-6 !text-lg !font-medium !text-gray-800 !outline-none hover:!bg-gray-50 focus:!border-brand-300 dark:!text-white/90 dark:hover:!bg-white/5;
+  background-color: transparent !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.25rem center !important;
+  background-size: 1rem !important;
+}
+.flatpickr-current-month .flatpickr-monthDropdown-months option,
+.flatpickr-current-month .flatpickr-year-select option {
+  @apply !bg-white !text-gray-800 dark:!bg-gray-dark dark:!text-white/90;
 }
 
 .flatpickr-prev-month,

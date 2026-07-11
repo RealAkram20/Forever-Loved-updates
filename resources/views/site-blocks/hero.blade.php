@@ -28,13 +28,13 @@
             @endif
             <div class="mt-8 flex flex-wrap gap-4">
                 <a href="{{ $primaryUrl }}"
-                   class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 transition">
+                   class="btn btn-primary btn-lg">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     {{ $props['primary_btn_label'] ?? 'Create a Memorial' }}
                 </a>
                 @if (($props['secondary_btn_label'] ?? '') !== '')
                     <a href="{{ $secondaryUrl }}"
-                       class="inline-flex items-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-3.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                       class="btn btn-secondary btn-lg">
                         {{ $props['secondary_btn_label'] }}
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                     </a>

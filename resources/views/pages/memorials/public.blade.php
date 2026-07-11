@@ -15,8 +15,20 @@
 <div class="min-h-screen bg-gradient-to-b from-gray-50 via-white/80 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 glass-bg-mesh" data-memorial-slug="{{ $memorial->slug }}" data-tribute-url="{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}" data-can-edit="{{ $canEdit ? '1' : '0' }}" data-is-authenticated="{{ $isAuthenticated ? '1' : '0' }}" data-can-upload="{{ $canEdit ? '1' : '0' }}" data-scroll-tribute="{{ $scrollToTributeId ?? '' }}" data-scroll-chapter="{{ $scrollToChapterId ?? '' }}" data-deceased-first="{{ \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them') }}" data-user-initial="{{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}">
     <x-home-header />
 
+    {{-- Owner-only: unfinished paid-plan checkout --}}
+    @if (! empty($pendingPaymentOrder))
+        <div class="border-b border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
+            <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+                <p class="text-sm text-amber-800 dark:text-amber-300">
+                    <strong>Payment pending.</strong> Complete your payment to unlock all plan features for this memorial.
+                </p>
+                <a href="{{ route('subscription.index') }}" class="btn btn-primary btn-sm shrink-0">Complete payment</a>
+            </div>
+        </div>
+    @endif
+
     {{-- Global upload progress (large media / slow connections); driven by memorial-public.js --}}
-    <div id="memorial-upload-progress" class="fixed left-0 right-0 top-16 z-[45] hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-hidden="true" aria-labelledby="memorial-upload-progress-label">
+    <div id="memorial-upload-progress" class="fixed left-0 right-0 top-16 lg:top-[4.5rem] z-[45] hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-hidden="true" aria-labelledby="memorial-upload-progress-label">
         <div class="mx-auto max-w-7xl px-4 pt-2 sm:px-6 lg:px-8">
             <div class="rounded-lg border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/95">
                 <div class="flex items-center justify-between gap-3">
@@ -54,7 +66,7 @@
             <form id="guest-form" class="mt-4 space-y-4">
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Your name</label>
-                    <input type="text" id="guest-name" required
+                    <input type="text" id="guest-name" required autocomplete="name"
                         class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm" placeholder="Your name" />
                 </div>
                 <div>
@@ -63,8 +75,8 @@
                         class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm" placeholder="your@email.com" />
                 </div>
                 <div class="flex gap-2">
-                    <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">Continue</button>
-                    <button type="button" onclick="hideGuestModal()" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-md">Continue</button>
+                    <button type="button" onclick="hideGuestModal()" class="btn btn-secondary btn-md">Cancel</button>
                 </div>
             </form>
         </div>
@@ -75,7 +87,7 @@
         <div class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-12">
             {{-- Column 1: Profile card (narrow) --}}
             <aside class="md:col-span-4 lg:col-span-3">
-                <div class="md:sticky md:top-16 space-y-4">
+                <div class="md:sticky md:top-16 lg:top-[4.5rem] space-y-4">
                     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
                         <div class="p-4 sm:p-6">
                             <div class="flex flex-col items-center text-center">
@@ -124,7 +136,7 @@
                                         </div>
                                         <div data-edit class="hidden mt-1">
                                             <input type="text" value="{{ $memorial->full_name }}" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
-                                            <button type="button" data-save class="mt-2 rounded-md bg-brand-500 px-3 py-1.5 text-xs font-medium text-white">Save</button>
+                                            <button type="button" data-save class="btn btn-primary btn-sm mt-2">Save</button>
                                         </div>
                                     @else
                                         <h2 data-display class="text-lg font-semibold text-gray-900 dark:text-white/90">{{ $memorial->full_name ?: 'Full name' }}</h2>
@@ -189,7 +201,7 @@
                                         <div data-edit class="hidden mt-2 space-y-2 text-left sm:text-center">
                                             <input type="date" data-date-type="birth" value="{{ $memorial->date_of_birth?->format('Y-m-d') }}" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white sm:w-auto" />
                                             <input type="date" data-date-type="death" value="{{ $memorial->date_of_passing?->format('Y-m-d') }}" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white sm:ml-1 sm:w-auto" />
-                                            <button type="button" data-save class="mt-1 rounded-md bg-brand-500 px-3 py-1.5 text-xs font-medium text-white">Save</button>
+                                            <button type="button" data-save class="btn btn-primary btn-sm mt-1">Save</button>
                                         </div>
                                     @endif
                                 </div>
@@ -202,12 +214,12 @@
             {{-- Column 2: Tabbed content (Life, Biography, Gallery, Tributes) --}}
             <section class="md:col-span-8 lg:col-span-6">
                 <div class="rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
-                    {{-- Tab buttons (equal width) --}}
-                    <div class="flex border-b border-gray-100 dark:border-gray-800">
-                        <button type="button" data-tab-panel="biography" class="memorial-tab-btn min-w-0 flex-1 px-2 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 border-b-2 border-brand-500 bg-brand-50/50 dark:bg-brand-500/10">Biography</button>
-                        <button type="button" data-tab-panel="life" class="memorial-tab-btn min-w-0 flex-1 px-2 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Life</button>
-                        <button type="button" data-tab-panel="gallery" class="memorial-tab-btn min-w-0 flex-1 px-2 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Gallery</button>
-                        <button type="button" data-tab-panel="tributes" class="memorial-tab-btn min-w-0 flex-1 px-2 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Tributes</button>
+                    {{-- Tab buttons: scroll horizontally on narrow screens instead of squeezing --}}
+                    <div class="flex overflow-x-auto border-b border-gray-100 dark:border-gray-800">
+                        <button type="button" data-tab-panel="biography" class="memorial-tab-btn min-w-fit flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 border-b-2 border-brand-500 bg-brand-50/50 dark:bg-brand-500/10">Biography</button>
+                        <button type="button" data-tab-panel="life" class="memorial-tab-btn min-w-fit flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Life</button>
+                        <button type="button" data-tab-panel="gallery" class="memorial-tab-btn min-w-fit flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Gallery</button>
+                        <button type="button" data-tab-panel="tributes" class="memorial-tab-btn min-w-fit flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Tributes</button>
                     </div>
 
                     @php
@@ -248,7 +260,7 @@
                                         <input type="hidden" id="biography-content" />
                                     </div>
                                     <div class="flex flex-wrap items-center gap-3">
-                                        <button type="button" data-save class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600" data-save-text="Save" data-saving-text="Saving...">Save</button>
+                                        <button type="button" data-save class="btn btn-primary btn-md" data-save-text="Save" data-saving-text="Saving...">Save</button>
                                         <a href="{{ route('memorials.edit', $memorial) }}#biography" class="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400">
                                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                             Edit in full memorial
@@ -275,7 +287,7 @@
                                     @endforeach
                                 </div>
                                 <div class="mt-4">
-                                    <button type="button" data-switch-tab="life" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-white/[0.03] dark:text-brand-400 dark:hover:bg-white/10 sm:py-1.5 sm:text-sm">View all {{ $lifePostsTotal }} {{ Str::plural('item', $lifePostsTotal) }}</button>
+                                    <button type="button" data-switch-tab="life" class="btn btn-secondary btn-sm btn-block w-full">View all {{ $lifePostsTotal }} {{ Str::plural('item', $lifePostsTotal) }}</button>
                                 </div>
                             </div>
                         @endif
@@ -295,7 +307,7 @@
                                     @endforeach
                                 </div>
                                 <div class="mt-4">
-                                    <button type="button" data-switch-tab="tributes" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-white/[0.03] dark:text-brand-400 dark:hover:bg-white/10 sm:py-1.5 sm:text-sm">View all {{ $tributesTotalCount }} {{ Str::plural('item', $tributesTotalCount) }}</button>
+                                    <button type="button" data-switch-tab="tributes" class="btn btn-secondary btn-sm btn-block w-full">View all {{ $tributesTotalCount }} {{ Str::plural('item', $tributesTotalCount) }}</button>
                                 </div>
                             </div>
                         @endif
@@ -313,7 +325,7 @@
                                     @endforeach
                                 </div>
                                 <div class="mt-4">
-                                    <button type="button" data-switch-tab="gallery" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-white/[0.03] dark:text-brand-400 dark:hover:bg-white/10 sm:py-1.5 sm:text-sm">View all {{ $galleryImageCount }} {{ Str::plural('item', $galleryImageCount) }}</button>
+                                    <button type="button" data-switch-tab="gallery" class="btn btn-secondary btn-sm btn-block w-full">View all {{ $galleryImageCount }} {{ Str::plural('item', $galleryImageCount) }}</button>
                                 </div>
                             </div>
                         @endif
@@ -371,8 +383,8 @@
                                             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm"></textarea>
                                     </div>
                                     <div class="flex gap-2">
-                                        <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">Save</button>
-                                        <button type="button" onclick="document.getElementById('edit-chapter-modal').classList.add('hidden')" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Cancel</button>
+                                        <button type="submit" class="btn btn-primary btn-md">Save</button>
+                                        <button type="button" onclick="document.getElementById('edit-chapter-modal').classList.add('hidden')" class="btn btn-secondary btn-md">Cancel</button>
                                     </div>
                                 </form>
                             </div>
@@ -429,8 +441,8 @@
                                         <input type="file" name="files[]" multiple accept="image/*,video/*,audio/*,.pdf" class="mt-2 w-full text-sm" />
                                     </div>
                                     <div class="flex gap-2">
-                                        <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Post</button>
-                                        <button type="button" id="cancel-story-btn" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm">Cancel</button>
+                                        <button type="submit" class="btn btn-primary btn-md">Post</button>
+                                        <button type="button" id="cancel-story-btn" class="btn btn-secondary btn-md">Cancel</button>
                                     </div>
                                 </form>
                             </div>
@@ -612,8 +624,8 @@
                                         <input type="hidden" id="gallery-caption-media-id" />
                                     </div>
                                     <div class="flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-700 px-5 py-3">
-                                        <button type="button" id="gallery-caption-cancel" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">Cancel</button>
-                                        <button type="button" id="gallery-caption-save" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">Save</button>
+                                        <button type="button" id="gallery-caption-cancel" class="btn btn-secondary btn-md">Cancel</button>
+                                        <button type="button" id="gallery-caption-save" class="btn btn-primary btn-md">Save</button>
                                     </div>
                                 </div>
                             </div>
@@ -790,7 +802,7 @@
                                 <div id="tribute-editor" class="min-h-[120px] rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900"></div>
                                 <input type="hidden" id="tribute-note-message" />
                             </div>
-                            <button type="button" id="tribute-note-submit" class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">Leave Tribute</button>
+                            <button type="button" id="tribute-note-submit" class="btn btn-primary btn-md">Leave Tribute</button>
                         </div>
                     </div>
                 </div>
@@ -798,7 +810,7 @@
 
             {{-- Column 3: Views & Shares stats + Leave tribute --}}
             <aside class="md:col-span-12 lg:col-span-3">
-                <div class="lg:sticky lg:top-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6">
+                <div class="lg:sticky lg:top-[4.5rem] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6">
                     @php $stats = $memorialStats ?? ['views_today' => 0, 'views_last_week' => 0, 'views_all_time' => 0, 'shares_today' => 0, 'shares_last_week' => 0, 'shares_all_time' => 0]; @endphp
                     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
                         <div class="border-b border-gray-100 dark:border-gray-800 px-3 py-2 sm:px-4 sm:py-3">
@@ -982,7 +994,7 @@
                                             <p class="text-xs text-gray-500 dark:text-gray-400">Get notified about new stories &amp; tributes</p>
                                         </div>
                                     </div>
-                                    <button @click="handleSubscribe()" class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition active:scale-[0.98]">
+                                    <button @click="handleSubscribe()" class="btn btn-primary btn-md btn-block w-full mt-4 active:scale-[0.98]">
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                                         Subscribe
                                     </button>
@@ -1012,7 +1024,7 @@
                                                 <span class="text-sm text-gray-700 dark:text-gray-300">Tributes (flowers, candles, notes)</span>
                                             </label>
                                         </div>
-                                        <button type="submit" :disabled="submitting" class="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition active:scale-[0.98] disabled:opacity-50">
+                                        <button type="submit" :disabled="submitting" class="btn btn-primary btn-md btn-block w-full active:scale-[0.98] disabled:opacity-50">
                                             <template x-if="submitting"><svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg></template>
                                             <span x-text="submitting ? 'Subscribing...' : 'Subscribe'"></span>
                                         </button>
@@ -1043,7 +1055,7 @@
                                             <span class="text-sm text-gray-700 dark:text-gray-300">Tributes (flowers, candles, notes)</span>
                                         </label>
                                     </div>
-                                    <button @click="unsubscribe()" class="mt-3 w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-500/30 transition">
+                                    <button @click="unsubscribe()" class="btn btn-secondary btn-md btn-block w-full mt-3">
                                         Unsubscribe
                                     </button>
                                 </div>
@@ -1063,9 +1075,9 @@
                                 <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">{{ $quotaInfo['tributes']['current'] }}/{{ $quotaInfo['tributes']['max'] }} tributes used</p>
                             @endif
                             <div class="mt-4 flex flex-wrap gap-2">
-                                <button type="button" data-tribute-btn="flower" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Flower</button>
-                                <button type="button" data-tribute-btn="candle" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Candle</button>
-                                <button type="button" data-tribute-btn="note" class="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10">Note</button>
+                                <button type="button" data-tribute-btn="flower" class="btn btn-secondary btn-sm">Flower</button>
+                                <button type="button" data-tribute-btn="candle" class="btn btn-secondary btn-sm">Candle</button>
+                                <button type="button" data-tribute-btn="note" class="btn btn-secondary btn-sm">Note</button>
                             </div>
                         @endif
                     </div>

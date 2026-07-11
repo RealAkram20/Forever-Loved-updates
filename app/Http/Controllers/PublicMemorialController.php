@@ -59,6 +59,17 @@ class PublicMemorialController extends Controller
         $stats = MemorialStatsHelper::get($memorial);
         $tributeCounts = $this->getTributeTypeCounts($memorial);
 
+        // Owner-only nudge: paid-plan checkout was started but never completed
+        // (Phase-2 dedup guarantees at most one pending order per purchase).
+        $pendingPaymentOrder = null;
+        if (auth()->id() && auth()->id() === $memorial->user_id) {
+            $pendingPaymentOrder = \App\Models\PaymentOrder::where('memorial_id', $memorial->id)
+                ->where('user_id', auth()->id())
+                ->where('status', 'pending')
+                ->latest()
+                ->first();
+        }
+
         return view('pages.memorials.public', [
             'title' => $memorial->full_name,
             'memorial' => $memorial,
@@ -71,6 +82,7 @@ class PublicMemorialController extends Controller
             'scrollToTributeId' => null,
             'scrollToChapterId' => null,
             'shareMeta' => MemorialShareMetaHelper::forMemorial($memorial),
+            'pendingPaymentOrder' => $pendingPaymentOrder,
         ]);
     }
 
@@ -209,59 +221,27 @@ class PublicMemorialController extends Controller
 
     private function recordView(Memorial $memorial, Request $request): void
     {
-        $hash = $this->visitorHash($request);
-        $today = Carbon::today();
-        $existing = MemorialView::where('memorial_id', $memorial->id)
-            ->where('visitor_hash', $hash)
-            ->where('viewed_at', '>=', $today)
-            ->exists();
-        if (!$existing) {
-            MemorialView::create([
+        // Fire-and-forget: analytics must never take down a public memorial page.
+        try {
+            $hash = $this->visitorHash($request);
+            $today = Carbon::today();
+            $existing = MemorialView::where('memorial_id', $memorial->id)
+                ->where('visitor_hash', $hash)
+                ->where('viewed_at', '>=', $today)
+                ->exists();
+            if (!$existing) {
+                MemorialView::create([
+                    'memorial_id' => $memorial->id,
+                    'visitor_hash' => $hash,
+                    'viewed_at' => now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Memorial view count skipped', [
                 'memorial_id' => $memorial->id,
-                'visitor_hash' => $hash,
-                'viewed_at' => now(),
+                'error' => $e->getMessage(),
             ]);
         }
     }
 
-    /**
-     * Store a tribute (flower, candle, note) - guest or authenticated.
-     */
-    public function storeTribute(Request $request, string $slug)
-    {
-        $memorial = Memorial::where('slug', $slug)->firstOrFail();
-
-        if (!$memorial->is_public) {
-            abort(404);
-        }
-
-        $validated = $request->validate([
-            'type' => ['required', 'in:flower,candle,note'],
-            'message' => ['nullable', 'string', 'max:2000'],
-            'guest_name' => ['nullable', 'string', 'max:255'],
-            'guest_email' => ['nullable', 'email'],
-        ]);
-
-        $tributeCheck = PlanLimitsHelper::canAddTribute($memorial);
-        if (!$tributeCheck['allowed']) {
-            return back()->with('error', "Tribute limit reached ({$tributeCheck['current']}/{$tributeCheck['max']}).");
-        }
-
-        $guestName = $request->user()?->name ?? $validated['guest_name'] ?? 'Anonymous';
-        $guestEmail = $request->user()?->email ?? $validated['guest_email'] ?? null;
-
-        $tribute = Tribute::create([
-            'memorial_id' => $memorial->id,
-            'user_id' => $request->user()?->id,
-            'type' => $validated['type'],
-            'message' => $validated['message'] ?? null,
-            'guest_name' => $guestName,
-            'guest_email' => $guestEmail,
-            'is_approved' => true,
-        ]);
-
-        NotificationService::notifyNewTribute($memorial, $validated['type'], $guestName, $request->user()?->id, $tribute);
-
-        return back()->with('status', 'Thank you for your tribute.');
-    }
 }

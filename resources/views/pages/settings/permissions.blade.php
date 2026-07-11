@@ -46,7 +46,7 @@
                     @enderror
                 </div>
                 <button type="submit"
-                    class="h-11 rounded-lg bg-brand-500 px-5 text-sm font-medium text-white hover:bg-brand-600 transition">
+                    class="btn btn-primary btn-md">
                     Add Role
                 </button>
             </form>
@@ -88,7 +88,7 @@
                                             @endforeach
                                         </select>
                                         <button type="submit"
-                                            class="h-9 rounded-lg bg-gray-100 dark:bg-gray-800 px-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                                            class="btn btn-secondary btn-sm">
                                             Update
                                         </button>
                                     </form>

@@ -170,31 +170,169 @@
             <hr class="border-gray-200 dark:border-gray-700 mb-8" />
 
             {{-- Button Colors --}}
-            <div class="mb-8">
-                <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white/90">Button Colors</h4>
-                <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">Colors for primary and secondary action buttons.</p>
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    @include('pages.settings.partials.color-field', ['label' => 'Button 1 (Primary)', 'name' => 'branding[button1_color]', 'dotName' => 'branding.button1_color', 'default' => '#465fff'])
-                    @include('pages.settings.partials.color-field', ['label' => 'Button 2 (Secondary)', 'name' => 'branding[button2_color]', 'dotName' => 'branding.button2_color', 'default' => '#ffffff'])
+            {{-- Both tabs stay in the DOM (x-show, not x-if) so the inactive mode's hidden
+                 inputs still submit — otherwise switching tabs would wipe the other theme. --}}
+            <div class="mb-8" x-data="{ mode: 'light' }">
+                <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white/90">Buttons</h4>
+                <p class="mb-5 text-xs text-gray-500 dark:text-gray-400">
+                    Every button across the site uses these colors. The glow under each button is derived
+                    automatically from its background, so it always matches.
+                </p>
+
+                {{-- Light / Dark tabs --}}
+                <div class="mb-5 inline-flex rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+                    <button type="button" @click="mode = 'light'"
+                        class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition"
+                        :class="mode === 'light'
+                            ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Light Mode
+                    </button>
+                    <button type="button" @click="mode = 'dark'"
+                        class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition"
+                        :class="mode === 'dark'
+                            ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        Dark Mode
+                    </button>
+                </div>
+
+                @include('pages.settings.partials.button-preview', [
+                    'buttons' => [
+                        ['label' => 'Primary Button', 'class' => 'btn-primary', 'size' => 'btn-lg', 'bg' => 'branding[button1_color]', 'text' => 'branding[button1_text_color]', 'bg_dark' => 'branding[button1_color_dark]', 'text_dark' => 'branding[button1_text_color_dark]'],
+                        ['label' => 'Secondary', 'class' => 'btn-secondary', 'size' => 'btn-lg', 'bg' => 'branding[button2_color]', 'text' => 'branding[button2_text_color]', 'bg_dark' => 'branding[button2_color_dark]', 'text_dark' => 'branding[button2_text_color_dark]'],
+                        ['label' => 'Medium', 'class' => 'btn-primary', 'size' => 'btn-md', 'bg' => 'branding[button1_color]', 'text' => 'branding[button1_text_color]', 'bg_dark' => 'branding[button1_color_dark]', 'text_dark' => 'branding[button1_text_color_dark]'],
+                        ['label' => 'Small', 'class' => 'btn-secondary', 'size' => 'btn-sm', 'bg' => 'branding[button2_color]', 'text' => 'branding[button2_text_color]', 'bg_dark' => 'branding[button2_color_dark]', 'text_dark' => 'branding[button2_text_color_dark]'],
+                    ],
+                    'surface' => null,
+                ])
+
+                {{-- Light mode fields --}}
+                <div x-show="mode === 'light'" class="mt-6">
+                    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        @include('pages.settings.partials.color-field', ['label' => 'Primary Background', 'name' => 'branding[button1_color]', 'dotName' => 'branding.button1_color', 'default' => '#465fff'])
+                        @include('pages.settings.partials.color-field', ['label' => 'Primary Text', 'name' => 'branding[button1_text_color]', 'dotName' => 'branding.button1_text_color', 'default' => '#ffffff'])
+                        @include('pages.settings.partials.color-field', ['label' => 'Secondary Background', 'name' => 'branding[button2_color]', 'dotName' => 'branding.button2_color', 'default' => '#ffffff'])
+                        @include('pages.settings.partials.color-field', ['label' => 'Secondary Text', 'name' => 'branding[button2_text_color]', 'dotName' => 'branding.button2_text_color', 'default' => '#374151'])
+                    </div>
+                </div>
+
+                {{-- Dark mode fields --}}
+                <div x-show="mode === 'dark'" x-cloak class="mt-6">
+                    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        @include('pages.settings.partials.color-field', ['label' => 'Primary Background', 'name' => 'branding[button1_color_dark]', 'dotName' => 'branding.button1_color_dark', 'default' => '#465fff'])
+                        @include('pages.settings.partials.color-field', ['label' => 'Primary Text', 'name' => 'branding[button1_text_color_dark]', 'dotName' => 'branding.button1_text_color_dark', 'default' => '#ffffff'])
+                        @include('pages.settings.partials.color-field', ['label' => 'Secondary Background', 'name' => 'branding[button2_color_dark]', 'dotName' => 'branding.button2_color_dark', 'default' => '#1f2937'])
+                        @include('pages.settings.partials.color-field', ['label' => 'Secondary Text', 'name' => 'branding[button2_text_color_dark]', 'dotName' => 'branding.button2_text_color_dark', 'default' => '#d1d5db'])
+                    </div>
                 </div>
             </div>
 
             <hr class="border-gray-200 dark:border-gray-700 mb-8" />
 
-            {{-- CTA Section Colors --}}
-            <div>
-                <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white/90">CTA Section</h4>
-                <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">Background for the call-to-action banner on the landing page.</p>
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    @include('pages.settings.partials.color-field', ['label' => 'CTA Light', 'name' => 'branding[cta_bg_light]', 'dotName' => 'branding.cta_bg_light', 'default' => '#465fff'])
-                    @include('pages.settings.partials.color-field', ['label' => 'CTA Dark', 'name' => 'branding[cta_bg_dark]', 'dotName' => 'branding.cta_bg_dark', 'default' => '#3641f5'])
+            {{-- CTA Section --}}
+            <div x-data="{ mode: 'light' }">
+                <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white/90">CTA Banner</h4>
+                <p class="mb-5 text-xs text-gray-500 dark:text-gray-400">
+                    The call-to-action banner sits on its own colored background, so its two buttons are
+                    styled independently of the site-wide buttons above.
+                </p>
+
+                {{-- Light / Dark tabs --}}
+                <div class="mb-5 inline-flex rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+                    <button type="button" @click="mode = 'light'"
+                        class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition"
+                        :class="mode === 'light'
+                            ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Light Mode
+                    </button>
+                    <button type="button" @click="mode = 'dark'"
+                        class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition"
+                        :class="mode === 'dark'
+                            ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        Dark Mode
+                    </button>
+                </div>
+
+                @include('pages.settings.partials.button-preview', [
+                    'buttons' => [
+                        ['label' => 'Get Started Free', 'class' => 'btn-cta-primary', 'size' => 'btn-lg', 'bg' => 'branding[cta_btn1_color]', 'text' => 'branding[cta_btn1_text_color]', 'bg_dark' => 'branding[cta_btn1_color_dark]', 'text_dark' => 'branding[cta_btn1_text_color_dark]'],
+                        ['label' => 'View Plans', 'class' => 'btn-cta-secondary', 'size' => 'btn-lg', 'bg' => 'branding[cta_btn2_color]', 'text' => 'branding[cta_btn2_text_color]', 'bg_dark' => 'branding[cta_btn2_color_dark]', 'text_dark' => 'branding[cta_btn2_text_color_dark]'],
+                    ],
+                    'surface' => ['light' => 'branding[cta_bg_light]', 'dark' => 'branding[cta_bg_dark]'],
+                ])
+
+                {{-- Light mode fields --}}
+                <div x-show="mode === 'light'" class="mt-6 space-y-6">
+                    <div>
+                        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Banner Background</p>
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                            @include('pages.settings.partials.color-field', ['label' => 'Banner Background', 'name' => 'branding[cta_bg_light]', 'dotName' => 'branding.cta_bg_light', 'default' => '#465fff'])
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Button 1 &mdash; &ldquo;Get Started Free&rdquo;</p>
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                            @include('pages.settings.partials.color-field', ['label' => 'Background', 'name' => 'branding[cta_btn1_color]', 'dotName' => 'branding.cta_btn1_color', 'default' => '#ffffff'])
+                            @include('pages.settings.partials.color-field', ['label' => 'Text', 'name' => 'branding[cta_btn1_text_color]', 'dotName' => 'branding.cta_btn1_text_color', 'default' => '#465fff'])
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Button 2 &mdash; &ldquo;View Plans&rdquo;</p>
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                            @include('pages.settings.partials.color-field', ['label' => 'Background', 'name' => 'branding[cta_btn2_color]', 'dotName' => 'branding.cta_btn2_color', 'default' => '#3641f5'])
+                            @include('pages.settings.partials.color-field', ['label' => 'Text', 'name' => 'branding[cta_btn2_text_color]', 'dotName' => 'branding.cta_btn2_text_color', 'default' => '#ffffff'])
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Dark mode fields --}}
+                <div x-show="mode === 'dark'" x-cloak class="mt-6 space-y-6">
+                    <div>
+                        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Banner Background</p>
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                            @include('pages.settings.partials.color-field', ['label' => 'Banner Background', 'name' => 'branding[cta_bg_dark]', 'dotName' => 'branding.cta_bg_dark', 'default' => '#3641f5'])
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Button 1 &mdash; &ldquo;Get Started Free&rdquo;</p>
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                            @include('pages.settings.partials.color-field', ['label' => 'Background', 'name' => 'branding[cta_btn1_color_dark]', 'dotName' => 'branding.cta_btn1_color_dark', 'default' => '#ffffff'])
+                            @include('pages.settings.partials.color-field', ['label' => 'Text', 'name' => 'branding[cta_btn1_text_color_dark]', 'dotName' => 'branding.cta_btn1_text_color_dark', 'default' => '#1e3a5f'])
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Button 2 &mdash; &ldquo;View Plans&rdquo;</p>
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                            @include('pages.settings.partials.color-field', ['label' => 'Background', 'name' => 'branding[cta_btn2_color_dark]', 'dotName' => 'branding.cta_btn2_color_dark', 'default' => '#1e3a5f'])
+                            @include('pages.settings.partials.color-field', ['label' => 'Text', 'name' => 'branding[cta_btn2_text_color_dark]', 'dotName' => 'branding.cta_btn2_text_color_dark', 'default' => '#ffffff'])
+                        </div>
+                    </div>
                 </div>
             </div>
         </x-common.component-card>
 
         <div class="flex justify-end">
             <button type="submit"
-                class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 transition">
+                class="btn btn-primary btn-md">
                 Save Changes
             </button>
         </div>

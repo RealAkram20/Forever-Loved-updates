@@ -55,17 +55,22 @@
                 <div id="bulk-actions" class="mb-4 flex flex-wrap items-center gap-2">
                     <span class="text-sm text-gray-500 dark:text-gray-400">With selected:</span>
                     <button type="button" onclick="submitBulk('approve')"
-                        class="h-8 rounded-lg bg-green-100 dark:bg-green-900/30 px-3 text-xs font-medium text-green-800 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition">
+                        class="btn btn-primary btn-sm">
                         Approve
                     </button>
                     <button type="button" onclick="submitBulk('mark_failed')"
-                        class="h-8 rounded-lg bg-red-100 dark:bg-red-900/30 px-3 text-xs font-medium text-red-800 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition">
+                        class="btn btn-danger-soft btn-sm">
                         Mark Failed
                     </button>
                     <button type="button" onclick="submitBulk('delete')"
-                        class="h-8 rounded-lg bg-gray-100 dark:bg-gray-700 px-3 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                        class="btn btn-secondary btn-sm">
                         Delete
                     </button>
+                    <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        <input type="checkbox" id="bulk-force-approve" value="1"
+                            class="rounded border-gray-300 dark:border-gray-600 text-brand-500 focus:ring-brand-500">
+                        Skip Pesapal verification (manual/offline payments)
+                    </label>
                 </div>
                 <div class="overflow-x-auto">
                         <table class="w-full text-sm">
@@ -103,7 +108,7 @@
                                             @endif
                                         </td>
                                         <td class="py-3 text-gray-700 dark:text-gray-300" x-show="!editing">{{ $order->plan->name ?? 'N/A' }}</td>
-                                        <td class="py-3 text-gray-800 dark:text-white/90" x-show="!editing">{{ number_format($order->amount, 2) }} {{ $order->currency }}</td>
+                                        <td class="py-3 text-gray-800 dark:text-white/90" x-show="!editing">{{ \App\Helpers\PriceHelper::format($order->amount) }} {{ $order->currency }}</td>
                                         <td class="py-3" x-show="!editing">
                                             <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
                                                 {{ $order->status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : '' }}
@@ -115,7 +120,7 @@
                                         <td class="py-3" x-show="!editing">
                                             <div class="flex items-center gap-1.5">
                                                 <button type="button" @click="editing = true"
-                                                    class="h-8 rounded-md bg-gray-100 dark:bg-gray-800 px-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                                                    class="btn btn-secondary btn-sm">
                                                     Edit
                                                 </button>
                                                 <button type="button" onclick="deleteSingle({{ $order->id }}, this)"
@@ -166,13 +171,20 @@
                                                         </select>
                                                     </div>
                                                 </div>
+                                                @if ($order->payment_gateway === 'pesapal' && $order->order_tracking_id)
+                                                    <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                                        <input type="checkbox" name="force_approve" value="1"
+                                                            class="rounded border-gray-300 dark:border-gray-600 text-brand-500 focus:ring-brand-500">
+                                                        Skip Pesapal verification (manual/offline payment)
+                                                    </label>
+                                                @endif
                                                 <div class="flex gap-2">
                                                     <button type="submit"
-                                                        class="h-9 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 transition">
+                                                        class="btn btn-primary btn-sm">
                                                         Save
                                                     </button>
                                                     <button type="button" @click="editing = false"
-                                                        class="h-9 rounded-lg bg-gray-100 dark:bg-gray-700 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                                        class="btn btn-secondary btn-sm">
                                                         Cancel
                                                     </button>
                                                 </div>
@@ -224,7 +236,7 @@
                                 class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden">
                                 <option value="">Select plan...</option>
                                 @foreach ($plans ?? [] as $p)
-                                    <option value="{{ $p->id }}" {{ old('subscription_plan_id') == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $currency ?? 'USD' }} {{ number_format($p->price, 2) }})</option>
+                                    <option value="{{ $p->id }}" {{ old('subscription_plan_id') == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $currency ?? 'USD' }} {{ \App\Helpers\PriceHelper::format($p->price) }})</option>
                                 @endforeach
                             </select>
                             @error('subscription_plan_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
@@ -251,7 +263,7 @@
                     </div>
                     <div class="flex justify-end">
                         <button type="submit" :disabled="submitting"
-                            class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 disabled:opacity-50 transition">
+                            class="btn btn-primary btn-md disabled:opacity-50">
                             <span x-show="!submitting">Create Payment Order</span>
                             <span x-show="submitting">Creating...</span>
                         </button>
@@ -383,6 +395,9 @@
             const formData = new FormData();
             formData.append('_token', csrf);
             formData.append('action', action);
+            if (action === 'approve' && document.getElementById('bulk-force-approve')?.checked) {
+                formData.append('force_approve', '1');
+            }
             checked.forEach(function(cb) { formData.append('ids[]', cb.value); });
             fetch(bulkUrl, {
                 method: 'POST',

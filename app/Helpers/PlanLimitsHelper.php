@@ -275,6 +275,28 @@ class PlanLimitsHelper
     }
 
     /**
+     * Give back a slot reserved by reserveAiBioUsage() when generation
+     * produced nothing usable — a failed request must not consume quota.
+     */
+    public static function releaseAiBioUsage(Memorial $memorial): void
+    {
+        $userId = $memorial->user_id;
+
+        $dailyKey = "ai_bio:{$userId}:" . now()->format('Y-m-d');
+        if ((int) Cache::get($dailyKey, 0) > 0) {
+            Cache::decrement($dailyKey);
+        }
+
+        $globalMonthly = (int) SystemSetting::get('ai.max_requests_per_user_per_month', 0);
+        if ($globalMonthly > 0) {
+            $monthlyKey = "ai_bio_month:{$userId}:" . now()->format('Y-m');
+            if ((int) Cache::get($monthlyKey, 0) > 0) {
+                Cache::decrement($monthlyKey);
+            }
+        }
+    }
+
+    /**
      * Check if background music is allowed by the plan.
      */
     public static function canUseBackgroundMusic(Memorial $memorial): bool

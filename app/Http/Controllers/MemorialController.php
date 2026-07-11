@@ -5,13 +5,13 @@ namespace App\Http\Controllers;
 use App\Helpers\AiConfigHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Models\Memorial;
-use App\Services\ClaudeBioGeneratorService;
+use App\Services\BiographyGenerator;
 use App\Services\GeminiBioGeneratorService;
 use App\Services\NotificationService;
-use App\Services\OpenAIBioGeneratorService;
 use App\Services\TemplateBioGeneratorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -161,7 +161,14 @@ class MemorialController extends Controller
             'education.*.start_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
             'education.*.end_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
             'education.*.degree' => ['nullable', 'string', 'max:255'],
+            'relationship_other' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $validated['relationship'] = Memorial::resolveRelationship(
+            $validated['relationship'] ?? null,
+            $validated['relationship_other'] ?? null
+        );
+        unset($validated['relationship_other']);
 
         $validated['user_id'] = $request->user()->id;
         $validated['plan'] = $validated['plan'] ?? ($validated['theme'] === 'premium' ? 'paid' : 'free');
@@ -285,7 +292,14 @@ class MemorialController extends Controller
             'education.*.start_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
             'education.*.end_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
             'education.*.degree' => ['nullable', 'string', 'max:255'],
+            'relationship_other' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $validated['relationship'] = Memorial::resolveRelationship(
+            $validated['relationship'] ?? null,
+            $validated['relationship_other'] ?? null
+        );
+        unset($validated['relationship_other']);
 
         $validated['full_name'] = trim(implode(' ', array_filter([
             $validated['first_name'],
@@ -341,6 +355,10 @@ class MemorialController extends Controller
                     'first_name', 'middle_name', 'last_name', 'short_description', 'nationality',
                     'primary_profession', 'notable_title', 'gender', 'relationship',
                 ])->toArray();
+                $identityData['relationship'] = Memorial::resolveRelationship(
+                    $identityData['relationship'] ?? null,
+                    $sectionData['relationship_other'] ?? null
+                );
                 $fullName = trim(implode(' ', array_filter([
                     $sectionData['first_name'] ?? '',
                     $sectionData['middle_name'] ?? '',
@@ -416,6 +434,7 @@ class MemorialController extends Controller
             'notable_title' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'relationship' => ['nullable', 'string', 'max:255'],
+            'relationship_other' => ['nullable', 'string', 'max:255'],
             'major_achievements' => ['nullable', 'string', 'max:2000'],
             'known_for' => ['nullable', 'string', 'max:500'],
             'active_year_start' => ['nullable', 'integer', 'min:1900', 'max:2100'],
@@ -471,6 +490,23 @@ class MemorialController extends Controller
         $scalarData = collect($validated)->except($relationKeys)->toArray();
         $relationData = collect($validated)->only($relationKeys)->toArray();
 
+        // Auto-save sends one field at a time, so the select and its "Other" text box
+        // arrive separately. Whichever half turns up, store the resolved relationship —
+        // but never overwrite a saved one with a bare "Other" the user hasn't filled in.
+        $hasSelect = array_key_exists('relationship', $scalarData);
+        $hasCustom = array_key_exists('relationship_other', $scalarData);
+        if ($hasSelect || $hasCustom) {
+            $selected = $hasSelect ? $scalarData['relationship'] : 'Other';
+            $resolved = Memorial::resolveRelationship($selected, $scalarData['relationship_other'] ?? null);
+            unset($scalarData['relationship_other']);
+
+            if ($resolved === null && $selected === 'Other') {
+                unset($scalarData['relationship']);
+            } else {
+                $scalarData['relationship'] = $resolved;
+            }
+        }
+
         DB::transaction(function () use ($memorial, $scalarData, $relationData) {
             if (! empty($scalarData)) {
                 if (isset($scalarData['first_name']) || isset($scalarData['middle_name']) || isset($scalarData['last_name'])) {
@@ -512,6 +548,7 @@ class MemorialController extends Controller
             'notable_title' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'relationship' => ['nullable', 'string', 'max:255'],
+            'relationship_other' => ['nullable', 'string', 'max:255'],
             'major_achievements' => ['nullable', 'string', 'max:2000'],
             'known_for' => ['nullable', 'string', 'max:500'],
             'active_year_start' => ['nullable', 'integer', 'min:1900', 'max:2100'],
@@ -551,7 +588,7 @@ class MemorialController extends Controller
         ];
 
         $sectionFields = [
-            'identity' => ['first_name', 'middle_name', 'last_name', 'short_description', 'nationality', 'primary_profession', 'notable_title', 'gender', 'relationship'],
+            'identity' => ['first_name', 'middle_name', 'last_name', 'short_description', 'nationality', 'primary_profession', 'notable_title', 'gender', 'relationship', 'relationship_other'],
             'biography_summary' => ['major_achievements', 'known_for', 'active_year_start', 'active_year_end', 'companies', 'companies.*.company_name', 'co_founders', 'co_founders.*.name'],
             'birth' => ['date_of_birth', 'birth_city', 'birth_state', 'birth_country'],
             'death' => ['date_of_passing', 'death_city', 'death_state', 'death_country'],
@@ -620,52 +657,63 @@ class MemorialController extends Controller
         $memorial->load(['notableCompanies', 'coFounders', 'children', 'spouses', 'parents', 'siblings', 'education']);
         $structuredData = GeminiBioGeneratorService::buildStructuredDataFromMemorial($memorial);
 
-        $aiProvider = $this->getActiveAiProvider();
+        if (! $this->getActiveAiProvider()) {
+            PlanLimitsHelper::releaseAiBioUsage($memorial);
 
-        if (! $aiProvider) {
             return response()->json([
                 'message' => 'No AI provider is enabled. Please enable OpenAI, Claude, or Gemini in your configuration.',
             ], 422);
         }
 
-        $service = match ($aiProvider) {
-            'ChatGPT' => app(OpenAIBioGeneratorService::class),
-            'Claude AI' => app(ClaudeBioGeneratorService::class),
-            'Google Gemini' => app(GeminiBioGeneratorService::class),
-        };
         $noCache = $request->boolean('no_cache') || $request->boolean('fresh');
-
-        try {
-            $options = $service->generate($structuredData, $memorial->id, $noCache);
-        } catch (\Throwable $e) {
-            $userMessage = $this->parseAiErrorMessage($e->getMessage());
-
-            return response()->json([
-                'message' => $userMessage,
-            ], 422);
-        }
-
-        $o1 = strip_tags(trim($options['option_1'] ?? ''));
-        $o2 = strip_tags(trim($options['option_2'] ?? ''));
-        $o3 = strip_tags(trim($options['option_3'] ?? ''));
-
-        if (! $o1 && ! $o2 && ! $o3) {
-            return response()->json([
-                'message' => 'AI returned empty results. Please add more details and try again.',
-            ], 422);
-        }
-
-        $remaining = max(0, $reservation['max'] - $reservation['current']);
-
-        return response()->json([
-            'ai_provider' => $aiProvider,
-            'option_1' => $o1,
-            'option_2' => $o2,
-            'option_3' => $o3,
+        $quota = [
             'current' => $reservation['current'],
             'max' => $reservation['max'],
-            'remaining' => $remaining,
-        ]);
+            'remaining' => max(0, $reservation['max'] - $reservation['current']),
+        ];
+
+        // Queue when the cron is demonstrably alive so a 60s provider call
+        // never blocks a web worker; the edit page polls the status endpoint.
+        if (\App\Helpers\QueueHealthHelper::schedulerHealthy()) {
+            $requestId = (string) \Illuminate\Support\Str::uuid();
+            Cache::put(
+                \App\Jobs\GenerateBiography::CACHE_PREFIX.$requestId,
+                ['status' => 'queued', 'memorial_id' => $memorial->id] + $quota,
+                now()->addMinutes(\App\Jobs\GenerateBiography::CACHE_TTL_MINUTES)
+            );
+            dispatch(new \App\Jobs\GenerateBiography($memorial->id, $structuredData, $requestId, $noCache, $quota));
+
+            return response()->json(['status' => 'queued', 'request_id' => $requestId] + $quota, 202);
+        }
+
+        // No cron: same behavior as before the queue existed.
+        $result = app(BiographyGenerator::class)->generate($memorial, $structuredData, $noCache);
+
+        if (! $result['success']) {
+            PlanLimitsHelper::releaseAiBioUsage($memorial);
+
+            return response()->json(['message' => $result['message']], 422);
+        }
+
+        unset($result['success']);
+
+        return response()->json(['status' => 'completed'] + $result + $quota);
+    }
+
+    /**
+     * Poll target for queued biography generation. Returns the cache-backed
+     * job state: queued | completed | failed.
+     */
+    public function generateBiographyStatus(Memorial $memorial, string $requestId): JsonResponse
+    {
+        $this->authorize('update', $memorial);
+
+        $state = Cache::get(\App\Jobs\GenerateBiography::CACHE_PREFIX.$requestId);
+        if (! is_array($state) || ($state['memorial_id'] ?? null) !== $memorial->id) {
+            return response()->json(['message' => 'Unknown or expired generation request.'], 404);
+        }
+
+        return response()->json($state);
     }
 
     /**
@@ -674,30 +722,6 @@ class MemorialController extends Controller
     protected function getActiveAiProvider(): ?string
     {
         return AiConfigHelper::getActiveProvider();
-    }
-
-    protected function parseAiErrorMessage(string $message): string
-    {
-        if (str_starts_with($message, 'AI_AUTH_ERROR:')) {
-            return 'AI authentication failed. The API key may be invalid or expired. Template suggestions are shown instead.';
-        }
-        if (str_starts_with($message, 'AI_NO_CREDITS:')) {
-            return 'Your AI account has no remaining credits. Please top up your API billing. Template suggestions are shown instead.';
-        }
-        if (str_starts_with($message, 'AI_RATE_LIMIT:')) {
-            return 'AI rate limit reached. Please wait a moment and try again.';
-        }
-        if (str_starts_with($message, 'AI_MODEL_ERROR:')) {
-            return 'The configured AI model is unavailable. Please check your settings. Template suggestions are shown instead.';
-        }
-        if (str_starts_with($message, 'AI_OVERLOADED:')) {
-            return 'The AI service is temporarily overloaded. Please try again in a few seconds.';
-        }
-        if (str_starts_with($message, 'AI_API_ERROR:')) {
-            return 'AI generation encountered an error. Template suggestions are shown instead.';
-        }
-
-        return 'AI generation failed. Template suggestions are shown instead.';
     }
 
     protected function applyFormDataToMemorial(Memorial $memorial, array $data): void
@@ -745,10 +769,17 @@ class MemorialController extends Controller
             'education.*.start_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
             'education.*.end_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
             'education.*.degree' => ['nullable', 'string', 'max:255'],
+            'relationship_other' => ['nullable', 'string', 'max:255'],
         ];
         $validated = validator($data, $rules)->validate();
 
-        $scalar = collect($validated)->except(['companies', 'co_founders', 'children', 'spouses', 'parents', 'siblings', 'education'])->toArray();
+        $scalar = collect($validated)->except(['companies', 'co_founders', 'children', 'spouses', 'parents', 'siblings', 'education', 'relationship_other'])->toArray();
+        if (array_key_exists('relationship', $scalar)) {
+            $scalar['relationship'] = Memorial::resolveRelationship(
+                $scalar['relationship'],
+                $validated['relationship_other'] ?? null
+            );
+        }
         $fullName = trim(implode(' ', array_filter([
             $validated['first_name'] ?? '',
             $validated['middle_name'] ?? '',

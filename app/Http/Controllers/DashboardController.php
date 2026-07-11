@@ -28,11 +28,40 @@ class DashboardController extends Controller
 
         if ($isAdmin) {
             $data = array_merge($data, $this->adminMetrics($request));
+            $data['systemHealth'] = $this->systemHealth();
         }
+
+        // Unfinished Pesapal checkouts get a resume CTA (manual orders are
+        // an admin workflow — nothing for the customer to resume).
+        $data['pendingPaymentOrders'] = \App\Models\PaymentOrder::with(['memorial', 'plan'])
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('payment_gateway', 'pesapal')
+            ->latest()
+            ->get();
 
         $data = array_merge($data, $this->userMetrics($request, $user));
 
         return view('pages.dashboard.index', $data);
+    }
+
+    /**
+     * Warnings surfaced as a dashboard banner so self-hosting admins learn
+     * about a missing cron, failed jobs, or unsafe config without reading logs.
+     */
+    private function systemHealth(): array
+    {
+        $phpBinary = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
+
+        return [
+            'schedulerDown' => ! \App\Helpers\QueueHealthHelper::schedulerHealthy(),
+            'queueBacklog' => ! \App\Helpers\QueueHealthHelper::queueHealthy(),
+            'failedJobs' => \App\Helpers\QueueHealthHelper::failedJobsCount(),
+            'debugInProduction' => app()->environment('production') && (bool) config('app.debug'),
+            'smtpMissing' => (bool) \App\Models\SystemSetting::get('notifications.email_enabled', false)
+                && ! (bool) \App\Models\SystemSetting::get('smtp.enabled', false),
+            'cronLine' => '* * * * * '.$phpBinary.' '.base_path('artisan').' schedule:run >> /dev/null 2>&1',
+        ];
     }
 
     private function adminMetrics(Request $request): array

@@ -97,6 +97,23 @@ class Memorial extends Model
         ];
     }
 
+    /**
+     * Fold the "Other" relationship option and its free-text companion field into the
+     * single value stored on the memorial. Picking "Other" without typing anything
+     * stores nothing rather than the useless literal "Other".
+     */
+    public static function resolveRelationship(?string $selected, ?string $custom = null): ?string
+    {
+        $selected = trim((string) $selected);
+        $custom = trim((string) $custom);
+
+        if ($selected === 'Other') {
+            return $custom !== '' ? $custom : null;
+        }
+
+        return $selected !== '' ? $selected : null;
+    }
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

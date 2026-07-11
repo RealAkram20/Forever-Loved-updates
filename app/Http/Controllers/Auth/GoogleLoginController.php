@@ -22,9 +22,21 @@ class GoogleLoginController extends Controller
             abort(404);
         }
 
-        $this->applyGoogleConfig();
+        try {
+            $this->applyGoogleConfig();
 
-        return Socialite::driver('google')->redirect();
+            return Socialite::driver('google')->redirect();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Google sign-in redirect failed', [
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+                'redirect_uri' => SocialLoginHelper::googleCallbackUrl(),
+            ]);
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'Could not start Google sign-in. Re-save the Client Secret in Admin → Settings → General, and confirm the Authorized redirect URI in Google Cloud is exactly: '.SocialLoginHelper::googleCallbackUrl(),
+            ]);
+        }
     }
 
     public function callback(Request $request): RedirectResponse
@@ -37,7 +49,15 @@ class GoogleLoginController extends Controller
 
         try {
             $googleUser = Socialite::driver('google')->user();
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Google sign-in callback failed', [
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+                'redirect_uri' => SocialLoginHelper::googleCallbackUrl(),
+                'has_code' => $request->has('code'),
+                'oauth_error' => $request->query('error'),
+            ]);
+
             return redirect()->route('login')
                 ->withErrors(['email' => 'Google sign-in was cancelled or failed. Try again or use email.']);
         }

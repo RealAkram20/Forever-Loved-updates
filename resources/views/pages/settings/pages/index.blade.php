@@ -19,7 +19,7 @@
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-gray-600 dark:text-gray-400">Use <strong class="font-medium text-gray-800 dark:text-white/90">Add page</strong> for a new URL, or <strong class="font-medium text-gray-800 dark:text-white/90">Edit</strong> for layout and page details in one place.</p>
             <a href="{{ route('settings.pages.create') }}"
-               class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">
+               class="btn btn-primary btn-md shrink-0">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Add page
             </a>
@@ -55,18 +55,18 @@
                             <td class="whitespace-nowrap px-6 py-4 text-right">
                                 <div class="inline-flex flex-wrap items-center justify-end gap-2">
                                     <a href="{{ $row['edit_url'] }}"
-                                       class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition">
+                                       class="btn btn-primary btn-sm">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                         {{ $row['edit_label'] }}
                                     </a>
                                     @foreach ($row['extra_links'] as $link)
                                         <a href="{{ $link['url'] }}"
-                                           class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5 transition">
+                                           class="btn btn-secondary btn-sm">
                                             {{ $link['label'] }}
                                         </a>
                                     @endforeach
                                     <a href="{{ $row['view_url'] }}" target="_blank" rel="noopener noreferrer"
-                                       class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5 transition">
+                                       class="btn btn-secondary btn-sm">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                                         View on site
                                     </a>
@@ -93,12 +93,12 @@
                             <td class="whitespace-nowrap px-6 py-4 text-right">
                                 <div class="inline-flex flex-wrap items-center justify-end gap-2">
                                     <a href="{{ route('settings.pages.edit', $page->slug) }}"
-                                       class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition">
+                                       class="btn btn-primary btn-sm">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                         Edit
                                     </a>
                                     <a href="{{ $page->publicUrl() }}" target="_blank" rel="noopener noreferrer"
-                                       class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5 transition">
+                                       class="btn btn-secondary btn-sm">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                                         View on site
                                     </a>

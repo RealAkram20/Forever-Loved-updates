@@ -42,26 +42,14 @@ class NotificationService
         $sendEmail = $user && $user->email_notifications_enabled && static::isEmailEnabled();
         $sendPush = $user && $user->push_notifications_enabled && static::isPushEnabled();
 
+        // Queued when the cron is alive, inline otherwise (ReliableDispatch) —
+        // either way delivery failures can never break the calling request.
         if ($sendEmail) {
-            try {
-                static::dispatchEmail($notification);
-            } catch (\Throwable $e) {
-                Log::warning('Failed to send email notification', [
-                    'notification_id' => $notification->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendNotificationEmail($notification->id));
         }
 
         if ($sendPush) {
-            try {
-                static::dispatchPush($notification);
-            } catch (\Throwable $e) {
-                Log::warning('Failed to send push notification', [
-                    'notification_id' => $notification->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendNotificationPush($notification->id));
         }
 
         return $notification;
@@ -118,7 +106,8 @@ class NotificationService
             && !empty(SystemSetting::get('smtp.host'));
     }
 
-    private static function dispatchEmail(Notification $notification): void
+    /** Public so the SendNotificationEmail job can invoke it from the worker. */
+    public static function dispatchEmail(Notification $notification): void
     {
         SystemMailConfigurator::applyFromSettings();
 
@@ -223,7 +212,8 @@ class NotificationService
             && !empty(SystemSetting::get('notifications.vapid_private_key'));
     }
 
-    private static function dispatchPush(Notification $notification): void
+    /** Public so the SendNotificationPush job can invoke it from the worker. */
+    public static function dispatchPush(Notification $notification): void
     {
         $subscriptions = PushSubscription::where('user_id', $notification->user_id)->get();
 
@@ -574,16 +564,15 @@ class NotificationService
                 $email = $sub->guest_email;
                 $name = $sub->guest_name ?? 'Subscriber';
                 if ($email) {
-                    try {
-                        SystemMailConfigurator::applyFromSettings();
-                        $appName = SystemSetting::get('branding.app_name', config('app.name'));
-                        $html = "<p>Hi {$name},</p><p>{$message}</p><p><a href=\"{$actionUrl}\" style=\"display:inline-block;padding:10px 20px;background-color:#6366f1;color:white;border-radius:8px;text-decoration:none;font-weight:600;\">View Memorial</a></p><p style=\"color:#999;font-size:12px;\">You received this because you subscribed to updates for this memorial.</p>";
-                        Mail::html($html, function ($msg) use ($email, $name, $title, $appName) {
-                            $msg->to($email, $name)->subject("{$appName} - {$title}");
-                        });
-                    } catch (\Throwable $e) {
-                        Log::warning('Failed to email memorial subscriber', ['email' => $email, 'error' => $e->getMessage()]);
-                    }
+                    $appName = SystemSetting::get('branding.app_name', config('app.name'));
+                    $html = "<p>Hi {$name},</p><p>{$message}</p><p><a href=\"{$actionUrl}\" style=\"display:inline-block;padding:10px 20px;background-color:#6366f1;color:white;border-radius:8px;text-decoration:none;font-weight:600;\">View Memorial</a></p><p style=\"color:#999;font-size:12px;\">You received this because you subscribed to updates for this memorial.</p>";
+                    \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
+                        to: $email,
+                        name: $name,
+                        subject: "{$appName} - {$title}",
+                        body: $html,
+                        isHtml: true,
+                    ));
                 }
             }
         }

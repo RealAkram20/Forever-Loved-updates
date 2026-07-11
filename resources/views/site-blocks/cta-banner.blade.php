@@ -16,13 +16,12 @@
         @endif
         <div class="mt-8 flex flex-wrap justify-center gap-4">
             <a href="{{ $primaryUrl }}"
-               class="inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold shadow-lg transition"
-               style="background-color: var(--color-btn-secondary, #fff); color: var(--color-cta-bg, var(--color-brand-600));">
+               class="btn btn-cta-primary btn-lg">
                 {{ $props['primary_label'] ?? 'Get Started Free' }}
             </a>
             @if (($props['secondary_label'] ?? '') !== '')
                 <a href="{{ $secondaryUrl }}"
-                   class="inline-flex items-center gap-2 rounded-xl border-2 border-white/30 px-6 py-3.5 text-sm font-semibold text-white hover:bg-white/10 transition">
+                   class="btn btn-cta-secondary btn-lg">
                     {{ $props['secondary_label'] }}
                 </a>
             @endif

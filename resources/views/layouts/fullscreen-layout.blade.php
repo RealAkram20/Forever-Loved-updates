@@ -228,8 +228,8 @@ window.addEventListener('resize', checkMobile);">
                 </div>
             </div>
             <div class="flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-700 px-5 py-3">
-                <button type="button" id="confirm-dialog-cancel" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">Cancel</button>
-                <button type="button" id="confirm-dialog-ok" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition">Delete</button>
+                <button type="button" id="confirm-dialog-cancel" class="btn btn-secondary btn-md">Cancel</button>
+                <button type="button" id="confirm-dialog-ok" class="btn btn-danger btn-md">Delete</button>
             </div>
         </div>
     </div>

@@ -50,10 +50,10 @@
         </x-common.component-card>
 
         <div class="flex items-center gap-3">
-            <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
+            <button type="submit" class="btn btn-primary btn-md">
                 Save
             </button>
-            <a href="{{ route('settings.pages.index') }}" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">
+            <a href="{{ route('settings.pages.index') }}" class="btn btn-secondary btn-md">
                 Back to pages
             </a>
         </div>

@@ -29,12 +29,12 @@
                         @endforeach
                     </select>
                     <button type="submit"
-                        class="h-11 rounded-lg bg-gray-100 dark:bg-gray-800 px-5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        class="btn btn-secondary btn-md">
                         Filter
                     </button>
                 </form>
                 <a href="{{ route('users.create') }}"
-                    class="inline-flex items-center gap-2 h-11 rounded-lg bg-brand-500 px-5 text-sm font-medium text-white hover:bg-brand-600 transition shrink-0">
+                    class="btn btn-primary btn-md shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Add User
                 </a>

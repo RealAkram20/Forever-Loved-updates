@@ -50,10 +50,13 @@ class PesapalService
 
     /**
      * Base HTTP client with optional SSL verification (for local dev on Windows/XAMPP).
+     * Timeouts are set here so no Pesapal call can hang a web request or the IPN endpoint.
      */
     private function http(): \Illuminate\Http\Client\PendingRequest
     {
-        $client = Http::acceptJson()->contentType('application/json');
+        $client = Http::acceptJson()->contentType('application/json')
+            ->connectTimeout(10)
+            ->timeout(30);
         if (! config('services.pesapal.verify_ssl', true)) {
             $client = $client->withOptions(['verify' => false]);
         }
@@ -69,11 +72,16 @@ class PesapalService
             return $this->token;
         }
 
-        $response = $this->http()
-            ->post("{$this->baseUrl}/api/Auth/RequestToken", [
-                'consumer_key' => $this->consumerKey,
-                'consumer_secret' => $this->consumerSecret,
-            ]);
+        try {
+            $response = $this->http()
+                ->post("{$this->baseUrl}/api/Auth/RequestToken", [
+                    'consumer_key' => $this->consumerKey,
+                    'consumer_secret' => $this->consumerSecret,
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('Pesapal auth unreachable', ['error' => $e->getMessage()]);
+            return null;
+        }
 
         $data = $response->json();
         if (! $response->successful() || empty($data['token'])) {
@@ -92,29 +100,141 @@ class PesapalService
     }
 
     /**
-     * Register IPN URL with Pesapal. Returns the IPN ID on success.
+     * The public URL Pesapal calls with payment notifications.
      */
-    public function registerIpn(string $url, string $method = 'GET'): ?string
+    public function getIpnUrl(): string
+    {
+        return $this->getCallbackUrl('payment.ipn');
+    }
+
+    /**
+     * Register our IPN URL with Pesapal (POST /api/URLSetup/RegisterIPN) and store the
+     * returned ipn_id, which SubmitOrderRequest requires as notification_id.
+     *
+     * @return array{success: bool, ipn_id?: string, url?: string, error?: string}
+     */
+    public function registerIpn(?string $url = null, string $method = 'GET'): array
+    {
+        if (! $this->isConfigured()) {
+            return ['success' => false, 'error' => 'Add your Pesapal consumer key and secret first.'];
+        }
+
+        $url = $url ?: $this->getIpnUrl();
+
+        if (! preg_match('#^https?://#i', $url) || $this->isLocalUrl($url)) {
+            return ['success' => false, 'error' => "Pesapal cannot reach {$url}. Set APP_URL (or PESAPAL_CALLBACK_BASE_URL) to your public domain."];
+        }
+
+        $token = $this->getToken();
+        if (! $token) {
+            return ['success' => false, 'error' => 'Could not authenticate with Pesapal. Check the consumer key, secret and environment.'];
+        }
+
+        try {
+            $response = $this->http()
+                ->withToken($token)
+                ->post("{$this->baseUrl}/api/URLSetup/RegisterIPN", [
+                    'url' => $url,
+                    'ipn_notification_type' => strtoupper($method) === 'POST' ? 'POST' : 'GET',
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('Pesapal RegisterIPN unreachable', ['url' => $url, 'error' => $e->getMessage()]);
+
+            return ['success' => false, 'error' => 'Could not reach Pesapal. Check your connection and try again.'];
+        }
+
+        $data = $response->json();
+
+        if (! $response->successful() || empty($data['ipn_id'])) {
+            Log::error('Pesapal IPN registration failed', ['url' => $url, 'response' => $data]);
+
+            return ['success' => false, 'error' => $this->errorMessage($data, 'IPN registration failed.')];
+        }
+
+        SystemSetting::set('payments.pesapal_ipn_id', $data['ipn_id']);
+
+        return [
+            'success' => true,
+            'ipn_id' => $data['ipn_id'],
+            'url' => $data['url'] ?? $url,
+        ];
+    }
+
+    /**
+     * All IPN URLs registered on this merchant account (GET /api/URLSetup/GetIpnList).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getIpnList(): array
     {
         $token = $this->getToken();
         if (! $token) {
-            return null;
+            return [];
         }
 
-        $response = $this->http()
-            ->withToken($token)
-            ->post("{$this->baseUrl}/api/URLSetup/RegisterIPN", [
-                'url' => $url,
-                'ipn_notification_type' => strtoupper($method),
-            ]);
+        try {
+            $response = $this->http()
+                ->withToken($token)
+                ->get("{$this->baseUrl}/api/URLSetup/GetIpnList");
+        } catch (\Throwable $e) {
+            Log::warning('Pesapal GetIpnList unreachable', ['error' => $e->getMessage()]);
+
+            return [];
+        }
+
+        if (! $response->successful()) {
+            Log::error('Pesapal GetIpnList failed', ['response' => $response->json()]);
+
+            return [];
+        }
 
         $data = $response->json();
-        if (! $response->successful() || empty($data['ipn_id'])) {
-            Log::error('Pesapal IPN registration failed', ['response' => $data]);
-            return null;
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * The stored IPN ID, registering one on the fly if it is missing. Keeps checkout
+     * working on a fresh install without an admin first pasting an ID by hand.
+     */
+    public function ensureIpnId(): ?string
+    {
+        $ipnId = trim((string) SystemSetting::get('payments.pesapal_ipn_id', ''));
+        if ($ipnId !== '') {
+            return $ipnId;
         }
 
-        return $data['ipn_id'];
+        $result = $this->registerIpn();
+
+        return $result['success'] ? $result['ipn_id'] : null;
+    }
+
+    /**
+     * Pesapal reports failures either as {error: {message|description}} or a bare string.
+     */
+    private function errorMessage($data, string $fallback): string
+    {
+        if (! is_array($data)) {
+            return $fallback;
+        }
+
+        $error = $data['error'] ?? $data['message'] ?? null;
+        if (is_array($error)) {
+            $error = $error['message'] ?? $error['description'] ?? $error['code'] ?? null;
+        }
+
+        return is_string($error) && $error !== '' ? $error : $fallback;
+    }
+
+    private function isLocalUrl(string $url): bool
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        return $host === 'localhost'
+            || $host === '127.0.0.1'
+            || $host === '::1'
+            || str_ends_with($host, '.local')
+            || str_ends_with($host, '.test');
     }
 
     /**
@@ -131,9 +251,9 @@ class PesapalService
         $billingAddress,
         ?string $cancellationUrl = null
     ): array {
-        $ipnId = SystemSetting::get('payments.pesapal_ipn_id', '');
+        $ipnId = $this->ensureIpnId();
         if (empty($ipnId)) {
-            Log::error('Pesapal IPN ID not configured');
+            Log::error('Pesapal IPN ID missing and auto-registration failed');
             return ['success' => false, 'error' => 'IPN not configured'];
         }
 
@@ -169,10 +289,15 @@ class PesapalService
             $payload['cancellation_url'] = $cancellationUrl;
         }
 
-        $response = $this->http()
-            ->withToken($token)
-            ->timeout(30)
-            ->post("{$this->baseUrl}/api/Transactions/SubmitOrderRequest", $payload);
+        try {
+            $response = $this->http()
+                ->withToken($token)
+                ->post("{$this->baseUrl}/api/Transactions/SubmitOrderRequest", $payload);
+        } catch (\Throwable $e) {
+            Log::warning('Pesapal SubmitOrderRequest unreachable', ['merchant_reference' => $merchantReference, 'error' => $e->getMessage()]);
+
+            return ['success' => false, 'error' => 'Could not reach the payment gateway. Please try again in a moment.'];
+        }
 
         $data = $response->json();
 
@@ -211,11 +336,17 @@ class PesapalService
             return null;
         }
 
-        $response = $this->http()
-            ->withToken($token)
-            ->get("{$this->baseUrl}/api/Transactions/GetTransactionStatus", [
-                'orderTrackingId' => $orderTrackingId,
-            ]);
+        try {
+            $response = $this->http()
+                ->withToken($token)
+                ->get("{$this->baseUrl}/api/Transactions/GetTransactionStatus", [
+                    'orderTrackingId' => $orderTrackingId,
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('Pesapal GetTransactionStatus unreachable', ['orderTrackingId' => $orderTrackingId, 'error' => $e->getMessage()]);
+
+            return null;
+        }
 
         $data = $response->json();
         if (! $response->successful()) {

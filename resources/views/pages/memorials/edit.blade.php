@@ -32,7 +32,7 @@
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     Save failed
                 </span>
-                <a href="{{ route('memorial.public', ['slug' => $memorial->slug]) }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                <a href="{{ route('memorial.public', ['slug' => $memorial->slug]) }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-md">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                     Preview
                 </a>
@@ -76,7 +76,7 @@
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="short_description">Short description</label>
                         <input type="text" id="short_description" name="short_description" value="{{ old('short_description', $memorial->short_description) }}"
-                            placeholder="e.g. American businessman, co-inventor, investor"
+                            placeholder="e.g. Loving mother, teacher, community leader"
                             class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                     </div>
 
@@ -90,7 +90,7 @@
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="primary_profession">Primary profession</label>
                             <input type="text" id="primary_profession" name="primary_profession" value="{{ old('primary_profession', $memorial->primary_profession) }}"
-                                placeholder="e.g. Entrepreneur"
+                                placeholder="e.g. Teacher"
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         </div>
                     </div>
@@ -98,7 +98,7 @@
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="notable_title">Notable title (optional)</label>
                         <input type="text" id="notable_title" name="notable_title" value="{{ old('notable_title', $memorial->notable_title) }}"
-                            placeholder="e.g. Pioneer of personal computing"
+                            placeholder="e.g. Respected community elder"
                             class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                     </div>
 
@@ -118,30 +118,9 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="relationship">Relationship</label>
-                        <select id="relationship" name="relationship" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent dark:bg-gray-900/80 px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:ring-3 focus:outline-hidden">
-                            <option value="">— Select relationship —</option>
-                            <option value="Father" {{ old('relationship', $memorial->relationship) === 'Father' ? 'selected' : '' }}>Father</option>
-                            <option value="Mother" {{ old('relationship', $memorial->relationship) === 'Mother' ? 'selected' : '' }}>Mother</option>
-                            <option value="Spouse" {{ old('relationship', $memorial->relationship) === 'Spouse' ? 'selected' : '' }}>Spouse</option>
-                            <option value="Husband" {{ old('relationship', $memorial->relationship) === 'Husband' ? 'selected' : '' }}>Husband</option>
-                            <option value="Wife" {{ old('relationship', $memorial->relationship) === 'Wife' ? 'selected' : '' }}>Wife</option>
-                            <option value="Child" {{ old('relationship', $memorial->relationship) === 'Child' ? 'selected' : '' }}>Child</option>
-                            <option value="Son" {{ old('relationship', $memorial->relationship) === 'Son' ? 'selected' : '' }}>Son</option>
-                            <option value="Daughter" {{ old('relationship', $memorial->relationship) === 'Daughter' ? 'selected' : '' }}>Daughter</option>
-                            <option value="Brother" {{ old('relationship', $memorial->relationship) === 'Brother' ? 'selected' : '' }}>Brother</option>
-                            <option value="Sister" {{ old('relationship', $memorial->relationship) === 'Sister' ? 'selected' : '' }}>Sister</option>
-                            <option value="Grandparent" {{ old('relationship', $memorial->relationship) === 'Grandparent' ? 'selected' : '' }}>Grandparent</option>
-                            <option value="Grandfather" {{ old('relationship', $memorial->relationship) === 'Grandfather' ? 'selected' : '' }}>Grandfather</option>
-                            <option value="Grandmother" {{ old('relationship', $memorial->relationship) === 'Grandmother' ? 'selected' : '' }}>Grandmother</option>
-                            <option value="Uncle" {{ old('relationship', $memorial->relationship) === 'Uncle' ? 'selected' : '' }}>Uncle</option>
-                            <option value="Aunt" {{ old('relationship', $memorial->relationship) === 'Aunt' ? 'selected' : '' }}>Aunt</option>
-                            <option value="Cousin" {{ old('relationship', $memorial->relationship) === 'Cousin' ? 'selected' : '' }}>Cousin</option>
-                            <option value="Friend" {{ old('relationship', $memorial->relationship) === 'Friend' ? 'selected' : '' }}>Friend</option>
-                            <option value="Other" {{ old('relationship', $memorial->relationship) === 'Other' ? 'selected' : '' }}>Other</option>
-                        </select>
-                    </div>
+                    <x-form.relationship-select
+                        :value="old('relationship', $memorial->relationship)"
+                        :other="old('relationship_other')" />
                 </div>
             </x-common.component-card>
 
@@ -150,26 +129,26 @@
                 <div class="space-y-5" data-section="biography_summary">
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="major_achievements">Major achievements</label>
-                        <textarea id="major_achievements" name="major_achievements" rows="3" placeholder="e.g. Co-founded Apple Inc. with Steve Wozniak in 1976..."
+                        <textarea id="major_achievements" name="major_achievements" rows="3" placeholder="e.g. Built the family business and mentored many young people..."
                             class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden">{{ old('major_achievements', $memorial->major_achievements) }}</textarea>
                     </div>
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="known_for">Known for</label>
                         <input type="text" id="known_for" name="known_for" value="{{ old('known_for', $memorial->known_for) }}"
-                            placeholder="e.g. Co-founding Apple Inc."
+                            placeholder="e.g. Founding the community school"
                             class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                     </div>
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="active_year_start">Active year start</label>
                             <input type="number" id="active_year_start" name="active_year_start" value="{{ old('active_year_start', $memorial->active_year_start) }}"
-                                placeholder="e.g. 1976" min="1900" max="2100"
+                                placeholder="e.g. 1985" min="1900" max="2100"
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         </div>
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="active_year_end">Active year end</label>
                             <input type="number" id="active_year_end" name="active_year_end" value="{{ old('active_year_end', $memorial->active_year_end) }}"
-                                placeholder="e.g. 2011" min="1900" max="2100"
+                                placeholder="e.g. 2015" min="1900" max="2100"
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         </div>
                     </div>
@@ -181,14 +160,14 @@
                             @foreach($companiesData as $i => $company)
                             <div class="flex gap-2 items-center company-row">
                                 <input type="text" name="companies[{{ $i }}][company_name]" value="{{ $company['company_name'] ?? '' }}"
-                                    placeholder="e.g. Apple Inc."
+                                    placeholder="e.g. Business or organisation name"
                                     class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                                 <button type="button" @click="$event.target.closest('.company-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
                             @endforeach
-                            <button type="button" @click="addCompanyRow($refs.companiesContainer)" class="text-sm text-brand-600 hover:text-brand-700">+ Add company</button>
+                            <button type="button" @click="addCompanyRow($refs.companiesContainer)" class="btn btn-link btn-md">+ Add company</button>
                         </div>
                     </div>
 
@@ -199,14 +178,14 @@
                             @foreach($coFoundersData as $i => $founder)
                             <div class="flex gap-2 items-center cofounder-row">
                                 <input type="text" name="co_founders[{{ $i }}][name]" value="{{ $founder['name'] ?? '' }}"
-                                    placeholder="e.g. Steve Wozniak"
+                                    placeholder="e.g. Business partner name"
                                     class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                                 <button type="button" @click="$event.target.closest('.cofounder-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
                             @endforeach
-                            <button type="button" @click="addCoFounderRow($refs.coFoundersContainer)" class="text-sm text-brand-600 hover:text-brand-700">+ Add co-founder</button>
+                            <button type="button" @click="addCoFounderRow($refs.coFoundersContainer)" class="btn btn-link btn-md">+ Add co-founder</button>
                         </div>
                     </div>
                 </div>
@@ -280,7 +259,7 @@
                                 </button>
                             </div>
                             @endforeach
-                            <button type="button" @click="addChildRow($refs.childrenContainer)" class="text-sm text-brand-600 hover:text-brand-700">+ Add child</button>
+                            <button type="button" @click="addChildRow($refs.childrenContainer)" class="btn btn-link btn-md">+ Add child</button>
                         </div>
                     </div>
 
@@ -304,7 +283,7 @@
                                 </div>
                             </div>
                             @endforeach
-                            <button type="button" @click="addSpouseRow($refs.spousesContainer)" class="text-sm text-brand-600 hover:text-brand-700">+ Add spouse</button>
+                            <button type="button" @click="addSpouseRow($refs.spousesContainer)" class="btn btn-link btn-md">+ Add spouse</button>
                         </div>
                     </div>
 
@@ -325,7 +304,7 @@
                                 </button>
                             </div>
                             @endforeach
-                            <button type="button" @click="addParentRow($refs.parentsContainer)" class="text-sm text-brand-600 hover:text-brand-700">+ Add parent</button>
+                            <button type="button" @click="addParentRow($refs.parentsContainer)" class="btn btn-link btn-md">+ Add parent</button>
                         </div>
                     </div>
 
@@ -342,7 +321,7 @@
                                 </button>
                             </div>
                             @endforeach
-                            <button type="button" @click="addSiblingRow($refs.siblingsContainer)" class="text-sm text-brand-600 hover:text-brand-700">+ Add sibling</button>
+                            <button type="button" @click="addSiblingRow($refs.siblingsContainer)" class="btn btn-link btn-md">+ Add sibling</button>
                         </div>
                     </div>
                 </div>
@@ -356,22 +335,22 @@
                     <div class="grid grid-cols-1 gap-2 sm:grid-cols-4 items-end education-row">
                         <div class="sm:col-span-2">
                             <label class="mb-1 block text-xs text-gray-500">Institution</label>
-                            <input type="text" name="education[{{ $i }}][institution_name]" value="{{ $edu['institution_name'] ?? '' }}" placeholder="e.g. Reed College"
+                            <input type="text" name="education[{{ $i }}][institution_name]" value="{{ $edu['institution_name'] ?? '' }}" placeholder="e.g. School or university name"
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div>
                             <label class="mb-1 block text-xs text-gray-500">Start year</label>
-                            <input type="number" name="education[{{ $i }}][start_year]" value="{{ $edu['start_year'] ?? '' }}" placeholder="1972" min="1900" max="2100"
+                            <input type="number" name="education[{{ $i }}][start_year]" value="{{ $edu['start_year'] ?? '' }}" placeholder="1990" min="1900" max="2100"
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div>
                             <label class="mb-1 block text-xs text-gray-500">End year</label>
-                            <input type="number" name="education[{{ $i }}][end_year]" value="{{ $edu['end_year'] ?? '' }}" placeholder="1974" min="1900" max="2100"
+                            <input type="number" name="education[{{ $i }}][end_year]" value="{{ $edu['end_year'] ?? '' }}" placeholder="1994" min="1900" max="2100"
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div class="sm:col-span-2">
                             <label class="mb-1 block text-xs text-gray-500">Degree (optional)</label>
-                            <input type="text" name="education[{{ $i }}][degree]" value="{{ $edu['degree'] ?? '' }}" placeholder="e.g. B.A."
+                            <input type="text" name="education[{{ $i }}][degree]" value="{{ $edu['degree'] ?? '' }}" placeholder="e.g. Diploma"
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div class="flex items-end">
@@ -381,7 +360,7 @@
                         </div>
                     </div>
                     @endforeach
-                    <button type="button" @click="addEducationRow($refs.educationContainer)" class="text-sm text-brand-600 hover:text-brand-700">+ Add education</button>
+                    <button type="button" @click="addEducationRow($refs.educationContainer)" class="btn btn-link btn-md">+ Add education</button>
                 </div>
             </x-common.component-card>
 
@@ -403,7 +382,7 @@
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                 </button>
                                 <button type="button" x-show="previewContent && previewContent.trim()" @click="publishContent(previewContent)" :disabled="publishing"
-                                    class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                                    class="btn btn-primary btn-md">
                                     Publish
                                 </button>
                             </div>
@@ -417,10 +396,10 @@
                             <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Share your memories with text, photos, videos, or documents.</p>
                             <div id="edit-page-biography-editor" class="min-h-[200px] rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900" x-init="$nextTick(() => { window.initEditPageBiographyEditor && window.initEditPageBiographyEditor(contentToLoad); })"></div>
                             <div class="flex gap-2 mt-3">
-                                <button type="button" id="edit-page-biography-publish" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                                <button type="button" id="edit-page-biography-publish" class="btn btn-primary btn-md">
                                     Publish
                                 </button>
-                                <button type="button" @click="showEditor = false; contentToLoad = ''; window.editPageBioQuill = null" class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5">
+                                <button type="button" @click="showEditor = false; contentToLoad = ''; window.editPageBioQuill = null" class="btn btn-secondary btn-md">
                                     Cancel
                                 </button>
                             </div>
@@ -437,7 +416,7 @@
                                 <div class="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 p-4">
                                     <div class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm max-w-none mb-4" x-html="formatBio(opt.text)"></div>
                                     <button type="button" @click="useAiOption(opt.text)"
-                                        class="w-full rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                                        class="btn btn-primary btn-md btn-block w-full">
                                         Use this →
                                     </button>
                                 </div>
@@ -448,20 +427,20 @@
                     {{-- Generate buttons --}}
                     <div class="flex flex-wrap gap-3 pt-2">
                         <button type="button" @click="generateTemplate()" :disabled="templateLoading"
-                            class="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50">
+                            class="btn btn-secondary btn-md disabled:opacity-50">
                             <span x-show="!templateLoading">Generate Bio</span>
                             <span x-show="templateLoading">Generating...</span>
                         </button>
                         <template x-if="aiQuota.enabled">
                             <div>
                                 <button x-show="!aiQuota.allowed || aiQuota.max === 0" type="button" disabled
-                                    class="rounded-lg bg-gray-300 dark:bg-gray-700 px-4 py-2.5 text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                                    class="btn btn-secondary btn-md cursor-not-allowed"
                                     :title="aiQuota.reason || ''">
                                     <span x-show="aiQuota.max === 0">AI Bio (Upgrade Plan)</span>
                                     <span x-show="aiQuota.max > 0" x-text="'AI Bio (0 left)'"></span>
                                 </button>
                                 <button x-show="aiQuota.allowed && aiQuota.max > 0" type="button" @click="generateAI()" :disabled="aiLoading"
-                                    class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">
+                                    class="btn btn-primary btn-md disabled:opacity-50">
                                     <span x-show="!aiLoading">
                                         Generate with AI
                                         <span x-show="aiQuota.max > 0" class="text-xs opacity-75" x-text="'(' + (aiQuota.max - aiQuota.current) + ' left)'"></span>
@@ -495,7 +474,7 @@
                             </span>
                             @if($currentPlan !== 'paid')
                                 <a href="{{ route('pricing') }}"
-                                    class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-600">
+                                    class="btn btn-primary btn-sm">
                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
                                     Upgrade
                                 </a>
@@ -515,13 +494,13 @@
 
             <div class="flex gap-3">
                 <button type="submit" :disabled="savingAll"
-                    class="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 transition-colors"
-                    :class="savedAll ? 'bg-green-500' : 'bg-brand-500 hover:bg-brand-600'">
+                    class="btn btn-primary btn-md disabled:opacity-50"
+                    :class="savedAll ? 'bg-green-500' : ''">
                     <span x-show="!savingAll && !savedAll">Save</span>
                     <span x-show="savingAll">Saving...</span>
                     <span x-show="savedAll && !savingAll">Saved!</span>
                 </button>
-                <a href="{{ route('memorials.index') }}" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <a href="{{ route('memorials.index') }}" class="btn btn-secondary btn-md">
                     Cancel
                 </a>
             </div>
@@ -707,7 +686,7 @@
                     const idx = container.querySelectorAll('.company-row').length;
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center company-row';
-                    div.innerHTML = `<input type="text" name="companies[${idx}][company_name]" placeholder="e.g. Apple Inc." class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                    div.innerHTML = `<input type="text" name="companies[${idx}][company_name]" placeholder="e.g. Business or organisation name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);
@@ -716,7 +695,7 @@
                     const idx = container.querySelectorAll('.cofounder-row').length;
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center cofounder-row';
-                    div.innerHTML = `<input type="text" name="co_founders[${idx}][name]" placeholder="e.g. Steve Wozniak" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                    div.innerHTML = `<input type="text" name="co_founders[${idx}][name]" placeholder="e.g. Business partner name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);
@@ -763,10 +742,10 @@
                     const idx = container.querySelectorAll('.education-row').length;
                     const div = document.createElement('div');
                     div.className = 'grid grid-cols-1 gap-2 sm:grid-cols-4 items-end education-row';
-                    div.innerHTML = `<div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Institution</label><input type="text" name="education[${idx}][institution_name]" placeholder="e.g. Reed College" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
-                        <div><label class="mb-1 block text-xs text-gray-500">Start year</label><input type="number" name="education[${idx}][start_year]" placeholder="1972" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
-                        <div><label class="mb-1 block text-xs text-gray-500">End year</label><input type="number" name="education[${idx}][end_year]" placeholder="1974" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
-                        <div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Degree (optional)</label><input type="text" name="education[${idx}][degree]" placeholder="e.g. B.A." class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
+                    div.innerHTML = `<div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Institution</label><input type="text" name="education[${idx}][institution_name]" placeholder="e.g. School or university name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
+                        <div><label class="mb-1 block text-xs text-gray-500">Start year</label><input type="number" name="education[${idx}][start_year]" placeholder="1990" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
+                        <div><label class="mb-1 block text-xs text-gray-500">End year</label><input type="number" name="education[${idx}][end_year]" placeholder="1994" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
+                        <div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Degree (optional)</label><input type="text" name="education[${idx}][degree]" placeholder="e.g. Diploma" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
                         <div class="flex items-end"><button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div>`;
                     div.querySelector('button').addEventListener('click', () => div.remove());
                     container.insertBefore(div, container.lastElementChild);
@@ -901,43 +880,84 @@
                     .then(r => {
                         if (!r.ok) {
                             return r.json().catch(() => ({})).then(err => {
-                                if (err.current !== undefined) {
-                                    this.aiQuota.current = err.current;
-                                    this.aiQuota.max = err.max;
-                                    this.aiQuota.allowed = (err.remaining ?? 0) > 0;
-                                    this.aiQuota.reason = err.message;
-                                }
+                                this.updateAiQuota(err, err.message);
                                 throw new Error(err.message || 'AI generation failed. Please try again.');
                             });
                         }
                         return r.json();
                     })
                     .then(data => {
-                        if (data.current !== undefined) {
-                            this.aiQuota.current = data.current;
-                            this.aiQuota.max = data.max;
-                            this.aiQuota.allowed = (data.remaining ?? 0) > 0;
-                            if (data.remaining === 0) {
-                                this.aiQuota.reason = 'Limit reached. Please come back tomorrow.';
-                                $toast('warning', 'Limit reached. Please come back tomorrow.');
-                            }
-                        }
-                        const o1 = (data.option_1 ?? '').toString().trim();
-                        const o2 = (data.option_2 ?? '').toString().trim();
-                        const o3 = (data.option_3 ?? '').toString().trim();
-                        if (!o1 && !o2 && !o3) {
-                            $toast('warning', 'No suggestions were generated. Please add more details (name, dates, profession) and try again.');
+                        if (data.status === 'queued' && data.request_id) {
+                            // Generation runs in the background; poll until done.
+                            this.updateAiQuota(data);
+                            this.pollAiStatus(data.request_id, 0);
                             return;
                         }
-                        this.aiProviderName = data.ai_provider || 'AI';
-                        this.aiOptions = [
-                            { text: o1 || 'No content generated for this option.' },
-                            { text: o2 || 'No content generated for this option.' },
-                            { text: o3 || 'No content generated for this option.' }
-                        ];
+                        this.handleAiResult(data);
+                        this.aiLoading = false;
                     })
-                    .catch((e) => $toast('error', e.message || 'Failed to generate AI biography. Please try again.'))
-                    .finally(() => this.aiLoading = false);
+                    .catch((e) => {
+                        $toast('error', e.message || 'Failed to generate AI biography. Please try again.');
+                        this.aiLoading = false;
+                    });
+                },
+                pollAiStatus(requestId, attempt) {
+                    if (!this.aiLoading) return; // cancelled/reset elsewhere — stop polling
+                    if (attempt > 36) { // ~90s at 2.5s per poll
+                        $toast('error', 'Generation is taking longer than expected. Please try again in a moment.');
+                        this.aiLoading = false;
+                        return;
+                    }
+                    setTimeout(() => {
+                        fetch(`/memorials/${this.memorialId}/generate-biography/${requestId}`, {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                        })
+                        .then(r => r.ok ? r.json() : Promise.reject(new Error('status_check_failed')))
+                        .then(state => {
+                            if (state.status === 'completed') {
+                                this.handleAiResult(state);
+                                this.aiLoading = false;
+                            } else if (state.status === 'failed') {
+                                this.updateAiQuota(state, state.message);
+                                $toast('error', state.message || 'AI generation failed. Please try again.');
+                                this.aiLoading = false;
+                            } else {
+                                this.pollAiStatus(requestId, attempt + 1);
+                            }
+                        })
+                        .catch(() => this.pollAiStatus(requestId, attempt + 1)); // transient — retry until cap
+                    }, 2500);
+                },
+                updateAiQuota(data, reason) {
+                    if (data && data.current !== undefined) {
+                        this.aiQuota.current = data.current;
+                        this.aiQuota.max = data.max;
+                        this.aiQuota.allowed = (data.remaining ?? 0) > 0;
+                        if (reason) this.aiQuota.reason = reason;
+                    }
+                },
+                handleAiResult(data) {
+                    this.updateAiQuota(data);
+                    if (data.remaining === 0) {
+                        this.aiQuota.reason = 'Limit reached. Please come back tomorrow.';
+                        $toast('warning', 'Limit reached. Please come back tomorrow.');
+                    }
+                    const o1 = (data.option_1 ?? '').toString().trim();
+                    const o2 = (data.option_2 ?? '').toString().trim();
+                    const o3 = (data.option_3 ?? '').toString().trim();
+                    if (!o1 && !o2 && !o3) {
+                        $toast('warning', 'No suggestions were generated. Please add more details (name, dates, profession) and try again.');
+                        return;
+                    }
+                    this.aiProviderName = data.ai_provider || 'AI';
+                    if (data.fallback_used) {
+                        $toast('info', 'AI was temporarily unavailable — showing template suggestions instead.' + (data.fallback_reason ? ' (' + data.fallback_reason + ')' : ''));
+                    }
+                    this.aiOptions = [
+                        { text: o1 || 'No content generated for this option.' },
+                        { text: o2 || 'No content generated for this option.' },
+                        { text: o3 || 'No content generated for this option.' }
+                    ];
                 }
             };
         }

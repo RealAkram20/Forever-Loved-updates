@@ -11,7 +11,7 @@
                 @endif
                 <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">{{ $props['title'] ?? 'Popular Memorials' }}</h2>
             </div>
-            <a href="{{ $dirUrl }}" class="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition">
+            <a href="{{ $dirUrl }}" class="btn btn-link btn-md hidden sm:inline-flex">
                 {{ $props['view_all_label'] ?? 'View All' }}
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
             </a>
@@ -70,7 +70,7 @@
             </div>
         </div>
 
-        <a href="{{ $dirUrl }}" class="mt-6 sm:hidden inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-400">
+        <a href="{{ $dirUrl }}" class="btn btn-link btn-md mt-6 sm:hidden">
             {{ $props['mobile_view_all_label'] ?? 'View All Memorials' }}
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
         </a>

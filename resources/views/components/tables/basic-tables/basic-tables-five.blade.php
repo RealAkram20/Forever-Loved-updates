@@ -70,7 +70,7 @@
 
         <div class="flex items-center gap-3">
             <button
-                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800"
+                class="btn btn-secondary btn-md"
             >
                 <svg
                     class="stroke-current fill-white"
@@ -112,7 +112,7 @@
             </button>
 
             <button
-                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-theme-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800"
+                class="btn btn-secondary btn-md"
             >
                 See all
             </button>

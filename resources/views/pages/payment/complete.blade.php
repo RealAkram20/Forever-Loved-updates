@@ -47,11 +47,11 @@
 
             <div class="mt-8 flex flex-col gap-3">
                 <a href="{{ $redirect_url }}"
-                    class="inline-flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 transition">
+                    class="btn btn-primary btn-md btn-block w-full">
                     {{ $redirect_label }}
                 </a>
                 <a href="{{ route('home') }}"
-                    class="inline-flex w-full items-center justify-center rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                    class="btn btn-secondary btn-md btn-block w-full">
                     Back to Home
                 </a>
             </div>

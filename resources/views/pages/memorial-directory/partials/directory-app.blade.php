@@ -122,7 +122,7 @@
                 </div>
 
                 <button @click="applyFilters(); if (window.innerWidth < 1024) filtersOpen = false"
-                    class="w-full rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                    class="btn btn-primary btn-md btn-block w-full">
                     Apply filters
                 </button>
             </div>
@@ -133,7 +133,7 @@
     <div class="min-w-0 w-full">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div class="flex items-center gap-2">
-                <button @click="filtersOpen = !filtersOpen" class="lg:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <button @click="filtersOpen = !filtersOpen" class="btn btn-secondary btn-md lg:hidden">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
                     <span x-text="filtersOpen ? 'Hide filters' : 'Filters'"></span>
                 </button>
@@ -229,12 +229,12 @@
 
         <div x-show="!loading && lastPage > 1" class="mt-6 flex justify-center gap-2">
             <button @click="page = Math.max(1, page - 1); fetch()" :disabled="page <= 1"
-                class="rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800">
+                class="btn btn-secondary btn-md disabled:opacity-50 disabled:cursor-not-allowed">
                 Previous
             </button>
             <span class="flex items-center px-4 py-2 text-sm text-gray-500 dark:text-gray-400" x-text="'Page ' + page + ' of ' + lastPage"></span>
             <button @click="page = Math.min(lastPage, page + 1); fetch()" :disabled="page >= lastPage"
-                class="rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800">
+                class="btn btn-secondary btn-md disabled:opacity-50 disabled:cursor-not-allowed">
                 Next
             </button>
         </div>

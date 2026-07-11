@@ -11,6 +11,8 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\UserSubscription;
 use App\Services\NotificationService;
+use App\Services\PaymentResultProcessor;
+use App\Services\PesapalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
@@ -37,44 +39,59 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * Branding keys holding a color. These are interpolated into a <style> block, so they
+     * are validated as literal hex and never as free-form strings.
+     */
+    private const COLOR_KEYS = [
+        'branding.primary_color', 'branding.secondary_color', 'branding.accent_color',
+        'branding.bg_light', 'branding.bg_dark',
+        'branding.primary_light', 'branding.primary_dark',
+        'branding.accent_light', 'branding.accent_dark',
+        'branding.button1_color', 'branding.button1_text_color',
+        'branding.button1_color_dark', 'branding.button1_text_color_dark',
+        'branding.button2_color', 'branding.button2_text_color',
+        'branding.button2_color_dark', 'branding.button2_text_color_dark',
+        'branding.cta_bg_light', 'branding.cta_bg_dark',
+        'branding.cta_btn1_color', 'branding.cta_btn1_text_color',
+        'branding.cta_btn1_color_dark', 'branding.cta_btn1_text_color_dark',
+        'branding.cta_btn2_color', 'branding.cta_btn2_text_color',
+        'branding.cta_btn2_color_dark', 'branding.cta_btn2_text_color_dark',
+    ];
+
     public function updateGeneral(Request $request)
     {
-        $request->validate([
+        $hex = ['nullable', 'string', 'regex:/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/'];
+
+        $rules = [
             'oauth.google_enabled' => 'nullable|in:0,1',
             'oauth.google_client_id' => 'nullable|string|max:512',
             'oauth.google_client_secret' => 'nullable|string|max:512',
             'branding.app_name' => 'required|string|max:100',
             'branding.tagline' => 'nullable|string|max:255',
             'branding.default_theme' => 'required|in:light,dark',
-            'branding.primary_color' => 'required|string|max:20',
-            'branding.secondary_color' => 'required|string|max:20',
-            'branding.accent_color' => 'required|string|max:20',
-            'branding.bg_light' => 'nullable|string|max:20',
-            'branding.bg_dark' => 'nullable|string|max:20',
-            'branding.primary_light' => 'nullable|string|max:20',
-            'branding.primary_dark' => 'nullable|string|max:20',
-            'branding.accent_light' => 'nullable|string|max:20',
-            'branding.accent_dark' => 'nullable|string|max:20',
-            'branding.button1_color' => 'nullable|string|max:20',
-            'branding.button2_color' => 'nullable|string|max:20',
-            'branding.cta_bg_light' => 'nullable|string|max:20',
-            'branding.cta_bg_dark' => 'nullable|string|max:20',
             'logo' => 'nullable|image|max:2048',
             'logo_dark' => 'nullable|image|max:2048',
             'favicon' => 'nullable|image|max:512',
-        ]);
-
-        $colorKeys = [
-            'branding.app_name', 'branding.tagline', 'branding.default_theme',
-            'branding.primary_color', 'branding.secondary_color', 'branding.accent_color',
-            'branding.bg_light', 'branding.bg_dark',
-            'branding.primary_light', 'branding.primary_dark',
-            'branding.accent_light', 'branding.accent_dark',
-            'branding.button1_color', 'branding.button2_color',
-            'branding.cta_bg_light', 'branding.cta_bg_dark',
         ];
 
-        foreach ($colorKeys as $key) {
+        foreach (self::COLOR_KEYS as $key) {
+            $rules[$key] = $hex;
+        }
+        foreach (['branding.primary_color', 'branding.secondary_color', 'branding.accent_color'] as $key) {
+            $rules[$key][0] = 'required';
+        }
+
+        $request->validate($rules, [
+            'regex' => 'The :attribute must be a valid hex color, e.g. #465fff.',
+        ]);
+
+        $keys = array_merge(
+            ['branding.app_name', 'branding.tagline', 'branding.default_theme'],
+            self::COLOR_KEYS
+        );
+
+        foreach ($keys as $key) {
             if ($request->has($key)) {
                 SystemSetting::set($key, $request->input($key));
             }
@@ -257,7 +274,43 @@ class SettingsController extends Controller
             SystemSetting::set('payments.pesapal_consumer_secret', $pesapalSecret);
         }
 
-        return back()->with('success', 'Payment settings updated successfully.');
+        // Pesapal rejects orders without a notification_id, so register the IPN URL as
+        // soon as the credentials are in place rather than leaving checkout broken until
+        // someone pastes an ID by hand.
+        $message = 'Payment settings updated successfully.';
+        if ($request->input('payments.pesapal_enabled') === '1'
+            && empty(trim((string) SystemSetting::get('payments.pesapal_ipn_id', '')))) {
+            $result = (new PesapalService)->registerIpn();
+            $message .= $result['success']
+                ? ' Pesapal IPN registered automatically (ID: '.$result['ipn_id'].').'
+                : ' Pesapal IPN could not be registered: '.$result['error'];
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Register (or re-register) the Pesapal IPN URL and store the returned IPN ID.
+     */
+    public function registerPesapalIpn(Request $request)
+    {
+        $pesapal = new PesapalService;
+        $result = $pesapal->registerIpn();
+
+        if (! $result['success']) {
+            return response()->json([
+                'success' => false,
+                'error' => $result['error'],
+                'ipn_url' => $pesapal->getIpnUrl(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'ipn_id' => $result['ipn_id'],
+            'ipn_url' => $result['url'],
+            'message' => 'IPN registered with Pesapal.',
+        ]);
     }
 
     // ─── Payment Orders (transactions) ──────────────────────────────────
@@ -419,11 +472,19 @@ class SettingsController extends Controller
             'memorial_id' => ['required', 'exists:memorials,id'],
             'subscription_plan_id' => ['required', 'exists:subscription_plans,id'],
             'status' => ['required', 'in:pending,completed,failed,cancelled'],
+            'force_approve' => ['nullable', 'boolean'],
         ]);
 
         $memorial = Memorial::findOrFail($request->memorial_id);
         if ($memorial->user_id != $request->user_id) {
             return back()->with('error', 'Memorial must belong to the selected user.');
+        }
+
+        if ($request->status === 'completed' && $order->status !== 'completed' && ! $request->boolean('force_approve')) {
+            $verificationError = $this->verifyWithPesapal($order);
+            if ($verificationError !== null) {
+                return back()->with('error', $verificationError);
+            }
         }
 
         $order->update([
@@ -455,16 +516,23 @@ class SettingsController extends Controller
             'action' => 'required|in:approve,delete,mark_failed',
             'ids' => 'required|array',
             'ids.*' => 'integer|exists:payment_orders,id',
+            'force_approve' => 'nullable|boolean',
         ]);
 
         $ids = $request->input('ids', []);
         $action = $request->input('action');
+        $forceApprove = $request->boolean('force_approve');
         $orders = PaymentOrder::whereIn('id', $ids)->with(['user', 'plan'])->get();
 
         $count = 0;
+        $skipped = 0;
         foreach ($orders as $order) {
             if ($action === 'approve') {
                 if ($order->status !== 'completed') {
+                    if (! $forceApprove && $this->verifyWithPesapal($order) !== null) {
+                        $skipped++;
+                        continue;
+                    }
                     $order->update(['status' => 'completed']);
                     $this->activateSubscriptionForOrder($order);
                     $count++;
@@ -484,6 +552,9 @@ class SettingsController extends Controller
             'delete' => $count . ' payment(s) deleted.',
             default => 'Done.',
         };
+        if ($skipped > 0) {
+            $message .= " {$skipped} skipped: Pesapal could not confirm payment. Use \"Skip Pesapal verification\" to approve offline payments.";
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => $message]);
@@ -494,54 +565,36 @@ class SettingsController extends Controller
 
     private function activateSubscriptionForOrder(PaymentOrder $order): void
     {
-        $plan = $order->plan;
-        $user = $order->user;
-        $memorial = $order->memorial;
-        if (!$plan || !$user || !$memorial) {
-            return;
+        app(PaymentResultProcessor::class)->activateSubscription($order);
+    }
+
+    /**
+     * Confirm with Pesapal before an admin approval activates a subscription.
+     * Returns an error message when approval should be blocked, or null when
+     * the order is verified or has nothing to verify against (manual/offline).
+     */
+    private function verifyWithPesapal(PaymentOrder $order): ?string
+    {
+        if ($order->payment_gateway !== 'pesapal' || empty($order->order_tracking_id)) {
+            return null;
         }
 
-        $hasActiveSamePlan = UserSubscription::where('memorial_id', $memorial->id)
-            ->where('subscription_plan_id', $plan->id)
-            ->where('status', 'active')
-            ->where(function ($q) {
-                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
-            })
-            ->exists();
-
-        if ($hasActiveSamePlan) {
-            return;
+        $pesapal = app(PesapalService::class);
+        if (! $pesapal->isEnabled()) {
+            return null;
         }
 
-        SubscriptionGuard::expireActiveSubscriptions($memorial);
+        $status = $pesapal->getTransactionStatus($order->order_tracking_id);
+        if ($status === null) {
+            return "Could not reach Pesapal to verify order {$order->merchant_reference}. Try again, or tick \"Skip Pesapal verification\" if this was paid offline.";
+        }
 
-        UserSubscription::where('memorial_id', $memorial->id)
-            ->where('status', 'overdue')
-            ->update(['status' => 'expired']);
+        if (! $pesapal->isPaymentCompleted($status)) {
+            $desc = $status['payment_status_description'] ?? 'not completed';
+            return "Approval blocked: Pesapal reports order {$order->merchant_reference} as \"{$desc}\". Tick \"Skip Pesapal verification\" to override for offline payments.";
+        }
 
-        $startsAt = now();
-        $endsAt = match ($plan->interval ?? 'monthly') {
-            'monthly' => $startsAt->copy()->addMonth(),
-            'yearly' => $startsAt->copy()->addYear(),
-            default => null,
-        };
-
-        $subscription = UserSubscription::create([
-            'user_id' => $user->id,
-            'memorial_id' => $memorial->id,
-            'subscription_plan_id' => $plan->id,
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'status' => 'active',
-            'payment_gateway' => $order->payment_gateway ?? 'pesapal',
-            'payment_reference' => $order->merchant_reference,
-        ]);
-
-        $memorial->update([
-            'plan' => 'paid',
-            'subscription_plan_id' => $plan->id,
-            'user_subscription_id' => $subscription->id,
-        ]);
+        return null;
     }
 
     // ─── SMTP / Email ───────────────────────────────────────────────

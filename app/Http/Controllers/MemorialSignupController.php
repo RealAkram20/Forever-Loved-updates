@@ -49,6 +49,7 @@ class MemorialSignupController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'relationship' => ['nullable', 'string', 'max:255'],
+            'relationship_other' => ['nullable', 'string', 'max:255'],
             'short_description' => ['nullable', 'string', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:255'],
             'primary_profession' => ['nullable', 'string', 'max:255'],
@@ -62,6 +63,12 @@ class MemorialSignupController extends Controller
             'death_state' => ['nullable', 'string', 'max:255'],
             'death_country' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $validated['relationship'] = Memorial::resolveRelationship(
+            $validated['relationship'] ?? null,
+            $validated['relationship_other'] ?? null
+        );
+        unset($validated['relationship_other']);
 
         session([self::SESSION_KEY => array_merge(session(self::SESSION_KEY, []), $validated)]);
 

@@ -25,51 +25,83 @@
 
     <div class="space-y-5 sm:space-y-6">
 
-        {{-- Primary Buttons --}}
-        <x-common.component-card title="Primary Button">
-            <div class="flex items-center gap-5">
-                <x-ui.button size="sm" variant="primary">Button Text</x-ui.button>
-                <x-ui.button size="md" variant="primary">Button Text</x-ui.button>
+        {{-- Variants --}}
+        <x-common.component-card title="Variants">
+            <div class="flex flex-wrap items-center gap-5">
+                <x-ui.button variant="primary">Primary</x-ui.button>
+                <x-ui.button variant="secondary">Secondary</x-ui.button>
+                <x-ui.button variant="danger">Danger</x-ui.button>
+                <x-ui.button variant="danger-soft">Danger Soft</x-ui.button>
+                <x-ui.button variant="ghost">Ghost</x-ui.button>
+                <x-ui.button variant="link">Link</x-ui.button>
             </div>
         </x-common.component-card>
 
-        {{-- Primary Button with Left Icon --}}
-        <x-common.component-card title="Primary Button with Left Icon">
-            <div class="flex items-center gap-5">
+        {{-- Sizes --}}
+        <x-common.component-card title="Sizes">
+            <div class="flex flex-wrap items-center gap-5">
+                <x-ui.button size="sm" variant="primary">Small</x-ui.button>
+                <x-ui.button size="md" variant="primary">Medium</x-ui.button>
+                <x-ui.button size="lg" variant="primary">Large</x-ui.button>
+            </div>
+            <div class="mt-5 flex flex-wrap items-center gap-5">
+                <x-ui.button size="sm" variant="secondary">Small</x-ui.button>
+                <x-ui.button size="md" variant="secondary">Medium</x-ui.button>
+                <x-ui.button size="lg" variant="secondary">Large</x-ui.button>
+            </div>
+        </x-common.component-card>
+
+        {{-- Button with Left Icon --}}
+        <x-common.component-card title="Button with Left Icon">
+            <div class="flex flex-wrap items-center gap-5">
                 <x-ui.button size="sm" variant="primary" :startIcon="$BoxIcon">Button Text</x-ui.button>
                 <x-ui.button size="md" variant="primary" :startIcon="$BoxIcon">Button Text</x-ui.button>
+                <x-ui.button size="md" variant="secondary" :startIcon="$BoxIcon">Button Text</x-ui.button>
             </div>
         </x-common.component-card>
 
-        {{-- Primary Button with Right Icon --}}
-        <x-common.component-card title="Primary Button with Right Icon">
-            <div class="flex items-center gap-5">
+        {{-- Button with Right Icon --}}
+        <x-common.component-card title="Button with Right Icon">
+            <div class="flex flex-wrap items-center gap-5">
                 <x-ui.button size="sm" variant="primary" :endIcon="$BoxIcon">Button Text</x-ui.button>
                 <x-ui.button size="md" variant="primary" :endIcon="$BoxIcon">Button Text</x-ui.button>
+                <x-ui.button size="md" variant="secondary" :endIcon="$BoxIcon">Button Text</x-ui.button>
             </div>
         </x-common.component-card>
 
-        {{-- Outline Buttons --}}
-        <x-common.component-card title="Outline Button">
-            <div class="flex items-center gap-5">
-                <x-ui.button size="sm" variant="outline">Button Text</x-ui.button>
-                <x-ui.button size="md" variant="outline">Button Text</x-ui.button>
+        {{-- Icon Only --}}
+        <x-common.component-card title="Icon Only">
+            <div class="flex flex-wrap items-center gap-5">
+                <x-ui.button size="sm" variant="primary" icon aria-label="Box">{!! $BoxIcon !!}</x-ui.button>
+                <x-ui.button size="md" variant="secondary" icon aria-label="Box">{!! $BoxIcon !!}</x-ui.button>
+                <x-ui.button size="md" variant="danger" icon aria-label="Box">{!! $BoxIcon !!}</x-ui.button>
+                <x-ui.button size="lg" variant="ghost" icon aria-label="Box">{!! $BoxIcon !!}</x-ui.button>
             </div>
         </x-common.component-card>
 
-        {{-- Outline Button with Left Icon --}}
-        <x-common.component-card title="Outline Button with Left Icon">
-            <div class="flex items-center gap-5">
-                <x-ui.button size="sm" variant="outline" :startIcon="$BoxIcon">Button Text</x-ui.button>
-                <x-ui.button size="md" variant="outline" :startIcon="$BoxIcon">Button Text</x-ui.button>
+        {{-- Full Width --}}
+        <x-common.component-card title="Full Width">
+            <div class="space-y-3">
+                <x-ui.button variant="primary" block>Primary Block</x-ui.button>
+                <x-ui.button variant="secondary" block>Secondary Block</x-ui.button>
             </div>
         </x-common.component-card>
 
-        {{-- Outline Button with Right Icon --}}
-        <x-common.component-card title="Outline Button with Right Icon">
-            <div class="flex items-center gap-5">
-                <x-ui.button size="sm" variant="outline" :endIcon="$BoxIcon">Button Text</x-ui.button>
-                <x-ui.button size="md" variant="outline" :endIcon="$BoxIcon">Button Text</x-ui.button>
+        {{-- Disabled --}}
+        <x-common.component-card title="Disabled">
+            <div class="flex flex-wrap items-center gap-5">
+                <x-ui.button variant="primary" disabled>Primary</x-ui.button>
+                <x-ui.button variant="secondary" disabled>Secondary</x-ui.button>
+                <x-ui.button variant="danger" disabled>Danger</x-ui.button>
+            </div>
+        </x-common.component-card>
+
+        {{-- Links --}}
+        <x-common.component-card title="Anchor Buttons">
+            <div class="flex flex-wrap items-center gap-5">
+                <x-ui.button variant="primary" href="#">Primary Link</x-ui.button>
+                <x-ui.button variant="secondary" href="#">Secondary Link</x-ui.button>
+                <x-ui.button variant="link" href="#">Text Link</x-ui.button>
             </div>
         </x-common.component-card>
 

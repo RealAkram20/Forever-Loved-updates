@@ -6,11 +6,11 @@
 @endphp
 
 <header class="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm" x-data="{ mobileOpen: false }">
-    <div class="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 max-w-7xl">
+    <div class="mx-auto flex min-h-16 lg:min-h-[4.5rem] items-center justify-between gap-4 px-4 py-1 sm:px-6 lg:px-8 max-w-7xl">
         {{-- Logo --}}
         <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-2 text-gray-800 dark:text-white/90 hover:text-brand-500">
-            <img class="dark:hidden h-8 w-auto" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="{{ $appName }}" />
-            <img class="hidden dark:block h-8 w-auto" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="{{ $appName }}" />
+            <img class="dark:hidden h-14 lg:h-16 w-auto object-contain" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="{{ $appName }}" />
+            <img class="hidden dark:block h-14 lg:h-16 w-auto object-contain" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="{{ $appName }}" />
         </a>
 
         {{-- Desktop nav --}}
@@ -155,8 +155,8 @@
                     </div>
                 </div>
             @else
-                <a href="{{ route('login') }}" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200 transition">Sign in</a>
-                <a href="{{ route('register') }}" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">Sign up</a>
+                <a href="{{ route('login') }}" class="btn btn-secondary btn-md">Sign in</a>
+                <a href="{{ route('register') }}" class="btn btn-primary btn-md">Sign up</a>
             @endif
         </div>
 
@@ -254,8 +254,8 @@
                 </form>
             @else
                 <div class="pt-2 flex gap-2">
-                    <a href="{{ route('login') }}" class="flex-1 flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">Sign in</a>
-                    <a href="{{ route('register') }}" class="flex-1 flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition">Sign up</a>
+                    <a href="{{ route('login') }}" class="btn btn-secondary btn-md flex-1">Sign in</a>
+                    <a href="{{ route('register') }}" class="btn btn-primary btn-md flex-1">Sign up</a>
                 </div>
             @endif
         </nav>

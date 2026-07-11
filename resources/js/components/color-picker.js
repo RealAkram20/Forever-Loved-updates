@@ -134,6 +134,12 @@ export function registerColorPicker(Alpine) {
         syncHiddenInput() {
             const hidden = this.$refs.hiddenInput;
             if (hidden) hidden.value = this.hex;
+
+            // Setting .value programmatically fires no event, so anything that wants to
+            // react to a color change (e.g. the button preview) needs an explicit signal.
+            window.dispatchEvent(new CustomEvent('color-picker:change', {
+                detail: { name: inputName, hex: this.hex },
+            }));
         },
 
         updateFromHsv() {

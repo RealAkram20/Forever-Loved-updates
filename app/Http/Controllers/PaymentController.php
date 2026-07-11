@@ -8,8 +8,8 @@ use App\Models\Memorial;
 use App\Models\PaymentOrder;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
-use App\Models\UserSubscription;
 use App\Services\NotificationService;
+use App\Services\PaymentResultProcessor;
 use App\Services\PesapalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -43,7 +43,7 @@ class PaymentController extends Controller
                 'plan_id' => ['required', 'exists:subscription_plans,id'],
                 'payment_gateway' => ['nullable', 'string', 'in:manual,pesapal'],
                 'payment_method' => ['nullable', 'string', 'in:mtn,airtel,card'],
-                'phone_number' => ['nullable', 'string', 'max:20'],
+                'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[\d\s()\-]{6,20}$/'],
                 'from_signup' => ['nullable', 'boolean'],
                 'memorial_slug' => ['nullable', 'string', 'max:255'],
                 'memorial_id' => ['nullable', 'integer', 'exists:memorials,id'],
@@ -87,6 +87,29 @@ class PaymentController extends Controller
 
         $currency = SystemSetting::get('payments.currency', 'USD');
         $merchantRef = 'SUB-' . strtoupper(Str::random(8)) . '-' . time();
+
+        // A retry supersedes any earlier unfinished attempt for the same
+        // purchase, so at most one pending order exists per user+memorial+plan
+        // (reconciliation and the resume-payment CTA rely on this).
+        PaymentOrder::where('user_id', $user->id)
+            ->where('memorial_id', $memorial->id)
+            ->where('subscription_plan_id', $plan->id)
+            ->where('status', 'pending')
+            ->get()
+            ->each(fn (PaymentOrder $stale) => $stale->update([
+                'status' => 'cancelled',
+                'metadata' => array_merge($stale->metadata ?? [], ['cancel_reason' => 'superseded']),
+            ]));
+
+        // Manual is an admin-only tool (Settings → Payment Orders). Customers always pay
+        // through the gateway, so a manual request from anyone else is refused rather
+        // than quietly downgraded to a pending order an admin has to chase.
+        if ($gateway === 'manual' && ! $user->hasRole(['admin', 'super-admin'])) {
+            return response()->json([
+                'success' => false,
+                'error' => 'That payment method is not available. Please pay with mobile money or card.',
+            ], 403);
+        }
 
         // Manual: create pending order; admin approves in Settings → Payment Orders
         if ($gateway === 'manual') {
@@ -162,7 +185,7 @@ class PaymentController extends Controller
             $order->update(['status' => 'failed']);
             $errorMsg = $result['error'] ?? 'Payment initiation failed';
             if (str_contains(strtolower($errorMsg), 'ipn')) {
-                $errorMsg = 'IPN not configured. Register your IPN URL in Pesapal dashboard, then add the IPN ID in Admin → Settings → Payments.';
+                $errorMsg = 'IPN not configured. Open Admin → Settings → Payments and click Generate IPN.';
             }
             if (str_contains(strtolower($errorMsg), 'auth')) {
                 $errorMsg = 'Pesapal authentication failed. Check your Consumer Key and Secret in Admin → Settings → Payments.';
@@ -183,6 +206,19 @@ class PaymentController extends Controller
      * Callback URL - Pesapal redirects user here after payment.
      */
     public function callback(Request $request)
+    {
+        // This is a user-facing GET; a gateway outage must show the "still
+        // verifying" page, never a 500.
+        try {
+            return $this->processCallback($request);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('payment.complete', ['result' => 'info', 'message' => 'We could not verify your payment yet. Your order will update automatically once confirmed.']);
+        }
+    }
+
+    private function processCallback(Request $request)
     {
         $orderTrackingId = $request->query('OrderTrackingId');
         $merchantRef = $request->query('OrderMerchantReference');
@@ -281,6 +317,19 @@ class PaymentController extends Controller
      */
     public function ipn(Request $request)
     {
+        // Pesapal retries on our status:500 body; an exception here must not
+        // become an HTTP 500 (some gateways stop retrying on transport errors).
+        try {
+            return $this->processIpn($request);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['orderNotificationType' => 'IPNCHANGE', 'status' => 500], 200);
+        }
+    }
+
+    private function processIpn(Request $request)
+    {
         $orderTrackingId = $request->input('OrderTrackingId') ?? $request->query('OrderTrackingId');
         $merchantRef = $request->input('OrderMerchantReference') ?? $request->query('OrderMerchantReference');
 
@@ -331,46 +380,35 @@ class PaymentController extends Controller
 
     private function processPaymentResult(PaymentOrder $order, array $status, string $source): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
-        $pesapal = app(PesapalService::class);
+        $outcome = app(PaymentResultProcessor::class)->process($order, $status, $source);
 
-        if ($pesapal->isPaymentCompleted($status)) {
-            $memorial = $order->memorial;
-            if (!$memorial || ($memorial->status ?? Memorial::STATUS_ACTIVE) !== Memorial::STATUS_ACTIVE) {
-                $order->update(['status' => 'cancelled']);
-                if ($source === 'callback') {
-                    return redirect()->route('payment.complete', ['result' => 'error', 'message' => 'Payment cancelled: memorial no longer available.']);
-                }
-                return response()->json(['status' => 200], 200);
-            }
-
-            $order->update([
-                'status' => 'completed',
-                'confirmation_code' => $status['confirmation_code'] ?? null,
-            ]);
-
-            $this->activateSubscription($order);
-
-            if ($source === 'callback') {
-                $plan = $order->plan;
-                NotificationService::notifyPaymentMade(
-                    $order->user,
-                    $plan->name,
-                    number_format($order->amount, 2) . ' ' . $order->currency
-                );
-                return $this->redirectToCompletionPage('success', 'Payment successful! Your subscription is now active.', $order);
-            }
-        } elseif ($pesapal->isPaymentFailed($status)) {
-            $order->update(['status' => 'failed']);
-            if ($source === 'callback') {
-                return $this->redirectToCompletionPage('error', 'Payment failed. Please try again.', $order);
-            }
+        if ($source !== 'callback') {
+            return response()->json(['status' => 200], 200);
         }
 
-        if ($source === 'callback') {
-            return $this->redirectToCompletionPage('info', 'Payment is being processed. We will notify you when it is complete.', $order);
+        return match ($outcome) {
+            PaymentResultProcessor::OUTCOME_COMPLETED => $this->completedCallbackResponse($order),
+            // A concurrent IPN/reconciliation completed it first — show success
+            // without re-notifying (matches the pre-existing isCompleted() early return).
+            PaymentResultProcessor::OUTCOME_ALREADY_COMPLETED => $this->redirectToCompletionPage('success', 'Payment successful! Your subscription is now active.', $order),
+            PaymentResultProcessor::OUTCOME_CANCELLED => redirect()->route('payment.complete', ['result' => 'error', 'message' => 'Payment cancelled: memorial no longer available.']),
+            PaymentResultProcessor::OUTCOME_FAILED => $this->redirectToCompletionPage('error', 'Payment failed. Please try again.', $order),
+            default => $this->redirectToCompletionPage('info', 'Payment is being processed. We will notify you when it is complete.', $order),
+        };
+    }
+
+    private function completedCallbackResponse(PaymentOrder $order): \Illuminate\Http\RedirectResponse
+    {
+        $plan = $order->plan;
+        if ($plan && $order->user) {
+            NotificationService::notifyPaymentMade(
+                $order->user,
+                $plan->name,
+                number_format($order->amount, 2) . ' ' . $order->currency
+            );
         }
 
-        return response()->json(['status' => 200], 200);
+        return $this->redirectToCompletionPage('success', 'Payment successful! Your subscription is now active.', $order);
     }
 
     /**
@@ -403,55 +441,4 @@ class PaymentController extends Controller
         return redirect()->route('payment.complete', ['token' => $token]);
     }
 
-    private function activateSubscription(PaymentOrder $order): void
-    {
-        $plan = $order->plan;
-        $user = $order->user;
-        $memorial = $order->memorial;
-        if (!$plan || !$user || !$memorial) {
-            return;
-        }
-
-        $hasActive = UserSubscription::where('memorial_id', $memorial->id)
-            ->where('subscription_plan_id', $plan->id)
-            ->where('status', 'active')
-            ->where(function ($q) {
-                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
-            })
-            ->exists();
-
-        if ($hasActive) {
-            return;
-        }
-
-        SubscriptionGuard::expireActiveSubscriptions($memorial);
-
-        UserSubscription::where('memorial_id', $memorial->id)
-            ->where('status', 'overdue')
-            ->update(['status' => 'expired']);
-
-        $startsAt = now();
-        $endsAt = match ($plan->interval ?? 'monthly') {
-            'monthly' => $startsAt->copy()->addMonth(),
-            'yearly' => $startsAt->copy()->addYear(),
-            default => null,
-        };
-
-        $subscription = UserSubscription::create([
-            'user_id' => $user->id,
-            'memorial_id' => $memorial->id,
-            'subscription_plan_id' => $plan->id,
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'status' => 'active',
-            'payment_gateway' => $order->payment_gateway ?? 'pesapal',
-            'payment_reference' => $order->merchant_reference,
-        ]);
-
-        $memorial->update([
-            'plan' => 'paid',
-            'subscription_plan_id' => $plan->id,
-            'user_subscription_id' => $subscription->id,
-        ]);
-    }
 }

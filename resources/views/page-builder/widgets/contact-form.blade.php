@@ -77,8 +77,8 @@
                     <div class="grid gap-5 sm:grid-cols-2">
                         <div>
                             <label for="pb-contact-name" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Your Name</label>
-                            <input type="text" id="pb-contact-name" name="name" value="{{ old('name') }}" required
-                                   placeholder="John Doe"
+                            <input type="text" id="pb-contact-name" name="name" value="{{ old('name') }}" required autocomplete="name"
+                                   placeholder="Your full name"
                                    class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
                             @error('name')
                                 <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
@@ -87,7 +87,7 @@
                         <div>
                             <label for="pb-contact-email" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
                             <input type="email" id="pb-contact-email" name="email" value="{{ old('email') }}" required
-                                   placeholder="john@example.com"
+                                   placeholder="Your email address"
                                    class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
                             @error('email')
                                 <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
@@ -117,7 +117,7 @@
 
                     <button type="submit"
                             :disabled="sending"
-                            class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50 transition">
+                            class="btn btn-primary btn-lg disabled:opacity-50">
                         <svg x-show="!sending" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                         <svg x-show="sending" x-cloak class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         <span x-show="!sending">{{ $props['button_label'] ?? 'Send Message' }}</span>

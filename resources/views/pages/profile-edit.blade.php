@@ -77,7 +77,7 @@
                             <form method="POST" action="{{ route('profile.photo.remove') }}" class="inline">
                                 @csrf @method('DELETE')
                                 <button type="submit"
-                                    class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                                    class="btn btn-danger-soft btn-sm">
                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
@@ -121,7 +121,7 @@
 
                     <div class="pt-1">
                         <button type="submit"
-                            class="h-11 rounded-lg bg-brand-500 px-6 text-sm font-medium text-white hover:bg-brand-600 transition">
+                            class="btn btn-primary btn-md">
                             Save Changes
                         </button>
                     </div>
@@ -166,7 +166,7 @@
 
                     <div class="pt-1">
                         <button type="submit"
-                            class="h-11 rounded-lg bg-brand-500 px-6 text-sm font-medium text-white hover:bg-brand-600 transition">
+                            class="btn btn-primary btn-md">
                             Save Preferences
                         </button>
                     </div>
@@ -207,7 +207,7 @@
 
                     <div class="pt-1">
                         <button type="submit"
-                            class="h-11 rounded-lg bg-brand-500 px-6 text-sm font-medium text-white hover:bg-brand-600 transition">
+                            class="btn btn-primary btn-md">
                             Update Password
                         </button>
                     </div>
@@ -244,7 +244,7 @@
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Once your account is deleted, all of its resources and data will be permanently removed.</p>
 
             <button @click="confirmDelete = true" x-show="!confirmDelete"
-                class="h-10 rounded-lg border border-red-300 dark:border-red-700 px-5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                class="btn btn-danger-soft btn-md">
                 Delete Account
             </button>
 
@@ -261,11 +261,11 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <button type="submit"
-                        class="h-10 rounded-lg bg-red-600 px-5 text-sm font-medium text-white hover:bg-red-700 transition">
+                        class="btn btn-danger btn-md">
                         Permanently Delete
                     </button>
                     <button type="button" @click="confirmDelete = false"
-                        class="h-10 rounded-lg border border-gray-300 dark:border-gray-700 px-5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                        class="btn btn-secondary btn-md">
                         Cancel
                     </button>
                 </div>

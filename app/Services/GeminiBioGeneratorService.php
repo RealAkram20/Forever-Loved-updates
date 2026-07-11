@@ -32,13 +32,14 @@ class GeminiBioGeneratorService
 
         try {
             $result = $this->callGemini($structuredData);
+            $result = $this->ensureNonEmptyOptions($result, $structuredData);
             if ($cacheKey && config('services.gemini.cache_ttl')) {
                 Cache::put($cacheKey, $result, config('services.gemini.cache_ttl'));
             }
 
             return $result;
         } catch (\Throwable $e) {
-            Log::warning('Gemini bio generation failed, using template fallback', [
+            Log::warning('Gemini bio generation failed; rethrowing for controller-level template fallback', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;
@@ -237,5 +238,30 @@ class GeminiBioGeneratorService
         $place = preg_replace('/\b(\w[\w\s]*),\s*\1\b/i', '$1', $place);
 
         return trim($place, ', ');
+    }
+
+    /** Backfill any empty option from the template result (parity with Claude/OpenAI). */
+    protected function ensureNonEmptyOptions(array $result, array $structuredData): array
+    {
+        $o1 = trim($result['option_1'] ?? '');
+        $o2 = trim($result['option_2'] ?? '');
+        $o3 = trim($result['option_3'] ?? '');
+
+        if ($o1 && $o2 && $o3) {
+            return $result;
+        }
+
+        $template = $this->templateGenerator->generate($structuredData);
+        $base = $template['option_1'] ?? '';
+
+        if (! $base) {
+            return $result;
+        }
+
+        return [
+            'option_1' => $o1 ?: $base,
+            'option_2' => $o2 ?: $base,
+            'option_3' => $o3 ?: $base,
+        ];
     }
 }

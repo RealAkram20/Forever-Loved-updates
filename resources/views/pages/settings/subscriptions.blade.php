@@ -87,7 +87,7 @@
                                     <td class="py-3 text-gray-500 dark:text-gray-400" x-show="!editing">{{ $sub->payment_gateway ?? '-' }}</td>
                                     <td class="py-3" x-show="!editing">
                                         <button type="button" @click="editing = true"
-                                            class="h-8 rounded-md bg-gray-100 dark:bg-gray-800 px-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                                            class="btn btn-secondary btn-sm">
                                             Edit
                                         </button>
                                     </td>
@@ -155,11 +155,11 @@
                                             </div>
                                             <div class="flex gap-2">
                                                 <button type="submit"
-                                                    class="h-9 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 transition">
+                                                    class="btn btn-primary btn-sm">
                                                     Save
                                                 </button>
                                                 <button type="button" @click="editing = false"
-                                                    class="h-9 rounded-lg bg-gray-100 dark:bg-gray-700 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                                    class="btn btn-secondary btn-sm">
                                                     Cancel
                                                 </button>
                                             </div>

@@ -21,8 +21,15 @@ class SocialLoginHelper
         return $id !== '' && $secret !== '';
     }
 
+    /**
+     * Built from APP_URL, not the incoming request: behind a TLS-terminating
+     * proxy the request may look like http://, and Google rejects any
+     * redirect_uri that doesn't exactly match the console registration.
+     */
     public static function googleCallbackUrl(): string
     {
-        return url('/auth/google/callback');
+        $base = rtrim((string) config('app.url'), '/');
+
+        return ($base !== '' ? $base : url('')).'/auth/google/callback';
     }
 }

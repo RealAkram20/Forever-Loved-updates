@@ -15,6 +15,7 @@ import { Calendar } from '@fullcalendar/core';
 
 // Color picker
 import { registerColorPicker } from './components/color-picker';
+import { registerInputGuards } from './components/input-guards';
 
 Alpine.plugin(collapse);
 registerColorPicker(Alpine);
@@ -30,6 +31,7 @@ Alpine.start();
 
 // Initialize components on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    registerInputGuards();
     // Map imports
     if (document.querySelector('#mapOne')) {
         import('./components/map').then(module => module.initMap());

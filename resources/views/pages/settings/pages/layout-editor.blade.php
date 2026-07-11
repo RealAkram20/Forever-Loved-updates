@@ -78,7 +78,7 @@
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <a href="{{ route('settings.pages.index') }}"
-                    class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5">
+                    class="btn btn-secondary btn-md">
                     <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     Pages
                 </a>
@@ -92,19 +92,19 @@
             <div class="flex flex-wrap items-center gap-2">
                 @if (! $isCreateMode)
                     <a href="{{ $page->publicUrl() }}" target="_blank" rel="noopener"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/5">
+                        class="btn btn-secondary btn-md">
                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                         View live
                     </a>
                 @endif
                 <button type="button" @click="seoOpen = true"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/5 transition">
+                    class="btn btn-secondary btn-md">
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3"/></svg>
                     Page details
                 </button>
                 <button type="button" @click="save()"
                     :disabled="saving"
-                    class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50 transition">
+                    class="btn btn-primary btn-md disabled:opacity-50">
                     <span x-show="!saving" x-text="createMode ? 'Create page' : 'Save layout'"></span>
                     <span x-show="saving" x-cloak>Saving…</span>
                 </button>
@@ -322,7 +322,7 @@
                         <div class="mb-1 flex items-center justify-between">
                             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300">Meta description</label>
                             <button type="button" @click="generateMetaDescription()"
-                                class="text-[11px] font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300">
+                                class="btn btn-link btn-sm">
                                 Auto-generate
                             </button>
                         </div>
@@ -360,9 +360,9 @@
                 </div>
                 <div class="border-t border-gray-200 p-4 dark:border-gray-700 flex gap-2 justify-end">
                     <button type="button" @click="seoOpen = false"
-                        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-white/5">Cancel</button>
+                        class="btn btn-secondary btn-md">Cancel</button>
                     <button type="button" @click="saveSeo()" :disabled="seoSaving || createMode"
-                        class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="btn btn-primary btn-md disabled:opacity-50">
                         <span x-show="!seoSaving">Save details</span>
                         <span x-show="seoSaving" x-cloak>Saving…</span>
                     </button>

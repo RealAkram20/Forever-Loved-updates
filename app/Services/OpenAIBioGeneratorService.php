@@ -38,7 +38,7 @@ class OpenAIBioGeneratorService
             }
             return $result;
         } catch (\Throwable $e) {
-            Log::warning('OpenAI bio generation failed, using template fallback', [
+            Log::warning('OpenAI bio generation failed; rethrowing for controller-level template fallback', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;

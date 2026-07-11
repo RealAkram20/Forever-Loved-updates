@@ -35,7 +35,7 @@
 
         <div class="flex flex-wrap items-center gap-3">
             <button type="submit"
-                class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">
+                class="btn btn-primary btn-md">
                 Save &amp; publish
             </button>
         </div>

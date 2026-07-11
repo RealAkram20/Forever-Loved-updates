@@ -15,10 +15,8 @@ use App\Models\Tribute;
 use App\Models\TributeComment;
 use App\Models\User;
 use App\Services\NotificationService;
-use App\Services\SystemMailConfigurator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 
 class MemorialApiController extends Controller
 {
@@ -106,20 +104,13 @@ class MemorialApiController extends Controller
 
                 NotificationService::notifyNewUserSignup($user);
 
-                try {
-                    SystemMailConfigurator::applyFromSettings();
-                    if (SystemMailConfigurator::mailDeliveryConfigured()) {
-                        $setupUrl = route('password.request');
-                        Mail::raw(
-                            "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: ".route('login.passwordless'),
-                            function ($message) use ($guestEmail) {
-                                $message->to($guestEmail)->subject('Welcome to Forever-Loved - Complete your account');
-                            }
-                        );
-                    }
-                } catch (\Exception $e) {
-                    report($e);
-                }
+                $setupUrl = route('password.request');
+                \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
+                    to: $guestEmail,
+                    name: $guestName,
+                    subject: 'Welcome to Forever-Loved - Complete your account',
+                    body: "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: ".route('login.passwordless'),
+                ));
 
                 $userId = $user->id;
                 $guestName = $user->name;
@@ -203,19 +194,12 @@ class MemorialApiController extends Controller
                 'password' => null,
             ]);
 
-            try {
-                SystemMailConfigurator::applyFromSettings();
-                if (SystemMailConfigurator::mailDeliveryConfigured()) {
-                    Mail::raw(
-                        'Welcome to Forever-Loved! You can sign in with a one-time code at: '.route('login.passwordless'),
-                        function ($message) use ($guestEmail) {
-                            $message->to($guestEmail)->subject('Welcome to Forever-Loved');
-                        }
-                    );
-                }
-            } catch (\Exception $e) {
-                report($e);
-            }
+            \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
+                to: $guestEmail,
+                name: $guestName,
+                subject: 'Welcome to Forever-Loved',
+                body: 'Welcome to Forever-Loved! You can sign in with a one-time code at: '.route('login.passwordless'),
+            ));
 
             $userId = $user->id;
         }

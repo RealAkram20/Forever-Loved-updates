@@ -77,7 +77,7 @@
                             <button
                                 type="button"
                                 id="calendar-toolbar-add-event"
-                                class="inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl bg-brand-500 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 sm:w-auto"
+                                class="btn btn-primary btn-md btn-block w-full shrink-0 sm:w-auto"
                             >
                                 Add event
                             </button>
@@ -243,16 +243,16 @@
 
                 <!-- Modal Footer -->
                 <div class="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
-                    <button type="button" class="modal-close-btn flex w-full justify-center rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 sm:w-auto">
+                    <button type="button" class="modal-close-btn btn btn-secondary btn-md flex w-full sm:w-auto">
                         Close
                     </button>
-                    <button type="button" class="btn btn-delete-event hidden bg-error-500 hover:bg-error-600 flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white sm:w-auto" data-fc-event-public-id="">
+                    <button type="button" class="btn btn-delete-event btn-danger btn-md hidden flex w-full sm:w-auto" data-fc-event-public-id="">
                         Delete
                     </button>
-                    <button type="button" class="btn btn-update-event bg-brand-500 hover:bg-brand-600 flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white sm:w-auto" style="display: none;" data-fc-event-public-id="">
+                    <button type="button" class="btn btn-update-event btn-primary btn-md flex w-full sm:w-auto" style="display: none;" data-fc-event-public-id="">
                         Update Changes
                     </button>
-                    <button type="button" class="btn btn-add-event bg-brand-500 hover:bg-brand-600 flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white sm:w-auto">
+                    <button type="button" class="btn btn-add-event btn-primary btn-md flex w-full sm:w-auto">
                         Add Event
                     </button>
                 </div>

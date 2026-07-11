@@ -41,7 +41,7 @@
             </select>
             <p x-show="memorials.length === 0" class="text-sm text-amber-600 dark:text-amber-400">You need to create a memorial first. <a href="{{ route('memorials.create') }}" class="underline">Create memorial</a></p>
             <button type="button" @click="confirmMemorialAndPay()" :disabled="!selectedMemorialId"
-                class="w-full rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                class="btn btn-primary btn-md btn-block w-full disabled:opacity-50">
                 Continue to Payment
             </button>
         </div>

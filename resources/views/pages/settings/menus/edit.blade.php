@@ -64,7 +64,7 @@
                                     New tab
                                 </label>
                             </div>
-                            <button type="submit" class="inline-flex h-9 shrink-0 items-center rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 transition">Save</button>
+                            <button type="submit" class="btn btn-primary btn-sm shrink-0">Save</button>
                         </form>
                         <div class="flex h-9 shrink-0 items-center">
                             <form action="{{ route('settings.menus.items.destroy', $item) }}" method="POST"
@@ -121,7 +121,7 @@
                         New tab
                     </label>
                 </div>
-                <button type="submit" class="inline-flex h-9 shrink-0 items-center rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600 transition">Add link</button>
+                <button type="submit" class="btn btn-primary btn-sm shrink-0">Add link</button>
             </form>
         </x-common.component-card>
     @endforeach

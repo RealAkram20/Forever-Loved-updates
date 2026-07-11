@@ -37,7 +37,7 @@
                                 </div>
 
                                 <div class="mb-4">
-                                    <span class="text-2xl font-bold text-gray-800 dark:text-white/90">{{ $currency ?? 'USD' }} {{ number_format($plan->price, 2) }}</span>
+                                    <span class="text-2xl font-bold text-gray-800 dark:text-white/90">{{ $currency ?? 'USD' }} {{ \App\Helpers\PriceHelper::format($plan->price) }}</span>
                                     <span class="text-sm text-gray-500 dark:text-gray-400">/ {{ $plan->interval }}</span>
                                 </div>
 
@@ -102,7 +102,7 @@
 
                                 <div class="flex gap-2">
                                     <button @click="editing = true"
-                                        class="flex-1 h-9 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                        class="btn btn-secondary btn-sm flex-1">
                                         Edit
                                     </button>
                                     @if (!$plan->subscriptions()->exists())
@@ -110,7 +110,7 @@
                                             onsubmit="return confirm('Delete this plan?')">
                                             @csrf @method('DELETE')
                                             <button type="submit"
-                                                class="h-9 rounded-lg bg-red-50 dark:bg-red-900/20 px-4 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition">
+                                                class="btn btn-danger-soft btn-sm">
                                                 Delete
                                             </button>
                                         </form>
@@ -218,11 +218,11 @@
                                 </div>
                                 <div class="flex gap-2 mt-4">
                                     <button type="submit"
-                                        class="flex-1 h-9 rounded-lg bg-brand-500 text-sm font-medium text-white hover:bg-brand-600 transition">
+                                        class="btn btn-primary btn-sm flex-1">
                                         Save
                                     </button>
                                     <button type="button" @click="editing = false"
-                                        class="h-9 rounded-lg bg-gray-100 dark:bg-gray-700 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                        class="btn btn-secondary btn-sm">
                                         Cancel
                                     </button>
                                 </div>
@@ -345,7 +345,7 @@
                 </div>
                 <div class="mt-6 flex justify-end">
                     <button type="submit"
-                        class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 transition">
+                        class="btn btn-primary btn-md">
                         Create Plan
                     </button>
                 </div>

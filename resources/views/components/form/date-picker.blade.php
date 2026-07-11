@@ -6,17 +6,55 @@
     'placeholder' => 'Select date',
     'name' => null,
     'dateFormat' => 'Y-m-d',
+    'yearMin' => 1900,
+    'yearMax' => null, // defaults to the current year
 ])
 
 <div x-data="{
     flatpickrInstance: null,
+    yearMin: {{ (int) $yearMin }},
+    yearMax: {{ (int) ($yearMax ?? date('Y')) }},
+
+    // Flatpickr only offers a spinner for the year, which is painful for a date of
+    // birth decades back. Swap it for a dropdown covering the whole range.
+    buildYearDropdown(instance) {
+        const monthNav = instance.calendarContainer.querySelector('.flatpickr-current-month');
+        if (!monthNav || monthNav.querySelector('.flatpickr-year-select')) return;
+
+        const select = document.createElement('select');
+        select.className = 'flatpickr-year-select';
+        select.setAttribute('aria-label', 'Year');
+
+        // A stored date can predate the range, so widen it rather than drop the year.
+        const min = Math.min(this.yearMin, instance.currentYear);
+        const max = Math.max(this.yearMax, instance.currentYear);
+        for (let year = max; year >= min; year--) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            select.appendChild(option);
+        }
+        select.value = instance.currentYear;
+
+        select.addEventListener('change', (e) => {
+            instance.changeYear(parseInt(e.target.value, 10));
+        });
+
+        monthNav.appendChild(select);
+        instance.calendarContainer.classList.add('has-year-select');
+    },
+    syncYearDropdown(instance) {
+        const select = instance.calendarContainer.querySelector('.flatpickr-year-select');
+        if (select) select.value = instance.currentYear;
+    },
+
     init() {
         this.$nextTick(() => {
             this.flatpickrInstance = flatpickr(this.$refs.dateInput, {
                 mode: '{{ $mode }}',
                 static: true,
                 disableMobile: true,
-                monthSelectorType: 'static',
+                monthSelectorType: 'dropdown',
                 dateFormat: '{{ $dateFormat }}',
                 defaultDate: {{ $defaultDate ? (is_array($defaultDate) ? json_encode($defaultDate) : "'" . $defaultDate . "'") : 'null' }},
                 onChange: (selectedDates, dateStr, instance) => {
@@ -27,7 +65,11 @@
                     });
                     this.$refs.dateInput.dispatchEvent(new Event('change', { bubbles: true }));
                 },
+                onYearChange: (selectedDates, dateStr, instance) => this.syncYearDropdown(instance),
+                onMonthChange: (selectedDates, dateStr, instance) => this.syncYearDropdown(instance),
                 onReady: (selectedDates, dateStr, instance) => {
+                    this.buildYearDropdown(instance);
+
                     const calendarContainer = instance.calendarContainer;
                     if (calendarContainer.querySelector('.flatpickr-today-button')) return;
                     const todayBtn = document.createElement('button');

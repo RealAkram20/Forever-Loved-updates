@@ -40,7 +40,7 @@
                 </div>
             </div>
 
-            <button class="edit-button" @click="$dispatch('open-profile-info-modal')">
+            <button class="btn btn-secondary btn-md" @click="$dispatch('open-profile-info-modal')">
                 <svg class="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none"
                     xmlns="http://www.w3.org/2000/svg">
                     <path fill-rule="evenodd" clip-rule="evenodd"

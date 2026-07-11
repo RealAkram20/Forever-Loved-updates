@@ -48,7 +48,7 @@
                     <p class="text-sm text-gray-500 dark:text-gray-400">Public URL</p>
                     <p class="font-mono text-sm text-gray-800 dark:text-white/90">/{{ $memorial->slug }}</p>
                     @if ($memorial->is_public)
-                        <a href="{{ route('memorial.public', $memorial->slug) }}" target="_blank" class="mt-2 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                        <a href="{{ route('memorial.public', $memorial->slug) }}" target="_blank" class="btn btn-primary btn-md mt-2">
                             View Public Page
                         </a>
                     @endif

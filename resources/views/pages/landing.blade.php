@@ -15,15 +15,15 @@
                         Create beautiful, lasting memorials for those who have passed. Share memories, collect tributes from family and friends, and keep their legacy alive.
                     </p>
                     <div class="flex flex-wrap gap-4">
-                        <a href="{{ route('memorial.create.step1') }}" class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-6 py-3 text-sm font-medium text-white shadow-theme-sm hover:bg-brand-600">
+                        <a href="{{ route('memorial.create.step1') }}" class="btn btn-primary btn-lg">
                             Create a Memorial
                         </a>
                         @auth
-                            <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <a href="{{ route('dashboard') }}" class="btn btn-secondary btn-lg">
                                 Go to Dashboard
                             </a>
                         @else
-                            <a href="{{ route('login') }}" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <a href="{{ route('login') }}" class="btn btn-secondary btn-lg">
                                 Sign In
                             </a>
                         @endauth

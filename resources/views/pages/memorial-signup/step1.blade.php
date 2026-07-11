@@ -17,14 +17,18 @@
                         <span class="rounded-full bg-brand-500 px-3 py-1 text-xs font-medium text-white">Step 1 of 3</span>
                         <span class="text-sm text-gray-500 dark:text-gray-400">Deceased details</span>
                     </div>
-                    <h1 class="text-title-sm sm:text-title-md mb-2 font-semibold text-gray-800 dark:text-white">This memorial is dedicated to</h1>
-                    <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">Share information about your loved one. You can update this later.</p>
+                    <h1 class="text-title-sm sm:text-title-md mb-2 font-semibold text-gray-800 dark:text-white">
+                        This memorial is dedicated to<template x-if="hasName"><span> <span class="font-bold" x-text="fullName"></span></span></template>
+                    </h1>
+                    <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">Share information about <span :class="hasName && 'font-bold text-base'" x-text="displayName"></span>. You can update this later.</p>
 
                     @if (session('error'))
                         <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{{ session('error') }}</div>
                     @endif
-                    @if ($errors->any())
-                        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{{ $errors->first() }}</div>
+                    {{-- Field errors render inline below their inputs; the banner covers everything else --}}
+                    @php $inlineErrorFields = ['first_name', 'last_name', 'date_of_birth', 'date_of_passing']; @endphp
+                    @if ($errors->any() && collect($errors->keys())->diff($inlineErrorFields)->isNotEmpty())
+                        <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">{{ $errors->first(collect($errors->keys())->diff($inlineErrorFields)->first()) }}</div>
                     @endif
 
                     <form id="step1-form" method="POST" action="{{ route('memorial.create.storeStep1') }}" class="space-y-6" @input="saveToStorage()" @change="saveToStorage()">
@@ -34,11 +38,13 @@
                                 <div>
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="first_name">First name</label>
                                     <input type="text" id="first_name" name="first_name" value="{{ old('first_name', $data['first_name'] ?? '') }}" required
+                                        @input="firstName = $event.target.value"
                                         class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                                 <div>
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="last_name">Last name</label>
                                     <input type="text" id="last_name" name="last_name" value="{{ old('last_name', $data['last_name'] ?? '') }}" required
+                                        @input="lastName = $event.target.value"
                                         class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                                 <div>
@@ -64,37 +70,17 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="relationship">Relationship</label>
-                                @php $relVal = old('relationship', $data['relationship'] ?? ''); @endphp
-                                <select id="relationship" name="relationship" class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:ring-3 focus:outline-hidden">
-                                    <option value="">— Select relationship —</option>
-                                    <option value="Father" {{ $relVal === 'Father' ? 'selected' : '' }}>Father</option>
-                                    <option value="Mother" {{ $relVal === 'Mother' ? 'selected' : '' }}>Mother</option>
-                                    <option value="Spouse" {{ $relVal === 'Spouse' ? 'selected' : '' }}>Spouse</option>
-                                    <option value="Husband" {{ $relVal === 'Husband' ? 'selected' : '' }}>Husband</option>
-                                    <option value="Wife" {{ $relVal === 'Wife' ? 'selected' : '' }}>Wife</option>
-                                    <option value="Child" {{ $relVal === 'Child' ? 'selected' : '' }}>Child</option>
-                                    <option value="Son" {{ $relVal === 'Son' ? 'selected' : '' }}>Son</option>
-                                    <option value="Daughter" {{ $relVal === 'Daughter' ? 'selected' : '' }}>Daughter</option>
-                                    <option value="Brother" {{ $relVal === 'Brother' ? 'selected' : '' }}>Brother</option>
-                                    <option value="Sister" {{ $relVal === 'Sister' ? 'selected' : '' }}>Sister</option>
-                                    <option value="Grandparent" {{ $relVal === 'Grandparent' ? 'selected' : '' }}>Grandparent</option>
-                                    <option value="Grandfather" {{ $relVal === 'Grandfather' ? 'selected' : '' }}>Grandfather</option>
-                                    <option value="Grandmother" {{ $relVal === 'Grandmother' ? 'selected' : '' }}>Grandmother</option>
-                                    <option value="Uncle" {{ $relVal === 'Uncle' ? 'selected' : '' }}>Uncle</option>
-                                    <option value="Aunt" {{ $relVal === 'Aunt' ? 'selected' : '' }}>Aunt</option>
-                                    <option value="Cousin" {{ $relVal === 'Cousin' ? 'selected' : '' }}>Cousin</option>
-                                    <option value="Friend" {{ $relVal === 'Friend' ? 'selected' : '' }}>Friend</option>
-                                    <option value="Other" {{ $relVal === 'Other' ? 'selected' : '' }}>Other</option>
-                                </select>
-                            </div>
+                            <x-form.relationship-select
+                                :value="old('relationship', $data['relationship'] ?? '')"
+                                :other="old('relationship_other', $data['relationship_other'] ?? '')" />
                         </div>
 
                         {{-- Do it later #1: Dates & location --}}
                         <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
                             <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Dates & location:</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    When and where <span :class="hasName && 'font-bold text-base'" x-text="displayName"></span> was born and passed away:
+                                </p>
                                 <label class="flex cursor-pointer items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                                     <div class="relative">
                                         <input type="checkbox" class="sr-only" x-model="doDatesLater" @change="saveToStorage()" />
@@ -149,7 +135,10 @@
                         {{-- Do it later #2: Profile enrichment --}}
                         <div class="rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
                             <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Help us generate a richer memorial profile:</p>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Tell us more about <span :class="hasName && 'font-bold text-base'" x-text="displayName"></span></p>
+                                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">This helps us generate a richer memorial profile.</p>
+                                </div>
                                 <label class="flex cursor-pointer items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                                     <div class="relative">
                                         <input type="checkbox" class="sr-only" x-model="doProfileLater" @change="saveToStorage()" />
@@ -161,9 +150,9 @@
                             </div>
                             <div class="space-y-5" x-show="!doProfileLater" x-collapse>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="short_description">Short description</label>
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="short_description">Short description of <span :class="hasName && 'font-bold text-base'" x-text="displayName"></span></label>
                                     <input type="text" id="short_description" name="short_description" value="{{ old('short_description', $data['short_description'] ?? '') }}"
-                                        placeholder="e.g. American businessman, co-inventor, investor"
+                                        placeholder="e.g. Loving mother, teacher, community leader"
                                         class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                 </div>
                                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -176,19 +165,19 @@
                                     <div>
                                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="primary_profession">Primary profession</label>
                                         <input type="text" id="primary_profession" name="primary_profession" value="{{ old('primary_profession', $data['primary_profession'] ?? '') }}"
-                                            placeholder="e.g. Entrepreneur"
+                                            placeholder="e.g. Teacher"
                                             class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="major_achievements">Major achievements</label>
-                                    <textarea id="major_achievements" name="major_achievements" rows="3" placeholder="e.g. Co-founded Apple Inc. with Steve Wozniak in 1976..."
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="major_achievements">Major achievements of <span :class="hasName && 'font-bold text-base'" x-text="displayName"></span></label>
+                                    <textarea id="major_achievements" name="major_achievements" rows="3" placeholder="e.g. Built the family business and mentored many young people..."
                                         class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden">{{ old('major_achievements', $data['major_achievements'] ?? '') }}</textarea>
                                 </div>
                             </div>
                         </div>
 
-                        <button type="submit" class="mt-2 w-full rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600">
+                        <button type="submit" class="btn btn-primary btn-md btn-block w-full mt-2">
                             Continue
                         </button>
                     </form>
@@ -208,15 +197,39 @@ function step1Persist(serverData) {
         doProfileLater: false,
         doDatesLater: false,
         saveTimeout: null,
+        firstName: '',
+        lastName: '',
+
+        // The page speaks about the deceased by name as soon as one is typed, and
+        // falls back to a gentle phrase before that.
+        get fullName() {
+            return [this.firstName.trim(), this.lastName.trim()].filter(Boolean).join(' ');
+        },
+        get hasName() {
+            return this.firstName.trim() !== '';
+        },
+        get displayName() {
+            return this.firstName.trim() || 'your loved one';
+        },
+
+        readNames() {
+            const form = document.getElementById('step1-form');
+            if (!form) return;
+            this.firstName = form.querySelector('[name="first_name"]')?.value ?? '';
+            this.lastName = form.querySelector('[name="last_name"]')?.value ?? '';
+        },
 
         init() {
+            this.readNames();
+
+            // Storage is cleared on submit, so anything still saved was typed after the
+            // last submit and is newer than what the server rendered — restore it even
+            // when the session already holds step 1 data.
             const saved = this.getSaved();
-            const hasServerData = this.serverData && this.serverData.first_name;
-            if (saved && !hasServerData) {
-                this.restoreForm(saved);
+            if (saved) {
+                // Wait for nested components (the relationship select) to bind first.
+                this.$nextTick(() => this.restoreForm(saved));
             }
-            if (saved && (saved.doDatesLater !== undefined)) this.doDatesLater = !!saved.doDatesLater;
-            if (saved && (saved.doProfileLater !== undefined)) this.doProfileLater = !!saved.doProfileLater;
 
             const form = document.getElementById('step1-form');
             if (form) {
@@ -286,10 +299,13 @@ function step1Persist(serverData) {
                 } else {
                     el.value = value || '';
                 }
+                // Alpine-bound fields (the relationship select) only track values that
+                // arrive through an event, not ones assigned straight to .value.
+                el.dispatchEvent(new Event('change', { bubbles: true }));
             }
             this.doDatesLater = !!saved.doDatesLater;
             this.doProfileLater = !!saved.doProfileLater;
-            form.dispatchEvent(new Event('change', { bubbles: true }));
+            this.readNames();
             setTimeout(() => this.restoreLocationFields(saved), 0);
         },
 

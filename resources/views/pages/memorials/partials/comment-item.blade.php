@@ -25,10 +25,10 @@
         <p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">{{ $comment->content }}</p>
         <div class="mt-1.5 flex items-center gap-3">
             @if (!$isReply && isset($postId))
-                <button type="button" data-reply-to data-comment-id="{{ $comment->id }}" data-post-id="{{ $postId }}" class="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition">Reply</button>
+                <button type="button" data-reply-to data-comment-id="{{ $comment->id }}" data-post-id="{{ $postId }}" class="btn btn-link btn-sm">Reply</button>
             @endif
             @if ($canDelete)
-                <button type="button" data-delete-comment data-comment-id="{{ $comment->id }}" data-post-id="{{ $postId }}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition">Delete</button>
+                <button type="button" data-delete-comment data-comment-id="{{ $comment->id }}" data-post-id="{{ $postId }}" class="btn btn-danger-soft btn-sm">Delete</button>
             @endif
         </div>
 
@@ -39,7 +39,7 @@
                         <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                     </div>
                     <input type="text" data-reply-input="{{ $comment->id }}" placeholder="Write a reply..." class="h-9 min-w-0 flex-1 basis-40 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-                    <button type="button" data-reply-submit data-comment-id="{{ $comment->id }}" data-post-id="{{ $postId }}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 text-xs font-semibold text-white hover:bg-brand-600 transition active:scale-95">Reply</button>
+                    <button type="button" data-reply-submit data-comment-id="{{ $comment->id }}" data-post-id="{{ $postId }}" class="btn btn-primary btn-sm rounded-full shrink-0 active:scale-95">Reply</button>
                 </div>
             </div>
         @endif

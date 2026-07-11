@@ -26,9 +26,25 @@ class SystemSetting extends Model
         'branding.accent_light' => ['value' => '#f59e0b', 'type' => 'string', 'group' => 'branding'],
         'branding.accent_dark' => ['value' => '#f59e0b', 'type' => 'string', 'group' => 'branding'],
         'branding.button1_color' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
+        'branding.button1_text_color' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
+        'branding.button1_color_dark' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
+        'branding.button1_text_color_dark' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
         'branding.button2_color' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
+        'branding.button2_text_color' => ['value' => '#374151', 'type' => 'string', 'group' => 'branding'],
+        'branding.button2_color_dark' => ['value' => '#1f2937', 'type' => 'string', 'group' => 'branding'],
+        'branding.button2_text_color_dark' => ['value' => '#d1d5db', 'type' => 'string', 'group' => 'branding'],
         'branding.cta_bg_light' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
         'branding.cta_bg_dark' => ['value' => '#3641f5', 'type' => 'string', 'group' => 'branding'],
+        // The CTA banner sits on its own colored background, so its two buttons are styled
+        // independently of the site-wide primary/secondary pair.
+        'branding.cta_btn1_color' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_btn1_text_color' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_btn1_color_dark' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_btn1_text_color_dark' => ['value' => '#1e3a5f', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_btn2_color' => ['value' => '#3641f5', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_btn2_text_color' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_btn2_color_dark' => ['value' => '#1e3a5f', 'type' => 'string', 'group' => 'branding'],
+        'branding.cta_btn2_text_color_dark' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
         'branding.default_theme' => ['value' => 'light', 'type' => 'string', 'group' => 'branding'],
 
         // OAuth (Google sign-in — credentials can also be set via .env)
@@ -92,13 +108,19 @@ class SystemSetting extends Model
     public static function set(string $key, mixed $value, ?string $group = null, ?string $type = null): void
     {
         $defaults = static::$defaults[$key] ?? null;
+        $resolvedType = $type ?? $defaults['type'] ?? 'string';
+
+        $stored = (string) $value;
+        if ($resolvedType === 'encrypted' && $stored !== '') {
+            $stored = \Illuminate\Support\Facades\Crypt::encryptString($stored);
+        }
 
         static::updateOrCreate(
             ['key' => $key],
             [
-                'value' => (string) $value,
+                'value' => $stored,
                 'group' => $group ?? $defaults['group'] ?? 'general',
-                'type' => $type ?? $defaults['type'] ?? 'string',
+                'type' => $resolvedType,
             ]
         );
 
@@ -144,9 +166,37 @@ class SystemSetting extends Model
             'integer' => (int) $value,
             'float' => (float) $value,
             'json' => json_decode($value, true),
-            'encrypted' => $value,
+            'encrypted' => static::decryptValue($value),
             default => $value,
         };
+    }
+
+    /**
+     * Secrets are encrypted at rest. Legacy rows saved before encryption are
+     * plaintext — return those as-is. Ciphertext that no longer decrypts
+     * (APP_KEY changed) is treated as unset so features cleanly disable
+     * instead of erroring mid-flow; the admin just re-saves the secret.
+     */
+    private static function decryptValue(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+        } catch (\Throwable) {
+            $decoded = json_decode(base64_decode($value, true) ?: '', true);
+            $looksEncrypted = is_array($decoded) && isset($decoded['iv'], $decoded['value'], $decoded['mac']);
+
+            if ($looksEncrypted) {
+                \Illuminate\Support\Facades\Log::warning('System setting secret could not be decrypted (APP_KEY changed?) — treating as unset. Re-save it in admin settings.');
+
+                return '';
+            }
+
+            return $value; // legacy plaintext value
+        }
     }
 
     public static function getDefaults(): array

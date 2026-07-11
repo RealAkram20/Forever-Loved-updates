@@ -23,7 +23,7 @@
         x-init="init(); initCheckoutFromSignup()">
         {{-- Create Payment --}}
         @if ($paymentsEnabled && $plans->where('price', '>', 0)->isNotEmpty() && $memorials->isNotEmpty())
-            <x-common.component-card title="Create Payment" desc="Select a memorial, choose a plan, and pay. Pesapal: payment popup opens. Manual: admin will process your request." id="create-payment-section">
+            <x-common.component-card title="Create Payment" desc="Select a memorial, choose a plan, and pay by mobile money or card. A secure payment window will open." id="create-payment-section">
                 <div x-data="createPaymentForm({{ $pesapalEnabled ? 'true' : 'false' }})" x-init="init()">
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -43,24 +43,26 @@
                                     class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden">
                                     <option value="">Select plan...</option>
                                     @foreach ($plans->where('price', '>', 0) as $p)
-                                        <option value="{{ $p->id }}" data-name="{{ addslashes($p->name) }}" data-price="{{ $p->price }}" data-interval="{{ $p->interval }}">{{ $p->name }} - {{ $currency ?? 'USD' }} {{ number_format($p->price, 2) }}/{{ $p->interval }}</option>
+                                        <option value="{{ $p->id }}" data-name="{{ addslashes($p->name) }}" data-price="{{ $p->price }}" data-interval="{{ $p->interval }}">{{ $p->name }} - {{ $currency ?? 'USD' }} {{ \App\Helpers\PriceHelper::format($p->price) }}/{{ $p->interval }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div>
-                                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Gateway</label>
-                                <select x-model="gateway"
-                                    class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden">
-                                    @if ($pesapalEnabled)
-                                        <option value="pesapal">Pesapal (Mobile Money, Card)</option>
-                                    @endif
-                                    <option value="manual">Manual (Admin will process)</option>
-                                </select>
+                                <p class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Payment method</p>
+                                @if ($pesapalEnabled)
+                                    <div class="flex h-11 w-full items-center rounded-lg border border-gray-300 bg-gray-50 px-4 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white/90">
+                                        Mobile Money (MTN, Airtel), Visa, MasterCard etc
+                                    </div>
+                                @else
+                                    <div class="flex h-11 w-full items-center rounded-lg border border-gray-300 bg-gray-50 px-4 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                                        Online payments are temporarily unavailable
+                                    </div>
+                                @endif
                             </div>
                         </div>
                         <div x-show="createError" class="rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400" x-text="createError" x-cloak></div>
                         <button type="button" @click="proceedToPayment()" :disabled="submitting"
-                            class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            class="btn btn-primary btn-md disabled:opacity-50">
                             <svg x-show="submitting" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                             <svg x-show="!submitting" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                             <span x-text="submitting ? 'Processing...' : 'Proceed to Payment'"></span>
@@ -77,7 +79,7 @@
                         <div class="relative w-full max-w-lg rounded-2xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
                             @click.stop>
                             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Complete Payment (Pesapal)</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Complete Payment</h3>
                                 <button type="button" @click="closePesapal()"
                                     class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -92,7 +94,7 @@
                                         <p class="text-sm">Redirecting to payment...</p>
                                     </div>
                                 </div>
-                                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Pay by card or mobile money. You will be redirected when complete.</p>
+                                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Pay with Mobile Money (MTN, Airtel), Visa, MasterCard etc. You will be redirected when complete.</p>
                             </div>
                         </div>
                     </div>
@@ -101,7 +103,7 @@
         @elseif ($memorials->isEmpty() && $paymentsEnabled)
             <x-common.component-card title="Create Payment" desc="Create a memorial first to subscribe.">
                 <p class="text-sm text-gray-600 dark:text-gray-400">You need at least one memorial to make a payment.</p>
-                <a href="{{ route('memorials.create') }}" class="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition">
+                <a href="{{ route('memorials.create') }}" class="btn btn-primary btn-md mt-3">
                     Create Memorial
                 </a>
             </x-common.component-card>
@@ -145,7 +147,7 @@
                                     <div class="flex-shrink-0">
                                         <button type="button"
                                             @click="$refs.createMemorial && ($refs.createMemorial.value = '{{ $sub->memorial_id }}'); $refs.createPlan && ($refs.createPlan.value = '{{ $sub->subscription_plan_id }}'); document.querySelector('#create-payment-section')?.scrollIntoView({behavior: 'smooth'})"
-                                            class="inline-flex items-center gap-2 rounded-lg {{ $sub->isOverdue() ? 'bg-red-500 hover:bg-red-600' : 'bg-yellow-500 hover:bg-yellow-600' }} px-4 py-2 text-sm font-medium text-white transition">
+                                            class="btn btn-md {{ $sub->isOverdue() ? 'btn-danger' : 'btn-primary' }}">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                             Renew Now
                                         </button>
@@ -163,7 +165,7 @@
             @if (auth()->user()?->hasRole(['admin', 'super-admin']))
                 <div class="mb-4">
                     <a href="{{ route('settings.payment-orders') }}"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition">
+                        class="btn btn-secondary btn-md">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                         View all orders (Admin)
                     </a>
@@ -195,7 +197,7 @@
                                         @endif
                                     </td>
                                     <td class="py-3 text-gray-800 dark:text-white/90 hidden md:table-cell">{{ $payment->plan->name ?? 'N/A' }}</td>
-                                    <td class="py-3 text-gray-800 dark:text-white/90">{{ number_format($payment->amount, 2) }} {{ $payment->currency }}</td>
+                                    <td class="py-3 text-gray-800 dark:text-white/90">{{ \App\Helpers\PriceHelper::format($payment->amount) }} {{ $payment->currency }}</td>
                                     <td class="py-3">
                                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
                                             {{ $payment->status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : '' }}
@@ -223,7 +225,9 @@ function createPaymentForm(pesapalEnabled = true) {
     return {
         memorialId: '',
         planId: '',
-        gateway: pesapalEnabled ? 'pesapal' : 'manual',
+        // Pesapal is the only customer-facing gateway; manual orders are an admin tool.
+        gateway: 'pesapal',
+        pesapalEnabled: !!pesapalEnabled,
         submitting: false,
         pesapalOpen: false,
         pesapalError: null,
@@ -243,6 +247,10 @@ function createPaymentForm(pesapalEnabled = true) {
         async proceedToPayment() {
             if (!this.memorialId || !this.planId) {
                 this.createError = 'Please select a memorial and plan.';
+                return;
+            }
+            if (!this.pesapalEnabled) {
+                this.createError = 'Online payments are temporarily unavailable. Please contact us to arrange payment.';
                 return;
             }
             this.createError = null;
@@ -318,7 +326,9 @@ function subscriptionPage(checkoutPlan = null, fromSignup = false, memorialSlug 
         memorials: memorials || [],
         needsMemorialSelection: false,
         selectedMemorialId: '',
-        createGateway: pesapalEnabled ? 'pesapal' : 'manual',
+        // Pesapal is the only customer-facing gateway; manual orders are an admin tool.
+        createGateway: 'pesapal',
+        pesapalEnabled: !!pesapalEnabled,
 
         initCheckoutFromSignup() {
             if (this.checkoutPlan && this.fromSignup) {
@@ -403,6 +413,11 @@ function subscriptionPage(checkoutPlan = null, fromSignup = false, memorialSlug 
             if (!this.selectedPlan) return;
             if (!this.memorialSlug && !this.selectedMemorialId) {
                 this.error = 'Please select a memorial.';
+                this.loading = false;
+                return;
+            }
+            if (!this.pesapalEnabled) {
+                this.error = 'Online payments are temporarily unavailable. Please contact us to arrange payment.';
                 this.loading = false;
                 return;
             }

@@ -15,17 +15,17 @@
     <div class="flex flex-wrap items-center gap-2 mt-1">
         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $comment->created_at->diffForHumans() }}</p>
         @if (!$isReply && isset($tributeId))
-            <button type="button" data-tribute-reply-to data-comment-id="{{ $comment->id }}" data-tribute-id="{{ $tributeId }}" class="text-xs text-brand-500 hover:text-brand-600 dark:hover:text-brand-400">Reply</button>
+            <button type="button" data-tribute-reply-to data-comment-id="{{ $comment->id }}" data-tribute-id="{{ $tributeId }}" class="btn btn-link btn-sm">Reply</button>
         @endif
         @if ($canDelete && isset($tributeId))
-            <button type="button" data-delete-tribute-comment data-comment-id="{{ $comment->id }}" data-tribute-id="{{ $tributeId }}" class="text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400">Delete</button>
+            <button type="button" data-delete-tribute-comment data-comment-id="{{ $comment->id }}" data-tribute-id="{{ $tributeId }}" class="btn btn-danger-soft btn-sm">Delete</button>
         @endif
     </div>
     @if (!$isReply && isset($tributeId))
         <div data-tribute-reply-form="{{ $comment->id }}" class="mt-2 hidden">
             <div class="flex flex-wrap items-center gap-2">
                 <input type="text" data-tribute-reply-input="{{ $comment->id }}" placeholder="Write a reply..." class="h-9 min-w-0 flex-1 basis-36 rounded-full border border-gray-300 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
-                <button type="button" data-tribute-reply-submit data-comment-id="{{ $comment->id }}" data-tribute-id="{{ $tributeId }}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 text-xs font-semibold text-white transition hover:bg-brand-600 active:scale-95 sm:text-sm">Post</button>
+                <button type="button" data-tribute-reply-submit data-comment-id="{{ $comment->id }}" data-tribute-id="{{ $tributeId }}" class="btn btn-primary btn-sm rounded-full shrink-0 active:scale-95">Post</button>
             </div>
         </div>
     @endif

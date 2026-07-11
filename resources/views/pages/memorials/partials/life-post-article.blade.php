@@ -37,7 +37,7 @@
                             <div class="mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none break-words">{!! \App\Helpers\HtmlHelper::sanitize($post->content) !!}</div>
                         @endif
                     </div>
-                    <button type="button" @click="expanded = !expanded" class="mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
+                    <button type="button" @click="expanded = !expanded" class="btn btn-link btn-sm mt-1.5">
                         <span x-text="expanded ? 'Show less' : 'Read all'"></span>
                     </button>
                 </div>
@@ -80,9 +80,9 @@
                     <div id="post-editor-{{ $post->id }}" class="min-h-[120px] rounded-lg border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"></div>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <button type="button" data-post-save="{{ $post->id }}" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600">Save</button>
-                    <button type="button" data-post-cancel="{{ $post->id }}" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-white/5">Cancel</button>
-                    <button type="button" data-post-delete="{{ $post->id }}" class="ml-auto inline-flex items-center gap-1.5 text-sm text-red-500 transition hover:text-red-600">
+                    <button type="button" data-post-save="{{ $post->id }}" class="btn btn-primary btn-md">Save</button>
+                    <button type="button" data-post-cancel="{{ $post->id }}" class="btn btn-secondary btn-md">Cancel</button>
+                    <button type="button" data-post-delete="{{ $post->id }}" class="btn btn-danger-soft btn-md ml-auto">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         Delete
                     </button>
@@ -143,7 +143,7 @@
                     {{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}
                 </div>
                 <input type="text" data-comment-input="{{ $post->id }}" placeholder="Add a comment..." class="h-9 min-w-0 flex-1 basis-36 rounded-full border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-white/[0.03]" />
-                <button type="button" data-comment-submit data-post-id="{{ $post->id }}" class="h-9 shrink-0 rounded-full bg-brand-500 px-3 text-xs font-semibold text-white transition hover:bg-brand-600 active:scale-95 sm:px-4">Post</button>
+                <button type="button" data-comment-submit data-post-id="{{ $post->id }}" class="btn btn-primary btn-sm rounded-full shrink-0 active:scale-95">Post</button>
             </div>
             <div class="space-y-0 px-3 pb-3 sm:px-4" data-comments-list="{{ $post->id }}">
                 @foreach ($post->comments as $comment)

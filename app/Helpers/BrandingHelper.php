@@ -146,22 +146,104 @@ class BrandingHelper
 
     public static function button1Color(): string
     {
-        return SystemSetting::get('branding.button1_color', '#465fff');
+        return self::sanitizeHex(SystemSetting::get('branding.button1_color'), '#465fff');
+    }
+
+    public static function button1TextColor(): string
+    {
+        return self::sanitizeHex(SystemSetting::get('branding.button1_text_color'), '#ffffff');
+    }
+
+    public static function button1ColorDark(): string
+    {
+        return self::sanitizeHex(SystemSetting::get('branding.button1_color_dark'), self::button1Color());
+    }
+
+    public static function button1TextColorDark(): string
+    {
+        return self::sanitizeHex(SystemSetting::get('branding.button1_text_color_dark'), self::button1TextColor());
     }
 
     public static function button2Color(): string
     {
-        return SystemSetting::get('branding.button2_color', '#ffffff');
+        return self::sanitizeHex(SystemSetting::get('branding.button2_color'), '#ffffff');
+    }
+
+    public static function button2TextColor(): string
+    {
+        return self::sanitizeHex(SystemSetting::get('branding.button2_text_color'), '#374151');
+    }
+
+    public static function button2ColorDark(): string
+    {
+        return self::sanitizeHex(SystemSetting::get('branding.button2_color_dark'), '#1f2937');
+    }
+
+    public static function button2TextColorDark(): string
+    {
+        return self::sanitizeHex(SystemSetting::get('branding.button2_text_color_dark'), '#d1d5db');
     }
 
     public static function ctaBgLight(): string
     {
-        return SystemSetting::get('branding.cta_bg_light', '#465fff');
+        return self::sanitizeHex(SystemSetting::get('branding.cta_bg_light'), '#465fff');
     }
 
     public static function ctaBgDark(): string
     {
-        return SystemSetting::get('branding.cta_bg_dark', '#3641f5');
+        return self::sanitizeHex(SystemSetting::get('branding.cta_bg_dark'), '#3641f5');
+    }
+
+    /**
+     * Colors are interpolated straight into a <style> block, so anything that is not a
+     * literal hex value must never reach the stylesheet.
+     */
+    public static function sanitizeHex(mixed $value, string $fallback = '#000000'): string
+    {
+        if (! is_string($value)) {
+            return $fallback;
+        }
+
+        $value = trim($value);
+        if (! preg_match('/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $value)) {
+            return $fallback;
+        }
+
+        $hex = ltrim($value, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+
+        return '#'.strtolower($hex);
+    }
+
+    /**
+     * Hex to `rgba(r, g, b, a)` — used to derive each button's glow from its own background.
+     */
+    public static function rgba(string $hex, float $alpha): string
+    {
+        $hex = ltrim(self::sanitizeHex($hex), '#');
+
+        return sprintf(
+            'rgba(%d, %d, %d, %s)',
+            hexdec(substr($hex, 0, 2)),
+            hexdec(substr($hex, 2, 2)),
+            hexdec(substr($hex, 4, 2)),
+            rtrim(rtrim(number_format($alpha, 3, '.', ''), '0'), '.')
+        );
+    }
+
+    /**
+     * Perceived brightness (0-255) — lets the glow back off on near-white buttons,
+     * where a colored halo would just read as a dirty smudge.
+     */
+    public static function luminance(string $hex): float
+    {
+        $hex = ltrim(self::sanitizeHex($hex), '#');
+
+        return 0.299 * hexdec(substr($hex, 0, 2))
+            + 0.587 * hexdec(substr($hex, 2, 2))
+            + 0.114 * hexdec(substr($hex, 4, 2));
     }
 
     /**
@@ -169,13 +251,7 @@ class BrandingHelper
      */
     public static function darken(string $hex, int $percent = 10): string
     {
-        $hex = ltrim($hex, '#');
-        if (strlen($hex) === 3) {
-            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
-        }
-        if (strlen($hex) !== 6) {
-            return $hex;
-        }
+        $hex = ltrim(self::sanitizeHex($hex), '#');
 
         $r = max(0, min(255, hexdec(substr($hex, 0, 2)) * (1 - $percent / 100)));
         $g = max(0, min(255, hexdec(substr($hex, 2, 2)) * (1 - $percent / 100)));
@@ -189,19 +265,69 @@ class BrandingHelper
      */
     public static function lighten(string $hex, int $percent = 10): string
     {
-        $hex = ltrim($hex, '#');
-        if (strlen($hex) === 3) {
-            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
-        }
-        if (strlen($hex) !== 6) {
-            return $hex;
-        }
+        $hex = ltrim(self::sanitizeHex($hex), '#');
 
         $r = max(0, min(255, hexdec(substr($hex, 0, 2)) + (255 - hexdec(substr($hex, 0, 2))) * $percent / 100));
         $g = max(0, min(255, hexdec(substr($hex, 2, 2)) + (255 - hexdec(substr($hex, 2, 2))) * $percent / 100));
         $b = max(0, min(255, hexdec(substr($hex, 4, 2)) + (255 - hexdec(substr($hex, 4, 2))) * $percent / 100));
 
         return sprintf('#%02x%02x%02x', (int) $r, (int) $g, (int) $b);
+    }
+
+    /**
+     * The custom properties for ONE button role. The admin only ever picks a background and a
+     * text color; the hover shade, border, glow and focus ring are all derived from those.
+     *
+     * @param  string  $role  the CSS variable infix, e.g. `primary` -> --color-btn-primary
+     */
+    private static function buttonVars(string $role, string $bg, string $text): string
+    {
+        $bgLum = self::luminance($bg);
+
+        // Light buttons darken on hover, dark ones lighten — a fixed direction would make the
+        // hover state invisible on one end or the other.
+        $hover = $bgLum > 55 ? self::darken($bg, 8) : self::lighten($bg, 14);
+
+        // The glow is normally the button's own color. On a near-white button that halo would
+        // just read as a grey smudge, so borrow the text color instead.
+        $glowSource = $bgLum > 225 ? $text : $bg;
+        $alpha = self::luminance($glowSource) > 225 ? 0.14 : 0.35;
+
+        $p = "--color-btn-{$role}";
+
+        return implode("\n", [
+            "  {$p}: {$bg};",
+            "  {$p}-hover: ".$hover.';',
+            "  {$p}-text: {$text};",
+            "  {$p}-border: ".self::rgba($text, 0.25).';',
+            "  {$p}-glow: ".self::rgba($glowSource, $alpha).';',
+            "  {$p}-glow-strong: ".self::rgba($glowSource, min(1, $alpha + 0.15)).';',
+            "  {$p}-ring: ".self::rgba($glowSource, 0.35).';',
+        ]);
+    }
+
+    /**
+     * All four button roles for one theme.
+     *
+     * @param  string  $suffix  '' for light, '_dark' for the dark-mode setting keys
+     */
+    private static function buttonCss(string $suffix): string
+    {
+        $roles = [
+            'primary' => ['button1_color', 'button1_text_color', '#465fff', '#ffffff'],
+            'secondary' => ['button2_color', 'button2_text_color', '#ffffff', '#374151'],
+            'cta-primary' => ['cta_btn1_color', 'cta_btn1_text_color', '#ffffff', '#465fff'],
+            'cta-secondary' => ['cta_btn2_color', 'cta_btn2_text_color', '#3641f5', '#ffffff'],
+        ];
+
+        $out = [];
+        foreach ($roles as $role => [$bgKey, $textKey, $bgDefault, $textDefault]) {
+            $bg = self::sanitizeHex(SystemSetting::get("branding.{$bgKey}{$suffix}"), $bgDefault);
+            $text = self::sanitizeHex(SystemSetting::get("branding.{$textKey}{$suffix}"), $textDefault);
+            $out[] = self::buttonVars($role, $bg, $text);
+        }
+
+        return implode("\n", $out);
     }
 
     /**
@@ -249,10 +375,11 @@ class BrandingHelper
         $bgDark = self::bgDark();
         $accentLight = self::accentLight();
         $accentDark = self::accentDark();
-        $btn1 = self::button1Color();
-        $btn2 = self::button2Color();
         $ctaLight = self::ctaBgLight();
         $ctaDark = self::ctaBgDark();
+
+        $btn = self::buttonCss('');
+        $btnDark = self::buttonCss('_dark');
 
         return ":root {
   --color-brand-500: {$brand500};
@@ -275,14 +402,12 @@ class BrandingHelper
   --color-bg-page: {$bgLight};
   --color-accent-light: {$accentLight};
   --color-accent-dark: {$accentDark};
-  --color-btn-primary: {$btn1};
-  --color-btn-primary-hover: " . self::darken($btn1, 8) . ";
-  --color-btn-secondary: {$btn2};
-  --color-btn-secondary-hover: " . self::darken($btn2, 5) . ";
+{$btn}
   --color-cta-bg: {$ctaLight};
   --color-cta-bg-hover: " . self::darken($ctaLight, 8) . ";
 }
 html.dark {
+{$btnDark}
   --color-brand-500: {$darkBrand500};
   --color-brand-600: {$darkBrand600};
   --color-brand-700: {$darkBrand700};

@@ -26,7 +26,7 @@
 
         <div class="mb-4 flex justify-end">
             <a href="{{ route('settings.payment-orders') }}"
-                class="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition">
+                class="btn btn-secondary btn-md">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                 View Payment Orders
             </a>
@@ -148,13 +148,22 @@
                             <option value="live" {{ old('payments.pesapal_environment', $settings['payments.pesapal_environment'] ?? 'sandbox') === 'live' ? 'selected' : '' }}>Live (Production)</option>
                         </select>
                     </div>
-                    <div class="lg:col-span-3">
+                    <div class="lg:col-span-3" x-data="pesapalIpn()">
                         <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">IPN ID (Required for Pesapal)</label>
-                        <input type="text" name="payments[pesapal_ipn_id]"
-                            value="{{ old('payments.pesapal_ipn_id', $settings['payments.pesapal_ipn_id'] ?? '') }}"
-                            placeholder="e.g. fe078e53-78da-4a83-aa89-e7ded5c456e6"
-                            class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Register your IPN URL at Pesapal (Sandbox or Live) and paste the returned IPN ID here. IPN URL: <code class="text-xs">{{ url('/payment/ipn') }}</code></p>
+                        <div class="flex flex-col gap-2 sm:flex-row">
+                            <input type="text" name="payments[pesapal_ipn_id]" x-model="ipnId"
+                                placeholder="Click Generate to register your IPN with Pesapal"
+                                class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
+                            <button type="button" @click="generate()" :disabled="busy"
+                                class="btn btn-secondary btn-md shrink-0 disabled:opacity-50">
+                                <svg x-show="busy" x-cloak class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                <span x-text="busy ? 'Registering...' : (ipnId ? 'Re-generate IPN' : 'Generate IPN')"></span>
+                            </button>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Generate registers <code class="text-xs">{{ url('/payment/ipn') }}</code> with Pesapal and fills in the returned ID. Save your consumer key, secret and environment first — the URL must be publicly reachable.
+                        </p>
+                        <p x-show="message" x-cloak class="mt-2 text-xs" :class="ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'" x-text="message"></p>
                     </div>
                 </div>
             </div>
@@ -162,9 +171,51 @@
 
         <div class="flex justify-end">
             <button type="submit"
-                class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 transition">
+                class="btn btn-primary btn-md">
                 Save Changes
             </button>
         </div>
     </form>
 @endsection
+
+@push('scripts')
+<script>
+    function pesapalIpn() {
+        return {
+            ipnId: @json(old('payments.pesapal_ipn_id', $settings['payments.pesapal_ipn_id'] ?? '')),
+            busy: false,
+            ok: false,
+            message: '',
+
+            async generate() {
+                this.busy = true;
+                this.message = '';
+                try {
+                    const res = await fetch('{{ route('settings.payments.register-ipn') }}', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        },
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    this.ok = !!data.success;
+                    if (data.success) {
+                        this.ipnId = data.ipn_id;
+                        this.message = `Registered ${data.ipn_url} with Pesapal. The IPN ID has been saved.`;
+                    } else {
+                        this.message = data.error || 'IPN registration failed.';
+                    }
+                } catch (e) {
+                    this.ok = false;
+                    this.message = 'Network error. Please try again.';
+                } finally {
+                    this.busy = false;
+                }
+            },
+        };
+    }
+</script>
+@endpush

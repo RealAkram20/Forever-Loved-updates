@@ -38,7 +38,7 @@ class ClaudeBioGeneratorService
             }
             return $result;
         } catch (\Throwable $e) {
-            Log::warning('Claude bio generation failed, using template fallback', [
+            Log::warning('Claude bio generation failed; rethrowing for controller-level template fallback', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;

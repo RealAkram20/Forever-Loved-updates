@@ -7,6 +7,43 @@
          ADMIN / SUPER-ADMIN SECTION
          ═══════════════════════════════════════════════════════════════ --}}
     @if ($isAdmin)
+        {{-- System health warnings --}}
+        @if (! empty($systemHealth) && ($systemHealth['schedulerDown'] || $systemHealth['queueBacklog'] || $systemHealth['failedJobs'] > 0 || $systemHealth['debugInProduction'] || $systemHealth['smtpMissing']))
+            <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20" x-data="{ showCron: false }">
+                <div class="flex items-start gap-3">
+                    <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-300">System health needs attention</h3>
+                        <ul class="mt-2 space-y-1.5 text-sm text-amber-700 dark:text-amber-400">
+                            @if ($systemHealth['schedulerDown'])
+                                <li>
+                                    <strong>Background cron not detected.</strong> Email, notifications and renewals are running in slow fallback mode.
+                                    <button type="button" @click="showCron = !showCron" class="underline hover:no-underline">Show cron line</button>
+                                    <div x-show="showCron" x-cloak class="mt-2 flex items-center gap-2">
+                                        <code id="health-cron-line" class="block flex-1 overflow-x-auto whitespace-nowrap rounded bg-gray-900 px-3 py-2 text-xs text-green-400">{{ $systemHealth['cronLine'] }}</code>
+                                        <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('health-cron-line').textContent).then(() => { this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy', 2000); })"
+                                            class="shrink-0 rounded-lg border border-amber-300 px-2 py-1 text-xs dark:border-amber-700">Copy</button>
+                                    </div>
+                                </li>
+                            @endif
+                            @if ($systemHealth['queueBacklog'])
+                                <li><strong>Background jobs are backed up.</strong> The queue worker is not keeping up — check that the cron is running every minute.</li>
+                            @endif
+                            @if ($systemHealth['failedJobs'] > 0)
+                                <li><strong>{{ $systemHealth['failedJobs'] }} background {{ Str::plural('job', $systemHealth['failedJobs']) }} failed.</strong> Check <code class="rounded bg-amber-100 px-1 text-xs dark:bg-amber-900/40">storage/logs/laravel.log</code> or run <code class="rounded bg-amber-100 px-1 text-xs dark:bg-amber-900/40">php artisan queue:retry all</code>.</li>
+                            @endif
+                            @if ($systemHealth['debugInProduction'])
+                                <li><strong>APP_DEBUG is on in production.</strong> Error pages may leak secrets — set <code class="rounded bg-amber-100 px-1 text-xs dark:bg-amber-900/40">APP_DEBUG=false</code> in .env.</li>
+                            @endif
+                            @if ($systemHealth['smtpMissing'])
+                                <li><strong>Email notifications are enabled but SMTP is not configured.</strong> Emails are not being delivered — set it up in <a href="{{ route('settings.smtp') }}" class="underline hover:no-underline">Settings &rarr; SMTP</a>.</li>
+                            @endif
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- Period Filter --}}
         <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">Platform Overview</h2>
@@ -82,7 +119,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Total Sales</p>
-                        <h3 class="mt-1 text-2xl font-bold text-gray-800 dark:text-white/90">{{ $currency }} {{ number_format($totalSalesAmount, 2) }}</h3>
+                        <h3 class="mt-1 text-2xl font-bold text-gray-800 dark:text-white/90">{{ $currency }} {{ \App\Helpers\PriceHelper::format($totalSalesAmount) }}</h3>
                     </div>
                     <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -290,6 +327,20 @@
     {{-- ═══════════════════════════════════════════════════════════════
          USER SECTION (all authenticated users, including admins for their own memorials)
          ═══════════════════════════════════════════════════════════════ --}}
+    @if (! empty($pendingPaymentOrders) && $pendingPaymentOrders->isNotEmpty())
+        @foreach ($pendingPaymentOrders as $pendingOrder)
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20">
+                <p class="text-sm text-amber-800 dark:text-amber-300">
+                    <strong>Payment pending</strong>
+                    @if ($pendingOrder->memorial) for <strong>{{ $pendingOrder->memorial->full_name }}</strong>@endif
+                    @if ($pendingOrder->plan) — {{ $pendingOrder->plan->name }} plan @endif
+                    ({{ \App\Helpers\PriceHelper::format($pendingOrder->amount) }} {{ $pendingOrder->currency }}). Complete it to unlock your plan features.
+                </p>
+                <a href="{{ route('subscription.index') }}" class="btn btn-primary btn-sm shrink-0">Complete payment</a>
+            </div>
+        @endforeach
+    @endif
+
     @if (isset($userStats) && $userStats)
         {{-- Memorial Filter --}}
         <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -519,7 +570,7 @@
             <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90 mb-2">Welcome to Forever Loved</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">You haven't created any memorials yet. Create your first memorial to start honoring a loved one.</p>
             <a href="{{ route('memorials.create') }}"
-                class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-6 py-3 text-sm font-medium text-white hover:bg-brand-600 transition">
+                class="btn btn-primary btn-lg">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Create Your First Memorial
             </a>

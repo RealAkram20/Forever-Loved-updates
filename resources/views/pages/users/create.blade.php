@@ -12,7 +12,7 @@
                     <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
                     <input type="text" name="name" value="{{ old('name') }}" required
                         class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden"
-                        placeholder="John Doe" />
+                        placeholder="Full name" />
                     @error('name')
                         <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                     @enderror
@@ -22,7 +22,7 @@
                     <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
                     <input type="email" name="email" value="{{ old('email') }}" required
                         class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden"
-                        placeholder="john@example.com" />
+                        placeholder="Email address" />
                     @error('email')
                         <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                     @enderror
@@ -60,11 +60,11 @@
 
                 <div class="flex items-center gap-3 pt-2">
                     <button type="submit"
-                        class="h-11 rounded-lg bg-brand-500 px-6 text-sm font-medium text-white hover:bg-brand-600 transition">
+                        class="btn btn-primary btn-md">
                         Create User
                     </button>
                     <a href="{{ route('users.index') }}"
-                        class="h-11 inline-flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 px-6 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        class="btn btn-secondary btn-md">
                         Cancel
                     </a>
                 </div>

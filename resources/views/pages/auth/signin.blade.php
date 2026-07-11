@@ -17,10 +17,11 @@
                 <div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
                     <div>
                         @if (session('status'))
-                            <div class="mb-4 text-sm text-green-600">{{ session('status') }}</div>
+                            <div class="mb-4 text-sm text-green-600 dark:text-green-400">{{ session('status') }}</div>
                         @endif
-                        @if ($errors->any())
-                            <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600">
+                        {{-- Field errors render inline; this banner is only for errors with no field to attach to --}}
+                        @if ($errors->any() && ! $errors->has('email') && ! $errors->has('password'))
+                            <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
                                 {{ $errors->first() }}
                             </div>
                         @endif
@@ -35,7 +36,7 @@
                         <div>
                             @if (\App\Helpers\SocialLoginHelper::googleLoginEnabled())
                                 <a href="{{ route('google.redirect') }}"
-                                    class="inline-flex w-full items-center justify-center gap-3 rounded-lg bg-gray-100 px-7 py-3 text-sm font-normal text-gray-700 transition-colors hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10">
+                                    class="btn btn-secondary btn-md btn-block w-full">
                                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                         <path d="M18.7511 10.1944C18.7511 9.47495 18.6915 8.94995 18.5626 8.40552H10.1797V11.6527H15.1003C15.0011 12.4597 14.4654 13.675 13.2749 14.4916L13.2582 14.6003L15.9087 16.6126L16.0924 16.6305C17.7788 15.1041 18.7511 12.8583 18.7511 10.1944Z" fill="#4285F4" />
                                         <path d="M10.1788 18.75C12.5895 18.75 14.6133 17.9722 16.0915 16.6305L13.274 14.4916C12.5201 15.0068 11.5081 15.3666 10.1788 15.3666C7.81773 15.3666 5.81379 13.8402 5.09944 11.7305L4.99473 11.7392L2.23868 13.8295L2.20264 13.9277C3.67087 16.786 6.68674 18.75 10.1788 18.75Z" fill="#34A853" />
@@ -62,7 +63,10 @@
                                             Email<span class="text-error-500">*</span>
                                         </label>
                                         <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="info@gmail.com" required autofocus autocomplete="username"
-                                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:ring-3 focus:outline-hidden" />
+                                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('email') ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700' }} dark:bg-gray-900 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:ring-3 focus:outline-hidden" />
+                                        @error('email')
+                                            <p class="mt-1.5 text-sm text-red-500">{{ $message }}</p>
+                                        @enderror
                                     </div>
                                     <!-- Password -->
                                     <div>
@@ -72,7 +76,7 @@
                                         <div x-data="{ showPassword: false }" class="relative">
                                             <input :type="showPassword ? 'text' : 'password'" id="password" name="password"
                                                 placeholder="Enter your password" required autocomplete="current-password"
-                                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 bg-transparent py-2.5 pr-11 pl-4 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:ring-3 focus:outline-hidden" />
+                                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('password') ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700' }} dark:bg-gray-900 bg-transparent py-2.5 pr-11 pl-4 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:ring-3 focus:outline-hidden" />
                                             <span @click="showPassword = !showPassword"
                                                 class="absolute top-1/2 right-4 z-30 -translate-y-1/2 cursor-pointer text-gray-500 dark:text-gray-400">
                                                 <svg x-show="!showPassword" class="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -85,6 +89,9 @@
                                                 </svg>
                                             </span>
                                         </div>
+                                        @error('password')
+                                            <p class="mt-1.5 text-sm text-red-500">{{ $message }}</p>
+                                        @enderror
                                     </div>
                                     <!-- Checkbox -->
                                     <div class="flex items-center justify-between">
@@ -115,7 +122,7 @@
                                     <!-- Button -->
                                     <div>
                                         <button type="submit"
-                                            class="bg-brand-500 shadow-theme-xs hover:bg-brand-600 flex w-full items-center justify-center rounded-lg px-4 py-3 text-sm font-medium text-white transition">
+                                            class="btn btn-primary btn-md btn-block w-full">
                                             Sign In
                                         </button>
                                     </div>

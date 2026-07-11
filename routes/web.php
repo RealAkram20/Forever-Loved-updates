@@ -61,6 +61,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('memorials/{memorial}/section', [MemorialController::class, 'updateSection'])->name('memorials.section');
     Route::patch('memorials/{memorial}/fields', [MemorialController::class, 'updateFields'])->name('memorials.fields');
     Route::post('memorials/{memorial}/generate-biography', [MemorialController::class, 'generateBiography'])->middleware('throttle:10,1')->name('memorials.generate-biography');
+    Route::get('memorials/{memorial}/generate-biography/{requestId}', [MemorialController::class, 'generateBiographyStatus'])->where('requestId', '[0-9a-f\-]{36}')->name('memorials.generate-biography.status');
     Route::post('memorials/{memorial}/generate-template-biography', [MemorialController::class, 'generateTemplateBiography'])->middleware('throttle:10,1')->name('memorials.generate-template-biography');
     Route::patch('memorials/{memorial}/biography', [MemorialController::class, 'saveBiography'])->name('memorials.save-biography');
     Route::resource('memorials', MemorialController::class);
@@ -122,6 +123,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/payments', [SettingsController::class, 'payments'])->name('payments');
         Route::put('/payments', [SettingsController::class, 'updatePayments'])->name('payments.update');
+        Route::post('/payments/register-ipn', [SettingsController::class, 'registerPesapalIpn'])->name('payments.register-ipn');
 
         Route::get('/payment-orders', [SettingsController::class, 'paymentOrders'])->name('payment-orders');
         Route::post('/payment-orders/bulk', [SettingsController::class, 'bulkPaymentOrders'])->name('payment-orders.bulk');
@@ -223,4 +225,3 @@ Route::get('/{memorial_slug}/chapter/{share_id}', [PublicMemorialController::cla
 
 // Public memorial by profile slug (e.g. /miiro-rio-akram) - MUST be last to avoid matching /login, /dashboard, etc.
 Route::get('/{slug}', [PublicMemorialController::class, 'show'])->name('memorial.public')->where('slug', '[a-z0-9\-]+');
-Route::post('/{slug}/tribute', [PublicMemorialController::class, 'storeTribute'])->middleware('throttle:20,1')->name('memorial.tribute.store')->where('slug', '[a-z0-9\-]+');

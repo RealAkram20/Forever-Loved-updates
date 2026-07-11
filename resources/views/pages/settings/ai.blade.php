@@ -105,7 +105,7 @@
 
         <div class="flex justify-end">
             <button type="submit"
-                class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 transition">
+                class="btn btn-primary btn-md">
                 Save Changes
             </button>
         </div>

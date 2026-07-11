@@ -115,7 +115,7 @@
                                 .catch(e => { result = { success: false, message: e.message }; testing = false; });
                             "
                             :disabled="testing"
-                            class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50 transition">
+                            class="btn btn-primary btn-md disabled:opacity-50">
                             <span x-show="testing">Sending...</span>
                             <span x-show="!testing">Send Test Push</span>
                         </button>
@@ -141,7 +141,7 @@
                                 })();
                             "
                             :disabled="resetting"
-                            class="inline-flex items-center gap-2 rounded-lg border border-amber-300 dark:border-amber-700 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 disabled:opacity-50 transition">
+                            class="btn btn-secondary btn-md disabled:opacity-50">
                             <span x-show="resetting">Resetting...</span>
                             <span x-show="!resetting">Reset & Re-subscribe</span>
                         </button>
@@ -249,7 +249,7 @@
 
         <div class="flex justify-end">
             <button type="submit"
-                class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 transition">
+                class="btn btn-primary btn-md">
                 Save Changes
             </button>
         </div>
