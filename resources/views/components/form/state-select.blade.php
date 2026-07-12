@@ -8,8 +8,8 @@
 ])
 
 <div
+    {{-- No x-init="init()": Alpine 3 auto-calls init() on Alpine.data components --}}
     x-data="stateSelectComponent('{{ $id }}', '{{ addslashes($value) }}', '{{ $countryFieldId }}')"
-    x-init="init()"
     class="relative"
     @click.away="close()"
     @keydown.escape.prevent="close()"
@@ -110,8 +110,11 @@ document.addEventListener('alpine:init', () => {
         handleCountrySelected(ev) {
             if (ev.detail.fieldId !== this.countryFieldId) return;
             const newCode = ev.detail.code;
+            // Same country again (duplicate init event or a no-op reselect):
+            // nothing changed, so never clear the current selection. Clearing
+            // here used to autosave '' over the user's saved district.
+            if (newCode === this.countryCode) return;
             const isInitialLoad = !this.countryCode;
-            if (newCode === this.countryCode && this.states.length) return;
 
             this.countryCode = newCode;
 

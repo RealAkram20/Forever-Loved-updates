@@ -8,8 +8,8 @@
 ])
 
 <div
+    {{-- No x-init="init()": Alpine 3 auto-calls init() on Alpine.data components --}}
     x-data="citySelectComponent('{{ $id }}', '{{ addslashes($value) }}', '{{ $stateFieldId }}')"
-    x-init="init()"
     class="relative"
     @click.away="close()"
     @keydown.escape.prevent="close()"
@@ -87,6 +87,7 @@ document.addEventListener('alpine:init', () => {
         highlightIndex: 0,
         loading: false,
         stateId: null,
+        lastStateName: '',
         countryCode: '',
         stateFieldId: stateFieldId,
         elId: elId,
@@ -101,22 +102,27 @@ document.addEventListener('alpine:init', () => {
 
         handleStateSelected(ev) {
             if (ev.detail.fieldId !== this.stateFieldId) return;
+            const newName = ev.detail.name || '';
             const isInitialLoad = !this.initialized;
+            // Same state re-announced (duplicate init event or a no-op
+            // reselect): keep the current city — clearing here used to
+            // autosave '' over the user's saved city.
+            const sameState = !isInitialLoad && newName === this.lastStateName && ev.detail.id === this.stateId;
             this.initialized = true;
+            this.lastStateName = newName;
             this.stateId = ev.detail.id;
             if (ev.detail.countryCode) {
                 this.countryCode = ev.detail.countryCode;
             }
+            if (isInitialLoad || sameState) return;
 
-            if (!isInitialLoad) {
-                this.selectedName = '';
-                this.search = '';
-                this.cities = [];
-                this.$nextTick(() => {
-                    this.$refs.hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
-                    this.$refs.hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                });
-            }
+            this.selectedName = '';
+            this.search = '';
+            this.cities = [];
+            this.$nextTick(() => {
+                this.$refs.hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                this.$refs.hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+            });
         },
 
         maybeFetch() {

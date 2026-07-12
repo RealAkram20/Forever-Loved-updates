@@ -35,8 +35,9 @@ window.detectUserCountry = function() {
 @endonce
 
 <div
+    {{-- No x-init="init()": Alpine 3 auto-calls init() on Alpine.data components;
+         doubling it dispatched country-selected twice and wiped dependent fields --}}
     x-data="countrySelectComponent('{{ $id }}', '{{ addslashes($value) }}', {{ $autoDetect ? 'true' : 'false' }}, {{ $emitNationality ? 'true' : 'false' }})"
-    x-init="init()"
     class="relative"
     @click.away="close()"
     @keydown.escape.prevent="close()"
@@ -127,6 +128,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         init() {
+            if (this._inited) return; // guard: a duplicate init() dispatches country-selected twice
+            this._inited = true;
             if (this.selectedName) {
                 this.search = this.selectedName;
                 const match = this.countries.find(c => c.name.toLowerCase() === this.selectedName.toLowerCase());
