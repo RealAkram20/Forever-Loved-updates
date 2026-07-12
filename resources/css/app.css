@@ -1347,6 +1347,46 @@ html:not(.dark) {
 .prose a { color: #465fff; text-decoration: underline; }
 .prose a:hover { color: #3641f5; }
 
+/* Headings — Tailwind's reset flattens them to body size, so the sizes the
+   editor promises must be restored here. Font family comes from the admin's
+   heading font (h1–h6 rule emitted by AppearanceHelper). */
+.prose h1 { font-size: 2em; line-height: 1.2; }
+.prose h2 { font-size: 1.5em; line-height: 1.3; }
+.prose h3 { font-size: 1.25em; line-height: 1.35; }
+.prose h4 { font-size: 1.125em; line-height: 1.4; }
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  font-weight: 600;
+  margin: 1.2em 0 0.5em;
+  color: var(--color-gray-900, #101828);
+}
+.prose h1:first-child, .prose h2:first-child, .prose h3:first-child, .prose h4:first-child {
+  margin-top: 0;
+}
+.dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4 {
+  color: #ffffff;
+}
+
+/* Quill inline sizes and alignment survive sanitization as classes — without
+   these rules the editor's Size/Align controls silently do nothing on the
+   public page. */
+.prose .ql-size-small { font-size: 0.75em; }
+.prose .ql-size-large { font-size: 1.5em; }
+.prose .ql-size-huge { font-size: 2.25em; }
+.prose .ql-align-center { text-align: center; }
+.prose .ql-align-right { text-align: right; }
+.prose .ql-align-justify { text-align: justify; }
+.prose pre {
+  margin: 0.75em 0;
+  padding: 0.75em 1em;
+  border-radius: 0.5rem;
+  background: var(--color-gray-100, #f2f4f7);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875em;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+.dark .prose pre { background: rgba(255, 255, 255, 0.06); }
+
 /* Toast progress bar countdown */
 @keyframes toast-countdown {
   from { width: 100%; }
@@ -1491,4 +1531,183 @@ html:not(.dark) {
 }
 .glass-bg-mesh:is(.dark *) {
   background-image: none;
+}
+
+/* Hero background artwork (candle + flowers), theme-switched via .dark */
+.hero-bg-img {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  height: 72%;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  object-position: right bottom;
+  /* Melt the artwork into the section background: long left/top fades, plus a
+     radial falloff centred near the candle so it dissolves on every side
+     rather than stopping at a visible rectangle edge. */
+  --hero-mask: linear-gradient(to right, transparent 0%, #000 28%),
+    linear-gradient(to bottom, transparent 0%, #000 22%),
+    radial-gradient(125% 115% at 84% 86%, #000 40%, rgba(0, 0, 0, 0.5) 74%, transparent 94%);
+  -webkit-mask-image: var(--hero-mask);
+  -webkit-mask-composite: source-in, source-in, source-in;
+  mask-image: var(--hero-mask);
+  mask-composite: intersect;
+}
+
+/* lighten drops the artwork's near-black backdrop into the section bg,
+   leaving only the candle glow and flowers visible */
+.hero-bg-img--blend {
+  mix-blend-mode: lighten;
+}
+
+@media (min-width: 640px) {
+  .hero-bg-img {
+    height: 78%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-bg-img {
+    height: 94%;
+    /* relative to the max-w-7xl column, so zooming out no longer drags the
+       artwork off toward the viewport edge */
+    max-width: 58%;
+  }
+}
+
+/* Dissolves the artwork's trailing edges into the page background, so it reads
+   as light falling into the section rather than an image pasted in a box. */
+.hero-artwork-fade {
+  background-image:
+    linear-gradient(to right, var(--color-bg-page) 0%, transparent 12%),
+    linear-gradient(to left, var(--color-bg-page) 0%, transparent 14%),
+    linear-gradient(to top, var(--color-bg-page) 0%, transparent 16%);
+}
+
+/* Dark mode gets its own wash — the light-mode gradient reads as flat navy
+   once the orange/rose tints are dimmed for dark. */
+.hero-wash-dark {
+  background-image:
+    /* candle glow, bottom right, under the artwork */
+    radial-gradient(65% 60% at 86% 92%, rgba(251, 176, 96, 0.22) 0%, rgba(251, 176, 96, 0) 62%),
+    /* brand halo behind the headline — kept faint so the words stay the
+       brightest thing on that side, not the background */
+    radial-gradient(
+      62% 58% at 14% 20%,
+      color-mix(in srgb, var(--color-brand-500) 2%, transparent) 0%,
+      transparent 66%
+    ),
+    /* rose fill up the right flank — pulled in from the column edge so the
+       fade has room to settle it back onto the page background */
+    radial-gradient(80% 85% at 90% 26%, rgba(244, 114, 182, 0.1) 0%, transparent 62%),
+    /* lifts the whole panel off the flat page background */
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 45%);
+}
+
+/* ── 2026 visitor redesign ─────────────────────────────────────────────── */
+
+/* Display serif for hero/section/CTA titles and the hero tagline. The
+   admin's per-element Appearance fonts (.ap-title etc.) are emitted in a
+   later <style> block, so they still win when set. */
+.font-display {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+.hero-tagline em {
+  font-style: italic;
+}
+
+/* Footer nav links carry a small bullet, per the design */
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.875rem;
+  color: var(--color-gray-600, #4b5563);
+  transition: color 0.2s ease;
+}
+
+.footer-link::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  opacity: 0.45;
+  flex-shrink: 0;
+}
+
+.footer-link:hover {
+  color: var(--color-brand-500);
+}
+
+html.dark .footer-link {
+  color: var(--color-gray-400, #9ca3af);
+}
+
+html.dark .footer-link:hover {
+  color: var(--color-brand-400);
+}
+
+/* CTA banner "Learn More →" text link — themed off the CTA secondary
+   button's admin-set text color so it stays admin-mapped */
+.cta-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-btn-cta-secondary-text, #1e2647);
+  transition: opacity 0.2s ease;
+}
+
+.cta-text-link:hover {
+  opacity: 0.75;
+}
+
+/* Lucide icon micro-animations (animate-ui style, CSS-only) */
+.icon-arrow,
+.icon-plus {
+  transition: transform 0.25s ease;
+}
+
+.group:hover .icon-arrow,
+.btn:hover .icon-arrow,
+.cta-text-link:hover .icon-arrow {
+  transform: translateX(4px);
+}
+
+.group:hover .icon-plus,
+.btn:hover .icon-plus {
+  transform: rotate(90deg);
+}
+
+@keyframes fl-heartbeat {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(1.08); }
+}
+
+.group:hover .icon-heart {
+  animation: fl-heartbeat 0.6s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-arrow,
+  .icon-plus {
+    transition: none;
+  }
+
+  .group:hover .icon-arrow,
+  .btn:hover .icon-arrow,
+  .cta-text-link:hover .icon-arrow,
+  .group:hover .icon-plus,
+  .btn:hover .icon-plus {
+    transform: none;
+  }
+
+  .group:hover .icon-heart {
+    animation: none;
+  }
 }

@@ -1,28 +1,13 @@
 @props([
     'widgets' => [],
     'context' => [],
+    'editable' => false,
 ])
 
 @php
-    $registry = app(\App\PageBuilder\WidgetRegistry::class);
+    use App\PageBuilder\Support\WidgetChrome;
 
-    function pbSpacingStyle(array $props): string {
-        $spacing = $props['_spacing'] ?? null;
-        if (!is_array($spacing)) return '';
-        $parts = [];
-        foreach (['margin', 'padding'] as $group) {
-            $box = $spacing[$group] ?? null;
-            if (!is_array($box)) continue;
-            $t = $box['top'] ?? '0';
-            $r = $box['right'] ?? '0';
-            $b = $box['bottom'] ?? '0';
-            $l = $box['left'] ?? '0';
-            $u = in_array($box['unit'] ?? 'px', ['px','em','%','rem'], true) ? $box['unit'] : 'px';
-            if ($t === '0' && $r === '0' && $b === '0' && $l === '0') continue;
-            $parts[] = $group . ':' . $t.$u . ' ' . $r.$u . ' ' . $b.$u . ' ' . $l.$u;
-        }
-        return implode(';', $parts);
-    }
+    $registry = app(\App\PageBuilder\WidgetRegistry::class);
 @endphp
 
 @foreach ($widgets as $widget)
@@ -30,11 +15,21 @@
         $type = $widget['type'] ?? '';
         $class = $registry->classForType($type);
         $props = is_array($widget['props'] ?? null) ? $widget['props'] : [];
-        $spacingStyle = pbSpacingStyle($props);
+        $hidden = WidgetChrome::isHidden($props);
+        $wrapperStyle = WidgetChrome::wrapperStyle($props);
+        $cssId = WidgetChrome::cssId($props);
+        $cssClass = WidgetChrome::cssClass($props);
+        $needsWrapper = $editable || $hidden || $wrapperStyle !== '' || $cssId !== null || $cssClass !== null;
     @endphp
-    @if ($class)
-        @if ($spacingStyle)
-            <div style="{{ $spacingStyle }}">
+    @if ($class && (! $hidden || $editable))
+        @if ($needsWrapper)
+            <div
+                @if ($editable) data-pb-id="{{ $widget['id'] ?? '' }}" @endif
+                @if ($editable && $hidden) data-pb-hidden="1" @endif
+                @if ($cssId) id="{{ $cssId }}" @endif
+                @if ($cssClass) class="{{ $cssClass }}" @endif
+                @if ($wrapperStyle) style="{{ $wrapperStyle }}" @endif
+            >
                 @include($class::viewName(), array_merge(['props' => $props], $context))
             </div>
         @else

@@ -4,45 +4,66 @@
     $secondaryRoute = $props['secondary_route'] ?? '';
     $secondaryUrl = $secondaryRoute && \Illuminate\Support\Facades\Route::has($secondaryRoute) ? route($secondaryRoute) : '#';
     $trustPoints = is_array($props['trust_points'] ?? null) ? $props['trust_points'] : [];
+    $taglineText = trim($props['tagline'] ?? ($tagline ?? ''));
 @endphp
-<section class="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-brand-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 glass-bg-mesh">
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-brand-500/8 blur-3xl dark:bg-brand-500/10"></div>
-        <div class="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-pink-400/6 blur-3xl dark:bg-brand-500/10"></div>
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-blue-300/5 blur-3xl dark:hidden"></div>
+<section class="relative overflow-hidden">
+    {{-- Everything decorative — wash and artwork alike — is held to the same
+         column width as the section content, so nothing spills toward the
+         viewport edge and no seam forms where the column ends. --}}
+    <div class="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
+        <div class="absolute inset-0 mx-auto max-w-7xl">
+            <div class="absolute inset-y-0 right-0 w-3/4 bg-gradient-to-l from-orange-100/60 via-rose-100/20 to-transparent sm:w-2/3 dark:hidden"></div>
+            <div class="absolute bottom-0 right-0 h-80 w-80 translate-y-1/3 rounded-full bg-orange-200/40 blur-3xl dark:hidden"></div>
+            <div class="hero-wash-dark absolute inset-0 hidden dark:block"></div>
+
+            {{-- TEMP: testing Gg.webp stands in for the final light-mode artwork --}}
+            <img src="{{ asset('testing Gg.webp') }}" alt="" draggable="false" fetchpriority="high" class="hero-bg-img dark:hidden">
+            <img src="{{ asset('DRK-bg.webp') }}" alt="" draggable="false" loading="lazy" class="hero-bg-img hero-bg-img--blend hidden dark:block">
+
+            {{-- Settles the column's trailing edges back onto the page background --}}
+            <div class="hero-artwork-fade absolute inset-0"></div>
+        </div>
     </div>
 
-    <div class="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-36">
+    <div class="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
         <div class="max-w-2xl">
             @if ($eyebrow !== '')
-                <p class="ap-eyebrow mb-4 text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $eyebrow }}</p>
+                <p class="ap-eyebrow mb-5 text-sm font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-400">{{ $eyebrow }}</p>
             @endif
-            <h1 class="ap-title text-4xl font-bold leading-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
+            <h1 class="ap-title font-display text-[2.75rem] leading-[1.08] font-semibold text-gray-900 dark:text-white sm:text-6xl lg:text-[4.25rem]">
                 {{ $props['headline_line1'] ?? '' }}
                 @if (!empty($props['headline_accent']))
-                    <span class="ap-title-accent text-brand-500">{{ $props['headline_accent'] }}</span>
+                    <span class="ap-title-accent block text-brand-500">{{ $props['headline_accent'] }}</span>
                 @endif
             </h1>
-            @if (!empty($props['body']))
-                <p class="ap-lead mt-6 max-w-lg text-lg leading-relaxed text-gray-600 dark:text-gray-400">{{ $props['body'] }}</p>
+
+            @if ($taglineText !== '')
+                <p class="hero-tagline mt-7 flex items-center gap-3 text-gray-800 dark:text-gray-200">
+                    <span class="h-0.5 w-8 shrink-0 rounded-full bg-[var(--color-accent-light)]" aria-hidden="true"></span>
+                    <svg class="lucide h-4.5 w-4.5 shrink-0 text-[var(--color-accent-light)]" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                    <em class="font-display text-lg italic">{{ $taglineText }}</em>
+                </p>
             @endif
-            <div class="mt-8 flex flex-wrap gap-4">
-                <a href="{{ $primaryUrl }}"
-                   class="btn btn-primary btn-lg">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+
+            @if (!empty($props['body']))
+                <p class="ap-lead mt-7 max-w-lg text-lg leading-relaxed text-gray-600 dark:text-gray-400">{{ $props['body'] }}</p>
+            @endif
+            <div class="mt-9 flex flex-wrap gap-4">
+                <a href="{{ $primaryUrl }}" class="btn btn-primary btn-lg group">
+                    <svg class="lucide icon-plus h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                     {{ $props['primary_btn_label'] ?? 'Create a Memorial' }}
                 </a>
                 @if (($props['secondary_btn_label'] ?? '') !== '')
-                    <a href="{{ $secondaryUrl }}"
-                       class="btn btn-secondary btn-lg">
+                    <a href="{{ $secondaryUrl }}" class="btn btn-secondary btn-lg group">
+                        <svg class="lucide icon-heart h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
                         {{ $props['secondary_btn_label'] }}
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                        <svg class="lucide icon-arrow h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                     </a>
                 @endif
             </div>
 
             @if (count($trustPoints) > 0)
-                <div class="mt-10 flex flex-wrap items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+                <div class="mt-10 inline-flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-white/50 bg-white/30 px-5 py-3.5 text-sm text-gray-600 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/[0.06] dark:text-gray-300">
                     @foreach ($trustPoints as $point)
                         @if (is_string($point) && $point !== '')
                             <span class="flex items-center gap-1.5">

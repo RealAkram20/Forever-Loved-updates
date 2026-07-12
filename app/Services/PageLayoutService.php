@@ -72,6 +72,51 @@ class PageLayoutService
     }
 
     /**
+     * Best-effort normalization for the live editor preview: merges defaults,
+     * skips unknown widget types, never throws on invalid field values so a
+     * half-typed document still renders.
+     *
+     * @return array{version: int, widgets: array<int, array{id: string, type: string, order: int, props: array<string, mixed>}>}
+     */
+    public function normalizeDocumentLenient(array $decoded): array
+    {
+        $widgetsRaw = is_array($decoded['widgets'] ?? null) ? $decoded['widgets'] : [];
+        $normalized = [];
+
+        foreach ($widgetsRaw as $index => $widget) {
+            if (! is_array($widget) || ! is_string($widget['type'] ?? null)) {
+                continue;
+            }
+            $class = $this->registry->classForType($widget['type']);
+            if ($class === null) {
+                continue;
+            }
+
+            $id = isset($widget['id']) && is_string($widget['id']) && preg_match('/^w_[a-zA-Z0-9_-]+$/', $widget['id'])
+                ? $widget['id']
+                : 'w_'.substr(bin2hex(random_bytes(6)), 0, 12);
+
+            $props = is_array($widget['props'] ?? null) ? $widget['props'] : [];
+            $merged = $class::defaultProps();
+            foreach ($props as $k => $v) {
+                $merged[$k] = $v;
+            }
+
+            $normalized[] = [
+                'id' => $id,
+                'type' => $widget['type'],
+                'order' => $index,
+                'props' => $merged,
+            ];
+        }
+
+        return [
+            'version' => max(1, (int) ($decoded['version'] ?? 1)),
+            'widgets' => $normalized,
+        ];
+    }
+
+    /**
      * @return array{version: int, widgets: array<int, array{id: string, type: string, order: int, props: array<string, mixed>}>}
      */
     public function validateDocumentFromJson(string $json): array

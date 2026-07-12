@@ -40,9 +40,13 @@
 
 {{-- JSON --}}
 <template x-if="field.kind === 'json'">
-    <textarea rows="6" class="w-full rounded-lg border border-gray-300 bg-transparent px-2 py-2 font-mono text-xs dark:border-gray-600 dark:text-white"
-        :value="jsonProp(field.name)"
-        @input.debounce.400ms="setJsonProp(field.name, $event.target.value)"></textarea>
+    <div>
+        <textarea rows="6" class="w-full rounded-lg border bg-transparent px-2 py-2 font-mono text-xs dark:text-white"
+            :class="jsonError(field.name) ? 'border-red-400 focus:border-red-400 focus:ring-red-400 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'"
+            :value="jsonProp(field.name)"
+            @input.debounce.400ms="setJsonProp(field.name, $event.target.value)"></textarea>
+        <p x-show="jsonError(field.name)" x-cloak class="mt-1 text-xs text-red-500" x-text="jsonError(field.name)"></p>
+    </div>
 </template>
 
 {{-- Rich text (Quill) --}}

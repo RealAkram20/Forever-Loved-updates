@@ -23,13 +23,13 @@ class FeaturesGridBlock extends AbstractSiteBlock
     {
         return [
             'eyebrow' => 'Why Choose Us',
-            'title' => 'Everything You Need to Honor a Life',
-            'subtitle' => 'Our platform provides all the tools to create a meaningful, lasting tribute.',
+            'title' => 'Because Every Life Leaves a Story',
+            'subtitle' => 'This memorial website is more than a site to visit – it\'s a place for memories, forever to be remembered with care.',
             'cards' => [
-                ['icon' => 'book', 'title' => 'Beautiful Memorials', 'body' => 'Create elegant, personalized memorial pages with biographies, life timelines, and cherished stories.'],
-                ['icon' => 'heart', 'title' => 'Collect Tributes', 'body' => 'Let family and friends leave virtual flowers, light candles, and share heartfelt written tributes.'],
-                ['icon' => 'image', 'title' => 'Photo & Video Gallery', 'body' => 'Upload and display photos and videos in a stunning gallery to preserve precious moments.'],
-                ['icon' => 'sparkles', 'title' => 'AI-Powered Biography', 'body' => 'Let our AI help craft a beautiful biography from key details, making it easy to tell their story.'],
+                ['icon' => 'image', 'title' => 'Beautiful Memorials', 'body' => 'Elegant pages to celebrate a life, preserve images, write stories, and save your legacy.'],
+                ['icon' => 'heart', 'title' => 'Collect Tributes', 'body' => 'Let community and loved ones\' reflections live with you, and be heard, lifted & held forever.'],
+                ['icon' => 'image', 'title' => 'Photos & Videos Gallery', 'body' => 'Upload and gather photos and videos preserving vibrant and precious moments.'],
+                ['icon' => 'infinity', 'title' => 'All-Purpose Biographies', 'body' => 'Add a biography and honor the journey they lived – including early life, love, memories.'],
             ],
         ];
     }
@@ -41,7 +41,7 @@ class FeaturesGridBlock extends AbstractSiteBlock
             'title' => 'required|string|max:200',
             'subtitle' => 'nullable|string|max:500',
             'cards' => 'required|array|min:1|max:12',
-            'cards.*.icon' => 'required|string|in:book,heart,image,sparkles',
+            'cards.*.icon' => 'required|string|in:book,heart,image,sparkles,infinity,flower',
             'cards.*.title' => 'required|string|max:200',
             'cards.*.body' => 'required|string|max:1000',
         ];

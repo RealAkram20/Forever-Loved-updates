@@ -252,6 +252,51 @@ class PageController extends Controller
             ->with('success', 'Layout saved.');
     }
 
+    /**
+     * Live editor preview: renders the posted (unsaved) layout document with the
+     * same widget pipeline and context the public pages use. Lenient — a
+     * half-typed document must still render, so no validation errors here.
+     */
+    public function preview(Request $request): \Illuminate\Http\Response
+    {
+        $document = app(PageLayoutService::class)->normalizeDocumentLenient([
+            'version' => $request->input('version', 1),
+            'widgets' => $request->input('widgets', []),
+        ]);
+
+        $types = array_column($document['widgets'], 'type');
+
+        $context = [
+            'tagline' => \App\Models\SystemSetting::get('branding.tagline', 'Celebrate lives that matter'),
+        ];
+
+        if (in_array(\App\PageBuilder\Widgets\PricingPlansWidget::type(), $types, true)) {
+            $context['plans'] = \App\Models\SubscriptionPlan::where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
+            $context['currency'] = \App\Models\SystemSetting::get('payments.currency', 'USD');
+        }
+
+        if (in_array(\App\PageBuilder\Widgets\MemorialShowcaseWidget::type(), $types, true)) {
+            $context['popularMemorials'] = \App\Models\Memorial::where('is_public', true)
+                ->where('status', \App\Models\Memorial::STATUS_ACTIVE)
+                ->whereNotNull('first_name')
+                ->whereNotNull('last_name')
+                ->withCount(['views as view_count', 'tributes as tribute_count'])
+                ->orderByDesc('view_count')
+                ->limit(12)
+                ->get()
+                ->filter(fn ($m) => $m->completion_percentage >= 40)
+                ->take(8);
+        }
+
+        return response()->view('pages.settings.pages.preview', [
+            'title' => 'Preview',
+            'widgets' => $document['widgets'],
+            'layoutContext' => $context,
+        ]);
+    }
+
     public function destroy(string $slug): RedirectResponse
     {
         $page = Page::where('slug', $slug)->firstOrFail();

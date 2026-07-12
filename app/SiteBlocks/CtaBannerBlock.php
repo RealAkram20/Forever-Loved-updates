@@ -22,12 +22,12 @@ class CtaBannerBlock extends AbstractSiteBlock
     public static function defaultProps(): array
     {
         return [
-            'title' => 'Start Preserving Memories Today',
-            'body' => 'Every life has a story worth telling. Create a free memorial in minutes and invite loved ones to contribute their memories.',
-            'primary_label' => 'Get Started Free',
+            'title' => 'Celebrate your loved ones. Cherish memories. Live on.',
+            'body' => 'Join the community and create a timeless memorial.',
+            'primary_label' => 'Get Started Now',
             'primary_route' => 'memorial.create.step1',
-            'secondary_label' => 'View Plans',
-            'secondary_route' => 'pricing',
+            'secondary_label' => 'Learn More',
+            'secondary_route' => 'about',
         ];
     }
 

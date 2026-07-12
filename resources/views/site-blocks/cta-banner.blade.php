@@ -4,27 +4,34 @@
     $primaryUrl = $pRoute && \Illuminate\Support\Facades\Route::has($pRoute) ? route($pRoute) : '#';
     $secondaryUrl = $sRoute && \Illuminate\Support\Facades\Route::has($sRoute) ? route($sRoute) : '#';
 @endphp
-<section class="relative overflow-hidden py-16 sm:py-20" style="background-color: var(--color-cta-bg, var(--color-brand-500));">
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute -top-32 -right-32 h-64 w-64 rounded-full bg-white/10 blur-2xl"></div>
-        <div class="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-white/10 blur-2xl"></div>
-    </div>
-    <div class="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-        <h2 class="ap-cta-title text-2xl font-bold text-white sm:text-3xl lg:text-4xl">{{ $props['title'] ?? '' }}</h2>
-        @if (!empty($props['body']))
-            <p class="ap-cta-body mt-4 text-lg text-white/80">{{ $props['body'] }}</p>
-        @endif
-        <div class="mt-8 flex flex-wrap justify-center gap-4">
-            <a href="{{ $primaryUrl }}"
-               class="btn btn-cta-primary btn-lg">
-                {{ $props['primary_label'] ?? 'Get Started Free' }}
-            </a>
-            @if (($props['secondary_label'] ?? '') !== '')
-                <a href="{{ $secondaryUrl }}"
-                   class="btn btn-cta-secondary btn-lg">
-                    {{ $props['secondary_label'] }}
-                </a>
-            @endif
+<section class="py-14 sm:py-16">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="relative overflow-hidden rounded-3xl" style="background-color: var(--color-cta-bg, var(--color-brand-500));">
+            {{-- Panorama artwork (candle + vase), same in light and dark; the color above
+                 shows wherever the image doesn't cover. Text/button colors stay themeable
+                 via the Appearance CTA roles and CTA button settings. --}}
+            <img src="{{ asset('CTA-Bg.webp') }}" alt="" draggable="false" loading="lazy"
+                 class="absolute inset-0 h-full w-full object-cover object-right pointer-events-none select-none" aria-hidden="true">
+
+            <div class="relative px-6 py-12 sm:px-12 sm:py-14 lg:px-14">
+                <div class="max-w-xl">
+                    <h2 class="ap-cta-title font-display text-2xl font-semibold leading-snug text-gray-900 sm:text-3xl lg:text-[2.1rem]">{{ $props['title'] ?? '' }}</h2>
+                    @if (!empty($props['body']))
+                        <p class="ap-cta-body mt-3 text-base text-gray-700">{{ $props['body'] }}</p>
+                    @endif
+                    <div class="mt-7 flex flex-wrap items-center gap-x-7 gap-y-4">
+                        <a href="{{ $primaryUrl }}" class="btn btn-cta-primary btn-lg">
+                            {{ $props['primary_label'] ?? 'Get Started Free' }}
+                        </a>
+                        @if (($props['secondary_label'] ?? '') !== '')
+                            <a href="{{ $secondaryUrl }}" class="cta-text-link group">
+                                {{ $props['secondary_label'] }}
+                                <svg class="lucide icon-arrow h-4.5 w-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </section>

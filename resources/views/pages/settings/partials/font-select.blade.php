@@ -12,14 +12,14 @@
     @if (count($customNames))
         <optgroup label="Uploaded fonts">
             @foreach ($customNames as $fontName)
-                <option value="{{ $fontName }}" data-custom @selected($current === $fontName)>{{ $fontName }}</option>
+                <option value="{{ $fontName }}" data-custom @selected($current === $fontName) style="font-family: '{{ $fontName }}'">{{ $fontName }}</option>
             @endforeach
         </optgroup>
     @endif
     @foreach ($googleFonts as $category => $families)
         <optgroup label="Google Fonts — {{ $category }}">
             @foreach ($families as $family)
-                <option value="{{ $family }}" @selected($current === $family)>{{ $family }}</option>
+                <option value="{{ $family }}" @selected($current === $family) style="font-family: '{{ $family }}'">{{ $family }}</option>
             @endforeach
         </optgroup>
     @endforeach

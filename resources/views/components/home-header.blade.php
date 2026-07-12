@@ -5,7 +5,7 @@
     $headerNavItems = $headerNavItems ?? collect();
 @endphp
 
-<header class="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm" x-data="{ mobileOpen: false }">
+<header class="sticky top-0 z-40 border-b border-gray-900/[0.06] dark:border-gray-800 bg-[var(--color-bg-page)]/90 backdrop-blur-sm" x-data="{ mobileOpen: false }">
     <div class="mx-auto flex min-h-16 lg:min-h-[4.5rem] items-center justify-between gap-4 px-4 py-1 sm:px-6 lg:px-8 max-w-7xl">
         {{-- Logo --}}
         <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-2 text-gray-800 dark:text-white/90 hover:text-brand-500">
@@ -181,7 +181,7 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 -translate-y-2"
-         class="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 lg:hidden">
+         class="border-t border-gray-100 dark:border-gray-800 bg-[var(--color-bg-page)] lg:hidden">
 
         {{-- Mobile search --}}
         <div class="px-4 pt-3 pb-2"

@@ -166,6 +166,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pages', [\App\Http\Controllers\Admin\PageController::class, 'index'])->name('pages.index');
         Route::get('/pages/create', [\App\Http\Controllers\Admin\PageController::class, 'create'])->name('pages.create');
         Route::post('/pages', [\App\Http\Controllers\Admin\PageController::class, 'store'])->name('pages.store');
+        Route::post('/pages/preview', [\App\Http\Controllers\Admin\PageController::class, 'preview'])->name('pages.preview');
         Route::get('/pages/seo/{routeKey}/edit', [\App\Http\Controllers\Admin\PageController::class, 'editSeoRoute'])->name('pages.seo.edit')->where('routeKey', '[A-Za-z0-9._\-]+');
         Route::put('/pages/seo/{routeKey}', [\App\Http\Controllers\Admin\PageController::class, 'updateSeoRoute'])->name('pages.seo.update')->where('routeKey', '[A-Za-z0-9._\-]+');
         Route::get('/pages/{slug}/layout', [\App\Http\Controllers\Admin\PageController::class, 'editLayout'])->name('pages.layout.edit');

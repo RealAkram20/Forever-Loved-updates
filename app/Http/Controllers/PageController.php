@@ -20,7 +20,7 @@ class PageController extends Controller
             ->where('status', Memorial::STATUS_ACTIVE)
             ->whereNotNull('first_name')
             ->whereNotNull('last_name')
-            ->withCount(['views as view_count'])
+            ->withCount(['views as view_count', 'tributes as tribute_count'])
             ->orderByDesc('view_count')
             ->limit(12)
             ->get()

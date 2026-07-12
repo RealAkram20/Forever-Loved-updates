@@ -23,12 +23,13 @@ class HeroBlock extends AbstractSiteBlock
     {
         return [
             'eyebrow' => 'Celebrate lives that matter',
-            'headline_line1' => 'Honor Your Loved Ones.',
-            'headline_accent' => 'Forever Remembered.',
-            'body' => 'Create beautiful, lasting digital memorials. Share memories, collect tributes, and preserve legacies for generations to come.',
+            'headline_line1' => 'Keeping Their Memory Close,',
+            'headline_accent' => 'Always.',
+            'tagline' => 'Love never truly leaves us.',
+            'body' => 'Create a beautiful space where family and friends can share stories, celebrate cherished moments, and keep precious memories alive for generations.',
             'primary_btn_label' => 'Create a Memorial',
             'primary_route' => 'memorial.create.step1',
-            'secondary_btn_label' => 'Explore Memorials',
+            'secondary_btn_label' => 'Read Their Stories',
             'secondary_route' => 'memorial.directory',
             'trust_points' => [
                 'Free to start',
@@ -44,6 +45,7 @@ class HeroBlock extends AbstractSiteBlock
             'eyebrow' => 'nullable|string|max:200',
             'headline_line1' => 'required|string|max:300',
             'headline_accent' => 'nullable|string|max:200',
+            'tagline' => 'nullable|string|max:200',
             'body' => 'nullable|string|max:2000',
             'primary_btn_label' => 'nullable|string|max:100',
             'primary_route' => 'required|string|max:120',

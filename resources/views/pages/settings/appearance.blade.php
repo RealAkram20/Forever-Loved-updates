@@ -404,5 +404,24 @@
             select.addEventListener('change', apply);
             apply();
         });
+
+        // Dropdown previews: each <option> carries an inline font-family so the
+        // list shows every font in its own face. One combined stylesheet loads
+        // all families subsetted (text=) to just the glyphs of the names, so
+        // each preview font is a few KB instead of the full family.
+        (() => {
+            const families = new Set();
+            document.querySelectorAll('[data-font-select] option:not([data-custom])').forEach((opt) => {
+                if (opt.value) families.add(opt.value);
+            });
+            if (!families.size) return;
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://fonts.googleapis.com/css?family='
+                + [...families].map((f) => f.replace(/ /g, '+')).join('|')
+                + '&text=' + encodeURIComponent('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ')
+                + '&display=swap';
+            document.head.appendChild(link);
+        })();
     </script>
 @endsection

@@ -14,6 +14,8 @@ function defaultPropsForType(definitions, type) {
 }
 
 const defaultSpacingBox = () => ({ top: "0", right: "0", bottom: "0", left: "0", unit: "px", linked: true });
+const defaultStyleBox = () => ({ background_color: "", text_color: "", text_align: "" });
+const defaultAdvancedBox = () => ({ css_id: "", css_class: "", hidden: false });
 
 function ensureSpacing(props) {
   if (!props._spacing || typeof props._spacing !== "object") {
@@ -21,6 +23,16 @@ function ensureSpacing(props) {
   } else {
     if (!props._spacing.margin || typeof props._spacing.margin !== "object") props._spacing.margin = defaultSpacingBox();
     if (!props._spacing.padding || typeof props._spacing.padding !== "object") props._spacing.padding = defaultSpacingBox();
+  }
+  if (!props._style || typeof props._style !== "object") {
+    props._style = defaultStyleBox();
+  } else {
+    props._style = { ...defaultStyleBox(), ...props._style };
+  }
+  if (!props._advanced || typeof props._advanced !== "object") {
+    props._advanced = defaultAdvancedBox();
+  } else {
+    props._advanced = { ...defaultAdvancedBox(), ...props._advanced };
   }
   return props;
 }
@@ -104,6 +116,16 @@ document.addEventListener("alpine:init", () => {
     _canvasSortable: null,
     seoOpen: false,
     seoSaving: false,
+    navOpen: false,
+    dirty: false,
+    jsonErrors: {},
+    previewDevice: "desktop",
+    previewLoading: false,
+    previewFailed: false,
+    _previewTimer: null,
+    _previewInFlight: false,
+    _previewQueued: false,
+    _previewScroll: 0,
     seo: {
       slug: "",
       title: "",
@@ -189,10 +211,123 @@ document.addEventListener("alpine:init", () => {
           }
         });
 
-        this.$nextTick(() => this.setupSortable());
+        this.$nextTick(() => {
+          this.setupSortable();
+          this.initPreview();
+        });
       } catch (err) {
         console.error("[PageBuilder] init error:", err);
         window.$toast?.("error", "Initialisation error \u2014 see browser console.");
+      }
+    },
+
+    // ------------------------------------------------------------------
+    // Live preview (server-rendered iframe, Elementor-style)
+    // ------------------------------------------------------------------
+
+    get previewFrameStyle() {
+      const width =
+        this.previewDevice === "mobile" ? "390px"
+        : this.previewDevice === "tablet" ? "768px"
+        : "100%";
+      return `width:${width};max-width:100%;`;
+    },
+
+    initPreview() {
+      const cfg = window.__PAGE_BUILDER__;
+      if (!cfg?.previewUrl || !this.$refs.previewFrame) return;
+
+      window.addEventListener("message", (e) => {
+        const frame = this.$refs.previewFrame;
+        if (!frame || e.source !== frame.contentWindow) return;
+        const d = e.data || {};
+        if (d.__pb !== true) return;
+        if (d.type === "select" && typeof d.id === "string") {
+          this.selectWidget(d.id, { fromPreview: true });
+        } else if (d.type === "drop" && typeof d.widgetType === "string") {
+          const idx = Number.isInteger(d.index) ? d.index : null;
+          this.addWidget(d.widgetType, idx);
+        } else if (d.type === "remove" && typeof d.id === "string") {
+          // The preview's context menu already ran its own confirm step
+          this._removeNow(d.id);
+        } else if (d.type === "duplicate" && typeof d.id === "string") {
+          this.duplicateWidget(d.id);
+        } else if (d.type === "scroll") {
+          this._previewScroll = Number(d.y) || 0;
+        } else if (d.type === "ready") {
+          this._sendToPreview({ type: "state", scroll: this._previewScroll, selectedId: this.selectedId });
+        }
+      });
+
+      window.addEventListener("beforeunload", (e) => {
+        if (!this.dirty) return;
+        e.preventDefault();
+        e.returnValue = "";
+      });
+
+      this.refreshPreview();
+    },
+
+    _sendToPreview(msg) {
+      const frame = this.$refs.previewFrame;
+      try {
+        frame?.contentWindow?.postMessage({ __pb: true, ...msg }, "*");
+      } catch {
+        /* frame not ready yet */
+      }
+    },
+
+    _markChanged() {
+      this.dirty = true;
+      this.schedulePreview();
+    },
+
+    schedulePreview() {
+      clearTimeout(this._previewTimer);
+      this._previewTimer = setTimeout(() => this.refreshPreview(), 450);
+    },
+
+    async refreshPreview() {
+      const cfg = window.__PAGE_BUILDER__;
+      const frame = this.$refs.previewFrame;
+      if (!cfg?.previewUrl || !frame) return;
+      if (this._previewInFlight) {
+        this._previewQueued = true;
+        return;
+      }
+      this._previewInFlight = true;
+      this.previewLoading = true;
+      const token =
+        document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+      try {
+        const res = await fetch(cfg.previewUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/html",
+            "X-CSRF-TOKEN": token,
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: JSON.stringify({
+            version: 1,
+            widgets: this.widgets.map((w) => ({ id: w.id, type: w.type, order: w.order, props: w.props })),
+          }),
+        });
+        if (!res.ok) throw new Error("preview " + res.status);
+        frame.srcdoc = await res.text();
+        this.previewFailed = false;
+      } catch {
+        if (!this.previewFailed) {
+          this.previewFailed = true;
+          window.$toast?.("error", "Preview could not refresh \u2014 check your connection, then keep editing; it retries on the next change.");
+        }
+      } finally {
+        this._previewInFlight = false;
+        this.previewLoading = false;
+        if (this._previewQueued) {
+          this._previewQueued = false;
+          this.schedulePreview();
+        }
       }
     },
 
@@ -209,11 +344,14 @@ document.addEventListener("alpine:init", () => {
       return preview || (def?.label || w.type);
     },
 
-    selectWidget(id) {
+    selectWidget(id, { fromPreview = false } = {}) {
       if (this.selectedId !== id) {
         this.destroyAllQuill();
       }
       this.selectedId = id;
+      if (!fromPreview) {
+        this._sendToPreview({ type: "highlight", id });
+      }
     },
 
     onSlugInput() {
@@ -234,6 +372,13 @@ document.addEventListener("alpine:init", () => {
       this._metaDescManuallyEdited = !!this.seo.meta_description;
     },
 
+    onPaletteDragStart(e, type) {
+      // Custom MIME type doubles as the marker the preview iframe checks for
+      e.dataTransfer.setData("application/x-pb-widget", type);
+      e.dataTransfer.setData("text/plain", type);
+      e.dataTransfer.effectAllowed = "copy";
+    },
+
     addWidget(type, index = null) {
       const def = this.definitions.find((d) => d.type === type);
       if (!def) return;
@@ -250,6 +395,7 @@ document.addEventListener("alpine:init", () => {
       }
       this.reindex();
       this.selectedId = instance.id;
+      this._markChanged();
       this.$nextTick(() => this.setupSortable());
     },
 
@@ -263,9 +409,33 @@ document.addEventListener("alpine:init", () => {
         return;
       }
       this._pendingDelete[id] = false;
+      this._removeNow(id);
+    },
+
+    _removeNow(id) {
+      const exists = this.widgets.some((w) => w.id === id);
+      if (!exists) return;
       this.widgets = this.widgets.filter((w) => w.id !== id);
       if (this.selectedId === id) this.selectedId = null;
       this.reindex();
+      this._markChanged();
+      this.$nextTick(() => this.setupSortable());
+      window.$toast?.("success", "Element removed — save the layout to make it permanent.");
+    },
+
+    duplicateWidget(id) {
+      const src = this.widgets.find((w) => w.id === id);
+      if (!src) return;
+      const copy = {
+        id: "w_" + crypto.randomUUID().replace(/-/g, "").slice(0, 10),
+        type: src.type,
+        order: src.order + 1,
+        props: deepClone(src.props),
+      };
+      this.widgets.splice(this.widgets.indexOf(src) + 1, 0, copy);
+      this.reindex();
+      this.selectedId = copy.id;
+      this._markChanged();
       this.$nextTick(() => this.setupSortable());
     },
 
@@ -281,12 +451,38 @@ document.addEventListener("alpine:init", () => {
       const [moved] = arr.splice(oldIndex, 1);
       arr.splice(newIndex, 0, moved);
       this.reindex();
+      this._markChanged();
     },
 
     updateProp(key, value) {
       const w = this.selectedWidget;
       if (!w) return;
       w.props[key] = value;
+      this._markChanged();
+    },
+
+    styleVal(key) {
+      return this.selectedWidget?.props._style?.[key] ?? "";
+    },
+
+    setStyleVal(key, value) {
+      const w = this.selectedWidget;
+      if (!w) return;
+      ensureSpacing(w.props);
+      w.props._style[key] = value;
+      this._markChanged();
+    },
+
+    advVal(key) {
+      return this.selectedWidget?.props._advanced?.[key] ?? "";
+    },
+
+    setAdvVal(key, value) {
+      const w = this.selectedWidget;
+      if (!w) return;
+      ensureSpacing(w.props);
+      w.props._advanced[key] = value;
+      this._markChanged();
     },
 
     spacingVal(group, side) {
@@ -318,6 +514,7 @@ document.addEventListener("alpine:init", () => {
       } else {
         box[side] = val;
       }
+      this._markChanged();
     },
 
     setSpacingUnit(group, unit) {
@@ -325,6 +522,7 @@ document.addEventListener("alpine:init", () => {
       if (!w) return;
       ensureSpacing(w.props);
       w.props._spacing[group].unit = unit;
+      this._markChanged();
     },
 
     toggleSpacingLinked(group) {
@@ -336,6 +534,7 @@ document.addEventListener("alpine:init", () => {
       if (box.linked) {
         box.right = box.bottom = box.left = box.top;
       }
+      this._markChanged();
     },
 
     jsonProp(key) {
@@ -349,16 +548,27 @@ document.addEventListener("alpine:init", () => {
     setJsonProp(key, text) {
       const w = this.selectedWidget;
       if (!w) return;
+      const errKey = w.id + "-" + key;
       try {
         w.props[key] = JSON.parse(text || "null");
+        delete this.jsonErrors[errKey];
+        this._markChanged();
       } catch {
-        /* keep previous */
+        this.jsonErrors[errKey] = 'Fix the JSON syntax to apply this change — e.g. ["First item", "Second item"]';
       }
+    },
+
+    jsonError(key) {
+      const w = this.selectedWidget;
+      if (!w) return "";
+      return this.jsonErrors[w.id + "-" + key] || "";
     },
 
     _quillInstances: {},
 
     _quillToolbar: [
+      // h1 is reserved for the page title / Heading widget
+      [{ header: [2, 3, 4, false] }],
       [{ size: ["small", false, "large", "huge"] }],
       ["bold", "italic", "underline"],
       [{ color: [] }],
@@ -500,6 +710,7 @@ document.addEventListener("alpine:init", () => {
             window.$toast?.("error", this.formatApiErrors(data) || data.message || "Could not create page.");
             return;
           }
+          this.dirty = false;
           if (data.redirect) {
             window.$toast?.("success", data.message || "Page created!");
             window.location.assign(data.redirect);
@@ -516,6 +727,7 @@ document.addEventListener("alpine:init", () => {
 
       if (!cfg.saveUrl) {
         this.saving = false;
+        window.$toast?.("error", "Save is unavailable — reload this page and try again.");
         return;
       }
 
@@ -558,6 +770,7 @@ document.addEventListener("alpine:init", () => {
           window.$toast?.("error", this.formatApiErrors(data) || data.message || "Save failed.");
           return;
         }
+        this.dirty = false;
         window.$toast?.("success", data.message || "Layout saved.");
       } catch {
         window.$toast?.("error", "Network error.");

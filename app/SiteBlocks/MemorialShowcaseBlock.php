@@ -22,9 +22,9 @@ class MemorialShowcaseBlock extends AbstractSiteBlock
     public static function defaultProps(): array
     {
         return [
-            'eyebrow' => 'Featured',
+            'eyebrow' => 'Trending',
             'title' => 'Popular Memorials',
-            'view_all_label' => 'View All',
+            'view_all_label' => 'View all',
             'mobile_view_all_label' => 'View All Memorials',
         ];
     }
