@@ -51,8 +51,6 @@ class DashboardController extends Controller
      */
     private function systemHealth(): array
     {
-        $phpBinary = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
-
         return [
             'schedulerDown' => ! \App\Helpers\QueueHealthHelper::schedulerHealthy(),
             'queueBacklog' => ! \App\Helpers\QueueHealthHelper::queueHealthy(),
@@ -60,7 +58,7 @@ class DashboardController extends Controller
             'debugInProduction' => app()->environment('production') && (bool) config('app.debug'),
             'smtpMissing' => (bool) \App\Models\SystemSetting::get('notifications.email_enabled', false)
                 && ! (bool) \App\Models\SystemSetting::get('smtp.enabled', false),
-            'cronLine' => '* * * * * '.$phpBinary.' '.base_path('artisan').' schedule:run >> /dev/null 2>&1',
+            'cronLine' => \App\Helpers\QueueHealthHelper::cronLine(),
         ];
     }
 

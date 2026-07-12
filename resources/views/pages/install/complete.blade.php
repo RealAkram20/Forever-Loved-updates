@@ -13,8 +13,7 @@
         </p>
 
         @php
-            $phpBinary = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
-            $cronLine = '* * * * * '.$phpBinary.' '.base_path('artisan').' schedule:run >> /dev/null 2>&1';
+            $cronLine = \App\Helpers\QueueHealthHelper::cronLine();
         @endphp
         <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-800/50 dark:bg-amber-900/20">
             <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">

@@ -47,4 +47,28 @@ class QueueHealthHelper
     {
         return (int) rescue(fn () => DB::table('failed_jobs')->count(), 0, false);
     }
+
+    /**
+     * The crontab line an admin should paste into their host's panel.
+     *
+     * Two shared-hosting traps this avoids:
+     * - PHP_BINARY under a web request is the SAPI serving the page. On LiteSpeed
+     *   (Hostinger, most cPanel hosts) that is `lsphp`, which is not a CLI binary
+     *   and does nothing under cron — so hand back the `php` beside it.
+     * - No `>> /dev/null 2>&1`. Panel cron fields often exec the command without
+     *   a shell, and artisan then rejects `>>` as an unexpected argument.
+     */
+    public static function cronLine(): string
+    {
+        $binary = defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
+
+        if (str_ends_with($binary, '/lsphp')) {
+            $cli = substr($binary, 0, -5).'php';
+            if (is_executable($cli)) {
+                $binary = $cli;
+            }
+        }
+
+        return '* * * * * '.$binary.' '.base_path('artisan').' schedule:run';
+    }
 }
