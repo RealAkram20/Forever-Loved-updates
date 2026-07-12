@@ -10,6 +10,15 @@ use App\Models\UserSubscription;
 class SubscriptionGuard
 {
     /**
+     * How long a pending order blocks a new attempt. Inside this window the
+     * customer is probably still in the gateway's payment window, so a second
+     * order would risk a double charge. Past it the attempt is treated as
+     * abandoned and a retry supersedes it — otherwise one closed tab would lock
+     * the memorial out of paying until reconciliation expires the order 48h later.
+     */
+    private const PENDING_LOCK_MINUTES = 10;
+
+    /**
      * Determine whether a new payment can be created for a memorial on a given plan.
      *
      * @return array{allowed: bool, reason: string|null, type: 'new'|'upgrade'|'renewal'|null, existing_subscription: UserSubscription|null}
@@ -91,12 +100,15 @@ class SubscriptionGuard
 
     /**
      * Check if there is already a pending payment order for this memorial + plan.
+     *
+     * @param  int|null  $withinMinutes  Only count orders created this recently.
      */
-    public static function hasPendingOrder(Memorial $memorial, SubscriptionPlan $plan): bool
+    public static function hasPendingOrder(Memorial $memorial, SubscriptionPlan $plan, ?int $withinMinutes = null): bool
     {
         return PaymentOrder::where('memorial_id', $memorial->id)
             ->where('subscription_plan_id', $plan->id)
             ->where('status', 'pending')
+            ->when($withinMinutes !== null, fn ($q) => $q->where('created_at', '>', now()->subMinutes($withinMinutes)))
             ->exists();
     }
 
@@ -126,10 +138,10 @@ class SubscriptionGuard
             return $check;
         }
 
-        if (static::hasPendingOrder($memorial, $plan)) {
+        if (static::hasPendingOrder($memorial, $plan, self::PENDING_LOCK_MINUTES)) {
             return [
                 'allowed' => false,
-                'reason' => 'A pending payment already exists for this memorial on the ' . $plan->name . ' plan. Please wait for it to be processed.',
+                'reason' => 'A payment for this memorial on the ' . $plan->name . ' plan is still going through. Finish it in the payment window, or wait ' . self::PENDING_LOCK_MINUTES . ' minutes and try again.',
                 'type' => null,
                 'existing_subscription' => $check['existing_subscription'],
             ];

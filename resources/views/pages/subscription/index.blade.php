@@ -1,5 +1,14 @@
 @extends('layouts.app')
 
+@php
+    // The resume CTA drives the Create Payment form, so it can only be offered
+    // when that card is actually on the page and the gateway is live.
+    $canResumePayment = $paymentsEnabled
+        && $pesapalEnabled
+        && $plans->where('price', '>', 0)->isNotEmpty()
+        && $memorials->isNotEmpty();
+@endphp
+
 @section('content')
     <x-common.page-breadcrumb pageTitle="My Subscription" />
 
@@ -146,7 +155,7 @@
                                 @if ($sub->isOverdue() || $sub->isExpiringSoon())
                                     <div class="flex-shrink-0">
                                         <button type="button"
-                                            @click="$refs.createMemorial && ($refs.createMemorial.value = '{{ $sub->memorial_id }}'); $refs.createPlan && ($refs.createPlan.value = '{{ $sub->subscription_plan_id }}'); document.querySelector('#create-payment-section')?.scrollIntoView({behavior: 'smooth'})"
+                                            @click="window.dispatchEvent(new CustomEvent('prefill-payment', { detail: { memorialId: '{{ $sub->memorial_id }}', planId: '{{ $sub->subscription_plan_id }}' } }))"
                                             class="btn btn-md {{ $sub->isOverdue() ? 'btn-danger' : 'btn-primary' }}">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                             Renew Now
@@ -183,6 +192,7 @@
                                 <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300 hidden md:table-cell">Plan</th>
                                 <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300">Amount</th>
                                 <th class="pb-3 text-left font-medium text-gray-700 dark:text-gray-300">Status</th>
+                                <th class="pb-3 text-right font-medium text-gray-700 dark:text-gray-300"><span class="sr-only">Action</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -205,6 +215,19 @@
                                             {{ in_array($payment->status, ['failed', 'cancelled']) ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' : '' }}">
                                             {{ ucfirst($payment->status) }}
                                         </span>
+                                    </td>
+                                    <td class="py-3 text-right">
+                                        @if ($payment->status === 'pending' && $payment->payment_gateway === 'manual')
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">Awaiting admin approval</span>
+                                        @elseif ($payment->status === 'pending' && $canResumePayment && $payment->memorial && $payment->plan && $payment->plan->price > 0)
+                                            {{-- Re-submits the same memorial + plan; the server cancels this stale
+                                                 order as superseded and opens a fresh gateway window. --}}
+                                            <button type="button"
+                                                @click="window.dispatchEvent(new CustomEvent('resume-payment', { detail: { memorialId: '{{ $payment->memorial_id }}', planId: '{{ $payment->subscription_plan_id }}' } }))"
+                                                class="btn btn-primary btn-sm whitespace-nowrap">
+                                                Complete Payment
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -243,6 +266,21 @@ function createPaymentForm(pesapalEnabled = true) {
                     }
                 }
             });
+
+            // Payment History and the renewal cards live outside this component,
+            // so they hand the memorial + plan over on a window event.
+            window.addEventListener('resume-payment', (e) => this.prefill(e.detail, true));
+            window.addEventListener('prefill-payment', (e) => this.prefill(e.detail, false));
+        },
+        prefill(detail, submit = false) {
+            if (!detail?.memorialId || !detail?.planId) return;
+            this.memorialId = String(detail.memorialId);
+            this.planId = String(detail.planId);
+            this.createError = null;
+            document.getElementById('create-payment-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (submit && !this.submitting) {
+                this.proceedToPayment();
+            }
         },
         async proceedToPayment() {
             if (!this.memorialId || !this.planId) {
