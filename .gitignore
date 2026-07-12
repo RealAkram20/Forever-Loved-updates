@@ -2,7 +2,11 @@
 .DS_Store
 .env
 .env.backup
+# Laravel loads .env.<APP_ENV> ahead of .env, so a committed .env.production
+# silently overrides the server's real one. The template is .env.production.example.
 .env.production
+.env.production.*
+!.env.production.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet

@@ -55,7 +55,9 @@ $includeDirs = @(
     "app", "bootstrap", "config", "database", "public", "resources", "routes", "storage", "vendor"
 )
 $includeFiles = @(
-    ".env.production", ".htaccess", "artisan", "composer.json", "composer.lock", "package.json", "version.txt"
+    # Never ship a real .env.production: Laravel loads .env.<APP_ENV> ahead of
+    # .env, so it would override the server's own environment.
+    ".env.production.example", ".htaccess", "artisan", "composer.json", "composer.lock", "package.json", "version.txt"
 )
 
 $tempDir = Join-Path $env:TEMP "Forever-love-deploy"
@@ -118,7 +120,7 @@ $sizeMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
 Write-Host "`n=== Done ===" -ForegroundColor Green
 Write-Host "Zip: $zipPath ($sizeMB MB)" -ForegroundColor Green
 Write-Host "`nIncluded:" -ForegroundColor Cyan
-Write-Host '  - .env.production (copy to .env on server and fill in credentials)' -ForegroundColor Gray
+Write-Host '  - .env.production.example (copy to .env on server and fill in credentials)' -ForegroundColor Gray
 Write-Host "  - version.txt (for update system)" -ForegroundColor Gray
 Write-Host "  - public/updates/ (update packages)" -ForegroundColor Gray
 if (Test-Path $geoDb) {
@@ -127,7 +129,7 @@ if (Test-Path $geoDb) {
 Write-Host "`nAfter upload (Hostinger: docroot = public_html, cannot point to /public):" -ForegroundColor Cyan
 Write-Host "  1. Extract the zip *into* public_html (app/, public/, vendor/, .htaccess at same level)" -ForegroundColor Gray
 Write-Host "  2. Leave document root as public_html — the root .htaccess routes requests into public/" -ForegroundColor Gray
-Write-Host '  3. Create .env in public_html/ (use .env.production as a template and fill values)' -ForegroundColor Gray
+Write-Host '  3. Create .env in public_html/ (use .env.production.example as a template and fill values)' -ForegroundColor Gray
 Write-Host "  4. Visit https://yourdomain.com/install to run the installer" -ForegroundColor Gray
 Write-Host "  5. If installer times out, visit /setup.php (file is inside public/)" -ForegroundColor Gray
 Write-Host "  6. Uploads use /storage/... — root + public .htaccess include a fallback if storage:link fails (ZIP hosting)" -ForegroundColor Gray
