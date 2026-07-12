@@ -119,9 +119,11 @@ window.addEventListener('resize', checkMobile);">
 
     {{-- Global toast notification system (same as app.blade.php) --}}
     <div x-data="toastSystem()" x-on:toast.window="addToast($event.detail)"
+         role="status" aria-live="polite"
          class="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-[99999] flex flex-col-reverse gap-3 pointer-events-none sm:max-w-[400px]">
         <template x-for="toast in toasts" :key="toast.id">
             <div x-show="toast.visible"
+                 :role="toast.type === 'error' ? 'alert' : 'status'"
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 translate-y-4 scale-95"
                  x-transition:enter-end="opacity-100 translate-y-0 scale-100"
@@ -159,7 +161,7 @@ window.addEventListener('resize', checkMobile);">
                                'text-blue-800 dark:text-blue-200': toast.type === 'info',
                            }" x-text="toast.message"></p>
                     </div>
-                    <button @click="removeToast(toast.id)" class="shrink-0 -mr-1 -mt-0.5 rounded-lg p-1 hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+                    <button @click="removeToast(toast.id)" aria-label="Dismiss notification" class="shrink-0 -mr-1 -mt-0.5 rounded-lg p-1 hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
                         <svg class="w-4 h-4" :class="{
                             'text-red-400 dark:text-red-400': toast.type === 'error',
                             'text-green-400 dark:text-green-400': toast.type === 'success',

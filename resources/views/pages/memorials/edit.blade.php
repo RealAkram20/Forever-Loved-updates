@@ -162,7 +162,7 @@
                                 <input type="text" name="companies[{{ $i }}][company_name]" value="{{ $company['company_name'] ?? '' }}"
                                     placeholder="e.g. Business or organisation name"
                                     class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
-                                <button type="button" @click="$event.target.closest('.company-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
+                                <button type="button" @click="removeRow($event.target.closest('.company-row'), 'companies')" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
@@ -180,7 +180,7 @@
                                 <input type="text" name="co_founders[{{ $i }}][name]" value="{{ $founder['name'] ?? '' }}"
                                     placeholder="e.g. Business partner name"
                                     class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
-                                <button type="button" @click="$event.target.closest('.cofounder-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
+                                <button type="button" @click="removeRow($event.target.closest('.cofounder-row'), 'co_founders')" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
@@ -254,7 +254,7 @@
                                     class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 min-w-0 flex-1 basis-40 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                                 <input type="number" name="children[{{ $i }}][birth_year]" value="{{ $child['birth_year'] ?? '' }}" placeholder="Year" min="1900" max="2100"
                                     class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
-                                <button type="button" @click="$event.target.closest('.child-row').remove()" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove">
+                                <button type="button" @click="removeRow($event.target.closest('.child-row'), 'children')" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
@@ -277,7 +277,7 @@
                                     <span class="text-gray-400 shrink-0">&ndash;</span>
                                     <input type="number" name="spouses[{{ $i }}][marriage_end_year]" value="{{ $spouse['marriage_end_year'] ?? '' }}" placeholder="End year" min="1900" max="2100"
                                         class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm dark:bg-transparent" />
-                                    <button type="button" @click="$event.target.closest('.spouse-row').remove()" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove">
+                                    <button type="button" @click="removeRow($event.target.closest('.spouse-row'), 'spouses')" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     </button>
                                 </div>
@@ -299,7 +299,7 @@
                                     <option value="biological" {{ ($parent['relationship_type'] ?? '') === 'biological' ? 'selected' : '' }}>Biological</option>
                                     <option value="adoptive" {{ ($parent['relationship_type'] ?? '') === 'adoptive' ? 'selected' : '' }}>Adoptive</option>
                                 </select>
-                                <button type="button" @click="$event.target.closest('.parent-row').remove()" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove">
+                                <button type="button" @click="removeRow($event.target.closest('.parent-row'), 'parents')" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
@@ -316,7 +316,7 @@
                             <div class="flex gap-2 items-center sibling-row">
                                 <input type="text" name="siblings[{{ $i }}][sibling_name]" value="{{ $sibling['sibling_name'] ?? '' }}" placeholder="Name"
                                     class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 min-w-0 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
-                                <button type="button" @click="$event.target.closest('.sibling-row').remove()" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove">
+                                <button type="button" @click="removeRow($event.target.closest('.sibling-row'), 'siblings')" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
@@ -354,7 +354,7 @@
                                 class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         </div>
                         <div class="flex items-end">
-                            <button type="button" @click="$event.target.closest('.education-row').remove()" class="text-red-500 hover:text-red-700 p-2" title="Remove">
+                            <button type="button" @click="removeRow($event.target.closest('.education-row'), 'education')" class="text-red-500 hover:text-red-700 p-2" title="Remove">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                         </div>
@@ -682,64 +682,83 @@
                         this.savingAll = false;
                     }
                 },
+                // Counting rows collides after a middle row is deleted (the last
+                // index gets reused), and collectFormData then silently drops one
+                // row — derive the next index from the highest one still in the DOM.
+                nextRowIdx(container, rowClass) {
+                    let max = -1;
+                    container.querySelectorAll('.' + rowClass + ' [name]').forEach(el => {
+                        const m = el.name.match(/\[(\d+)\]/);
+                        if (m) max = Math.max(max, parseInt(m[1], 10));
+                    });
+                    return max + 1;
+                },
+                // row.remove() fires no change event, so autosave would never send
+                // the deletion — queue the relation explicitly.
+                removeRow(row, relName) {
+                    if (!row) return;
+                    row.remove();
+                    this.queueRelationship(relName);
+                    this.scheduleAutoSave();
+                },
                 addCompanyRow(container) {
-                    const idx = container.querySelectorAll('.company-row').length;
+                    const idx = this.nextRowIdx(container, 'company-row');
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center company-row';
                     div.innerHTML = `<input type="text" name="companies[${idx}][company_name]" placeholder="e.g. Business or organisation name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
-                    div.querySelector('button').addEventListener('click', () => div.remove());
+                    div.querySelector('button').addEventListener('click', () => this.removeRow(div, 'companies'));
                     container.insertBefore(div, container.lastElementChild);
                 },
                 addCoFounderRow(container) {
-                    const idx = container.querySelectorAll('.cofounder-row').length;
+                    const idx = this.nextRowIdx(container, 'cofounder-row');
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center cofounder-row';
                     div.innerHTML = `<input type="text" name="co_founders[${idx}][name]" placeholder="e.g. Business partner name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 flex-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
                         <button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
-                    div.querySelector('button').addEventListener('click', () => div.remove());
+                    div.querySelector('button').addEventListener('click', () => this.removeRow(div, 'co_founders'));
                     container.insertBefore(div, container.lastElementChild);
                 },
                 addChildRow(container) {
-                    const idx = container.querySelectorAll('.child-row').length;
+                    const idx = this.nextRowIdx(container, 'child-row');
                     const div = document.createElement('div');
                     div.className = 'flex flex-wrap gap-2 items-center child-row';
                     div.innerHTML = `<input type="text" name="children[${idx}][child_name]" placeholder="Name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 min-w-0 flex-1 basis-40 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         <input type="number" name="children[${idx}][birth_year]" placeholder="Year" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-24 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         <button type="button" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
-                    div.querySelector('button').addEventListener('click', () => div.remove());
+                    div.querySelector('button').addEventListener('click', () => this.removeRow(div, 'children'));
                     container.insertBefore(div, container.lastElementChild);
                 },
                 addSpouseRow(container) {
-                    const idx = container.querySelectorAll('.spouse-row').length;
+                    const idx = this.nextRowIdx(container, 'spouse-row');
                     const div = document.createElement('div');
                     div.className = 'spouse-row space-y-2 rounded-lg border border-gray-100 bg-gray-50/50 p-2.5 dark:border-gray-700 dark:bg-white/[0.02]';
                     div.innerHTML = `<input type="text" name="spouses[${idx}][spouse_name]" placeholder="Name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm dark:bg-transparent" />
                         <div class="flex gap-2 items-center"><input type="number" name="spouses[${idx}][marriage_start_year]" placeholder="Start year" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm dark:bg-transparent" /><span class="text-gray-400 shrink-0">&ndash;</span><input type="number" name="spouses[${idx}][marriage_end_year]" placeholder="End year" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm dark:bg-transparent" /><button type="button" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div>`;
-                    div.querySelector('button').addEventListener('click', () => div.remove());
+                    div.querySelector('button').addEventListener('click', () => this.removeRow(div, 'spouses'));
                     container.insertBefore(div, container.lastElementChild);
                 },
                 addParentRow(container) {
-                    const idx = container.querySelectorAll('.parent-row').length;
+                    const idx = this.nextRowIdx(container, 'parent-row');
                     const div = document.createElement('div');
                     div.className = 'flex flex-wrap gap-2 items-center parent-row';
                     div.innerHTML = `<input type="text" name="parents[${idx}][parent_name]" placeholder="Name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 min-w-0 flex-1 basis-40 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         <select name="parents[${idx}][relationship_type]" class="h-11 shrink-0 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent dark:bg-gray-900/80 px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100"><option value="biological">Biological</option><option value="adoptive">Adoptive</option></select>
                         <button type="button" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
-                    div.querySelector('button').addEventListener('click', () => div.remove());
+                    div.querySelector('button').addEventListener('click', () => this.removeRow(div, 'parents'));
                     container.insertBefore(div, container.lastElementChild);
                 },
                 addSiblingRow(container) {
-                    const idx = container.querySelectorAll('.sibling-row').length;
+                    const idx = this.nextRowIdx(container, 'sibling-row');
                     const div = document.createElement('div');
                     div.className = 'flex gap-2 items-center sibling-row';
                     div.innerHTML = `<input type="text" name="siblings[${idx}][sibling_name]" placeholder="Name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 min-w-0 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" />
                         <button type="button" class="shrink-0 text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
-                    div.querySelector('button').addEventListener('click', () => div.remove());
+                    div.querySelector('button').addEventListener('click', () => this.removeRow(div, 'siblings'));
                     container.insertBefore(div, container.lastElementChild);
                 },
                 addEducationRow(container) {
-                    const idx = container.querySelectorAll('.education-row').length;
+                    const idx = this.nextRowIdx(container, 'education-row');
                     const div = document.createElement('div');
                     div.className = 'grid grid-cols-1 gap-2 sm:grid-cols-4 items-end education-row';
                     div.innerHTML = `<div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Institution</label><input type="text" name="education[${idx}][institution_name]" placeholder="e.g. School or university name" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
@@ -747,7 +766,7 @@
                         <div><label class="mb-1 block text-xs text-gray-500">End year</label><input type="number" name="education[${idx}][end_year]" placeholder="1994" min="1900" max="2100" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
                         <div class="sm:col-span-2"><label class="mb-1 block text-xs text-gray-500">Degree (optional)</label><input type="text" name="education[${idx}][degree]" placeholder="e.g. Diploma" class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm" /></div>
                         <div class="flex items-end"><button type="button" class="text-red-500 hover:text-red-700 p-2" title="Remove"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div>`;
-                    div.querySelector('button').addEventListener('click', () => div.remove());
+                    div.querySelector('button').addEventListener('click', () => this.removeRow(div, 'education'));
                     container.insertBefore(div, container.lastElementChild);
                 }
             };

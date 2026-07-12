@@ -22,6 +22,11 @@ class MemorialSignupController extends Controller
 {
     private const SESSION_KEY = 'memorial_signup';
 
+    // Set after preparePaidCheckout creates the memorial (the wizard session is
+    // cleared at that point) so a failed payment attempt can resume checkout
+    // for the same memorial instead of dead-ending on "complete Step 1 first".
+    private const RESUME_KEY = 'memorial_signup_resume_memorial_id';
+
     /**
      * Step 1: Deceased details.
      */
@@ -214,9 +219,6 @@ class MemorialSignupController extends Controller
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 401);
         }
         $data = session(self::SESSION_KEY, []);
-        if (empty($data['first_name'])) {
-            return response()->json(['success' => false, 'error' => 'Please complete Step 1 first.'], 400);
-        }
 
         $planId = (int) ($request->input('plan_id') ?? $data['plan_id'] ?? 0);
         $plan = SubscriptionPlan::find($planId);
@@ -224,8 +226,16 @@ class MemorialSignupController extends Controller
             return response()->json(['success' => false, 'error' => 'Please select a paid plan.'], 400);
         }
 
-        $memorial = $this->createMemorialFromSession($request->user(), $data, $plan);
-        session()->forget(self::SESSION_KEY);
+        if (empty($data['first_name'])) {
+            $memorial = $this->resumableCheckoutMemorial($request);
+            if (! $memorial) {
+                return response()->json(['success' => false, 'error' => 'Please complete Step 1 first.'], 400);
+            }
+        } else {
+            $memorial = $this->createMemorialFromSession($request->user(), $data, $plan);
+            session()->forget(self::SESSION_KEY);
+            session([self::RESUME_KEY => $memorial->id]);
+        }
 
         return response()->json([
             'success' => true,
@@ -238,6 +248,23 @@ class MemorialSignupController extends Controller
                 'interval' => $plan->interval,
             ],
         ]);
+    }
+
+    /**
+     * The memorial created by an earlier preparePaidCheckout attempt whose
+     * payment never completed, if the retry may resume checkout for it.
+     */
+    private function resumableCheckoutMemorial(Request $request): ?Memorial
+    {
+        $memorialId = session(self::RESUME_KEY);
+        if (! $memorialId) {
+            return null;
+        }
+
+        return Memorial::where('id', $memorialId)
+            ->where('user_id', $request->user()->id)
+            ->whereNull('user_subscription_id')
+            ->first();
     }
 
     /**

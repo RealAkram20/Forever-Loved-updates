@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-nOpirlTm.css",
+    "file": "assets/app-QcOAMlIl.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -82,7 +82,7 @@
     ]
   },
   "resources/js/memorial-public.js": {
-    "file": "assets/memorial-public-DQLlA_Zj.js",
+    "file": "assets/memorial-public-D5B6pINO.js",
     "name": "memorial-public",
     "src": "resources/js/memorial-public.js",
     "isEntry": true

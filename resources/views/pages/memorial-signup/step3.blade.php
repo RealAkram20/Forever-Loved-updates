@@ -282,6 +282,12 @@ function step3Checkout(plansData, pesapalEnabled, paymentsEnabled) {
             this.submitting = true;
             this.error = null;
             try {
+                // A previous attempt already created the memorial — retry the
+                // payment directly instead of re-preparing checkout.
+                if (this.memorialSlug && this.selectedPlan === planId) {
+                    await this.submitPesapalPayment();
+                    return;
+                }
                 const form = document.getElementById('step3-plan-form');
                 if (!form) {
                     this.error = 'Form not found. Please refresh the page.';
@@ -354,7 +360,9 @@ function step3Checkout(plansData, pesapalEnabled, paymentsEnabled) {
                 if (contentType && contentType.includes('application/json')) {
                     data = await res.json();
                 } else {
-                    this.pesapalError = 'Request failed. Please try again.';
+                    // The Pesapal modal is still closed here — errors must land
+                    // in the always-visible container, not pesapalError.
+                    this.error = 'We could not start the payment. Click Continue to try again.';
                     return;
                 }
 
@@ -368,10 +376,10 @@ function step3Checkout(plansData, pesapalEnabled, paymentsEnabled) {
                         if (window.$toast) window.$toast('success', data.message || 'Payment popup opened.');
                     });
                 } else {
-                    this.pesapalError = data.error || data.message || 'Payment failed. Please try again.';
+                    this.error = data.error || data.message || 'We could not start the payment. Click Continue to try again.';
                 }
             } catch (e) {
-                this.pesapalError = 'Network error. Please try again.';
+                this.error = 'We could not reach the payment service. Check your connection, then click Continue to try again.';
             }
         },
 

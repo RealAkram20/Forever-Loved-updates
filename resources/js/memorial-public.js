@@ -1255,9 +1255,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!name || !email) return;
 
         if (pendingAction?.type === 'tribute') {
-            submitTribute(pendingAction.payload, name, email);
-            const msgEl = document.getElementById('tribute-note-message');
-            if (msgEl) msgEl.value = '';
+            submitTribute(pendingAction.payload, name, email).then((ok) => {
+                if (ok) clearTributeEditor();
+            });
         } else if (pendingAction?.type === 'reaction') {
             pendingAction.callback?.(name, email) ?? submitReaction(pendingAction.payload, name, email);
         } else if (pendingAction?.type === 'comment') {
@@ -1267,12 +1267,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Tribute (flower, candle, note) ---
+    // Resolves to true only when the tribute was accepted, so callers clear
+    // the editor on success and keep the visitor's text on any failure.
     function submitTribute(payload, guestName, guestEmail) {
         const body = { ...payload };
         if (guestName) body.guest_name = guestName;
         if (guestEmail) body.guest_email = guestEmail;
         const url = tributeUrl || `${baseUrl}/tribute`;
-        fetch(url, fetchOpts('POST', body))
+        return fetch(url, fetchOpts('POST', body))
             .then(async (r) => {
                 const data = await r.json().catch(() => ({}));
                 if (!r.ok) {
@@ -1285,6 +1287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.success) {
                     appendTribute(data.tribute);
                     updateTributeCount();
+                    return true;
                 } else if (data.requires_login) {
                     hideGuestModal();
                     $toast('warning', (data.error || 'Please sign in to continue.') + ' Taking you to sign in…');
@@ -1292,10 +1295,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (data.error) {
                     $toast('error', data.error);
                 }
+                return false;
             })
             .catch(err => {
                 console.error('Tribute error:', err);
                 $toast('error', err.message || 'Could not submit tribute. Please try again.');
+                return false;
             });
     }
 
@@ -1344,23 +1349,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.getElementById('tribute-note-submit')?.addEventListener('click', () => {
+    function clearTributeEditor() {
+        if (tributeQuill) tributeQuill.setText('');
+        const msgEl = document.getElementById('tribute-note-message');
+        if (msgEl) msgEl.value = '';
+    }
+
+    document.getElementById('tribute-note-submit')?.addEventListener('click', (e) => {
+        const submitBtn = e.currentTarget;
+        if (submitBtn.disabled) return;
         const name = document.getElementById('tribute-note-name')?.value?.trim();
         const email = document.getElementById('tribute-note-email')?.value?.trim();
         const typeEl = document.querySelector('input[name="tribute-type"]:checked');
         const type = typeEl?.value || 'note';
         const message = tributeQuill ? tributeQuill.root.innerHTML : (document.getElementById('tribute-note-message')?.value?.trim() || '');
-        if (!message || message === '<p><br></p>') return;
+        if (!message || message === '<p><br></p>') {
+            $toast('error', 'Write a message first — even a sentence is enough.');
+            return;
+        }
 
-        if (isAuthenticated) {
-            submitTribute({ type, message });
-        } else if (name && email) {
-            submitTribute({ type, message }, name, email);
-        } else {
+        if (!isAuthenticated && !(name && email)) {
             showGuestModal({ type: 'tribute', payload: { type, message } });
             return;
         }
-        if (tributeQuill) tributeQuill.setText('');
+
+        const originalLabel = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Posting…';
+        submitTribute({ type, message }, ...(isAuthenticated ? [] : [name, email])).then((ok) => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalLabel;
+            if (ok) clearTributeEditor();
+        });
     });
 
     const tributeCardConfig = {

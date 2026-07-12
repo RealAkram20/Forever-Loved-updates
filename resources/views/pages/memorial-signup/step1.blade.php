@@ -39,13 +39,21 @@
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="first_name">First name</label>
                                     <input type="text" id="first_name" name="first_name" value="{{ old('first_name', $data['first_name'] ?? '') }}" required
                                         @input="firstName = $event.target.value"
-                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
+                                        @error('first_name') aria-invalid="true" aria-describedby="first_name-error" @enderror
+                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border @error('first_name') border-red-500 dark:border-red-500 @else border-gray-300 dark:border-gray-600 @enderror bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
+                                    @error('first_name')
+                                        <p id="first_name-error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div>
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="last_name">Last name</label>
                                     <input type="text" id="last_name" name="last_name" value="{{ old('last_name', $data['last_name'] ?? '') }}" required
                                         @input="lastName = $event.target.value"
-                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
+                                        @error('last_name') aria-invalid="true" aria-describedby="last_name-error" @enderror
+                                        class="dark:bg-gray-900/80 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border @error('last_name') border-red-500 dark:border-red-500 @else border-gray-300 dark:border-gray-600 @enderror bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-3 focus:outline-hidden" />
+                                    @error('last_name')
+                                        <p id="last_name-error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div>
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="middle_name">Middle name (optional)</label>
@@ -95,6 +103,9 @@
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Born</label>
                                     <x-form.date-picker id="date_of_birth" name="date_of_birth" placeholder="Select date"
                                         :defaultDate="old('date_of_birth', $data['date_of_birth'] ?? null)" />
+                                    @error('date_of_birth')
+                                        <p id="date_of_birth-error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                                     <div>
@@ -114,6 +125,9 @@
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Passed away</label>
                                     <x-form.date-picker id="date_of_passing" name="date_of_passing" placeholder="Select date"
                                         :defaultDate="old('date_of_passing', $data['date_of_passing'] ?? null)" />
+                                    @error('date_of_passing')
+                                        <p id="date_of_passing-error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                                     <div>

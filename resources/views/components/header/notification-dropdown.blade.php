@@ -227,9 +227,11 @@
             </template>
 
             <template x-for="notification in notifications" :key="notification.id">
-                <li @click="handleItemClick(notification)" class="cursor-pointer">
-                    <div
-                        class="flex gap-3 rounded-lg border-b border-gray-100 dark:border-gray-700 p-3 px-4.5 py-3 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+                <li>
+                    <button
+                        type="button"
+                        @click="handleItemClick(notification)"
+                        class="flex w-full cursor-pointer gap-3 rounded-lg border-b border-gray-100 dark:border-gray-700 p-3 px-4.5 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/60"
                         :class="{ 'bg-brand-50/50 dark:bg-brand-900/10': !notification.is_read }"
                     >
                         <span
@@ -249,10 +251,10 @@
                             <span class="block text-theme-xs text-gray-500 dark:text-gray-400 line-clamp-2" x-text="notification.message"></span>
                             <span class="flex items-center gap-2 mt-1 text-gray-400 text-theme-xs">
                                 <span x-text="notification.time"></span>
-                                <span x-show="!notification.is_read" class="w-1.5 h-1.5 bg-brand-500 rounded-full flex-shrink-0"></span>
+                                <span x-show="!notification.is_read" class="w-1.5 h-1.5 bg-brand-500 rounded-full flex-shrink-0"><span class="sr-only">Unread</span></span>
                             </span>
                         </span>
-                    </div>
+                    </button>
                 </li>
             </template>
         </ul>
