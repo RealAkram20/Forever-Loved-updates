@@ -16,10 +16,26 @@ use Spatie\Permission\Models\Role;
 
 class GoogleLoginController extends Controller
 {
+    /**
+     * Where a `flow` may send the user back to after Google returns. A closed
+     * list, not a free-form URL: a caller-supplied redirect target is an open
+     * redirect, and this route is reachable by anyone.
+     */
+    private const FLOW_DESTINATIONS = [
+        'memorial-signup' => 'memorial.create.step3',
+    ];
+
     public function redirect(Request $request): RedirectResponse|\Symfony\Component\HttpFoundation\RedirectResponse
     {
         if (! SocialLoginHelper::googleLoginEnabled()) {
             abort(404);
+        }
+
+        // callback() ends on redirect()->intended(), so a known flow just seeds
+        // the intended URL before we hand off to Google.
+        $flowRoute = self::FLOW_DESTINATIONS[(string) $request->query('flow')] ?? null;
+        if ($flowRoute && \Illuminate\Support\Facades\Route::has($flowRoute)) {
+            $request->session()->put('url.intended', route($flowRoute));
         }
 
         try {
