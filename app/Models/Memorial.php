@@ -13,6 +13,14 @@ class Memorial extends Model
 {
     use HasFactory;
 
+    // Dashboard routes (/memorials/{memorial}/...) bind by slug so URLs read
+    // as the person's name instead of a numeric id. Public /{slug} routes
+    // resolve slugs explicitly and are unaffected.
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
     protected $fillable = [
         'user_id',
         'slug',

@@ -141,15 +141,13 @@
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="active_year_start">Active year start</label>
-                            <input type="number" id="active_year_start" name="active_year_start" value="{{ old('active_year_start', $memorial->active_year_start) }}"
-                                placeholder="e.g. 1985" min="1900" max="2100"
-                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                            <x-form.year-select id="active_year_start" name="active_year_start"
+                                :value="old('active_year_start', $memorial->active_year_start)" placeholder="Select start year" />
                         </div>
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="active_year_end">Active year end</label>
-                            <input type="number" id="active_year_end" name="active_year_end" value="{{ old('active_year_end', $memorial->active_year_end) }}"
-                                placeholder="e.g. 2015" min="1900" max="2100"
-                                class="shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden" />
+                            <x-form.year-select id="active_year_end" name="active_year_end"
+                                :value="old('active_year_end', $memorial->active_year_end)" placeholder="Select end year" />
                         </div>
                     </div>
 
@@ -217,7 +215,7 @@
             </x-common.component-card>
 
             {{-- Phase 3: Passed away --}}
-            <x-common.component-card title="3. Passed Away">
+            <x-common.component-card title="4. Passed Away">
                 <div class="space-y-5" data-section="death">
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Date of passing</label>
@@ -577,7 +575,7 @@
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), 15000);
                     try {
-                        const url = this.$el.dataset.fieldsUrl || `/memorials/${this.memorialId}/fields`;
+                        const url = this.$el.dataset.fieldsUrl || '{{ route('memorials.fields', $memorial) }}';
                         const r = await fetch(url, {
                             method: 'PATCH',
                             headers: {
@@ -831,7 +829,7 @@
                     this.publishing = true;
                     const toSave = content.includes('<') ? content : this.toStorageFormat(content);
                     try {
-                        const r = await fetch(`/memorials/${this.memorialId}/biography`, {
+                        const r = await fetch('{{ route('memorials.save-biography', $memorial) }}', {
                             method: 'PATCH',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -859,7 +857,7 @@
                 generateTemplate() {
                     this.templateLoading = true;
                     const formData = typeof window.collectMemorialFormData === 'function' ? window.collectMemorialFormData() : {};
-                    fetch(`/memorials/${this.memorialId}/generate-template-biography`, {
+                    fetch('{{ route('memorials.generate-template-biography', $memorial) }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -886,7 +884,7 @@
                 generateAI() {
                     this.aiLoading = true;
                     const formData = typeof window.collectMemorialFormData === 'function' ? window.collectMemorialFormData() : {};
-                    fetch(`/memorials/${this.memorialId}/generate-biography`, {
+                    fetch('{{ route('memorials.generate-biography', $memorial) }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -928,7 +926,7 @@
                         return;
                     }
                     setTimeout(() => {
-                        fetch(`/memorials/${this.memorialId}/generate-biography/${requestId}`, {
+                        fetch(`{{ route('memorials.generate-biography', $memorial) }}/${requestId}`, {
                             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                         })
                         .then(r => r.ok ? r.json() : Promise.reject(new Error('status_check_failed')))
@@ -1045,7 +1043,7 @@
                     publishBtn.disabled = true;
                     publishBtn.textContent = 'Publishing...';
                     try {
-                        const r = await fetch(`/memorials/${memorialId}/biography`, {
+                        const r = await fetch('{{ route('memorials.save-biography', $memorial) }}', {
                             method: 'PATCH',
                             headers: {
                                 'Content-Type': 'application/json',

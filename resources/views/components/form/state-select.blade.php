@@ -34,6 +34,7 @@
             @keydown.arrow-up.prevent="navigateUp()"
             @keydown.enter.prevent="selectHighlighted()"
             @keydown.tab="close()"
+            @blur="commitFreeform()"
             :placeholder="loading ? 'Loading...' : (states.length ? placeholder : 'Select a country first')"
             :disabled="!countryCode && !selectedName"
             autocomplete="off"
@@ -141,19 +142,22 @@ document.addEventListener('alpine:init', () => {
                 this.states = data.states || [];
                 this.dynamicLabel = data.type_label || 'State / Region';
 
-                if (resolveExisting && this.selectedName) {
-                    const match = this.states.find(s => s.name.toLowerCase() === this.selectedName.toLowerCase());
-                    if (match) {
-                        this.selectedId = match.id;
-                        this.$nextTick(() => {
-                            this.$dispatch('state-selected', {
-                                id: match.id,
-                                name: match.name,
-                                countryCode: this.countryCode,
-                                fieldId: this.elId
-                            });
+                if (resolveExisting) {
+                    const match = this.selectedName
+                        ? this.states.find(s => s.name.toLowerCase() === this.selectedName.toLowerCase())
+                        : null;
+                    if (match) this.selectedId = match.id;
+                    // Always announce, even with no resolved state, so the city
+                    // select learns the country and can fall back to
+                    // country-wide cities (many districts have no city rows).
+                    this.$nextTick(() => {
+                        this.$dispatch('state-selected', {
+                            id: match ? match.id : null,
+                            name: match ? match.name : (this.selectedName || ''),
+                            countryCode: this.countryCode,
+                            fieldId: this.elId
                         });
-                    }
+                    });
                 }
             } catch {
                 this.states = [];
@@ -204,7 +208,32 @@ document.addEventListener('alpine:init', () => {
         selectHighlighted() {
             if (this.open && this.filtered.length > 0 && this.filtered[this.highlightIndex]) {
                 this.selectState(this.filtered[this.highlightIndex]);
+            } else {
+                this.commitFreeform();
             }
+        },
+
+        // Typed-but-not-clicked values must not vanish on blur (the same
+        // guarantee city-select gives): match them to a real state when
+        // possible, otherwise keep the raw text so it still saves.
+        commitFreeform() {
+            const val = this.search.trim();
+            if (val && val !== this.selectedName) {
+                const match = this.states.find(s => s.name.toLowerCase() === val.toLowerCase())
+                    || (this.filtered.length === 1 ? this.filtered[0] : null);
+                if (match) {
+                    this.selectState(match);
+                    return;
+                }
+                this.selectedName = val;
+                this.selectedId = null;
+                this.$nextTick(() => {
+                    this.$refs.hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    this.$refs.hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+                this.$dispatch('state-selected', { id: null, name: val, countryCode: this.countryCode, fieldId: this.elId });
+            }
+            this.open = false;
         },
 
         scrollToHighlighted() {

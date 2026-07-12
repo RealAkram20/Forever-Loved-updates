@@ -121,7 +121,7 @@ document.addEventListener('alpine:init', () => {
 
         maybeFetch() {
             this.open = true;
-            if (this.stateId && this.cities.length === 0 && !this.loading) {
+            if ((this.stateId || this.countryCode) && this.cities.length === 0 && !this.loading) {
                 this.fetchCities('');
             }
         },
@@ -129,20 +129,23 @@ document.addEventListener('alpine:init', () => {
         onSearchInput() {
             this.open = true;
             this.highlightIndex = 0;
-            if (this.stateId) {
+            if (this.stateId || this.countryCode) {
                 this.fetchCities(this.search.trim());
             }
         },
 
         async fetchCities(query) {
-            if (!this.stateId) return;
+            // No state id (unresolved/freeform district) still searches the
+            // whole country — the endpoint falls back on country_code, and
+            // many districts have no city rows of their own.
+            if (!this.stateId && !this.countryCode) return;
             if (this.fetchController) this.fetchController.abort();
             this.fetchController = new AbortController();
             this.loading = true;
 
             try {
                 const base = window.__appBaseUrl || '';
-                let url = `${base}/api/location/cities/${this.stateId}?q=${encodeURIComponent(query)}&limit=50`;
+                let url = `${base}/api/location/cities/${this.stateId || 0}?q=${encodeURIComponent(query)}&limit=50`;
                 if (this.countryCode) {
                     url += `&country_code=${encodeURIComponent(this.countryCode)}`;
                 }
