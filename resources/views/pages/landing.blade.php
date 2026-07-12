@@ -7,11 +7,11 @@
     {{-- Full-width single column content --}}
     <main class="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         <div class="mt-12 lg:mt-16">
-            <h1 class="text-title-lg sm:text-title-xl mb-6 font-semibold leading-tight text-gray-900 dark:text-white/90">
+            <h1 class="ap-title text-title-lg sm:text-title-xl mb-6 font-semibold leading-tight text-gray-900 dark:text-white/90">
                         Honor Your Loved Ones.<br />
-                        <span class="text-brand-500">Forever Remembered.</span>
+                        <span class="ap-title-accent text-brand-500">Forever Remembered.</span>
                     </h1>
-                    <p class="mb-10 max-w-md text-lg text-gray-600 dark:text-gray-400">
+                    <p class="ap-lead mb-10 max-w-md text-lg text-gray-600 dark:text-gray-400">
                         Create beautiful, lasting memorials for those who have passed. Share memories, collect tributes from family and friends, and keep their legacy alive.
                     </p>
                     <div class="flex flex-wrap gap-4">

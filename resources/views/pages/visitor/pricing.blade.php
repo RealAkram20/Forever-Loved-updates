@@ -6,9 +6,9 @@
 <section class="bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-900 py-16 sm:py-20">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="text-center max-w-2xl mx-auto">
-            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Pricing</p>
-            <h1 class="mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">Choose Your Memorial Plan</h1>
-            <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">Start free, upgrade when you need more. Every plan includes a beautiful memorial page.</p>
+            <p class="ap-eyebrow text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Pricing</p>
+            <h1 class="ap-title mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">Choose Your Memorial Plan</h1>
+            <p class="ap-lead mt-4 text-lg text-gray-600 dark:text-gray-400">Start free, upgrade when you need more. Every plan includes a beautiful memorial page.</p>
         </div>
 
         {{-- Plan Cards --}}

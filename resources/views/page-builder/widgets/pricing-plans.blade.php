@@ -8,11 +8,11 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="text-center max-w-2xl mx-auto">
             @if (!empty($props['eyebrow']))
-                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $props['eyebrow'] }}</p>
+                <p class="ap-eyebrow text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $props['eyebrow'] }}</p>
             @endif
-            <h1 class="mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">{{ $props['title'] ?? 'Pricing' }}</h1>
+            <h1 class="ap-title mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">{{ $props['title'] ?? 'Pricing' }}</h1>
             @if (!empty($props['subtitle']))
-                <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">{{ $props['subtitle'] }}</p>
+                <p class="ap-lead mt-4 text-lg text-gray-600 dark:text-gray-400">{{ $props['subtitle'] }}</p>
             @endif
         </div>
 
@@ -114,7 +114,7 @@
 @if ($plans->isNotEmpty())
 <section class="bg-white dark:bg-gray-900 py-16 sm:py-20">
     <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <h2 class="text-center text-2xl font-bold text-gray-900 dark:text-white mb-10">{{ $props['comparison_title'] ?? 'Compare Plans' }}</h2>
+        <h2 class="ap-title text-center text-2xl font-bold text-gray-900 dark:text-white mb-10">{{ $props['comparison_title'] ?? 'Compare Plans' }}</h2>
 
         <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
             <table class="w-full min-w-[600px]">

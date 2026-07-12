@@ -10,9 +10,9 @@
         <div class="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-white/10 blur-2xl"></div>
     </div>
     <div class="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-        <h2 class="text-2xl font-bold text-white sm:text-3xl lg:text-4xl">{{ $props['title'] ?? '' }}</h2>
+        <h2 class="ap-cta-title text-2xl font-bold text-white sm:text-3xl lg:text-4xl">{{ $props['title'] ?? '' }}</h2>
         @if (!empty($props['body']))
-            <p class="mt-4 text-lg text-white/80">{{ $props['body'] }}</p>
+            <p class="ap-cta-body mt-4 text-lg text-white/80">{{ $props['body'] }}</p>
         @endif
         <div class="mt-8 flex flex-wrap justify-center gap-4">
             <a href="{{ $primaryUrl }}"

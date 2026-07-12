@@ -4,8 +4,8 @@
 <section class="bg-white dark:bg-gray-900 py-16 sm:py-20">
     <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <div class="text-center max-w-2xl mx-auto mb-12">
-            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Get in Touch</p>
-            <h1 class="mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">Contact Us</h1>
+            <p class="ap-eyebrow text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Get in Touch</p>
+            <h1 class="ap-title mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">Contact Us</h1>
             <p class="mt-4 text-gray-600 dark:text-gray-400">Have a question or need assistance? We'd love to hear from you.</p>
         </div>
 

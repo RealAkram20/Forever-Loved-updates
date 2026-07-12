@@ -4,8 +4,8 @@
 <section class="bg-white dark:bg-gray-900 py-16 sm:py-20">
     <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="mb-10">
-            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Legal</p>
-            <h1 class="mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">{{ $page?->title ?? 'Terms of Use' }}</h1>
+            <p class="ap-eyebrow text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Legal</p>
+            <h1 class="ap-title mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">{{ $page?->title ?? 'Terms of Use' }}</h1>
             @if ($page?->updated_at)
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Last updated: {{ $page->updated_at->format('F j, Y') }}</p>
             @endif

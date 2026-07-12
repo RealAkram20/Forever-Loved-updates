@@ -15,16 +15,16 @@
     <div class="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-36">
         <div class="max-w-2xl">
             @if ($eyebrow !== '')
-                <p class="mb-4 text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $eyebrow }}</p>
+                <p class="ap-eyebrow mb-4 text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $eyebrow }}</p>
             @endif
-            <h1 class="text-4xl font-bold leading-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
+            <h1 class="ap-title text-4xl font-bold leading-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
                 {{ $props['headline_line1'] ?? '' }}
                 @if (!empty($props['headline_accent']))
-                    <span class="text-brand-500">{{ $props['headline_accent'] }}</span>
+                    <span class="ap-title-accent text-brand-500">{{ $props['headline_accent'] }}</span>
                 @endif
             </h1>
             @if (!empty($props['body']))
-                <p class="mt-6 max-w-lg text-lg leading-relaxed text-gray-600 dark:text-gray-400">{{ $props['body'] }}</p>
+                <p class="ap-lead mt-6 max-w-lg text-lg leading-relaxed text-gray-600 dark:text-gray-400">{{ $props['body'] }}</p>
             @endif
             <div class="mt-8 flex flex-wrap gap-4">
                 <a href="{{ $primaryUrl }}"

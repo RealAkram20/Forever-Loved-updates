@@ -57,6 +57,26 @@ class SystemSetting extends Model
         'appearance.text_body_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
         'appearance.text_muted_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
         'appearance.text_muted_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        // Per-element typography roles (hero/section text + CTA banner), each
+        // with its own font and light/dark colors; empty = theme default
+        'appearance.role_title_font' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_title_color_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_title_color_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_accent_font' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_accent_color_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_accent_color_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_lead_font' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_lead_color_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_lead_color_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_eyebrow_font' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_eyebrow_color_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_eyebrow_color_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_cta_title_font' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_cta_title_color_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_cta_title_color_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_cta_body_font' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_cta_body_color_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.role_cta_body_color_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
 
         // OAuth (Google sign-in — credentials can also be set via .env)
         'oauth.google_enabled' => ['value' => '0', 'type' => 'boolean', 'group' => 'oauth'],

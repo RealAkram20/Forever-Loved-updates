@@ -41,23 +41,7 @@
                         @php $current = old('appearance.'.$picker['key'], $settings['appearance.'.$picker['key']] ?? ''); @endphp
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300" for="{{ $picker['key'] }}">{{ $picker['label'] }}</label>
-                            <select id="{{ $picker['key'] }}" name="appearance[{{ $picker['key'] }}]" data-font-select class="{{ $inputClass }}">
-                                <option value="">Theme default (Outfit)</option>
-                                @if (count($customNames))
-                                    <optgroup label="Uploaded fonts">
-                                        @foreach ($customNames as $name)
-                                            <option value="{{ $name }}" data-custom @selected($current === $name)>{{ $name }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
-                                @foreach ($googleFonts as $category => $families)
-                                    <optgroup label="Google Fonts — {{ $category }}">
-                                        @foreach ($families as $family)
-                                            <option value="{{ $family }}" @selected($current === $family)>{{ $family }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
+                            @include('pages.settings.partials.font-select', ['id' => $picker['key'], 'name' => 'appearance['.$picker['key'].']', 'current' => $current])
                             <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ $picker['hint'] }}</p>
                             <p data-font-preview class="mt-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-white/[0.02] px-4 py-3 text-base text-gray-800 dark:text-white/90">
                                 In loving memory — every life tells a story. AaBbCc 0123456789
@@ -174,6 +158,66 @@
                             @endforeach
                         </div>
                     @endforeach
+                </div>
+
+                <hr class="border-gray-200 dark:border-gray-700 mb-8" />
+
+                {{-- Per-element typography roles --}}
+                <div class="mb-8">
+                    <h4 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white/90">Text Elements</h4>
+                    <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                        Fine-grained control over specific text across the site: pick a font per element,
+                        and a color per element for the mode selected in the tabs above. Empty = theme default.
+                    </p>
+                    <div class="divide-y divide-gray-100 dark:divide-gray-800 rounded-lg border border-gray-100 dark:border-gray-800">
+                        @foreach ([
+                            ['role' => 'title', 'label' => 'Main heading', 'hint' => 'Big page and section headings, e.g. “Honor Your Loved Ones.”'],
+                            ['role' => 'accent', 'label' => 'Heading accent line', 'hint' => 'The highlighted heading line, e.g. “Forever Remembered.”'],
+                            ['role' => 'lead', 'label' => 'Lead paragraph', 'hint' => 'The intro text under headings.'],
+                            ['role' => 'eyebrow', 'label' => 'Eyebrow label', 'hint' => 'The small uppercase label above headings, e.g. “CELEBRATE LIVES THAT MATTER”.'],
+                            ['role' => 'cta_title', 'label' => 'CTA banner heading', 'hint' => 'The heading on the call-to-action banner.'],
+                            ['role' => 'cta_body', 'label' => 'CTA banner text', 'hint' => 'The supporting text on the call-to-action banner.'],
+                        ] as $tr)
+                            <div class="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[1.2fr_1fr_1fr] lg:items-end">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ $tr['label'] }}</p>
+                                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $tr['hint'] }}</p>
+                                </div>
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="role_{{ $tr['role'] }}_font">Font</label>
+                                    @include('pages.settings.partials.font-select', [
+                                        'id' => 'role_'.$tr['role'].'_font',
+                                        'name' => 'appearance[role_'.$tr['role'].'_font]',
+                                        'current' => old('appearance.role_'.$tr['role'].'_font', $settings['appearance.role_'.$tr['role'].'_font'] ?? ''),
+                                    ])
+                                </div>
+                                @foreach (['light', 'dark'] as $trMode)
+                                    @php
+                                        $key = "appearance.role_{$tr['role']}_color_{$trMode}";
+                                        $value = old($key, $settings[$key] ?? '');
+                                    @endphp
+                                    <div x-show="mode === '{{ $trMode }}'" @if ($trMode === 'dark') x-cloak @endif x-data="{ hex: '{{ $value }}' }">
+                                        <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="{{ $key }}">
+                                            Color — <span x-text="mode === 'dark' ? 'Dark Mode' : 'Light Mode'"></span>
+                                        </label>
+                                        <div class="flex items-center gap-2">
+                                            <input type="color" :value="hex || '#888888'" @input="hex = $event.target.value"
+                                                class="h-11 w-12 shrink-0 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent p-1"
+                                                aria-label="{{ $tr['label'] }} ({{ $trMode }} mode) color picker" />
+                                            <input type="text" id="{{ $key }}" name="appearance[role_{{ $tr['role'] }}_color_{{ $trMode }}]"
+                                                x-model="hex" placeholder="Theme default" maxlength="7"
+                                                class="{{ $inputClass }}" />
+                                            <button type="button" x-show="hex" @click="hex = ''"
+                                                class="shrink-0 rounded-lg p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                                aria-label="Clear {{ $tr['label'] }} {{ $trMode }} mode color">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
 
                 <hr class="border-gray-200 dark:border-gray-700 mb-8" />
@@ -338,7 +382,8 @@
         // sample line in it. Uploaded fonts are already available via the
         // site-wide @font-face rules.
         document.querySelectorAll('[data-font-select]').forEach((select) => {
-            const preview = select.closest('div').querySelector('[data-font-preview]');
+            // Compact pickers have no preview line — the select itself shows the font.
+            const preview = select.closest('div').querySelector('[data-font-preview]') || select;
             const loaded = new Set();
             const apply = () => {
                 const family = select.value;

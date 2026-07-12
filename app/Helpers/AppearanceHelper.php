@@ -7,6 +7,25 @@ use App\Models\SystemSetting;
 class AppearanceHelper
 {
     /**
+     * Per-element typography roles: setting-key stem => CSS class placed on
+     * the elements across the visitor blades. `accent` must stay AFTER
+     * `title` — the accent span sits inside the title and wins by rule order.
+     */
+    public const TYPE_ROLES = [
+        'title' => '.ap-title',
+        'accent' => '.ap-title-accent',
+        'lead' => '.ap-lead',
+        'eyebrow' => '.ap-eyebrow',
+        'cta_title' => '.ap-cta-title',
+        'cta_body' => '.ap-cta-body',
+    ];
+
+    public static function roleFont(string $role): string
+    {
+        return self::sanitizeFamily(SystemSetting::get("appearance.role_{$role}_font", ''));
+    }
+
+    /**
      * Family names are interpolated into a stylesheet URL and a <style> block,
      * so anything but a plain font name must never get through.
      */
@@ -62,8 +81,12 @@ class AppearanceHelper
     public static function fontLinks(): string
     {
         $customNames = array_column(self::customFonts(), 'name');
+        $selected = [self::bodyFont(), self::headingFont()];
+        foreach (array_keys(self::TYPE_ROLES) as $role) {
+            $selected[] = self::roleFont($role);
+        }
         $families = [];
-        foreach ([self::bodyFont(), self::headingFont()] as $family) {
+        foreach ($selected as $family) {
             if ($family !== '' && ! in_array($family, $customNames, true)
                 && in_array($family, self::googleFamilies(), true)
                 && ! in_array($family, $families, true)) {
@@ -120,6 +143,23 @@ class AppearanceHelper
         $heading = self::headingFont();
         if ($heading !== '') {
             $out[] = "h1, h2, h3, h4, h5, h6 { font-family: '{$heading}', 'Outfit', sans-serif; }";
+        }
+
+        // Per-element roles: class selectors beat the element-level rules
+        // above, and the color overrides beat the elements' own utilities.
+        foreach (self::TYPE_ROLES as $role => $selector) {
+            $font = self::roleFont($role);
+            if ($font !== '') {
+                $out[] = "{$selector} { font-family: '{$font}', 'Outfit', sans-serif; }";
+            }
+            $light = BrandingHelper::sanitizeHex(SystemSetting::get("appearance.role_{$role}_color_light"), '');
+            $dark = BrandingHelper::sanitizeHex(SystemSetting::get("appearance.role_{$role}_color_dark"), '');
+            if ($light !== '') {
+                $out[] = "html:not(.dark) {$selector} { color: {$light} !important; }";
+            }
+            if ($dark !== '') {
+                $out[] = "html.dark {$selector} { color: {$dark} !important; }";
+            }
         }
 
         if ($includeTextColors) {

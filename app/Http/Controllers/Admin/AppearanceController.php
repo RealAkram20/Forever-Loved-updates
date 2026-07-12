@@ -63,6 +63,11 @@ class AppearanceController extends Controller
             'appearance.font_heading' => ['nullable', 'string', 'max:80'],
             'branding.default_theme' => ['required', 'in:light,dark'],
         ];
+        foreach (array_keys(AppearanceHelper::TYPE_ROLES) as $role) {
+            $rules["appearance.role_{$role}_font"] = ['nullable', 'string', 'max:80'];
+            $rules["appearance.role_{$role}_color_light"] = $hex;
+            $rules["appearance.role_{$role}_color_dark"] = $hex;
+        }
         foreach (self::TEXT_COLOR_KEYS as $key) {
             $rules[$key] = $hex;
         }
@@ -83,7 +88,11 @@ class AppearanceController extends Controller
             array_column(AppearanceHelper::customFonts(), 'name')
         );
 
-        foreach (['appearance.font_body', 'appearance.font_heading'] as $key) {
+        $fontKeys = ['appearance.font_body', 'appearance.font_heading'];
+        foreach (array_keys(AppearanceHelper::TYPE_ROLES) as $role) {
+            $fontKeys[] = "appearance.role_{$role}_font";
+        }
+        foreach ($fontKeys as $key) {
             $family = AppearanceHelper::sanitizeFamily($request->input($key, ''));
             if (! in_array($family, $validFamilies, true)) {
                 return back()->withErrors([$key => 'Pick a font from the list or upload it first.'])->withInput();
@@ -91,7 +100,12 @@ class AppearanceController extends Controller
             SystemSetting::set($key, $family);
         }
 
-        foreach (self::TEXT_COLOR_KEYS as $key) {
+        $colorKeys = self::TEXT_COLOR_KEYS;
+        foreach (array_keys(AppearanceHelper::TYPE_ROLES) as $role) {
+            $colorKeys[] = "appearance.role_{$role}_color_light";
+            $colorKeys[] = "appearance.role_{$role}_color_dark";
+        }
+        foreach ($colorKeys as $key) {
             SystemSetting::set($key, (string) $request->input($key, ''));
         }
 

@@ -7,9 +7,9 @@
         <div class="flex items-end justify-between mb-10">
             <div>
                 @if (!empty($props['eyebrow']))
-                    <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $props['eyebrow'] }}</p>
+                    <p class="ap-eyebrow text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $props['eyebrow'] }}</p>
                 @endif
-                <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">{{ $props['title'] ?? 'Popular Memorials' }}</h2>
+                <h2 class="ap-title mt-2 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">{{ $props['title'] ?? 'Popular Memorials' }}</h2>
             </div>
             <a href="{{ $dirUrl }}" class="btn btn-link btn-md hidden sm:inline-flex">
                 {{ $props['view_all_label'] ?? 'View All' }}

@@ -5,11 +5,11 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="text-center max-w-2xl mx-auto mb-12">
             @if (!empty($props['eyebrow']))
-                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $props['eyebrow'] }}</p>
+                <p class="ap-eyebrow text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{{ $props['eyebrow'] }}</p>
             @endif
-            <h2 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">{{ $props['title'] ?? '' }}</h2>
+            <h2 class="ap-title mt-2 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">{{ $props['title'] ?? '' }}</h2>
             @if (!empty($props['subtitle']))
-                <p class="mt-3 text-gray-600 dark:text-gray-400">{{ $props['subtitle'] }}</p>
+                <p class="ap-lead mt-3 text-gray-600 dark:text-gray-400">{{ $props['subtitle'] }}</p>
             @endif
         </div>
 
