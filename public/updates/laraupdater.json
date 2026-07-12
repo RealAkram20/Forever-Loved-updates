@@ -1,5 +1,5 @@
 ﻿{
-    "archive":  "RELEASE-1.1.7.zip",
-    "description":  "Update to 1.1.7: fix zip extraction creating -X.Y.Z folders under project root (strip wrapper path segments).",
-    "version":  "1.1.7"
+    "archive":  "RELEASE-1.1.8.zip",
+    "description":  "1.1.8: Dark mode hero - removed the purple glow behind the headline; rebuilt front-end assets.",
+    "version":  "1.1.8"
 }
