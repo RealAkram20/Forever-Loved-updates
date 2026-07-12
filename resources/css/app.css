@@ -1591,13 +1591,6 @@ html:not(.dark) {
   background-image:
     /* candle glow, bottom right, under the artwork */
     radial-gradient(65% 60% at 86% 92%, rgba(251, 176, 96, 0.22) 0%, rgba(251, 176, 96, 0) 62%),
-    /* brand halo behind the headline — kept faint so the words stay the
-       brightest thing on that side, not the background */
-    radial-gradient(
-      62% 58% at 14% 20%,
-      color-mix(in srgb, var(--color-brand-500) 2%, transparent) 0%,
-      transparent 66%
-    ),
     /* rose fill up the right flank — pulled in from the column edge so the
        fade has room to settle it back onto the page background */
     radial-gradient(80% 85% at 90% 26%, rgba(244, 114, 182, 0.1) 0%, transparent 62%),
