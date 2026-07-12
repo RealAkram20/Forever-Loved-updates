@@ -29,14 +29,26 @@
                     <form id="step3-plan-form" method="POST" action="{{ route('memorial.create.storeStep3') }}" class="space-y-6" @submit="handleSubmit($event)" @change="if ($event.target.name === 'plan_id') planSelectionChanged = $event.target.value">
                         @csrf
 
-                        <div class="grid gap-6 {{ $plans->count() >= 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }}">
+                        @php
+                            // Nothing chosen yet → the "Most popular" plan is the default.
+                            $popularPlanId = $plans->firstWhere('is_popular', true)?->id;
+                            $selectedPlanId = old('plan_id', $data['plan_id'] ?? null) ?: $popularPlanId;
+                            $planCount = $plans->count();
+                            $planGrid = match (true) {
+                                $planCount >= 4 => 'sm:grid-cols-2 xl:grid-cols-4',
+                                $planCount === 3 => 'sm:grid-cols-3',
+                                default => 'sm:grid-cols-2',
+                            };
+                            $planPrice = $planCount >= 4 ? 'text-2xl' : 'text-3xl';
+                        @endphp
+                        <div class="grid gap-6 {{ $planGrid }}">
                             @foreach ($plans as $plan)
                                 @php
                                     $isFree = $plan->isFree();
-                                    $isPopular = !$isFree && $plans->count() > 1;
+                                    $isPopular = (bool) $plan->is_popular;
                                 @endphp
                                 <label class="relative block cursor-pointer group">
-                                    <input type="radio" name="plan_id" value="{{ $plan->id }}" {{ old('plan_id', $data['plan_id'] ?? '') == $plan->id ? 'checked' : '' }}
+                                    <input type="radio" name="plan_id" value="{{ $plan->id }}" {{ (string) $selectedPlanId === (string) $plan->id ? 'checked' : '' }}
                                         class="peer sr-only" />
 
                                     <div class="relative rounded-2xl border-2 p-6 transition-all flex flex-col h-full bg-white dark:bg-gray-800/40
@@ -60,18 +72,19 @@
                                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $plan->description }}</p>
                                         @endif
 
-                                        {{-- Price --}}
+                                        {{-- Price. Wraps rather than overflowing: a long amount plus
+                                             "/lifetime" does not fit one line in a narrow card. --}}
                                         <div class="mt-4 mb-5">
                                             @if ($isFree)
-                                                <div class="flex items-baseline gap-1">
-                                                    <span class="text-4xl font-bold text-gray-900 dark:text-white">Free</span>
+                                                <div class="flex flex-wrap items-baseline gap-x-1.5">
+                                                    <span class="{{ $planPrice }} font-bold text-gray-900 dark:text-white">Free</span>
                                                 </div>
                                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No credit card required</p>
                                             @else
-                                                <div class="flex items-baseline gap-1">
+                                                <div class="flex flex-wrap items-baseline gap-x-1.5">
                                                     <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $currency ?? 'USD' }}</span>
-                                                    <span class="text-4xl font-bold text-gray-900 dark:text-white">{{ \App\Helpers\PriceHelper::format($plan->price) }}</span>
-                                                    <span class="text-sm text-gray-500 dark:text-gray-400">/{{ $plan->interval }}</span>
+                                                    <span class="{{ $planPrice }} font-bold tabular-nums leading-tight text-gray-900 dark:text-white">{{ \App\Helpers\PriceHelper::format($plan->price) }}</span>
+                                                    <span class="whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">/{{ $plan->interval }}</span>
                                                 </div>
                                             @endif
                                         </div>

@@ -30,6 +30,7 @@ class SubscriptionPlan extends Model
         'feature_no_ads',
         'feature_share_memories',
         'is_active',
+        'is_popular',
         'sort_order',
     ];
 
@@ -51,8 +52,24 @@ class SubscriptionPlan extends Model
             'feature_no_ads' => 'boolean',
             'feature_share_memories' => 'boolean',
             'is_active' => 'boolean',
+            'is_popular' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    /**
+     * The plan the pricing views badge as "Most Popular" and preselect.
+     * At most one plan carries the flag; admin sets it in Settings → Plans.
+     */
+    public static function popular(): ?self
+    {
+        return static::query()->where('is_active', true)->where('is_popular', true)->first();
+    }
+
+    /** Clear the flag everywhere else — "most popular" is a single choice. */
+    public function makeSolePopular(): void
+    {
+        static::query()->where('id', '!=', $this->id)->where('is_popular', true)->update(['is_popular' => false]);
     }
 
     public function subscriptions(): HasMany

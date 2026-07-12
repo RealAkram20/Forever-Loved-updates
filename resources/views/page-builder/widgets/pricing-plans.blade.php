@@ -1,6 +1,17 @@
 @php
     $plans = $plans ?? collect();
     $currency = $currency ?? 'USD';
+
+    // Cards get narrower as plans are added, so the price steps down with them
+    // and the grid widens — 4 plans must not push "/yearly" out of the card.
+    $planCount = $plans->count();
+    $gridClasses = match (true) {
+        $planCount >= 4 => 'sm:grid-cols-2 xl:grid-cols-4 max-w-7xl',
+        $planCount === 3 => 'sm:grid-cols-2 lg:grid-cols-3 max-w-6xl',
+        $planCount === 2 => 'sm:grid-cols-2 max-w-4xl',
+        default => 'max-w-md',
+    };
+    $priceClasses = $planCount >= 4 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl';
 @endphp
 
 {{-- Plan cards + header --}}
@@ -19,11 +30,11 @@
         @if ($plans->isEmpty())
             <p class="mt-12 text-center text-gray-500 dark:text-gray-400">No plans are available yet.</p>
         @else
-        <div class="mt-12 grid gap-6 sm:grid-cols-2 {{ $plans->count() >= 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2' }} max-w-4xl mx-auto">
+        <div class="mt-12 grid gap-6 {{ $gridClasses }} mx-auto">
             @foreach ($plans as $plan)
             @php
                 $isFree = $plan->isFree();
-                $isPopular = !$isFree && $plans->count() > 1;
+                $isPopular = (bool) $plan->is_popular;
             @endphp
             <div class="relative rounded-2xl border {{ $isPopular ? 'border-brand-500 dark:border-brand-400 ring-2 ring-brand-500/20' : 'border-gray-200 dark:border-gray-700' }} bg-white dark:bg-gray-800 p-6 sm:p-8 flex flex-col">
                 @if ($isPopular)
@@ -36,13 +47,13 @@
                 </div>
 
                 <div class="mb-6">
-                    <div class="flex items-baseline gap-1">
+                    <div class="flex flex-wrap items-baseline gap-x-1.5">
                         @if ($isFree)
-                            <span class="text-4xl font-bold text-gray-900 dark:text-white">Free</span>
+                            <span class="{{ $priceClasses }} font-bold text-gray-900 dark:text-white">Free</span>
                         @else
                             <span class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $currency }}</span>
-                            <span class="text-4xl font-bold text-gray-900 dark:text-white">{{ \App\Helpers\PriceHelper::format($plan->price) }}</span>
-                            <span class="text-sm text-gray-500 dark:text-gray-400">/{{ $plan->interval }}</span>
+                            <span class="{{ $priceClasses }} font-bold tabular-nums leading-tight text-gray-900 dark:text-white">{{ \App\Helpers\PriceHelper::format($plan->price) }}</span>
+                            <span class="whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">/{{ $plan->interval }}</span>
                         @endif
                     </div>
                 </div>

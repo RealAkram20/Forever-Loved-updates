@@ -845,17 +845,22 @@ class SettingsController extends Controller
             'feature_no_ads' => 'boolean',
             'feature_share_memories' => 'boolean',
             'is_active' => 'boolean',
+            'is_popular' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
 
-        SubscriptionPlan::create($request->only([
+        $plan = SubscriptionPlan::create(array_merge($request->only([
             'name', 'slug', 'description', 'price', 'interval',
             'memorial_limit', 'storage_limit_mb',
             'max_gallery_images', 'max_gallery_videos', 'max_tributes', 'max_chapters', 'max_ai_bio_per_day',
             'feature_background_music', 'feature_advanced_privacy', 'feature_guest_notifications',
             'feature_never_expires', 'feature_no_ads', 'feature_share_memories',
             'is_active', 'sort_order',
-        ]));
+        ]), ['is_popular' => $request->boolean('is_popular')]));
+
+        if ($plan->is_popular) {
+            $plan->makeSolePopular();
+        }
 
         return back()->with('success', 'Plan created successfully.');
     }
@@ -881,17 +886,22 @@ class SettingsController extends Controller
             'feature_no_ads' => 'boolean',
             'feature_share_memories' => 'boolean',
             'is_active' => 'boolean',
+            'is_popular' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
 
-        $plan->update($request->only([
+        $plan->update(array_merge($request->only([
             'name', 'description', 'price', 'interval',
             'memorial_limit', 'storage_limit_mb',
             'max_gallery_images', 'max_gallery_videos', 'max_tributes', 'max_chapters', 'max_ai_bio_per_day',
             'feature_background_music', 'feature_advanced_privacy', 'feature_guest_notifications',
             'feature_never_expires', 'feature_no_ads', 'feature_share_memories',
             'is_active', 'sort_order',
-        ]));
+        ]), ['is_popular' => $request->boolean('is_popular')]));
+
+        if ($plan->is_popular) {
+            $plan->makeSolePopular();
+        }
 
         return back()->with('success', 'Plan updated successfully.');
     }

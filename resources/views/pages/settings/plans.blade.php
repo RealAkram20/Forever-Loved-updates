@@ -31,9 +31,16 @@
                                         <h4 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ $plan->name }}</h4>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $plan->slug }}</p>
                                     </div>
-                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $plan->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' }}">
-                                        {{ $plan->is_active ? 'Active' : 'Inactive' }}
-                                    </span>
+                                    <div class="flex flex-wrap items-center justify-end gap-1.5">
+                                        @if ($plan->is_popular)
+                                            <span class="inline-flex items-center rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-800 dark:bg-brand-900/30 dark:text-brand-400">
+                                                Most popular
+                                            </span>
+                                        @endif
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $plan->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' }}">
+                                            {{ $plan->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div class="mb-4">
@@ -161,15 +168,22 @@
                                         <input type="number" name="sort_order" value="{{ $plan->sort_order }}" min="0"
                                             class="h-9 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden" />
                                     </div>
-                                    <div class="flex items-end pb-1">
+                                    <div class="flex flex-col justify-end gap-1.5 pb-1">
                                         <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                                             <input type="hidden" name="is_active" value="0">
                                             <input type="checkbox" name="is_active" value="1" {{ $plan->is_active ? 'checked' : '' }}
                                                 class="rounded border-gray-300 dark:border-gray-700 text-brand-500 focus:ring-brand-500" />
                                             Active
                                         </label>
+                                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <input type="hidden" name="is_popular" value="0">
+                                            <input type="checkbox" name="is_popular" value="1" {{ $plan->is_popular ? 'checked' : '' }}
+                                                class="rounded border-gray-300 dark:border-gray-700 text-brand-500 focus:ring-brand-500" />
+                                            Most popular
+                                        </label>
                                     </div>
                                 </div>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Most popular badges this plan on the pricing page and preselects it at signup. Only one plan can hold it — setting it here clears it elsewhere.</p>
                                 <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-2 mb-1">Feature Limits <span class="font-normal">(0 = unlimited, AI 0 = disabled)</span></p>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
@@ -285,12 +299,18 @@
                         <input type="number" name="sort_order" value="{{ old('sort_order', '0') }}" min="0"
                             class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
                     </div>
-                    <div class="flex items-end">
+                    <div class="flex flex-col justify-end gap-1.5">
                         <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                             <input type="hidden" name="is_active" value="0">
                             <input type="checkbox" name="is_active" value="1" checked
                                 class="rounded border-gray-300 dark:border-gray-700 text-brand-500 focus:ring-brand-500" />
                             Active
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            <input type="hidden" name="is_popular" value="0">
+                            <input type="checkbox" name="is_popular" value="1" {{ old('is_popular') ? 'checked' : '' }}
+                                class="rounded border-gray-300 dark:border-gray-700 text-brand-500 focus:ring-brand-500" />
+                            Most popular
                         </label>
                     </div>
                 </div>
