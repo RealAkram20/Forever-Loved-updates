@@ -17,6 +17,27 @@ class AppearanceController extends Controller
         'appearance.text_muted_light', 'appearance.text_muted_dark',
     ];
 
+    /**
+     * Branding keys holding a color (moved here from General Settings). They
+     * are interpolated into a <style> block, so they are validated as literal
+     * hex and never as free-form strings.
+     */
+    private const BRANDING_COLOR_KEYS = [
+        'branding.primary_color', 'branding.secondary_color', 'branding.accent_color',
+        'branding.bg_light', 'branding.bg_dark',
+        'branding.primary_light', 'branding.primary_dark',
+        'branding.accent_light', 'branding.accent_dark',
+        'branding.button1_color', 'branding.button1_text_color',
+        'branding.button1_color_dark', 'branding.button1_text_color_dark',
+        'branding.button2_color', 'branding.button2_text_color',
+        'branding.button2_color_dark', 'branding.button2_text_color_dark',
+        'branding.cta_bg_light', 'branding.cta_bg_dark',
+        'branding.cta_btn1_color', 'branding.cta_btn1_text_color',
+        'branding.cta_btn1_color_dark', 'branding.cta_btn1_text_color_dark',
+        'branding.cta_btn2_color', 'branding.cta_btn2_text_color',
+        'branding.cta_btn2_color_dark', 'branding.cta_btn2_text_color_dark',
+    ];
+
     private const FONT_EXTENSIONS = ['woff2', 'woff', 'ttf', 'otf'];
 
     public function index()
@@ -25,7 +46,11 @@ class AppearanceController extends Controller
             'title' => 'Appearance',
             'googleFonts' => config('google-fonts', []),
             'customFonts' => AppearanceHelper::customFonts(),
-            'settings' => SystemSetting::getByGroup('appearance'),
+            // The color pickers read branding.* keys, the font/text sections appearance.*
+            'settings' => array_merge(
+                SystemSetting::getByGroup('branding'),
+                SystemSetting::getByGroup('appearance')
+            ),
         ]);
     }
 
@@ -36,9 +61,16 @@ class AppearanceController extends Controller
         $rules = [
             'appearance.font_body' => ['nullable', 'string', 'max:80'],
             'appearance.font_heading' => ['nullable', 'string', 'max:80'],
+            'branding.default_theme' => ['required', 'in:light,dark'],
         ];
         foreach (self::TEXT_COLOR_KEYS as $key) {
             $rules[$key] = $hex;
+        }
+        foreach (self::BRANDING_COLOR_KEYS as $key) {
+            $rules[$key] = $hex;
+        }
+        foreach (['branding.primary_color', 'branding.secondary_color', 'branding.accent_color'] as $key) {
+            $rules[$key][0] = 'required';
         }
 
         $request->validate($rules, [
@@ -62,6 +94,13 @@ class AppearanceController extends Controller
         foreach (self::TEXT_COLOR_KEYS as $key) {
             SystemSetting::set($key, (string) $request->input($key, ''));
         }
+
+        foreach (self::BRANDING_COLOR_KEYS as $key) {
+            if ($request->has($key)) {
+                SystemSetting::set($key, $request->input($key));
+            }
+        }
+        SystemSetting::set('branding.default_theme', $request->input('branding.default_theme'));
 
         return redirect()->route('settings.appearance')->with('success', 'Appearance saved. Reload any open pages to see it.');
     }

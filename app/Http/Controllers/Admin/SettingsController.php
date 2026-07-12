@@ -39,59 +39,22 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * Branding keys holding a color. These are interpolated into a <style> block, so they
-     * are validated as literal hex and never as free-form strings.
-     */
-    private const COLOR_KEYS = [
-        'branding.primary_color', 'branding.secondary_color', 'branding.accent_color',
-        'branding.bg_light', 'branding.bg_dark',
-        'branding.primary_light', 'branding.primary_dark',
-        'branding.accent_light', 'branding.accent_dark',
-        'branding.button1_color', 'branding.button1_text_color',
-        'branding.button1_color_dark', 'branding.button1_text_color_dark',
-        'branding.button2_color', 'branding.button2_text_color',
-        'branding.button2_color_dark', 'branding.button2_text_color_dark',
-        'branding.cta_bg_light', 'branding.cta_bg_dark',
-        'branding.cta_btn1_color', 'branding.cta_btn1_text_color',
-        'branding.cta_btn1_color_dark', 'branding.cta_btn1_text_color_dark',
-        'branding.cta_btn2_color', 'branding.cta_btn2_text_color',
-        'branding.cta_btn2_color_dark', 'branding.cta_btn2_text_color_dark',
-    ];
-
     public function updateGeneral(Request $request)
     {
-        $hex = ['nullable', 'string', 'regex:/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/'];
-
-        $rules = [
+        // Colors, fonts and the default theme are managed on the Appearance
+        // page (Admin\AppearanceController).
+        $request->validate([
             'oauth.google_enabled' => 'nullable|in:0,1',
             'oauth.google_client_id' => 'nullable|string|max:512',
             'oauth.google_client_secret' => 'nullable|string|max:512',
             'branding.app_name' => 'required|string|max:100',
             'branding.tagline' => 'nullable|string|max:255',
-            'branding.default_theme' => 'required|in:light,dark',
             'logo' => 'nullable|image|max:2048',
             'logo_dark' => 'nullable|image|max:2048',
             'favicon' => 'nullable|image|max:512',
-        ];
-
-        foreach (self::COLOR_KEYS as $key) {
-            $rules[$key] = $hex;
-        }
-        foreach (['branding.primary_color', 'branding.secondary_color', 'branding.accent_color'] as $key) {
-            $rules[$key][0] = 'required';
-        }
-
-        $request->validate($rules, [
-            'regex' => 'The :attribute must be a valid hex color, e.g. #465fff.',
         ]);
 
-        $keys = array_merge(
-            ['branding.app_name', 'branding.tagline', 'branding.default_theme'],
-            self::COLOR_KEYS
-        );
-
-        foreach ($keys as $key) {
+        foreach (['branding.app_name', 'branding.tagline'] as $key) {
             if ($request->has($key)) {
                 SystemSetting::set($key, $request->input($key));
             }
