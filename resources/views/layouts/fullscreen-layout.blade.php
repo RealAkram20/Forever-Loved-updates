@@ -12,6 +12,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="icon" href="{{ \App\Helpers\BrandingHelper::faviconUrl() }}" type="image/x-icon" />
     <style>{{ \App\Helpers\BrandingHelper::brandColorCss() }}</style>
+    {!! \App\Helpers\AppearanceHelper::fontLinks() !!}
+    <style>{!! \App\Helpers\AppearanceHelper::css(includeTextColors: true) !!}</style>
     @prepend('head')
         @include('partials.share-meta', [
             'shareMeta' => \App\Helpers\SiteShareMetaHelper::resolve($shareMeta ?? null, $title ?? null),

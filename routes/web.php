@@ -113,6 +113,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [SettingsController::class, 'general'])->name('general');
         Route::put('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
 
+        Route::get('/appearance', [\App\Http\Controllers\Admin\AppearanceController::class, 'index'])->name('appearance');
+        Route::put('/appearance', [\App\Http\Controllers\Admin\AppearanceController::class, 'update'])->name('appearance.update');
+        Route::post('/appearance/fonts', [\App\Http\Controllers\Admin\AppearanceController::class, 'storeFont'])->name('appearance.fonts.store');
+        Route::delete('/appearance/fonts/{index}', [\App\Http\Controllers\Admin\AppearanceController::class, 'destroyFont'])->whereNumber('index')->name('appearance.fonts.destroy');
+
         Route::get('/ai', [SettingsController::class, 'ai'])->name('ai');
         Route::put('/ai', [SettingsController::class, 'updateAi'])->name('ai.update');
 

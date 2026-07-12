@@ -15,6 +15,8 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         <link rel="icon" href="{{ \App\Helpers\BrandingHelper::faviconUrl() }}" type="image/x-icon" />
         <style>{{ \App\Helpers\BrandingHelper::brandColorCss() }}</style>
+        {!! \App\Helpers\AppearanceHelper::fontLinks() !!}
+        <style>{!! \App\Helpers\AppearanceHelper::css(includeTextColors: true) !!}</style>
     </head>
     <body class="font-sans text-gray-900 antialiased">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">

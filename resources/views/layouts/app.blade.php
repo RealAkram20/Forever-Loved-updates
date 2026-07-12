@@ -12,6 +12,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="icon" href="{{ \App\Helpers\BrandingHelper::faviconUrl() }}" type="image/x-icon" />
     <style>{{ \App\Helpers\BrandingHelper::brandColorCss() }}</style>
+    {!! \App\Helpers\AppearanceHelper::fontLinks() !!}
+    <style>{!! \App\Helpers\AppearanceHelper::css() !!}</style>
     @stack('head')
 
     <!-- App base URL for JS fetch calls -->

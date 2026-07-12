@@ -47,6 +47,17 @@ class SystemSetting extends Model
         'branding.cta_btn2_text_color_dark' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],
         'branding.default_theme' => ['value' => 'light', 'type' => 'string', 'group' => 'branding'],
 
+        // Appearance (site fonts + visitor-facing text colors; empty = theme default)
+        'appearance.font_body' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.font_heading' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.custom_fonts' => ['value' => '[]', 'type' => 'json', 'group' => 'appearance'],
+        'appearance.text_heading_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.text_heading_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.text_body_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.text_body_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.text_muted_light' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+        'appearance.text_muted_dark' => ['value' => '', 'type' => 'string', 'group' => 'appearance'],
+
         // OAuth (Google sign-in — credentials can also be set via .env)
         'oauth.google_enabled' => ['value' => '0', 'type' => 'boolean', 'group' => 'oauth'],
         'oauth.google_client_id' => ['value' => '', 'type' => 'string', 'group' => 'oauth'],
