@@ -1576,6 +1576,26 @@ html:not(.dark) {
   }
 }
 
+/* Memorial showcase, dark mode: the same candlelit backdrop as the CTA artwork —
+   indigo on the left warming into a peach glow on the right — rendered as
+   gradients so it dissolves into the page background instead of ending at an
+   image edge. Masked on every side for the same reason. */
+.showcase-wash-dark {
+  background-image:
+    /* candle glow, right of centre */
+    radial-gradient(58% 70% at 80% 62%, rgba(243, 166, 126, 0.11) 0%, rgba(243, 166, 126, 0.04) 44%, transparent 72%),
+    /* plum flank carrying the glow back into the indigo */
+    radial-gradient(85% 95% at 96% 55%, rgba(158, 98, 120, 0.09) 0%, transparent 66%),
+    /* indigo -> plum base */
+    linear-gradient(100deg, rgba(46, 45, 84, 0.26) 0%, rgba(72, 56, 92, 0.2) 48%, rgba(112, 74, 92, 0.16) 100%);
+  --showcase-mask: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%),
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%);
+  -webkit-mask-image: var(--showcase-mask);
+  -webkit-mask-composite: source-in;
+  mask-image: var(--showcase-mask);
+  mask-composite: intersect;
+}
+
 /* Dissolves the artwork's trailing edges into the page background, so it reads
    as light falling into the section rather than an image pasted in a box. */
 .hero-artwork-fade {

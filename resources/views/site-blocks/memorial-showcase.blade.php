@@ -2,8 +2,10 @@
 @php
     $dirUrl = \Illuminate\Support\Facades\Route::has('memorial.directory') ? route('memorial.directory') : '#';
 @endphp
-<section class="py-14 sm:py-16">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<section class="relative isolate py-14 sm:py-16">
+    <div class="showcase-wash-dark absolute inset-0 hidden pointer-events-none select-none dark:block" aria-hidden="true"></div>
+
+    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex items-end justify-between mb-8">
             <div>
                 @if (!empty($props['eyebrow']))

@@ -6,18 +6,27 @@
 @endphp
 <section class="py-14 sm:py-16">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="relative overflow-hidden rounded-3xl" style="background-color: var(--color-cta-bg, var(--color-brand-500));">
-            {{-- Panorama artwork (candle + vase), same in light and dark; the color above
-                 shows wherever the image doesn't cover. Text/button colors stay themeable
-                 via the Appearance CTA roles and CTA button settings. --}}
+        <div class="relative overflow-hidden rounded-3xl dark:ring-1 dark:ring-white/10" style="background-color: var(--color-cta-bg, var(--color-brand-500));">
+            {{-- Panorama artwork (candle + vase), one cut per theme; the panel color above
+                 shows wherever the image doesn't cover, and each theme's CTA background
+                 setting is matched to its artwork's left edge so no seam forms.
+                 Text/button colors stay themeable via the Appearance CTA roles and CTA
+                 button settings. --}}
             <img src="{{ asset('CTA-Bg.webp') }}" alt="" draggable="false" loading="lazy"
-                 class="absolute inset-0 h-full w-full object-cover object-right pointer-events-none select-none" aria-hidden="true">
+                 class="absolute inset-0 h-full w-full object-cover object-right pointer-events-none select-none dark:hidden" aria-hidden="true">
+            <img src="{{ asset('CTA-Dark-Bg.webp') }}" alt="" draggable="false" loading="lazy"
+                 class="absolute inset-0 hidden h-full w-full object-cover object-right pointer-events-none select-none dark:block" aria-hidden="true">
+
+            {{-- Narrow panels crop the artwork toward the candle, so the copy can land on the
+                 glow; this scrim keeps the light-on-dark text readable there. --}}
+            <div class="absolute inset-0 hidden pointer-events-none dark:block" aria-hidden="true"
+                 style="background-image: linear-gradient(to right, var(--color-cta-bg) 0%, color-mix(in srgb, var(--color-cta-bg) 60%, transparent) 42%, transparent 72%);"></div>
 
             <div class="relative px-6 py-12 sm:px-12 sm:py-14 lg:px-14">
                 <div class="max-w-xl">
-                    <h2 class="ap-cta-title font-display text-2xl font-semibold leading-snug text-gray-900 sm:text-3xl lg:text-[2.1rem]">{{ $props['title'] ?? '' }}</h2>
+                    <h2 class="ap-cta-title font-display text-2xl font-semibold leading-snug text-gray-900 sm:text-3xl lg:text-[2.1rem] dark:text-white">{{ $props['title'] ?? '' }}</h2>
                     @if (!empty($props['body']))
-                        <p class="ap-cta-body mt-3 text-base text-gray-700">{{ $props['body'] }}</p>
+                        <p class="ap-cta-body mt-3 text-base text-gray-700 dark:text-gray-300">{{ $props['body'] }}</p>
                     @endif
                     <div class="mt-7 flex flex-wrap items-center gap-x-7 gap-y-4">
                         <a href="{{ $primaryUrl }}" class="btn btn-cta-primary btn-lg">
