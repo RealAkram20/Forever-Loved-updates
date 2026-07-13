@@ -1588,12 +1588,21 @@ html:not(.dark) {
     radial-gradient(85% 95% at 96% 55%, rgba(158, 98, 120, 0.09) 0%, transparent 66%),
     /* indigo -> plum base */
     linear-gradient(100deg, rgba(46, 45, 84, 0.26) 0%, rgba(72, 56, 92, 0.2) 48%, rgba(112, 74, 92, 0.16) 100%);
-  --showcase-mask: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%),
-    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%);
+  /* Narrow viewports have no room for a side fade — it would just read as the
+     gradient stopping short of the screen edge — so the wash runs edge to edge
+     and only fades top and bottom. The side fades come back at sm and up. */
+  --showcase-mask: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
   -webkit-mask-image: var(--showcase-mask);
   -webkit-mask-composite: source-in;
   mask-image: var(--showcase-mask);
   mask-composite: intersect;
+}
+
+@media (min-width: 640px) {
+  .showcase-wash-dark {
+    --showcase-mask: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%),
+      linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%);
+  }
 }
 
 /* Dissolves the artwork's trailing edges into the page background, so it reads

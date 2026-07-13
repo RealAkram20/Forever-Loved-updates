@@ -49,13 +49,35 @@
             });
 
             Alpine.store('sidebar', {
-                isExpanded: window.innerWidth >= 1280,
+                isExpanded: false,
                 isMobileOpen: false,
                 isHovered: false,
+
+                init() {
+                    this.isExpanded = window.innerWidth >= 1280 && this.savedExpanded();
+                },
+
+                /**
+                 * The collapsed/expanded choice is a desktop preference and survives
+                 * navigation. Below xl the sidebar is a drawer, so the rail state there
+                 * is not the user's choice and must never be written back.
+                 */
+                savedExpanded() {
+                    try {
+                        const saved = localStorage.getItem('sidebar-expanded');
+                        if (saved !== null) return saved === '1';
+                    } catch (e) { /* private mode — fall through to the default */ }
+                    return true;
+                },
 
                 toggleExpanded() {
                     this.isExpanded = !this.isExpanded;
                     this.isMobileOpen = false;
+                    if (window.innerWidth >= 1280) {
+                        try {
+                            localStorage.setItem('sidebar-expanded', this.isExpanded ? '1' : '0');
+                        } catch (e) { /* preference just won't persist */ }
+                    }
                 },
 
                 toggleMobileOpen() {
@@ -95,16 +117,16 @@
 <body
     class="overflow-x-hidden"
     x-data="{ 'loaded': true}"
-    x-init="$store.sidebar.isExpanded = window.innerWidth >= 1280;
-    const checkMobile = () => {
+    x-init="const checkMobile = () => {
         if (window.innerWidth < 1280) {
             $store.sidebar.setMobileOpen(false);
             $store.sidebar.isExpanded = false;
         } else {
             $store.sidebar.isMobileOpen = false;
-            $store.sidebar.isExpanded = true;
+            $store.sidebar.isExpanded = $store.sidebar.savedExpanded();
         }
     };
+    checkMobile();
     window.addEventListener('resize', checkMobile);">
 
     <x-common.preloader/>
