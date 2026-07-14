@@ -35,6 +35,10 @@ class SystemSetting extends Model
         'branding.button2_text_color_dark' => ['value' => '#d1d5db', 'type' => 'string', 'group' => 'branding'],
         'branding.cta_bg_light' => ['value' => '#465fff', 'type' => 'string', 'group' => 'branding'],
         'branding.cta_bg_dark' => ['value' => '#3641f5', 'type' => 'string', 'group' => 'branding'],
+        // How strongly the banner background tints over its artwork, 0-100. Raise it when the
+        // artwork is busy behind the copy; 0 leaves the artwork untouched.
+        'branding.cta_overlay_light' => ['value' => '0', 'type' => 'integer', 'group' => 'branding'],
+        'branding.cta_overlay_dark' => ['value' => '55', 'type' => 'integer', 'group' => 'branding'],
         // The CTA banner sits on its own colored background, so its two buttons are styled
         // independently of the site-wide primary/secondary pair.
         'branding.cta_btn1_color' => ['value' => '#ffffff', 'type' => 'string', 'group' => 'branding'],

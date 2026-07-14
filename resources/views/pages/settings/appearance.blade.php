@@ -282,6 +282,13 @@
                             <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Banner Background</p>
                             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                                 @include('pages.settings.partials.color-field', ['label' => 'Banner Background', 'name' => 'branding[cta_bg_light]', 'dotName' => 'branding.cta_bg_light', 'default' => '#465fff'])
+                                @include('pages.settings.partials.range-field', [
+                                    'label' => 'Text Legibility',
+                                    'name' => 'branding[cta_overlay_light]',
+                                    'dotName' => 'branding.cta_overlay_light',
+                                    'default' => 0,
+                                    'help' => 'Fades the banner background over its artwork, behind the headline. Raise it until the text reads clearly; 0 shows the artwork untouched.',
+                                ])
                             </div>
                         </div>
                         <div>
@@ -305,6 +312,13 @@
                             <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Banner Background</p>
                             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                                 @include('pages.settings.partials.color-field', ['label' => 'Banner Background', 'name' => 'branding[cta_bg_dark]', 'dotName' => 'branding.cta_bg_dark', 'default' => '#3641f5'])
+                                @include('pages.settings.partials.range-field', [
+                                    'label' => 'Text Legibility',
+                                    'name' => 'branding[cta_overlay_dark]',
+                                    'dotName' => 'branding.cta_overlay_dark',
+                                    'default' => 55,
+                                    'help' => 'Fades the banner background over its artwork, behind the headline. Raise it until the text reads clearly; 0 shows the artwork untouched.',
+                                ])
                             </div>
                         </div>
                         <div>

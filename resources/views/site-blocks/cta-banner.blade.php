@@ -13,14 +13,15 @@
                  Text/button colors stay themeable via the Appearance CTA roles and CTA
                  button settings. --}}
             <img src="{{ asset('CTA-Bg.webp') }}" alt="" draggable="false" loading="lazy"
-                 class="absolute inset-0 h-full w-full object-cover object-right pointer-events-none select-none dark:hidden" aria-hidden="true">
+                 class="absolute inset-0 h-full w-full object-cover object-[78%_100%] sm:object-right pointer-events-none select-none dark:hidden" aria-hidden="true">
             <img src="{{ asset('CTA-Dark-Bg.webp') }}" alt="" draggable="false" loading="lazy"
                  class="absolute inset-0 hidden h-full w-full object-cover object-right pointer-events-none select-none dark:block" aria-hidden="true">
 
-            {{-- Narrow panels crop the artwork toward the candle, so the copy can land on the
-                 glow; this scrim keeps the light-on-dark text readable there. --}}
-            <div class="absolute inset-0 hidden pointer-events-none dark:block" aria-hidden="true"
-                 style="background-image: linear-gradient(to right, var(--color-cta-bg) 0%, color-mix(in srgb, var(--color-cta-bg) 60%, transparent) 42%, transparent 72%);"></div>
+            {{-- Legibility scrim: the banner's own color faded over the artwork, strongest
+                 behind the copy. Its strength per theme is the "Text Legibility" slider in
+                 Appearance > CTA Banner; at 0 it disappears. Direction is set in .cta-scrim —
+                 sideways on wide panels, downward on narrow ones. --}}
+            <div class="cta-scrim absolute inset-0 pointer-events-none" aria-hidden="true"></div>
 
             <div class="relative px-6 py-12 sm:px-12 sm:py-14 lg:px-14">
                 <div class="max-w-xl">

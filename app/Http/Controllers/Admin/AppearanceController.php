@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Helpers\AppearanceHelper;
+use App\Helpers\BrandingHelper;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +37,11 @@ class AppearanceController extends Controller
         'branding.cta_btn1_color_dark', 'branding.cta_btn1_text_color_dark',
         'branding.cta_btn2_color', 'branding.cta_btn2_text_color',
         'branding.cta_btn2_color_dark', 'branding.cta_btn2_text_color_dark',
+    ];
+
+    /** Branding keys holding a 0-100 percentage rather than a color. */
+    private const BRANDING_PERCENT_KEYS = [
+        'branding.cta_overlay_light', 'branding.cta_overlay_dark',
     ];
 
     private const FONT_EXTENSIONS = ['woff2', 'woff', 'ttf', 'otf'];
@@ -73,6 +79,9 @@ class AppearanceController extends Controller
         }
         foreach (self::BRANDING_COLOR_KEYS as $key) {
             $rules[$key] = $hex;
+        }
+        foreach (self::BRANDING_PERCENT_KEYS as $key) {
+            $rules[$key] = ['nullable', 'integer', 'between:0,100'];
         }
         foreach (['branding.primary_color', 'branding.secondary_color', 'branding.accent_color'] as $key) {
             $rules[$key][0] = 'required';
@@ -112,6 +121,11 @@ class AppearanceController extends Controller
         foreach (self::BRANDING_COLOR_KEYS as $key) {
             if ($request->has($key)) {
                 SystemSetting::set($key, $request->input($key));
+            }
+        }
+        foreach (self::BRANDING_PERCENT_KEYS as $key) {
+            if ($request->has($key)) {
+                SystemSetting::set($key, BrandingHelper::clampPercent($request->input($key)));
             }
         }
         SystemSetting::set('branding.default_theme', $request->input('branding.default_theme'));

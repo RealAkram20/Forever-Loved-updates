@@ -195,6 +195,29 @@ class BrandingHelper
     }
 
     /**
+     * Strength of the scrim the CTA banner lays over its artwork, 0-100. It exists so the
+     * headline stays legible whatever image is behind it; 0 means no scrim at all.
+     */
+    public static function ctaOverlayLight(): int
+    {
+        return self::clampPercent(SystemSetting::get('branding.cta_overlay_light'), 0);
+    }
+
+    public static function ctaOverlayDark(): int
+    {
+        return self::clampPercent(SystemSetting::get('branding.cta_overlay_dark'), 55);
+    }
+
+    public static function clampPercent(mixed $value, int $fallback = 0): int
+    {
+        if (! is_numeric($value)) {
+            return $fallback;
+        }
+
+        return max(0, min(100, (int) $value));
+    }
+
+    /**
      * Colors are interpolated straight into a <style> block, so anything that is not a
      * literal hex value must never reach the stylesheet.
      */
@@ -378,6 +401,15 @@ class BrandingHelper
         $ctaLight = self::ctaBgLight();
         $ctaDark = self::ctaBgDark();
 
+        // The scrim is the banner's own color, faded — it darkens (or lightens) the artwork
+        // under the copy without introducing a color that isn't already in the palette. The
+        // `-soft` stop is the same color at roughly half strength, so the gradient has a
+        // middle to travel through instead of falling straight to transparent.
+        $scrimLight = self::rgba($ctaLight, self::ctaOverlayLight() / 100);
+        $scrimLightSoft = self::rgba($ctaLight, self::ctaOverlayLight() / 100 * 0.55);
+        $scrimDark = self::rgba($ctaDark, self::ctaOverlayDark() / 100);
+        $scrimDarkSoft = self::rgba($ctaDark, self::ctaOverlayDark() / 100 * 0.55);
+
         $btn = self::buttonCss('');
         $btnDark = self::buttonCss('_dark');
 
@@ -405,6 +437,8 @@ class BrandingHelper
 {$btn}
   --color-cta-bg: {$ctaLight};
   --color-cta-bg-hover: " . self::darken($ctaLight, 8) . ";
+  --color-cta-scrim: {$scrimLight};
+  --color-cta-scrim-soft: {$scrimLightSoft};
 }
 html.dark {
 {$btnDark}
@@ -428,6 +462,8 @@ html.dark {
   --color-accent-50: " . self::lighten($accentDark, 65) . ";
   --color-cta-bg: {$ctaDark};
   --color-cta-bg-hover: " . self::darken($ctaDark, 8) . ";
+  --color-cta-scrim: {$scrimDark};
+  --color-cta-scrim-soft: {$scrimDarkSoft};
 }";
     }
 }

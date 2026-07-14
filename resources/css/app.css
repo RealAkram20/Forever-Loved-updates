@@ -1672,6 +1672,35 @@ html.dark .footer-link:hover {
   color: var(--color-brand-400);
 }
 
+/* CTA banner legibility scrim. Its color and strength are admin-set
+   (Appearance > CTA Banner > Text Legibility); only the direction changes here.
+
+   On a narrow panel the artwork is cropped toward the candle and lands directly
+   behind the copy, so a left-to-right fade runs out before it has covered
+   anything. There it falls top-to-bottom instead: full strength behind the text,
+   easing off at the foot of the panel where the artwork can still read. */
+.cta-scrim {
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-cta-scrim, transparent) 0%,
+    var(--color-cta-scrim, transparent) 60%,
+    var(--color-cta-scrim-soft, transparent) 100%
+  );
+}
+
+/* Wide enough for the copy and the artwork to sit side by side: fade sideways
+   so the candle stays untouched. */
+@media (min-width: 640px) {
+  .cta-scrim {
+    background-image: linear-gradient(
+      to right,
+      var(--color-cta-scrim, transparent) 0%,
+      var(--color-cta-scrim-soft, transparent) 45%,
+      transparent 75%
+    );
+  }
+}
+
 /* CTA banner "Learn More →" text link — themed off the CTA secondary
    button's admin-set text color so it stays admin-mapped */
 .cta-text-link {
