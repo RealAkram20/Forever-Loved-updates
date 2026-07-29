@@ -26,7 +26,7 @@
             <a href="{{ route('reseller.memorials') }}" class="btn btn-secondary btn-md mt-5">Back to memorials</a>
         </div>
     @else
-    <x-common.component-card title="Client &amp; Memorial Details" desc="We'll invite the client by email so they can manage the memorial too.">
+    <x-common.component-card title="Client &amp; Memorial Details" desc="We'll email the client an invitation so they can sign in and help finish the memorial.">
         @if ($remaining !== null && $remaining <= 5)
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/25 dark:bg-amber-900/20">
                 <p class="text-sm text-amber-800 dark:text-amber-300">

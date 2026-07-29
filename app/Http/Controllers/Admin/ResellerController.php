@@ -9,6 +9,7 @@ use App\Models\ResellerPayment;
 use App\Models\ResellerTier;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -111,7 +112,13 @@ class ResellerController extends Controller
 
         $reseller->update(['owner_user_id' => $owner->id]);
 
-        return back()->with('success', "Reseller \"{$reseller->name}\" created.");
+        // The create form says the owner "can sign in immediately" — which is only true if
+        // somebody tells them so.
+        NotificationService::notifyAccountInvite($owner, $reseller->name);
+
+        return back()->with('success', NotificationService::emailConfigured()
+            ? "Reseller \"{$reseller->name}\" created, and {$owner->name} has been invited by email."
+            : "Reseller \"{$reseller->name}\" created — but {$owner->name} was not emailed, because outgoing email is not configured yet.");
     }
 
     public function update(Request $request, Reseller $reseller)

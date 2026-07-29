@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Reseller;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -53,7 +54,13 @@ class ClientController extends Controller
 
         $client->assignRole('user');
 
-        return back()->with('success', "Client \"{$client->name}\" added.");
+        NotificationService::notifyAccountInvite($client, $request->user()->reseller->name);
+
+        // Said plainly rather than claimed: the page promises the client can log in, and
+        // without outgoing mail configured they have no way to learn the account exists.
+        return back()->with('success', NotificationService::emailConfigured()
+            ? "Client \"{$client->name}\" added and invited by email."
+            : "Client \"{$client->name}\" added — but no invitation was sent, because outgoing email is not configured yet.");
     }
 
     /**

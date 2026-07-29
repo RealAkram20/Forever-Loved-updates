@@ -97,6 +97,38 @@ class NotificationService
         }
     }
 
+    /**
+     * Tells someone an account has been created for them, and how to get into it.
+     *
+     * Reseller-created clients and reseller owners are made with no usable password by
+     * design — this app has passwordless email-code login. That only works if they know
+     * the account exists, and until now nothing told them, so three screens promised an
+     * invitation the software never sent.
+     */
+    public static function notifyAccountInvite(User $invitee, string $businessName, ?string $memorialName = null): void
+    {
+        static::send(
+            $invitee->id,
+            'account_invite',
+            "{$businessName} has set up an account for you",
+            $memorialName
+                ? "{$businessName} has created a memorial for {$memorialName} and given you access to it. Sign in with this email address — no password needed, we'll email you a code."
+                : "{$businessName} has set up an account for you. Sign in with this email address — no password needed, we'll email you a code.",
+            'user',
+            route('login.passwordless'),
+            ['business' => $businessName, 'memorial' => $memorialName],
+        );
+    }
+
+    /**
+     * Whether an invitation would actually reach anyone. Callers use this to warn the
+     * person doing the inviting, rather than let them believe mail went out.
+     */
+    public static function emailConfigured(): bool
+    {
+        return static::isEmailEnabled();
+    }
+
     // ─── Email Dispatch ─────────────────────────────────────────────
 
     private static function isEmailEnabled(): bool

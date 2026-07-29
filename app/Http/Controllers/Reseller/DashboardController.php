@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Reseller;
 use App\Http\Controllers\Controller;
 use App\Models\Memorial;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -120,7 +121,11 @@ class DashboardController extends Controller
             'completion_status' => Memorial::COMPLETION_PENDING,
         ]);
 
-        return redirect()->route('reseller.memorials')->with('success', "Memorial for \"{$memorial->full_name}\" created.");
+        NotificationService::notifyAccountInvite($client, $reseller->name, $memorial->full_name);
+
+        return redirect()->route('reseller.memorials')->with('success', NotificationService::emailConfigured()
+            ? "Memorial for \"{$memorial->full_name}\" created, and {$client->name} has been invited by email."
+            : "Memorial for \"{$memorial->full_name}\" created — but {$client->name} was not emailed, because outgoing email is not configured yet.");
     }
 
     private function generateUniqueSlug(string $fullName): string
