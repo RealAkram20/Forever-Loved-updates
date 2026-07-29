@@ -66,11 +66,12 @@
     @endif
 
     {{-- Counts --}}
-    <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
         @foreach ([
             ['label' => 'Memorials', 'value' => number_format($reseller->memorials_count).($allowance !== null ? ' / '.number_format($allowance) : '')],
             ['label' => 'Staff', 'value' => number_format($reseller->staff_count)],
             ['label' => 'Plans', 'value' => number_format($reseller->plans_count)],
+            ['label' => 'Storage', 'value' => \App\Helpers\StorageHelper::formatBytes($reseller->storageUsedBytes()).($reseller->storageLimitBytes() !== null ? ' / '.\App\Helpers\StorageHelper::formatBytes($reseller->storageLimitBytes()) : '')],
             ['label' => 'Collected', 'value' => \App\Helpers\PriceHelper::format($revenue)],
         ] as $stat)
             <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] px-5 py-4">

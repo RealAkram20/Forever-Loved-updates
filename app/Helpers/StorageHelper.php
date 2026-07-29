@@ -57,4 +57,27 @@ class StorageHelper
     {
         return "memorials/{$memorialId}/posts";
     }
+
+    /**
+     * Human-readable byte count. Binary units, matching how storage_limit_gb is converted
+     * for comparison — showing decimal GB against a binary limit would make a reseller at
+     * their cap look like they still had 7% left.
+     */
+    public static function formatBytes(?int $bytes, int $precision = 1): string
+    {
+        $bytes = max(0, (int) $bytes);
+
+        if ($bytes < 1024) {
+            return $bytes.' B';
+        }
+
+        $units = ['KB', 'MB', 'GB', 'TB'];
+        $power = min((int) floor(log($bytes, 1024)), count($units));
+        $value = $bytes / 1024 ** $power;
+
+        // No trailing ".0" on whole numbers, and never a fractional KB.
+        $decimals = ($power === 1 || fmod($value, 1.0) === 0.0) ? 0 : $precision;
+
+        return number_format($value, $decimals).' '.$units[$power - 1];
+    }
 }

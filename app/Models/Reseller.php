@@ -153,6 +153,41 @@ class Reseller extends Model
     }
 
     /**
+     * Bytes across every memorial they host. Two aggregate queries rather than looping
+     * Memorial::storageBytes(), which would be one query per memorial on a page that
+     * already renders a list of them.
+     *
+     * Referenced size, not disk size — see Memorial::storageBytes().
+     */
+    public function storageUsedBytes(): int
+    {
+        $memorialIds = $this->memorials()->select('id');
+
+        return (int) Media::whereIn('memorial_id', $memorialIds)->sum('size')
+            + (int) $this->memorials()->sum('profile_photo_size');
+    }
+
+    /** The tier's storage cap in bytes, or null when uncapped / no tier assigned. */
+    public function storageLimitBytes(): ?int
+    {
+        $gb = $this->tier?->storage_limit_gb;
+
+        return $gb === null ? null : $gb * 1024 ** 3;
+    }
+
+    /** 0-100, or null when there is no cap to be a percentage of. */
+    public function storagePercentUsed(): ?int
+    {
+        $limit = $this->storageLimitBytes();
+
+        if ($limit === null || $limit === 0) {
+            return null;
+        }
+
+        return (int) min(100, round($this->storageUsedBytes() / $limit * 100));
+    }
+
+    /**
      * Constrain any reseller_id-bearing query from a request filter value. Shared by the
      * platform-wide Users / Memorials / Plans / Payment Orders lists, which all span both
      * direct and reseller-owned records and otherwise give no way to tell them apart.

@@ -20,6 +20,9 @@ class DashboardController extends Controller
             'memorialCount' => $reseller->memorialsUsed(),
             'memorialAllowance' => $reseller->memorialAllowance(),
             'memorialsRemaining' => $reseller->memorialsRemaining(),
+            'storageUsed' => $reseller->storageUsedBytes(),
+            'storageLimit' => $reseller->storageLimitBytes(),
+            'storagePercent' => $reseller->storagePercentUsed(),
             'clientCount' => User::where('reseller_id', $reseller->id)
                 ->whereHas('roles', fn ($q) => $q->where('name', 'user'))->count(),
             'planCount' => $reseller->plans()->count(),

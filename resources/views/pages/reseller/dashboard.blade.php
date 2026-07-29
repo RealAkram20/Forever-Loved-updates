@@ -63,6 +63,35 @@
         </div>
     </div>
 
+    {{-- Storage is reported, not yet capped: an allowance that has never been measured
+         could have people over it already, and cutting them off without warning would be
+         the wrong way for them to find out. --}}
+    <div class="mb-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-4 sm:p-5">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <p class="text-sm font-medium text-gray-800 dark:text-white/90">Storage</p>
+            <p class="text-sm tabular-nums text-gray-500 dark:text-gray-400">
+                {{ \App\Helpers\StorageHelper::formatBytes($storageUsed) }}
+                @if ($storageLimit !== null)
+                    of {{ \App\Helpers\StorageHelper::formatBytes($storageLimit) }}
+                @endif
+            </p>
+        </div>
+
+        @if ($storagePercent !== null)
+            <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                <div class="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] {{ $storagePercent >= 90 ? 'bg-red-500' : ($storagePercent >= 75 ? 'bg-amber-500' : 'bg-brand-500') }}"
+                    style="width: {{ max(2, $storagePercent) }}%"></div>
+            </div>
+            @if ($storagePercent >= 75)
+                <p class="mt-2 text-xs {{ $storagePercent >= 90 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400' }}">
+                    You're using {{ $storagePercent }}% of your included storage. Get in touch before you run out.
+                </p>
+            @endif
+        @else
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">No storage limit on your current tier.</p>
+        @endif
+    </div>
+
     @php
         $steps = [
             ['done' => $planCount > 0, 'label' => 'Create a client plan', 'desc' => 'Set the pricing you offer your own clients.', 'route' => route('reseller.plans')],

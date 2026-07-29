@@ -64,6 +64,7 @@ class Memorial extends Model
         'completion_status',
         'background_music',
         'profile_photo_path',
+        'profile_photo_size',
         'is_public',
         'status',
         'visitor_count',
@@ -234,6 +235,19 @@ class Memorial extends Model
     public function media(): HasMany
     {
         return $this->hasMany(Media::class);
+    }
+
+    /**
+     * Bytes this memorial accounts for: its gallery media plus the profile photo, which
+     * has no media row of its own.
+     *
+     * This is *referenced* size, not disk size. Replacing a profile photo currently leaves
+     * the old file behind, so actual disk use can exceed this — an orphan-cleanup job would
+     * be needed before this number could be treated as a billing input rather than a guide.
+     */
+    public function storageBytes(): int
+    {
+        return (int) $this->media()->sum('size') + (int) $this->profile_photo_size;
     }
 
     public function storyChapters(): HasMany
