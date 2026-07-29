@@ -36,7 +36,7 @@ class PaymentSettingsController extends Controller
         ]);
 
         $reseller->pesapal_environment = $validated['pesapal_environment'];
-        $reseller->pesapal_enabled = $request->boolean('pesapal_enabled');
+        $enabling = $request->boolean('pesapal_enabled');
 
         if (! empty($validated['pesapal_consumer_key'])) {
             $reseller->pesapal_consumer_key = $validated['pesapal_consumer_key'];
@@ -45,6 +45,24 @@ class PaymentSettingsController extends Controller
             $reseller->pesapal_consumer_secret = $validated['pesapal_consumer_secret'];
         }
 
+        // Turning this on without credentials is worse than leaving it off: the service
+        // silently falls back to the platform's account, so the reseller believes they are
+        // collecting their clients' payments while the money lands with us.
+        if ($enabling && (blank($reseller->pesapal_consumer_key) || blank($reseller->pesapal_consumer_secret))) {
+            return back()->withInput()->withErrors([
+                'pesapal_consumer_key' => 'Add both your consumer key and secret before enabling Pesapal — until then, payments would go to the platform rather than to you.',
+            ]);
+        }
+
+        // Clearing is only possible while switching off, so an enabled account can never
+        // be left credential-less by a blank submission.
+        if (! $enabling && $request->boolean('clear_credentials')) {
+            $reseller->pesapal_consumer_key = null;
+            $reseller->pesapal_consumer_secret = null;
+            $reseller->pesapal_ipn_id = null;
+        }
+
+        $reseller->pesapal_enabled = $enabling;
         $reseller->save();
 
         return back()->with('success', 'Payment settings updated.');
@@ -57,6 +75,14 @@ class PaymentSettingsController extends Controller
     public function registerIpn(Request $request)
     {
         $reseller = $request->user()->reseller;
+
+        // Without their own credentials, PesapalService::forReseller() hands back a
+        // platform-scoped service whose registerIpn() writes the *global*
+        // payments.pesapal_ipn_id setting — a reseller could break the platform's own
+        // checkout from their settings page, and get a false success message doing it.
+        if (! $reseller->hasOwnPesapalCredentials()) {
+            return back()->with('error', 'Add and enable your own Pesapal consumer key and secret before registering an IPN.');
+        }
 
         $result = PesapalService::forReseller($reseller)->registerIpn();
 

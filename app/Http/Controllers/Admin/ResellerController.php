@@ -11,6 +11,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ResellerController extends Controller
@@ -23,7 +24,9 @@ class ResellerController extends Controller
             ->withCount(['memorials', 'staff', 'plans'])
             ->when($status === 'overdue', fn ($query) => $query->whereNotNull('billing_period_end')->whereDate('billing_period_end', '<', now()))
             ->when($request->filled('q'), function ($query) use ($request) {
-                $term = '%'.$request->input('q').'%';
+                // string() coerces array input rather than warning, and the metacharacters
+                // are escaped so searching "100%" means "100%" and not "everything".
+                $term = '%'.addcslashes($request->string('q')->toString(), '%_\\').'%';
                 $query->where(fn ($w) => $w->where('name', 'like', $term)
                     ->orWhere('slug', 'like', $term)
                     ->orWhere('custom_domain', 'like', $term));
@@ -190,9 +193,11 @@ class ResellerController extends Controller
     public function recordPayment(Request $request, Reseller $reseller)
     {
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => ['required', 'numeric', 'min:0', 'max:99999999'],
             'method' => ['required', Rule::in(array_keys(ResellerPayment::methods()))],
-            'paid_at' => ['required', 'date'],
+            // Bounded: an unbounded date lets a mistyped year reach the column as an
+            // out-of-range value, which is an unhandled 500 rather than a field error.
+            'paid_at' => ['required', 'date', 'after:2000-01-01', 'before_or_equal:today'],
             'reference' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -203,28 +208,32 @@ class ResellerController extends Controller
 
         $end = $start->copy()->addYear();
 
-        ResellerPayment::create([
-            'reseller_id' => $reseller->id,
-            'amount' => $validated['amount'],
-            'currency' => SystemSetting::get('payments.currency', 'USD'),
-            'period_start' => $start,
-            'period_end' => $end,
-            // Snapshotted so this row still explains itself if the tier is later edited.
-            'tier_name' => $reseller->tier?->name,
-            'tier_annual_price' => $reseller->tier?->annual_price,
-            'overage_profiles' => $reseller->overageProfiles(),
-            'overage_amount' => $reseller->overageAmount(),
-            'method' => $validated['method'],
-            'reference' => $validated['reference'] ?? null,
-            'notes' => $validated['notes'] ?? null,
-            'paid_at' => $validated['paid_at'],
-            'recorded_by_user_id' => $request->user()->id,
-        ]);
+        // Both writes or neither. Half of this — a payment row with the period un-rolled,
+        // or a rolled period with no record of what paid for it — is worse than a failure.
+        DB::transaction(function () use ($request, $reseller, $validated, $start, $end) {
+            ResellerPayment::create([
+                'reseller_id' => $reseller->id,
+                'amount' => $validated['amount'],
+                'currency' => SystemSetting::get('payments.currency', 'USD'),
+                'period_start' => $start,
+                'period_end' => $end,
+                // Snapshotted so this row still explains itself if the tier is later edited.
+                'tier_name' => $reseller->tier?->name,
+                'tier_annual_price' => $reseller->tier?->annual_price,
+                'overage_profiles' => $reseller->overageProfiles(),
+                'overage_amount' => $reseller->overageAmount(),
+                'method' => $validated['method'],
+                'reference' => $validated['reference'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'paid_at' => $validated['paid_at'],
+                'recorded_by_user_id' => $request->user()->id,
+            ]);
 
-        $reseller->update([
-            'billing_period_start' => $start,
-            'billing_period_end' => $end,
-        ]);
+            $reseller->update([
+                'billing_period_start' => $start,
+                'billing_period_end' => $end,
+            ]);
+        });
 
         return back()->with('success', "Payment recorded. Renews {$end->format('F j, Y')}.");
     }

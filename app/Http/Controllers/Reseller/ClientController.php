@@ -17,9 +17,14 @@ class ClientController extends Controller
 {
     public function index(Request $request)
     {
-        $clients = User::where('reseller_id', $request->user()->reseller_id)
+        $resellerId = $request->user()->reseller_id;
+
+        $clients = User::where('reseller_id', $resellerId)
             ->whereHas('roles', fn ($q) => $q->where('name', 'user'))
-            ->with('memorials')
+            // Counted rather than loaded, and scoped: a client may also own a direct
+            // platform memorial or one under a previous reseller, and those are none of
+            // this reseller's business.
+            ->withCount(['memorials' => fn ($q) => $q->where('reseller_id', $resellerId)])
             ->latest()
             ->paginate(15);
 
@@ -51,9 +56,23 @@ class ClientController extends Controller
         return back()->with('success', "Client \"{$client->name}\" added.");
     }
 
+    /**
+     * A client is a 'user'-role account inside this tenant. Checking the role as well as
+     * the tenant matters: without it, any staff member could rename or change the email of
+     * the reseller *owner* account, and an email change plus a password reset is a
+     * complete account takeover.
+     */
+    private function authorizeClient(Request $request, User $user): void
+    {
+        abort_unless(
+            $user->reseller_id === $request->user()->reseller_id && $user->hasRole('user'),
+            403
+        );
+    }
+
     public function update(Request $request, User $user)
     {
-        abort_unless($user->reseller_id === $request->user()->reseller_id, 403);
+        $this->authorizeClient($request, $user);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -67,7 +86,7 @@ class ClientController extends Controller
 
     public function destroy(Request $request, User $user)
     {
-        abort_unless($user->reseller_id === $request->user()->reseller_id, 403);
+        $this->authorizeClient($request, $user);
 
         $name = $user->name;
         $user->update(['reseller_id' => null]);

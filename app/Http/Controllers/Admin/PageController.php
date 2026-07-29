@@ -272,6 +272,7 @@ class PageController extends Controller
 
         if (in_array(\App\PageBuilder\Widgets\PricingPlansWidget::type(), $types, true)) {
             $context['plans'] = \App\Models\SubscriptionPlan::where('is_active', true)
+                ->sellableTo(auth()->user())
                 ->orderBy('sort_order')
                 ->get();
             $context['currency'] = \App\Models\SystemSetting::get('payments.currency', 'USD');

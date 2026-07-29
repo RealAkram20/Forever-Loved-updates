@@ -82,11 +82,22 @@ class DashboardController extends Controller
             ));
         }
 
-        $client = User::where('email', strtolower($validated['client_email']))->first();
+        $email = strtolower($validated['client_email']);
+        $client = User::where('email', $email)->first();
+
+        // An existing account may only be used if it already belongs to this reseller.
+        // Without this check, submitting any known email — another reseller's client, a
+        // direct platform user, an admin — creates a memorial *inside that person's
+        // account* while leaving it under this reseller's control and branding.
+        if ($client && $client->reseller_id !== $reseller->id) {
+            return back()->withInput()->with('error',
+                'That email already belongs to an account outside your organisation. Use a different email, or ask them to be transferred to you first.');
+        }
+
         if (! $client) {
             $client = User::create([
                 'name' => $validated['client_name'],
-                'email' => strtolower($validated['client_email']),
+                'email' => $email,
                 'password' => null,
                 'reseller_id' => $reseller->id,
                 'original_reseller_id' => $reseller->id,

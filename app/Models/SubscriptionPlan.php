@@ -90,6 +90,22 @@ class SubscriptionPlan extends Model
         return $query->where('reseller_id', $resellerId);
     }
 
+    /**
+     * The only plans a given viewer may see or buy: their reseller's if they belong to
+     * one, the platform's own otherwise.
+     *
+     * Every public and customer-facing plan list must go through this. Without it these
+     * queries returned *every* plan in the table, publishing each reseller's private
+     * pricing on the platform's own pricing page and letting anyone subscribe to another
+     * tenant's plan — including a free one, for that tenant's entitlements at no cost.
+     */
+    public function scopeSellableTo($query, ?User $viewer = null)
+    {
+        return $viewer?->reseller_id
+            ? $query->where('reseller_id', $viewer->reseller_id)
+            : $query->whereNull('reseller_id');
+    }
+
     public function reseller(): BelongsTo
     {
         return $this->belongsTo(Reseller::class);

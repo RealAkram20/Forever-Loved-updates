@@ -23,10 +23,14 @@ class BrandingController extends Controller
     {
         $reseller = $request->user()->reseller;
 
+        // Explicit mime allow-list rather than the `image` rule, which permits SVG. An SVG
+        // can carry script, is stored on the public disk and served same-origin, and is
+        // rendered as branding on this reseller's pages *and* their clients' memorials —
+        // so accepting one is stored XSS against the families they serve.
         $request->validate([
             'primary_color' => 'nullable|string|max:20',
-            'logo' => 'nullable|image|max:2048',
-            'favicon' => 'nullable|image|max:512',
+            'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'favicon' => 'nullable|image|mimes:jpg,jpeg,png,webp,ico|max:512',
         ]);
 
         if ($primary = $request->input('primary_color')) {

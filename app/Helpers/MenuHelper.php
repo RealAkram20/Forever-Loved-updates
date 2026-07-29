@@ -9,24 +9,56 @@ class MenuHelper
         return auth()->user()?->hasRole(['admin', 'super-admin']) ?? false;
     }
 
+    public static function isSuperAdmin(): bool
+    {
+        return auth()->user()?->hasRole('super-admin') ?? false;
+    }
+
     public static function isReseller(): bool
     {
         return auth()->user()?->hasRole('reseller') ?? false;
     }
 
     /**
-     * Main nav items for reseller staff.
+     * Flattened reseller nav, for any caller that wants a plain list.
      */
     public static function getResellerNavItems(): array
     {
+        return collect(self::getResellerMenuGroups())->flatMap(fn ($group) => $group['items'])->all();
+    }
+
+    /**
+     * Reseller staff sidebar, grouped for the same reason the admin one is: seven
+     * undifferentiated links make you read all of them to find any of them. The split is
+     * by who the page is about — the families they serve, versus their own business.
+     */
+    public static function getResellerMenuGroups(): array
+    {
         return [
-            ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
-            ['icon' => 'memorial', 'name' => 'Memorials', 'path' => url('/reseller/memorials')],
-            ['icon' => 'users', 'name' => 'Clients', 'path' => url('/reseller/clients')],
-            ['icon' => 'billing', 'name' => 'Plans', 'path' => url('/reseller/plans')],
-            ['icon' => 'appearance', 'name' => 'Branding', 'path' => url('/reseller/branding')],
-            ['icon' => 'subscription', 'name' => 'Payment Settings', 'path' => url('/reseller/payments')],
-            ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/reseller/settings')],
+            [
+                'title' => 'Overview',
+                'items' => [
+                    ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
+                ],
+            ],
+            [
+                // 'match' keeps Memorials lit on /reseller/memorials/create, which is
+                // reached by button rather than by its own nav entry.
+                'title' => 'Client work',
+                'items' => [
+                    ['icon' => 'memorial', 'name' => 'Memorials', 'path' => url('/reseller/memorials'), 'match' => 'reseller/memorials'],
+                    ['icon' => 'users', 'name' => 'Clients', 'path' => url('/reseller/clients')],
+                ],
+            ],
+            [
+                'title' => 'Your business',
+                'items' => [
+                    ['icon' => 'pricing', 'name' => 'Plans', 'path' => url('/reseller/plans')],
+                    ['icon' => 'appearance', 'name' => 'Branding', 'path' => url('/reseller/branding')],
+                    ['icon' => 'billing', 'name' => 'Payments', 'path' => url('/reseller/payments')],
+                    ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/reseller/settings'), 'match' => 'reseller/settings'],
+                ],
+            ],
         ];
     }
 
@@ -62,7 +94,7 @@ class MenuHelper
      */
     public static function getAdminMenuGroups(): array
     {
-        return [
+        return array_values(array_filter([
             [
                 'title' => 'Overview',
                 'items' => [
@@ -80,17 +112,20 @@ class MenuHelper
                     ['icon' => 'menus', 'name' => 'Menus', 'path' => url('/settings/menus')],
                 ],
             ],
-            [
-                // Who they are, what we charge them, how the program runs. 'match' lets the
-                // roster stay highlighted on a per-reseller detail page, which a plain
-                // exact-path comparison would leave with nothing lit at all.
+            // Who they are, what we charge them, how the program runs. 'match' lets the
+            // roster stay highlighted on a per-reseller detail page, which a plain
+            // exact-path comparison would leave with nothing lit at all.
+            //
+            // Super-admin only, matching the route middleware — a plain admin used to see
+            // three links that would 403 on click.
+            self::isSuperAdmin() ? [
                 'title' => 'Resellers',
                 'items' => [
                     ['icon' => 'store', 'name' => 'Resellers', 'path' => url('/settings/resellers'), 'match' => 'settings/resellers'],
                     ['icon' => 'pricing', 'name' => 'Pricing', 'path' => url('/settings/reseller-pricing')],
                     ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/settings/reseller-settings')],
                 ],
-            ],
+            ] : null,
             [
                 'title' => 'Users & Access',
                 'items' => [
@@ -113,7 +148,7 @@ class MenuHelper
                     ['icon' => 'settings', 'name' => 'System Updates', 'path' => url('/settings/updates')],
                 ],
             ],
-        ];
+        ]));
     }
 
     public static function getMainNavItems(): array
@@ -133,6 +168,10 @@ class MenuHelper
     {
         if (self::isAdmin()) {
             return self::getAdminMenuGroups();
+        }
+
+        if (self::isReseller()) {
+            return self::getResellerMenuGroups();
         }
 
         return [

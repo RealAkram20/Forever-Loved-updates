@@ -245,7 +245,10 @@
                 <div x-data="{ open: false }" class="border-t border-gray-100 dark:border-gray-800 pt-5">
                     <button type="button" @click="open = !open" class="btn btn-secondary btn-sm">Record a payment</button>
 
-                    <form x-show="open" x-cloak action="{{ route('settings.resellers.payments.store', $reseller) }}" method="POST" class="mt-4 space-y-3">
+                    {{-- submitting guard: a second click would create a second payment and
+                         roll the renewal date forward another whole year. --}}
+                    <form x-show="open" x-cloak x-data="{ submitting: false }" @submit="submitting = true"
+                        action="{{ route('settings.resellers.payments.store', $reseller) }}" method="POST" class="mt-4 space-y-3">
                         @csrf
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -280,7 +283,9 @@
                             @endif
                         </p>
                         <div class="flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-sm">Record payment</button>
+                            <button type="submit" class="btn btn-primary btn-sm" :disabled="submitting" :class="submitting && 'btn-disabled'">
+                                <span x-text="submitting ? 'Recording…' : 'Record payment'"></span>
+                            </button>
                             <button type="button" @click="open = false" class="btn btn-secondary btn-sm">Cancel</button>
                         </div>
                     </form>

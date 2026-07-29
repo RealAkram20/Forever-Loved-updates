@@ -53,6 +53,7 @@ class PageController extends Controller
     public function pricing()
     {
         $plans = SubscriptionPlan::where('is_active', true)
+            ->sellableTo(auth()->user())
             ->orderBy('sort_order')
             ->get();
 

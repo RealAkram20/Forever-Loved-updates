@@ -54,6 +54,21 @@ class Reseller extends Model
         ];
     }
 
+    /**
+     * Whether this reseller has a usable Pesapal merchant account of their own.
+     *
+     * PesapalService::forReseller() silently falls back to the *platform's* credentials
+     * when this is false, so anything that would act on "their" gateway — registering an
+     * IPN, taking their clients' money — must check this first. Otherwise the reseller
+     * sees "enabled" while the money lands with the platform.
+     */
+    public function hasOwnPesapalCredentials(): bool
+    {
+        return $this->pesapal_enabled
+            && filled($this->pesapal_consumer_key)
+            && filled($this->pesapal_consumer_secret);
+    }
+
     public function hasVerifiedCustomDomain(): bool
     {
         return $this->custom_domain !== null && $this->custom_domain_status === self::DOMAIN_VERIFIED;
@@ -261,9 +276,18 @@ class Reseller extends Model
      *
      * '' or null → everything, 'direct' → platform-owned only, a numeric id → that reseller.
      */
-    public static function applyFilter($query, ?string $value)
+    public static function applyFilter($query, mixed $value)
     {
-        if ($value === null || $value === '') {
+        // Query input is attacker-controlled shape, not just value: `?reseller[]=1` arrives
+        // as an array and a string type-hint would TypeError into a 500 on every list page
+        // that offers this filter.
+        if (! is_scalar($value)) {
+            return $query;
+        }
+
+        $value = (string) $value;
+
+        if ($value === '') {
             return $query;
         }
 

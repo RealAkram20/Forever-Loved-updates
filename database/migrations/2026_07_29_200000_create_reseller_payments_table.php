@@ -29,7 +29,8 @@ return new class extends Migration
             $table->foreignId('reseller_id')->constrained()->cascadeOnDelete();
 
             $table->decimal('amount', 12, 2);
-            $table->string('currency', 8)->default('USD');
+            // Width matches payment_orders.currency; the payments.currency setting allows 10.
+            $table->string('currency', 10)->default('USD');
 
             // The period this payment bought, snapshotted so history stays readable after
             // a tier's price or allowance changes.
@@ -44,7 +45,10 @@ return new class extends Migration
             $table->string('reference')->nullable();
             $table->text('notes')->nullable();
 
-            $table->timestamp('paid_at');
+            // dateTime, not timestamp: MySQL silently gives the first NOT NULL TIMESTAMP
+            // in a table `ON UPDATE current_timestamp()`, which would rewrite the recorded
+            // payment date on any later edit to the row.
+            $table->dateTime('paid_at');
             $table->foreignId('recorded_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 

@@ -68,6 +68,7 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'error' => 'Please log in to continue.'], 401);
         }
 
+
         $memorial = null;
         $memorialSlug = $request->memorial_slug;
         $memorialId = $request->memorial_id;
@@ -78,6 +79,13 @@ class PaymentController extends Controller
         }
         if (! $memorial) {
             return response()->json(['success' => false, 'error' => 'Please select a memorial for this subscription.'], 400);
+        }
+
+        // The plan must belong to whoever owns this memorial. Without this an outsider
+        // could pay against another reseller's plan, producing an order whose reseller_id
+        // and subscription_plan_id point at two different tenants.
+        if ($plan->reseller_id !== $memorial->reseller_id) {
+            return response()->json(['success' => false, 'error' => 'That plan is not available for this memorial.'], 403);
         }
 
         $guard = SubscriptionGuard::validatePayment($memorial, $plan);

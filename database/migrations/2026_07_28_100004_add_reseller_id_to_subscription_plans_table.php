@@ -17,8 +17,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('subscription_plans', function (Blueprint $table) {
-            $table->dropIndex(['reseller_id', 'is_active']);
+            // Foreign key first. MySQL drops the auto-created single-column index once the
+            // composite covers it, making the composite the only index backing the
+            // constraint — dropping it first fails with "needed in a foreign key
+            // constraint" and leaves the schema half-reverted.
             $table->dropForeign(['reseller_id']);
+            $table->dropIndex(['reseller_id', 'is_active']);
             $table->dropColumn('reseller_id');
         });
     }

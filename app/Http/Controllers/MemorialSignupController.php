@@ -176,7 +176,7 @@ class MemorialSignupController extends Controller
         if (empty($data['first_name'])) {
             return redirect()->route('memorial.create.step1');
         }
-        $plans = SubscriptionPlan::where('is_active', true)->orderBy('sort_order')->get();
+        $plans = SubscriptionPlan::where('is_active', true)->sellableTo(auth()->user())->orderBy('sort_order')->get();
         $currency = SystemSetting::get('payments.currency', 'USD');
         $paymentsEnabled = (bool) SystemSetting::get('payments.enabled', false);
         $pesapalEnabled = (bool) SystemSetting::get('payments.pesapal_enabled', false);
@@ -202,8 +202,18 @@ class MemorialSignupController extends Controller
         if (! $request->user()) {
             return redirect()->route('memorial.create.step2');
         }
+        // Scoped to what this user may actually buy. A bare `exists` check let anyone
+        // submit another tenant's plan id — and if that plan was free, claim its
+        // entitlements outright.
         $validated = $request->validate([
-            'plan_id' => ['required', 'exists:subscription_plans,id'],
+            'plan_id' => [
+                'required',
+                Rule::exists('subscription_plans', 'id')->where(
+                    fn ($q) => $request->user()->reseller_id
+                        ? $q->where('reseller_id', $request->user()->reseller_id)
+                        : $q->whereNull('reseller_id')
+                ),
+            ],
         ]);
         session([self::SESSION_KEY => array_merge(session(self::SESSION_KEY, []), $validated)]);
 
@@ -221,7 +231,8 @@ class MemorialSignupController extends Controller
         $data = session(self::SESSION_KEY, []);
 
         $planId = (int) ($request->input('plan_id') ?? $data['plan_id'] ?? 0);
-        $plan = SubscriptionPlan::find($planId);
+        // sellableTo, not find(): the id can come straight off the request here.
+        $plan = SubscriptionPlan::sellableTo($request->user())->find($planId);
         if (! $plan || $plan->isFree()) {
             return response()->json(['success' => false, 'error' => 'Please select a paid plan.'], 400);
         }
@@ -280,7 +291,9 @@ class MemorialSignupController extends Controller
             return redirect()->route('memorial.create.step1');
         }
 
-        $plan = SubscriptionPlan::find($data['plan_id']);
+        // Re-scoped rather than trusted from session: this is the path that grants a free
+        // plan's entitlements with no payment step in between.
+        $plan = SubscriptionPlan::sellableTo($request->user())->find($data['plan_id']);
         $isFreePlan = $plan && $plan->isFree();
 
         $memorial = $this->createMemorialFromSession($request->user(), $data, $plan);

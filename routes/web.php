@@ -186,7 +186,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pages/{slug}/edit', [\App\Http\Controllers\Admin\PageController::class, 'edit'])->name('pages.edit');
         Route::delete('/pages/{slug}', [\App\Http\Controllers\Admin\PageController::class, 'destroy'])->name('pages.destroy');
 
-        // ─── Reseller program (super-admin) ───────────────────────────
+        // ─── Reseller program (super-admin only) ──────────────────────
+        // Genuinely super-admin, not the enclosing role:admin|super-admin. These actions
+        // impersonate a reseller owner, suspend a live business, reassign every client and
+        // memorial they hold, and record money. The comment used to claim super-admin while
+        // the middleware allowed any admin; the middleware now matches the claim.
+        Route::middleware('role:super-admin')->group(function () {
         // Three destinations, each with its own nav entry: the roster (/resellers),
         // what we charge them (/reseller-pricing), and how the program is configured
         // (/reseller-settings). Pricing and settings deliberately sit on sibling paths
@@ -211,6 +216,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/reseller-settings', [\App\Http\Controllers\Admin\ResellerSettingsController::class, 'edit'])->name('reseller-settings');
         Route::put('/reseller-settings', [\App\Http\Controllers\Admin\ResellerSettingsController::class, 'update'])->name('reseller-settings.update');
+        });
     });
 
     // Lets a super-admin return to their own account after using "Login as" on a reseller.
