@@ -33,3 +33,6 @@ ngrok-stderr.txt
 Forever-love-deploy.zip
 public.zip
 *.zip
+
+# Database backups - never commit these
+storage/backups/
