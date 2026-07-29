@@ -86,16 +86,24 @@ class MemorialController extends Controller
         $user = $request->user();
         $isAdmin = $user->hasRole(['admin', 'super-admin']);
 
-        $memorials = $isAdmin
-            ? Memorial::with(['owner', 'media', 'tributes' => fn ($q) => $q->with('user')->whereNotNull('user_id')])
-                ->latest()
-                ->paginate(10)
-            : $user->memorials()->latest()->paginate(10);
+        if ($isAdmin) {
+            $query = Memorial::with(['owner', 'reseller', 'media', 'tributes' => fn ($q) => $q->with('user')->whereNotNull('user_id')])
+                ->latest();
+
+            \App\Models\Reseller::applyFilter($query, $request->query('reseller'));
+
+            $memorials = $query->paginate(10)->withQueryString();
+        } else {
+            $memorials = $user->memorials()->latest()->paginate(10);
+        }
 
         return view('pages.memorials.index', [
             'title' => $isAdmin ? 'All Memorials' : 'My Memorials',
             'memorials' => $memorials,
             'isAdmin' => $isAdmin,
+            // Only admins get the scope selector; the component renders nothing for an
+            // empty collection, which is exactly what a non-admin should see.
+            'resellers' => $isAdmin ? \App\Models\Reseller::filterOptions() : collect(),
         ]);
     }
 

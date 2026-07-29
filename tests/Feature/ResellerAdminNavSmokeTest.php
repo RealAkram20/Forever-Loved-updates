@@ -108,6 +108,70 @@ it('saves program settings and applies extra reserved slugs', function () {
     expect(Reseller::where('slug', 'beta')->first()->reseller_tier_id)->toBe($this->tier->id);
 });
 
+it('scopes the users list to one reseller', function () {
+    $direct = User::factory()->create(['name' => 'Direct Customer']);
+    $staff = User::factory()->create(['name' => 'Acme Staffer', 'reseller_id' => $this->reseller->id]);
+
+    // Unfiltered: both are visible, each tagged with its owner.
+    $this->actingAs($this->admin)->get('http://localhost/users')
+        ->assertOk()
+        ->assertSee('Direct Customer')
+        ->assertSee('Acme Staffer')
+        ->assertSee('Acme Funeral Home');
+
+    $this->actingAs($this->admin)->get('http://localhost/users?reseller='.$this->reseller->id)
+        ->assertOk()
+        ->assertSee('Acme Staffer')
+        ->assertDontSee('Direct Customer');
+
+    $this->actingAs($this->admin)->get('http://localhost/users?reseller=direct')
+        ->assertOk()
+        ->assertSee('Direct Customer')
+        ->assertDontSee('Acme Staffer');
+});
+
+it('defaults the plans list to platform-owned plans', function () {
+    $platformPlan = \App\Models\SubscriptionPlan::create([
+        'name' => 'Platform Premium', 'slug' => 'platform-premium', 'price' => 20, 'interval' => 'monthly',
+        'memorial_limit' => 5, 'storage_limit_mb' => 500, 'sort_order' => 1, 'is_active' => true,
+    ]);
+    \App\Models\SubscriptionPlan::create([
+        'name' => 'Acme Package', 'slug' => 'acme-package', 'price' => 30, 'interval' => 'monthly',
+        'memorial_limit' => 5, 'storage_limit_mb' => 500, 'sort_order' => 2, 'is_active' => true,
+        'reseller_id' => $this->reseller->id,
+    ]);
+
+    // No param: the reseller's own client-facing plans must not bleed into the
+    // platform's list, since an admin does not manage them from here.
+    $this->actingAs($this->admin)->get('http://localhost/settings/plans')
+        ->assertOk()
+        ->assertSee('Platform Premium')
+        ->assertDontSee('Acme Package');
+
+    $this->actingAs($this->admin)->get('http://localhost/settings/plans?reseller='.$this->reseller->id)
+        ->assertOk()
+        ->assertSee('Acme Package')
+        ->assertDontSee('Platform Premium');
+
+    expect($platformPlan->reseller_id)->toBeNull();
+});
+
+it('tags memorials and payment orders with their owning reseller', function () {
+    \App\Models\Memorial::factory()->create([
+        'full_name' => 'Jane Doe',
+        'reseller_id' => $this->reseller->id,
+    ]);
+
+    $this->actingAs($this->admin)->get('http://localhost/memorials')
+        ->assertOk()
+        ->assertSee('Jane Doe')
+        ->assertSee('Acme Funeral Home');
+
+    $this->actingAs($this->admin)->get('http://localhost/settings/payment-orders')
+        ->assertOk()
+        ->assertSee('Owner');
+});
+
 it('rejects a reseller slug that an admin has reserved', function () {
     $this->actingAs($this->admin)->put('http://localhost/settings/reseller-settings', [
         'custom_domains_enabled' => '0',

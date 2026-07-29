@@ -108,4 +108,30 @@ class Reseller extends Model
     {
         return $this->status === self::STATUS_ACTIVE;
     }
+
+    /**
+     * Constrain any reseller_id-bearing query from a request filter value. Shared by the
+     * platform-wide Users / Memorials / Plans / Payment Orders lists, which all span both
+     * direct and reseller-owned records and otherwise give no way to tell them apart.
+     *
+     * '' or null → everything, 'direct' → platform-owned only, a numeric id → that reseller.
+     */
+    public static function applyFilter($query, ?string $value)
+    {
+        if ($value === null || $value === '') {
+            return $query;
+        }
+
+        if ($value === 'direct') {
+            return $query->whereNull('reseller_id');
+        }
+
+        return ctype_digit($value) ? $query->where('reseller_id', (int) $value) : $query;
+    }
+
+    /** Resellers for a filter dropdown — id and name only, cheapest possible. */
+    public static function filterOptions()
+    {
+        return self::orderBy('name')->get(['id', 'name']);
+    }
 }

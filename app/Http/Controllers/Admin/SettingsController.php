@@ -280,12 +280,14 @@ class SettingsController extends Controller
 
     public function paymentOrders(Request $request)
     {
-        $query = PaymentOrder::with(['user', 'plan', 'memorial'])->orderByDesc('created_at');
+        $query = PaymentOrder::with(['user', 'plan', 'memorial', 'reseller'])->orderByDesc('created_at');
 
         $status = $request->query('status');
         if ($status && in_array($status, ['pending', 'completed', 'failed', 'cancelled'], true)) {
             $query->where('status', $status);
         }
+
+        \App\Models\Reseller::applyFilter($query, $request->query('reseller'));
 
         $orders = $query->paginate(25)->withQueryString();
 
@@ -303,6 +305,7 @@ class SettingsController extends Controller
             'plans' => $plans,
             'memorials' => $memorials,
             'currency' => $currency,
+            'resellers' => \App\Models\Reseller::filterOptions(),
         ]);
     }
 
@@ -814,15 +817,18 @@ class SettingsController extends Controller
 
     // ─── Plans ───────────────────────────────────────────────────────
 
-    public function plans()
+    public function plans(Request $request)
     {
-        $plans = SubscriptionPlan::orderBy('sort_order')->get();
-        $currency = SystemSetting::get('payments.currency', 'USD');
+        // Defaults to the platform's own plans. Without this the list silently mixes in
+        // every reseller's client-facing plans, which an admin does not manage from here.
+        $query = SubscriptionPlan::with('reseller')->orderBy('sort_order');
+        \App\Models\Reseller::applyFilter($query, $request->query('reseller', 'direct'));
 
         return view('pages.settings.plans', [
             'title' => 'Subscription Plans',
-            'plans' => $plans,
-            'currency' => $currency,
+            'plans' => $query->get(),
+            'currency' => SystemSetting::get('payments.currency', 'USD'),
+            'resellers' => \App\Models\Reseller::filterOptions(),
         ]);
     }
 

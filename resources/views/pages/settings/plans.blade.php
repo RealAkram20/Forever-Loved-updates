@@ -17,8 +17,18 @@
     <div class="space-y-6">
         {{-- Existing Plans --}}
         <x-common.component-card title="Plans" desc="Manage subscription plans available to users.">
+            @if ($resellers->isNotEmpty())
+                {{-- Defaults to the platform's own plans; resellers manage theirs themselves,
+                     so those are viewable here but not editable. --}}
+                <div class="mb-4 flex justify-end">
+                    <x-admin.reseller-filter :resellers="$resellers" default="direct" />
+                </div>
+            @endif
+
             @if ($plans->isEmpty())
-                <p class="text-sm text-gray-500 dark:text-gray-400">No plans created yet.</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ request('reseller') && request('reseller') !== 'direct' ? 'This reseller has no plans yet.' : 'No plans created yet.' }}
+                </p>
             @else
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     @foreach ($plans as $plan)
@@ -30,6 +40,9 @@
                                     <div>
                                         <h4 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ $plan->name }}</h4>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $plan->slug }}</p>
+                                        @if ($plan->reseller)
+                                            <div class="mt-1.5"><x-admin.owner-tag :reseller="$plan->reseller" /></div>
+                                        @endif
                                     </div>
                                     <div class="flex flex-wrap items-center justify-end gap-1.5">
                                         @if ($plan->is_popular)
