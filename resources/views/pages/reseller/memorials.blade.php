@@ -1,52 +1,72 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Client Memorials" />
+    <x-common.page-header title="Memorials"
+        desc="Memorials hosted under your business, published at your own address.">
+        <x-slot:actions>
+            <a href="{{ route('reseller.memorials.create') }}" class="btn btn-primary btn-md">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                Create memorial
+            </a>
+        </x-slot:actions>
+    </x-common.page-header>
 
-    <x-common.component-card title="Memorials" desc="Memorials created under your account.">
-        @if (! $memorials->isEmpty())
-            <div class="mb-4">
-                <a href="{{ route('reseller.memorials.create') }}" class="btn btn-primary btn-sm">Create Memorial for a Client</a>
-            </div>
-        @endif
+    <x-common.flash />
 
+    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03]">
         @if ($memorials->isEmpty())
-            <div class="flex flex-col items-center py-12 text-center">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-500/10 text-brand-500">
-                    <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                </div>
-                <h4 class="mt-4 text-sm font-semibold text-gray-800 dark:text-white/90">No memorials yet</h4>
-                <p class="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">Memorials you build for clients — or invite clients to finish themselves — show up here, branded on your subdomain.</p>
-                <a href="{{ route('reseller.memorials.create') }}" class="btn btn-primary btn-sm mt-4">Create your first memorial</a>
+            <div class="px-6 py-16 text-center">
+                <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.25v13M12 6.25C10.83 5.48 9.25 5 7.5 5S4.17 5.48 3 6.25v13C4.17 18.48 5.75 18 7.5 18s3.33.48 4.5 1.25M12 6.25C13.17 5.48 14.75 5 16.5 5S19.83 5.48 21 6.25v13C19.83 18.48 18.25 18 16.5 18s-3.33.48-4.5 1.25"/></svg>
+                <p class="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">No memorials yet</p>
+                <p class="mx-auto mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400">
+                    Build one for a family — or invite them to finish it themselves. Either way it's published under your brand, not ours.
+                </p>
+                <a href="{{ route('reseller.memorials.create') }}" class="btn btn-primary btn-md mt-5">Create your first memorial</a>
             </div>
         @else
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+                <table class="w-full min-w-[42rem] text-sm">
                     <thead>
-                        <tr class="border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
-                            <th class="py-2 pr-4 font-medium">Name</th>
-                            <th class="py-2 pr-4 font-medium">Client</th>
-                            <th class="py-2 pr-4 font-medium">Status</th>
-                            <th class="py-2 pr-4 font-medium">Created</th>
-                            <th class="py-2 font-medium"></th>
+                        <tr class="border-b border-gray-100 dark:border-gray-800">
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Memorial</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Family</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Status</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Created</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500"><span class="sr-only">Actions</span></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @foreach ($memorials as $memorial)
-                            <tr class="border-b border-gray-100 dark:border-gray-800">
-                                <td class="py-2 pr-4 text-gray-800 dark:text-white/90">{{ $memorial->full_name }}</td>
-                                <td class="py-2 pr-4 text-gray-600 dark:text-gray-400">{{ $memorial->owner?->name ?? '—' }}</td>
-                                <td class="py-2 pr-4 text-gray-600 dark:text-gray-400">{{ ucfirst($memorial->status) }}</td>
-                                <td class="py-2 pr-4 text-gray-600 dark:text-gray-400">{{ $memorial->created_at->format('M j, Y') }}</td>
-                                <td class="py-2 text-right">
-                                    <a href="{{ $memorial->publicUrl() }}" target="_blank" class="text-brand-500 hover:underline">View</a>
+                            <tr class="transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                                <td class="px-6 py-4">
+                                    <div class="font-medium text-gray-800 dark:text-white/90">{{ $memorial->full_name }}</div>
+                                    {{-- The address they can actually hand a family — their own,
+                                         not the platform's. --}}
+                                    <div class="mt-0.5 truncate font-mono text-xs text-gray-400 dark:text-gray-500">
+                                        {{ parse_url($memorial->publicUrl(), PHP_URL_HOST) }}/{{ $memorial->slug }}
+                                    </div>
+                                </td>
+                                <td class="px-3 py-4 text-gray-600 dark:text-gray-400">{{ $memorial->owner?->name ?? '—' }}</td>
+                                <td class="px-3 py-4">
+                                    <x-admin.status-badge :status="$memorial->status ?? 'active'" />
+                                </td>
+                                <td class="px-3 py-4 text-gray-500 dark:text-gray-400">{{ $memorial->created_at?->format('M j, Y') }}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="{{ $memorial->publicUrl() }}" target="_blank" rel="noopener"
+                                        class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-600 transition-colors duration-150 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10">
+                                        View
+                                        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+                                    </a>
                                 </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
-            <div class="mt-4">{{ $memorials->links() }}</div>
+
+            @if ($memorials->hasPages())
+                <div class="border-t border-gray-100 dark:border-gray-800 px-6 py-4">{{ $memorials->links() }}</div>
+            @endif
         @endif
-    </x-common.component-card>
+    </div>
 @endsection
