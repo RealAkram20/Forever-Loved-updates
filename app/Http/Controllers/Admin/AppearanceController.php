@@ -3,46 +3,24 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Helpers\AppearanceHelper;
+use App\Helpers\AppearanceKeys;
 use App\Helpers\BrandingHelper;
 use App\Http\Controllers\Controller;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Models\SystemSetting;
 
 class AppearanceController extends Controller
 {
-    private const TEXT_COLOR_KEYS = [
-        'appearance.text_heading_light', 'appearance.text_heading_dark',
-        'appearance.text_body_light', 'appearance.text_body_dark',
-        'appearance.text_muted_light', 'appearance.text_muted_dark',
-    ];
+    // The key lists themselves live in App\Helpers\AppearanceKeys, shared with
+    // Reseller\AppearanceController so the two forms validate one identical vocabulary.
+    // Aliased here to keep the method bodies below readable.
+    private const TEXT_COLOR_KEYS = AppearanceKeys::TEXT_COLOR_KEYS;
 
-    /**
-     * Branding keys holding a color (moved here from General Settings). They
-     * are interpolated into a <style> block, so they are validated as literal
-     * hex and never as free-form strings.
-     */
-    private const BRANDING_COLOR_KEYS = [
-        'branding.primary_color', 'branding.secondary_color', 'branding.accent_color',
-        'branding.bg_light', 'branding.bg_dark',
-        'branding.primary_light', 'branding.primary_dark',
-        'branding.accent_light', 'branding.accent_dark',
-        'branding.button1_color', 'branding.button1_text_color',
-        'branding.button1_color_dark', 'branding.button1_text_color_dark',
-        'branding.button2_color', 'branding.button2_text_color',
-        'branding.button2_color_dark', 'branding.button2_text_color_dark',
-        'branding.cta_bg_light', 'branding.cta_bg_dark',
-        'branding.cta_btn1_color', 'branding.cta_btn1_text_color',
-        'branding.cta_btn1_color_dark', 'branding.cta_btn1_text_color_dark',
-        'branding.cta_btn2_color', 'branding.cta_btn2_text_color',
-        'branding.cta_btn2_color_dark', 'branding.cta_btn2_text_color_dark',
-    ];
+    private const BRANDING_COLOR_KEYS = AppearanceKeys::BRANDING_COLOR_KEYS;
 
-    /** Branding keys holding a 0-100 percentage rather than a color. */
-    private const BRANDING_PERCENT_KEYS = [
-        'branding.cta_overlay_light', 'branding.cta_overlay_dark',
-    ];
+    private const BRANDING_PERCENT_KEYS = AppearanceKeys::BRANDING_PERCENT_KEYS;
 
     private const FONT_EXTENSIONS = ['woff2', 'woff', 'ttf', 'otf'];
 

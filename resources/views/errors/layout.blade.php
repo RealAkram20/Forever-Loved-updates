@@ -5,7 +5,8 @@
     page could recurse) with hardcoded fallbacks.
 --}}
 @php
-    $appName = rescue(fn () => \App\Models\SystemSetting::get('branding.app_name', config('app.name', 'Forever-Loved')), config('app.name', 'Forever-Loved'), false);
+    // Tenant-aware so a 404 on a reseller's own domain does not advertise the platform.
+    $appName = rescue(fn () => \App\Helpers\SiteShareMetaHelper::appDisplayName(), config('app.name', 'Forever-Loved'), false);
     $brandColor = \App\Helpers\BrandingHelper::sanitizeHex(
         rescue(fn () => \App\Helpers\BrandingHelper::primaryColor(), '#465fff', false),
         '#465fff'

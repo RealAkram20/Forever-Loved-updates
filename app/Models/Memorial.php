@@ -13,6 +13,43 @@ class Memorial extends Model
 {
     use HasFactory;
 
+    /**
+     * A memorial belongs to whatever tenant its owner belongs to.
+     *
+     * Enforced here rather than at each call site because two of the three call sites
+     * missed it: Reseller\DashboardController::storeMemorial() stamped reseller_id, while
+     * MemorialController::store() and MemorialSignupController never did. A reseller's own
+     * client creating a memorial through the normal flow therefore produced an untenanted
+     * record — absent from the reseller's list and analytics, uncounted against their tier
+     * allowance and storage cap, unreachable on their own subdomain, and handed out with a
+     * platform URL instead of their white-labeled one.
+     *
+     * A creating hook rather than a fourth explicit assignment, so the next creation path
+     * cannot reintroduce the same gap. Anything that sets reseller_id itself wins.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $memorial) {
+            // "Said nothing about it" — not "said null". A caller passing an explicit null
+            // means a platform-owned memorial and is left alone: a direct user with existing
+            // memorials can later be attached to a reseller, and those older memorials stay
+            // the platform's. Treating the two cases alike would silently reassign them.
+            if (array_key_exists('reseller_id', $memorial->getAttributes()) || $memorial->user_id === null) {
+                return;
+            }
+
+            // value() rather than loading the relation: this runs on every insert, and the
+            // owner is frequently not loaded at this point.
+            $resellerId = User::whereKey($memorial->user_id)->value('reseller_id');
+
+            if ($resellerId !== null) {
+                $memorial->reseller_id = $resellerId;
+                // Left alone once set, so a rollover can still be reversed by restore().
+                $memorial->original_reseller_id ??= $resellerId;
+            }
+        });
+    }
+
     // Dashboard routes (/memorials/{memorial}/...) bind by slug so URLs read
     // as the person's name instead of a numeric id. Public /{slug} routes
     // resolve slugs explicitly and are unaffected.
@@ -254,17 +291,11 @@ class Memorial extends Model
             return route('memorial.public', ['slug' => $this->slug], true);
         }
 
-        if ($reseller->hasVerifiedCustomDomain()) {
-            return route('memorial.public.custom-domain', [
-                'domain' => $reseller->custom_domain,
-                'slug' => $this->slug,
-            ], true);
-        }
-
-        return route('memorial.public.reseller', [
-            'reseller' => $reseller->slug,
-            'slug' => $this->slug,
-        ], true);
+        // Reseller::publicUrlForSlug() picks the verified custom domain over the subdomain,
+        // and degrades to the path-based /r/{slug} route in environments that cannot serve
+        // either. route() on the host-based routes would happily generate an address for a
+        // host this deployment never answers on.
+        return $reseller->publicUrlForSlug($this->slug);
     }
 
     /**

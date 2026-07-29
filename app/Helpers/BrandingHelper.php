@@ -2,38 +2,19 @@
 
 namespace App\Helpers;
 
-use App\Models\Reseller;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * Brand assets and the CSS custom properties the whole UI is themed from.
+ *
+ * Every setting here is read through ThemeSetting, which resolves the active reseller's own
+ * value before the platform's — so a reseller's memorial pages, dashboard and auth screens
+ * carry their palette, not just their logo. Reading SystemSetting directly here would take
+ * that away again, so don't.
+ */
 class BrandingHelper
 {
-    /**
-     * Per-reseller branding override. Active inside the public reseller-subdomain route
-     * group (ResolveReseller binds the resolved Reseller into the container there), and
-     * falls back to the logged-in user's own reseller everywhere else in the authenticated
-     * app — so a reseller's staff and their clients see the same branding on every page
-     * they can reach (dashboard, memorial editing, notifications, ...), not just the
-     * /reseller/* staff routes that happen to bind it explicitly.
-     */
-    private static function tenantOverride(string $key): ?string
-    {
-        $reseller = app()->bound(Reseller::class)
-            ? app(Reseller::class)
-            : auth()->user()?->reseller;
-
-        if (! $reseller) {
-            return null;
-        }
-
-        return match ($key) {
-            'logo_path' => $reseller->logo_path,
-            'favicon_path' => $reseller->favicon_path,
-            'primary_color' => $reseller->primary_color,
-            default => null,
-        } ?: null;
-    }
-
     private static function publicDiskPathUrl(?string $path, string $fallbackAsset): string
     {
         if (empty($path)) {
@@ -53,21 +34,36 @@ class BrandingHelper
      */
     public static function logoUrl(?string $variant = 'light'): string
     {
+        // $variant was previously accepted and then ignored, so every caller asking for the
+        // dark mark silently got the light one.
+        if ($variant === 'dark') {
+            return self::logoDarkUrl();
+        }
+
         return self::publicDiskPathUrl(
-            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_path'),
+            ThemeSetting::get('branding.logo_path'),
             'images/logo/logo.svg'
         );
     }
 
     /**
-     * Get the logo URL for dark mode. Uses logo_dark_path if set, else same as light.
-     * Resellers only have a single logo in Phase 1 (no separate dark-mode asset), so
-     * their logo stands in for both variants when resolved.
+     * Get the logo URL for dark mode.
+     *
+     * Not a plain ThemeSetting lookup, because the fallback chain differs by tenant: a
+     * reseller who uploaded only one logo must still see *their* brand in dark mode, so
+     * their light logo stands in. Falling through to the platform's dark mark — which is
+     * what a single-key lookup would do — would put our logo on their white-labeled page.
      */
     public static function logoDarkUrl(): string
     {
+        $reseller = ThemeSetting::tenant();
+
+        $tenantLogo = $reseller
+            ? (filled($reseller->logo_dark_path) ? $reseller->logo_dark_path : $reseller->logo_path)
+            : null;
+
         return self::publicDiskPathUrl(
-            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_dark_path'),
+            filled($tenantLogo) ? $tenantLogo : SystemSetting::get('branding.logo_dark_path'),
             'images/logo/logo-dark.svg'
         );
     }
@@ -79,13 +75,13 @@ class BrandingHelper
      */
     public static function logoIconUrl(): string
     {
-        $favicon = self::tenantOverride('favicon_path') ?? SystemSetting::get('branding.favicon_path');
+        $favicon = ThemeSetting::get('branding.favicon_path');
         if (! empty($favicon) && Storage::disk('public')->exists($favicon)) {
             return StorageHelper::publicUrl($favicon) ?? asset('images/logo/logo-icon.svg');
         }
 
         return self::publicDiskPathUrl(
-            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_path'),
+            ThemeSetting::get('branding.logo_path'),
             'images/logo/logo-icon.svg'
         );
     }
@@ -96,9 +92,27 @@ class BrandingHelper
     public static function authLogoUrl(): string
     {
         return self::publicDiskPathUrl(
-            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_path'),
+            ThemeSetting::get('branding.logo_path'),
             'images/logo/auth-logo.svg'
         );
+    }
+
+    /**
+     * The name shown in the browser tab title.
+     *
+     * A reseller's own business name whenever one is active. The platform's name in the tab of
+     * a white-labeled memorial page is visible to every family who opens it, and rides along in
+     * every bookmark, shared screenshot and browser-history entry.
+     *
+     * Falls back to config('app.name') exactly as before, so platform page titles are unchanged.
+     * Deliberately not branding.app_name: switching platform titles to a different source is a
+     * separate decision from fixing the tenant leak.
+     */
+    public static function documentTitleName(): string
+    {
+        $tenantName = ThemeSetting::tenant()?->name;
+
+        return filled($tenantName) ? (string) $tenantName : (string) config('app.name', 'Forever-Loved');
     }
 
     /**
@@ -106,7 +120,7 @@ class BrandingHelper
      */
     public static function defaultTheme(): string
     {
-        $v = SystemSetting::get('branding.default_theme', 'light');
+        $v = ThemeSetting::get('branding.default_theme', 'light');
 
         return in_array($v, ['light', 'dark'], true) ? $v : 'light';
     }
@@ -117,13 +131,13 @@ class BrandingHelper
      */
     public static function faviconUrl(): string
     {
-        $favicon = self::tenantOverride('favicon_path') ?? SystemSetting::get('branding.favicon_path');
+        $favicon = ThemeSetting::get('branding.favicon_path');
         if (! empty($favicon) && Storage::disk('public')->exists($favicon)) {
             return StorageHelper::publicUrl($favicon) ?? asset('favicon.ico');
         }
 
         return self::publicDiskPathUrl(
-            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_path'),
+            ThemeSetting::get('branding.logo_path'),
             'favicon.ico'
         );
     }
@@ -133,7 +147,7 @@ class BrandingHelper
      */
     public static function primaryColor(): string
     {
-        return self::tenantOverride('primary_color') ?? SystemSetting::get('branding.primary_color', '#465fff');
+        return ThemeSetting::get('branding.primary_color', '#465fff');
     }
 
     /**
@@ -141,7 +155,7 @@ class BrandingHelper
      */
     public static function secondaryColor(): string
     {
-        return SystemSetting::get('branding.secondary_color', '#1e3a5f');
+        return ThemeSetting::get('branding.secondary_color', '#1e3a5f');
     }
 
     /**
@@ -149,87 +163,105 @@ class BrandingHelper
      */
     public static function accentColor(): string
     {
-        return SystemSetting::get('branding.accent_color', '#f59e0b');
+        return ThemeSetting::get('branding.accent_color', '#f59e0b');
     }
 
     public static function bgLight(): string
     {
-        return SystemSetting::get('branding.bg_light', '#f9fafb');
+        return ThemeSetting::get('branding.bg_light', '#f9fafb');
     }
 
     public static function bgDark(): string
     {
-        return SystemSetting::get('branding.bg_dark', '#101828');
+        return ThemeSetting::get('branding.bg_dark', '#101828');
     }
 
     public static function primaryLight(): string
     {
-        return SystemSetting::get('branding.primary_light', '#465fff');
+        return ThemeSetting::get('branding.primary_light', '#465fff');
     }
 
     public static function primaryDark(): string
     {
-        return SystemSetting::get('branding.primary_dark', '#1e3a5f');
+        return ThemeSetting::get('branding.primary_dark', '#1e3a5f');
     }
 
     public static function accentLight(): string
     {
-        return SystemSetting::get('branding.accent_light', '#f59e0b');
+        return ThemeSetting::get('branding.accent_light', '#f59e0b');
     }
 
     public static function accentDark(): string
     {
-        return SystemSetting::get('branding.accent_dark', '#f59e0b');
+        return ThemeSetting::get('branding.accent_dark', '#f59e0b');
     }
 
     public static function button1Color(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.button1_color'), '#465fff');
+        return self::sanitizeHex(ThemeSetting::get('branding.button1_color'), '#465fff');
     }
 
     public static function button1TextColor(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.button1_text_color'), '#ffffff');
+        return self::sanitizeHex(ThemeSetting::get('branding.button1_text_color'), '#ffffff');
+    }
+
+    /**
+     * A dark-mode colour whose declared default is "same as light".
+     *
+     * The platform always has a stored value for every dark key, so a plain lookup would let
+     * the platform's dark colour beat a reseller's own light choice — a reseller who set only
+     * their primary button colour would get their green in light mode and our blue in dark.
+     * When a tenant is active and has not set this dark key themselves, their light value
+     * stands in, which is what the non-tenant default already expressed.
+     */
+    private static function tenantAwareDark(string $key, string $lightFallback): string
+    {
+        if (ThemeSetting::tenant() && ! ThemeSetting::isOverridden($key)) {
+            return $lightFallback;
+        }
+
+        return self::sanitizeHex(ThemeSetting::get($key), $lightFallback);
     }
 
     public static function button1ColorDark(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.button1_color_dark'), self::button1Color());
+        return self::tenantAwareDark('branding.button1_color_dark', self::button1Color());
     }
 
     public static function button1TextColorDark(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.button1_text_color_dark'), self::button1TextColor());
+        return self::tenantAwareDark('branding.button1_text_color_dark', self::button1TextColor());
     }
 
     public static function button2Color(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.button2_color'), '#ffffff');
+        return self::sanitizeHex(ThemeSetting::get('branding.button2_color'), '#ffffff');
     }
 
     public static function button2TextColor(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.button2_text_color'), '#374151');
+        return self::sanitizeHex(ThemeSetting::get('branding.button2_text_color'), '#374151');
     }
 
     public static function button2ColorDark(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.button2_color_dark'), '#1f2937');
+        return self::sanitizeHex(ThemeSetting::get('branding.button2_color_dark'), '#1f2937');
     }
 
     public static function button2TextColorDark(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.button2_text_color_dark'), '#d1d5db');
+        return self::sanitizeHex(ThemeSetting::get('branding.button2_text_color_dark'), '#d1d5db');
     }
 
     public static function ctaBgLight(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.cta_bg_light'), '#465fff');
+        return self::sanitizeHex(ThemeSetting::get('branding.cta_bg_light'), '#465fff');
     }
 
     public static function ctaBgDark(): string
     {
-        return self::sanitizeHex(SystemSetting::get('branding.cta_bg_dark'), '#3641f5');
+        return self::sanitizeHex(ThemeSetting::get('branding.cta_bg_dark'), '#3641f5');
     }
 
     /**
@@ -238,12 +270,12 @@ class BrandingHelper
      */
     public static function ctaOverlayLight(): int
     {
-        return self::clampPercent(SystemSetting::get('branding.cta_overlay_light'), 0);
+        return self::clampPercent(ThemeSetting::get('branding.cta_overlay_light'), 0);
     }
 
     public static function ctaOverlayDark(): int
     {
-        return self::clampPercent(SystemSetting::get('branding.cta_overlay_dark'), 55);
+        return self::clampPercent(ThemeSetting::get('branding.cta_overlay_dark'), 55);
     }
 
     public static function clampPercent(mixed $value, int $fallback = 0): int
@@ -383,8 +415,8 @@ class BrandingHelper
 
         $out = [];
         foreach ($roles as $role => [$bgKey, $textKey, $bgDefault, $textDefault]) {
-            $bg = self::sanitizeHex(SystemSetting::get("branding.{$bgKey}{$suffix}"), $bgDefault);
-            $text = self::sanitizeHex(SystemSetting::get("branding.{$textKey}{$suffix}"), $textDefault);
+            $bg = self::sanitizeHex(ThemeSetting::get("branding.{$bgKey}{$suffix}"), $bgDefault);
+            $text = self::sanitizeHex(ThemeSetting::get("branding.{$textKey}{$suffix}"), $textDefault);
             $out[] = self::buttonVars($role, $bg, $text);
         }
 
@@ -474,7 +506,7 @@ class BrandingHelper
   --color-accent-dark: {$accentDark};
 {$btn}
   --color-cta-bg: {$ctaLight};
-  --color-cta-bg-hover: " . self::darken($ctaLight, 8) . ";
+  --color-cta-bg-hover: ".self::darken($ctaLight, 8).";
   --color-cta-scrim: {$scrimLight};
   --color-cta-scrim-soft: {$scrimLightSoft};
 }
@@ -493,13 +525,13 @@ html.dark {
   --color-brand-900: {$darkBrand900};
   --color-brand-950: {$darkBrand950};
   --color-bg-page: {$bgDark};
-  --color-accent-500: " . self::lighten($accentDark, 0) . ";
-  --color-accent-600: " . self::darken($accentDark, 8) . ";
-  --color-accent-400: " . self::lighten($accentDark, 15) . ";
-  --color-accent-100: " . self::lighten($accentDark, 55) . ";
-  --color-accent-50: " . self::lighten($accentDark, 65) . ";
+  --color-accent-500: ".self::lighten($accentDark, 0).';
+  --color-accent-600: '.self::darken($accentDark, 8).';
+  --color-accent-400: '.self::lighten($accentDark, 15).';
+  --color-accent-100: '.self::lighten($accentDark, 55).';
+  --color-accent-50: '.self::lighten($accentDark, 65).";
   --color-cta-bg: {$ctaDark};
-  --color-cta-bg-hover: " . self::darken($ctaDark, 8) . ";
+  --color-cta-bg-hover: ".self::darken($ctaDark, 8).";
   --color-cta-scrim: {$scrimDark};
   --color-cta-scrim-soft: {$scrimDarkSoft};
 }";

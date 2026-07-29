@@ -1,10 +1,16 @@
 <?php
 
+use App\Http\Controllers\Admin\AppearanceController;
+use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\ResellerController;
+use App\Http\Controllers\Admin\ResellerSettingsController;
+use App\Http\Controllers\Admin\ResellerTierController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SiteLayoutController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemorialApiController;
 use App\Http\Controllers\MemorialController;
 use App\Http\Controllers\MemorialDirectoryController;
@@ -15,18 +21,58 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicMemorialController;
+use App\Http\Controllers\Reseller\AnalyticsController;
+use App\Http\Controllers\Reseller\ClientController;
+use App\Http\Controllers\Reseller\PaymentSettingsController;
+use App\Http\Controllers\Reseller\PlanController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\WidgetController;
 use App\Http\Middleware\EmbedFrameHeaders;
 use App\Http\Middleware\EnsureResellerActive;
 use App\Http\Middleware\ResolveReseller;
 use App\Http\Middleware\ResolveResellerByCustomDomain;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes (login, register, password reset, etc.)
 require __DIR__.'/auth.php';
 
-// Landing / Home page (public)
+/*
+|--------------------------------------------------------------------------
+| Reseller root pages — MUST precede the platform home route below
+|--------------------------------------------------------------------------
+| Laravel matches routes in registration order, and a route with no domain constraint
+| matches ANY host. So `Route::get('/')` below was answering acme.foreverloved.com/ with the
+| platform's landing page — our logo, our copy, our pricing, on a reseller's white-labeled
+| domain. Registering these two first is what makes the reseller root theirs.
+|
+| Only the roots are hoisted. The `/{slug}` memorial routes stay far below, after the auth
+| and public pages, so /login, /about and /pricing keep resolving to first-party routes on a
+| reseller host instead of being read as memorial slugs.
+|
+| $foreignDomainPattern is defined here rather than beside the {slug} routes because both
+| pairs need it and it must exist before the first use.
+*/
+$appHost = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
+$resellerBaseDomain = config('reseller.domain');
+$foreignDomainPattern = '^(?!'.preg_quote($appHost, '#').'$)(?!'.preg_quote($resellerBaseDomain, '#').'$)(?!.*\.'.preg_quote($resellerBaseDomain, '#').'$).+$';
+
+Route::domain('{reseller}.'.$resellerBaseDomain)->group(function () {
+    Route::get('/', [PublicMemorialController::class, 'indexForReseller'])
+        ->name('reseller.public.index')
+        ->where('reseller', '[a-z0-9\-]+')
+        ->middleware(ResolveReseller::class);
+});
+
+Route::domain('{domain}')->group(function () use ($foreignDomainPattern) {
+    Route::get('/', [PublicMemorialController::class, 'indexForReseller'])
+        ->name('reseller.public.index-custom-domain')
+        ->where('domain', $foreignDomainPattern)
+        ->middleware(ResolveResellerByCustomDomain::class);
+});
+
+// Landing / Home page (public). Reachable on the app's own host only — the two groups above
+// claim the root on reseller hosts, and their patterns exclude this one.
 Route::get('/', [PageController::class, 'home'])->name('home');
 
 // AJAX memorial search (public)
@@ -61,7 +107,7 @@ Route::prefix('create-memorial')->name('memorial.create.')->group(function () {
 
 // Dashboard routes (protected)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->middleware(EnsureResellerActive::class)->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(EnsureResellerActive::class)->name('dashboard');
 
     Route::post('memorials/{memorial}/status', [MemorialController::class, 'updateStatus'])->name('memorials.status');
     Route::patch('memorials/{memorial}/section', [MemorialController::class, 'updateSection'])->name('memorials.section');
@@ -108,7 +154,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Admin push onboarding dismiss
-    Route::post('/admin/dismiss-push-onboarding', function (\Illuminate\Http\Request $request) {
+    Route::post('/admin/dismiss-push-onboarding', function (Request $request) {
         $request->session()->put('admin_push_onboarding_dismissed', true);
 
         return response()->json(['success' => true]);
@@ -119,10 +165,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [SettingsController::class, 'general'])->name('general');
         Route::put('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
 
-        Route::get('/appearance', [\App\Http\Controllers\Admin\AppearanceController::class, 'index'])->name('appearance');
-        Route::put('/appearance', [\App\Http\Controllers\Admin\AppearanceController::class, 'update'])->name('appearance.update');
-        Route::post('/appearance/fonts', [\App\Http\Controllers\Admin\AppearanceController::class, 'storeFont'])->name('appearance.fonts.store');
-        Route::delete('/appearance/fonts/{index}', [\App\Http\Controllers\Admin\AppearanceController::class, 'destroyFont'])->whereNumber('index')->name('appearance.fonts.destroy');
+        Route::get('/appearance', [AppearanceController::class, 'index'])->name('appearance');
+        Route::put('/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
+        Route::post('/appearance/fonts', [AppearanceController::class, 'storeFont'])->name('appearance.fonts.store');
+        Route::delete('/appearance/fonts/{index}', [AppearanceController::class, 'destroyFont'])->whereNumber('index')->name('appearance.fonts.destroy');
 
         Route::get('/ai', [SettingsController::class, 'ai'])->name('ai');
         Route::put('/ai', [SettingsController::class, 'updateAi'])->name('ai.update');
@@ -164,27 +210,27 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/updates', [SettingsController::class, 'updates'])->name('updates');
 
-        Route::get('/menus', [\App\Http\Controllers\Admin\MenuController::class, 'edit'])->name('menus.edit');
-        Route::post('/menus/items', [\App\Http\Controllers\Admin\MenuController::class, 'storeItem'])->name('menus.items.store');
-        Route::put('/menus/items/{item}', [\App\Http\Controllers\Admin\MenuController::class, 'updateItem'])->name('menus.items.update');
-        Route::delete('/menus/items/{item}', [\App\Http\Controllers\Admin\MenuController::class, 'destroyItem'])->name('menus.items.destroy');
-        Route::post('/menus/reorder', [\App\Http\Controllers\Admin\MenuController::class, 'reorder'])->name('menus.reorder');
+        Route::get('/menus', [MenuController::class, 'edit'])->name('menus.edit');
+        Route::post('/menus/items', [MenuController::class, 'storeItem'])->name('menus.items.store');
+        Route::put('/menus/items/{item}', [MenuController::class, 'updateItem'])->name('menus.items.update');
+        Route::delete('/menus/items/{item}', [MenuController::class, 'destroyItem'])->name('menus.items.destroy');
+        Route::post('/menus/reorder', [MenuController::class, 'reorder'])->name('menus.reorder');
 
-        Route::get('/site-layout/{key}/edit', [\App\Http\Controllers\Admin\SiteLayoutController::class, 'edit'])->name('site-layout.edit');
-        Route::put('/site-layout/{key}', [\App\Http\Controllers\Admin\SiteLayoutController::class, 'update'])->name('site-layout.update');
+        Route::get('/site-layout/{key}/edit', [SiteLayoutController::class, 'edit'])->name('site-layout.edit');
+        Route::put('/site-layout/{key}', [SiteLayoutController::class, 'update'])->name('site-layout.update');
 
         // Editable Pages (route-based SEO lives under /pages/seo/..., not a separate Settings section)
-        Route::get('/pages', [\App\Http\Controllers\Admin\PageController::class, 'index'])->name('pages.index');
-        Route::get('/pages/create', [\App\Http\Controllers\Admin\PageController::class, 'create'])->name('pages.create');
-        Route::post('/pages', [\App\Http\Controllers\Admin\PageController::class, 'store'])->name('pages.store');
-        Route::post('/pages/preview', [\App\Http\Controllers\Admin\PageController::class, 'preview'])->name('pages.preview');
-        Route::get('/pages/seo/{routeKey}/edit', [\App\Http\Controllers\Admin\PageController::class, 'editSeoRoute'])->name('pages.seo.edit')->where('routeKey', '[A-Za-z0-9._\-]+');
-        Route::put('/pages/seo/{routeKey}', [\App\Http\Controllers\Admin\PageController::class, 'updateSeoRoute'])->name('pages.seo.update')->where('routeKey', '[A-Za-z0-9._\-]+');
-        Route::get('/pages/{slug}/layout', [\App\Http\Controllers\Admin\PageController::class, 'editLayout'])->name('pages.layout.edit');
-        Route::put('/pages/{slug}/layout', [\App\Http\Controllers\Admin\PageController::class, 'updateLayout'])->name('pages.layout.update');
-        Route::post('/pages/{slug}/meta', [\App\Http\Controllers\Admin\PageController::class, 'updatePageMeta'])->name('pages.meta.update');
-        Route::get('/pages/{slug}/edit', [\App\Http\Controllers\Admin\PageController::class, 'edit'])->name('pages.edit');
-        Route::delete('/pages/{slug}', [\App\Http\Controllers\Admin\PageController::class, 'destroy'])->name('pages.destroy');
+        Route::get('/pages', [App\Http\Controllers\Admin\PageController::class, 'index'])->name('pages.index');
+        Route::get('/pages/create', [App\Http\Controllers\Admin\PageController::class, 'create'])->name('pages.create');
+        Route::post('/pages', [App\Http\Controllers\Admin\PageController::class, 'store'])->name('pages.store');
+        Route::post('/pages/preview', [App\Http\Controllers\Admin\PageController::class, 'preview'])->name('pages.preview');
+        Route::get('/pages/seo/{routeKey}/edit', [App\Http\Controllers\Admin\PageController::class, 'editSeoRoute'])->name('pages.seo.edit')->where('routeKey', '[A-Za-z0-9._\-]+');
+        Route::put('/pages/seo/{routeKey}', [App\Http\Controllers\Admin\PageController::class, 'updateSeoRoute'])->name('pages.seo.update')->where('routeKey', '[A-Za-z0-9._\-]+');
+        Route::get('/pages/{slug}/layout', [App\Http\Controllers\Admin\PageController::class, 'editLayout'])->name('pages.layout.edit');
+        Route::put('/pages/{slug}/layout', [App\Http\Controllers\Admin\PageController::class, 'updateLayout'])->name('pages.layout.update');
+        Route::post('/pages/{slug}/meta', [App\Http\Controllers\Admin\PageController::class, 'updatePageMeta'])->name('pages.meta.update');
+        Route::get('/pages/{slug}/edit', [App\Http\Controllers\Admin\PageController::class, 'edit'])->name('pages.edit');
+        Route::delete('/pages/{slug}', [App\Http\Controllers\Admin\PageController::class, 'destroy'])->name('pages.destroy');
 
         // ─── Reseller program (super-admin only) ──────────────────────
         // Genuinely super-admin, not the enclosing role:admin|super-admin. These actions
@@ -192,30 +238,30 @@ Route::middleware(['auth'])->group(function () {
         // memorial they hold, and record money. The comment used to claim super-admin while
         // the middleware allowed any admin; the middleware now matches the claim.
         Route::middleware('role:super-admin')->group(function () {
-        // Three destinations, each with its own nav entry: the roster (/resellers),
-        // what we charge them (/reseller-pricing), and how the program is configured
-        // (/reseller-settings). Pricing and settings deliberately sit on sibling paths
-        // rather than under /resellers/* so the roster can claim that whole prefix and
-        // stay highlighted on a per-reseller detail page.
-        Route::get('/resellers', [ResellerController::class, 'index'])->name('resellers');
-        Route::post('/resellers', [ResellerController::class, 'store'])->name('resellers.store');
-        Route::get('/resellers/{reseller}', [ResellerController::class, 'show'])->name('resellers.show')->whereNumber('reseller');
-        Route::put('/resellers/{reseller}', [ResellerController::class, 'update'])->name('resellers.update');
-        Route::post('/resellers/{reseller}/suspend', [ResellerController::class, 'suspend'])->name('resellers.suspend');
-        Route::post('/resellers/{reseller}/activate', [ResellerController::class, 'activate'])->name('resellers.activate');
-        Route::post('/resellers/{reseller}/rollover', [ResellerController::class, 'rollover'])->name('resellers.rollover');
-        Route::post('/resellers/{reseller}/verify-domain', [ResellerController::class, 'verifyDomain'])->name('resellers.verify-domain');
-        Route::post('/resellers/{reseller}/restore', [ResellerController::class, 'restore'])->name('resellers.restore');
-        Route::post('/resellers/{reseller}/login-as', [ResellerController::class, 'loginAs'])->name('resellers.login-as');
-        Route::post('/resellers/{reseller}/payments', [ResellerController::class, 'recordPayment'])->name('resellers.payments.store');
+            // Three destinations, each with its own nav entry: the roster (/resellers),
+            // what we charge them (/reseller-pricing), and how the program is configured
+            // (/reseller-settings). Pricing and settings deliberately sit on sibling paths
+            // rather than under /resellers/* so the roster can claim that whole prefix and
+            // stay highlighted on a per-reseller detail page.
+            Route::get('/resellers', [ResellerController::class, 'index'])->name('resellers');
+            Route::post('/resellers', [ResellerController::class, 'store'])->name('resellers.store');
+            Route::get('/resellers/{reseller}', [ResellerController::class, 'show'])->name('resellers.show')->whereNumber('reseller');
+            Route::put('/resellers/{reseller}', [ResellerController::class, 'update'])->name('resellers.update');
+            Route::post('/resellers/{reseller}/suspend', [ResellerController::class, 'suspend'])->name('resellers.suspend');
+            Route::post('/resellers/{reseller}/activate', [ResellerController::class, 'activate'])->name('resellers.activate');
+            Route::post('/resellers/{reseller}/rollover', [ResellerController::class, 'rollover'])->name('resellers.rollover');
+            Route::post('/resellers/{reseller}/verify-domain', [ResellerController::class, 'verifyDomain'])->name('resellers.verify-domain');
+            Route::post('/resellers/{reseller}/restore', [ResellerController::class, 'restore'])->name('resellers.restore');
+            Route::post('/resellers/{reseller}/login-as', [ResellerController::class, 'loginAs'])->name('resellers.login-as');
+            Route::post('/resellers/{reseller}/payments', [ResellerController::class, 'recordPayment'])->name('resellers.payments.store');
 
-        Route::get('/reseller-pricing', [\App\Http\Controllers\Admin\ResellerTierController::class, 'index'])->name('reseller-pricing');
-        Route::post('/reseller-tiers', [\App\Http\Controllers\Admin\ResellerTierController::class, 'store'])->name('reseller-tiers.store');
-        Route::put('/reseller-tiers/{resellerTier}', [\App\Http\Controllers\Admin\ResellerTierController::class, 'update'])->name('reseller-tiers.update');
-        Route::delete('/reseller-tiers/{resellerTier}', [\App\Http\Controllers\Admin\ResellerTierController::class, 'destroy'])->name('reseller-tiers.destroy');
+            Route::get('/reseller-pricing', [ResellerTierController::class, 'index'])->name('reseller-pricing');
+            Route::post('/reseller-tiers', [ResellerTierController::class, 'store'])->name('reseller-tiers.store');
+            Route::put('/reseller-tiers/{resellerTier}', [ResellerTierController::class, 'update'])->name('reseller-tiers.update');
+            Route::delete('/reseller-tiers/{resellerTier}', [ResellerTierController::class, 'destroy'])->name('reseller-tiers.destroy');
 
-        Route::get('/reseller-settings', [\App\Http\Controllers\Admin\ResellerSettingsController::class, 'edit'])->name('reseller-settings');
-        Route::put('/reseller-settings', [\App\Http\Controllers\Admin\ResellerSettingsController::class, 'update'])->name('reseller-settings.update');
+            Route::get('/reseller-settings', [ResellerSettingsController::class, 'edit'])->name('reseller-settings');
+            Route::put('/reseller-settings', [ResellerSettingsController::class, 'update'])->name('reseller-settings.update');
         });
     });
 
@@ -231,33 +277,38 @@ Route::middleware(['auth'])->group(function () {
         // no reason to expose a second, redundant URL for the same page. This bare /reseller
         // redirect just keeps old links/bookmarks working.
         Route::get('/', fn () => redirect()->route('dashboard'));
-        Route::get('/memorials', [\App\Http\Controllers\Reseller\DashboardController::class, 'memorials'])->name('memorials');
-        Route::get('/memorials/create', [\App\Http\Controllers\Reseller\DashboardController::class, 'createMemorial'])->name('memorials.create');
-        Route::post('/memorials', [\App\Http\Controllers\Reseller\DashboardController::class, 'storeMemorial'])->name('memorials.store');
+        Route::get('/memorials', [App\Http\Controllers\Reseller\DashboardController::class, 'memorials'])->name('memorials');
+        Route::get('/memorials/create', [App\Http\Controllers\Reseller\DashboardController::class, 'createMemorial'])->name('memorials.create');
+        Route::post('/memorials', [App\Http\Controllers\Reseller\DashboardController::class, 'storeMemorial'])->name('memorials.store');
 
-        Route::get('/analytics', [\App\Http\Controllers\Reseller\AnalyticsController::class, 'index'])->name('analytics');
+        Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
 
-        Route::get('/clients', [\App\Http\Controllers\Reseller\ClientController::class, 'index'])->name('clients');
-        Route::post('/clients', [\App\Http\Controllers\Reseller\ClientController::class, 'store'])->name('clients.store');
-        Route::put('/clients/{user}', [\App\Http\Controllers\Reseller\ClientController::class, 'update'])->name('clients.update');
-        Route::delete('/clients/{user}', [\App\Http\Controllers\Reseller\ClientController::class, 'destroy'])->name('clients.destroy');
+        Route::get('/clients', [ClientController::class, 'index'])->name('clients');
+        Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
+        Route::put('/clients/{user}', [ClientController::class, 'update'])->name('clients.update');
+        Route::delete('/clients/{user}', [ClientController::class, 'destroy'])->name('clients.destroy');
 
-        Route::get('/plans', [\App\Http\Controllers\Reseller\PlanController::class, 'index'])->name('plans');
-        Route::post('/plans', [\App\Http\Controllers\Reseller\PlanController::class, 'store'])->name('plans.store');
-        Route::put('/plans/{plan}', [\App\Http\Controllers\Reseller\PlanController::class, 'update'])->name('plans.update');
-        Route::delete('/plans/{plan}', [\App\Http\Controllers\Reseller\PlanController::class, 'destroy'])->name('plans.destroy');
+        Route::get('/plans', [PlanController::class, 'index'])->name('plans');
+        Route::post('/plans', [PlanController::class, 'store'])->name('plans.store');
+        Route::put('/plans/{plan}', [PlanController::class, 'update'])->name('plans.update');
+        Route::delete('/plans/{plan}', [PlanController::class, 'destroy'])->name('plans.destroy');
 
-        Route::get('/settings', [\App\Http\Controllers\Reseller\SettingsController::class, 'edit'])->name('settings');
-        Route::put('/settings', [\App\Http\Controllers\Reseller\SettingsController::class, 'update'])->name('settings.update');
-        Route::put('/settings/domain', [\App\Http\Controllers\Reseller\SettingsController::class, 'updateCustomDomain'])->name('settings.domain.update');
-        Route::post('/settings/domain/verify', [\App\Http\Controllers\Reseller\SettingsController::class, 'verifyCustomDomain'])->name('settings.domain.verify');
+        Route::get('/settings', [App\Http\Controllers\Reseller\SettingsController::class, 'edit'])->name('settings');
+        Route::put('/settings', [App\Http\Controllers\Reseller\SettingsController::class, 'update'])->name('settings.update');
+        Route::put('/settings/domain', [App\Http\Controllers\Reseller\SettingsController::class, 'updateCustomDomain'])->name('settings.domain.update');
+        Route::post('/settings/domain/verify', [App\Http\Controllers\Reseller\SettingsController::class, 'verifyCustomDomain'])->name('settings.domain.verify');
 
-        Route::get('/branding', [\App\Http\Controllers\Reseller\BrandingController::class, 'edit'])->name('branding');
-        Route::put('/branding', [\App\Http\Controllers\Reseller\BrandingController::class, 'update'])->name('branding.update');
+        // Appearance replaced the old Branding page (logo + favicon + one colour) with the
+        // full colour and font set. /branding is kept as a redirect so existing links,
+        // bookmarks and the "More Settings" card keep working.
+        Route::get('/appearance', [App\Http\Controllers\Reseller\AppearanceController::class, 'edit'])->name('appearance');
+        Route::put('/appearance', [App\Http\Controllers\Reseller\AppearanceController::class, 'update'])->name('appearance.update');
+        Route::delete('/appearance/reset', [App\Http\Controllers\Reseller\AppearanceController::class, 'reset'])->name('appearance.reset');
+        Route::get('/branding', fn () => redirect()->route('reseller.appearance'))->name('branding');
 
-        Route::get('/payments', [\App\Http\Controllers\Reseller\PaymentSettingsController::class, 'edit'])->name('payments');
-        Route::put('/payments', [\App\Http\Controllers\Reseller\PaymentSettingsController::class, 'update'])->name('payments.update');
-        Route::post('/payments/register-ipn', [\App\Http\Controllers\Reseller\PaymentSettingsController::class, 'registerIpn'])->name('payments.register-ipn');
+        Route::get('/payments', [PaymentSettingsController::class, 'edit'])->name('payments');
+        Route::put('/payments', [PaymentSettingsController::class, 'update'])->name('payments.update');
+        Route::post('/payments/register-ipn', [PaymentSettingsController::class, 'registerIpn'])->name('payments.register-ipn');
     });
 });
 
@@ -308,10 +359,30 @@ Route::get('/widget/{slug}', [WidgetController::class, 'show'])
     ->where('slug', '[a-z0-9\-]+')
     ->middleware(EmbedFrameHeaders::class);
 
+// Path-based fallback for the reseller memorial page, for environments that cannot do
+// host-header routing at all: a subdirectory install (APP_URL ending in /Forever) has no
+// URL that reaches a Route::domain() group, and an APP_URL host that isn't the reseller
+// base domain means every {slug}.{base} address is dead. Reseller::publicBaseUrl() hands
+// this out in exactly those cases, so reseller pages are reachable in development rather
+// than existing only in production. Same controller, same tenant scoping, same middleware.
+// The base address itself, which every reseller screen shows and offers to copy. Registered
+// before the /{slug} variant below so the bare form is not read as a memorial slug.
+Route::get('/r/{reseller}', [PublicMemorialController::class, 'indexForReseller'])
+    ->name('reseller.public.index-path')
+    ->where('reseller', '[a-z0-9\-]+')
+    ->middleware(ResolveReseller::class);
+
+Route::get('/r/{reseller}/{slug}', [PublicMemorialController::class, 'showForReseller'])
+    ->name('memorial.public.reseller-path')
+    ->where(['reseller' => '[a-z0-9\-]+', 'slug' => '[a-z0-9\-]+'])
+    ->middleware(ResolveReseller::class);
+
 // Reseller white-labeled subdomain (e.g. acme.foreverloved.com) - public memorial pages
 // only, scoped strictly to that reseller's own memorials. Matches on Host header, so it
 // never competes with the apex catch-all route below.
-Route::domain('{reseller}.'.config('reseller.domain'))->group(function () {
+// The root of this group is registered near the top of this file instead — it has to precede
+// the platform's own `/` route, which would otherwise claim it on every host.
+Route::domain('{reseller}.'.$resellerBaseDomain)->group(function () {
     Route::get('/{slug}', [PublicMemorialController::class, 'showForReseller'])
         ->name('memorial.public.reseller')
         ->where(['reseller' => '[a-z0-9\-]+', 'slug' => '[a-z0-9\-]+'])
@@ -324,11 +395,8 @@ Route::domain('{reseller}.'.config('reseller.domain'))->group(function () {
 // this app's own (e.g. "localhost", or *.foreverloved.com already handled above) — which
 // would shadow routes like /dashboard or /login for our own site, since Route::domain()
 // groups don't automatically defer to non-domain-restricted routes registered elsewhere.
-// The exclusion regex below is what actually keeps this scoped to genuinely foreign hosts.
-$appHost = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
-$resellerBaseDomain = config('reseller.domain');
-$foreignDomainPattern = '^(?!'.preg_quote($appHost, '#').'$)(?!'.preg_quote($resellerBaseDomain, '#').'$)(?!.*\.'.preg_quote($resellerBaseDomain, '#').'$).+$';
-
+// The exclusion regex ($foreignDomainPattern, defined near the top of this file alongside the
+// root routes that also need it) is what actually keeps this scoped to genuinely foreign hosts.
 Route::domain('{domain}')->group(function () use ($foreignDomainPattern) {
     Route::get('/{slug}', [PublicMemorialController::class, 'showForReseller'])
         ->name('memorial.public.custom-domain')

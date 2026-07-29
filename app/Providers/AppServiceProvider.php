@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Helpers\ThemeSetting;
 use App\Models\Menu;
 use App\Services\SeoMetaResolver;
 use App\SiteBlocks\SiteBlockRegistry;
@@ -35,12 +36,22 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer(['components.home-header', 'components.visitor-footer'], function ($view) {
+            // The header and footer menus are the *platform's* own, built in Admin → Menus, and
+            // they point at our About, Pricing, Contact and directory. On a reseller's own site
+            // they are withheld: the blades' built-in fallbacks are tenant-aware and drop those
+            // destinations, whereas an admin-defined item is opaque here — there is no way to
+            // tell "Pricing" apart from a link the reseller would legitimately want.
+            //
+            // Done here rather than in each blade so a fourth menu location cannot be added
+            // later and quietly leak.
+            $resellerSite = ThemeSetting::isResellerSite();
+
             $view->with([
-                'headerNavItems' => Menu::navigationFor(Menu::LOCATION_HEADER),
-                'footerQuickItems' => Menu::navigationFor(Menu::LOCATION_FOOTER_QUICK),
-                'footerCompanyItems' => Menu::navigationFor(Menu::LOCATION_FOOTER_COMPANY),
-                'footerQuickMenu' => Menu::query()->where('location', Menu::LOCATION_FOOTER_QUICK)->first(),
-                'footerCompanyMenu' => Menu::query()->where('location', Menu::LOCATION_FOOTER_COMPANY)->first(),
+                'headerNavItems' => $resellerSite ? collect() : Menu::navigationFor(Menu::LOCATION_HEADER),
+                'footerQuickItems' => $resellerSite ? collect() : Menu::navigationFor(Menu::LOCATION_FOOTER_QUICK),
+                'footerCompanyItems' => $resellerSite ? collect() : Menu::navigationFor(Menu::LOCATION_FOOTER_COMPANY),
+                'footerQuickMenu' => $resellerSite ? null : Menu::query()->where('location', Menu::LOCATION_FOOTER_QUICK)->first(),
+                'footerCompanyMenu' => $resellerSite ? null : Menu::query()->where('location', Menu::LOCATION_FOOTER_COMPANY)->first(),
             ]);
         });
     }

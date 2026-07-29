@@ -3,7 +3,14 @@
 namespace App\Helpers;
 
 use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Storage;
 
+/**
+ * Typography and visitor-facing text colours.
+ *
+ * Read through ThemeSetting so a reseller's font and type choices apply on their own pages,
+ * with one deliberate exception — see customFonts().
+ */
 class AppearanceHelper
 {
     /**
@@ -22,7 +29,7 @@ class AppearanceHelper
 
     public static function roleFont(string $role): string
     {
-        return self::sanitizeFamily(SystemSetting::get("appearance.role_{$role}_font", ''));
+        return self::sanitizeFamily(ThemeSetting::get("appearance.role_{$role}_font", ''));
     }
 
     /**
@@ -48,6 +55,10 @@ class AppearanceHelper
     /**
      * Uploaded fonts: [{name, path, format}, ...] — entries whose file is gone
      * are filtered out so a missing font can never break the stylesheet.
+     *
+     * Deliberately the one setting in this class NOT read through ThemeSetting: font files
+     * are uploaded by the platform admin and form a shared catalogue every reseller selects
+     * from. Font *selection* is per-tenant; the files are not.
      */
     public static function customFonts(): array
     {
@@ -60,18 +71,18 @@ class AppearanceHelper
             return is_array($f)
                 && self::sanitizeFamily($f['name'] ?? null) !== ''
                 && ! empty($f['path'])
-                && \Illuminate\Support\Facades\Storage::disk('public')->exists($f['path']);
+                && Storage::disk('public')->exists($f['path']);
         }));
     }
 
     public static function bodyFont(): string
     {
-        return self::sanitizeFamily(SystemSetting::get('appearance.font_body', ''));
+        return self::sanitizeFamily(ThemeSetting::get('appearance.font_body', ''));
     }
 
     public static function headingFont(): string
     {
-        return self::sanitizeFamily(SystemSetting::get('appearance.font_heading', ''));
+        return self::sanitizeFamily(ThemeSetting::get('appearance.font_heading', ''));
     }
 
     /**
@@ -152,8 +163,8 @@ class AppearanceHelper
             if ($font !== '') {
                 $out[] = "{$selector} { font-family: '{$font}', 'Outfit', sans-serif; }";
             }
-            $light = BrandingHelper::sanitizeHex(SystemSetting::get("appearance.role_{$role}_color_light"), '');
-            $dark = BrandingHelper::sanitizeHex(SystemSetting::get("appearance.role_{$role}_color_dark"), '');
+            $light = BrandingHelper::sanitizeHex(ThemeSetting::get("appearance.role_{$role}_color_light"), '');
+            $dark = BrandingHelper::sanitizeHex(ThemeSetting::get("appearance.role_{$role}_color_dark"), '');
             if ($light !== '') {
                 $out[] = "html:not(.dark) {$selector} { color: {$light} !important; }";
             }
@@ -197,8 +208,8 @@ class AppearanceHelper
 
         $out = [];
         foreach ($roles as $role => [$lightSelector, $darkSelector]) {
-            $light = BrandingHelper::sanitizeHex(SystemSetting::get("appearance.text_{$role}_light"), '');
-            $dark = BrandingHelper::sanitizeHex(SystemSetting::get("appearance.text_{$role}_dark"), '');
+            $light = BrandingHelper::sanitizeHex(ThemeSetting::get("appearance.text_{$role}_light"), '');
+            $dark = BrandingHelper::sanitizeHex(ThemeSetting::get("appearance.text_{$role}_dark"), '');
             if ($light !== '') {
                 $out[] = "{$lightSelector} { color: {$light} !important; }";
             }

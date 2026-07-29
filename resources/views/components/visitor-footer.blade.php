@@ -1,5 +1,14 @@
 @php
-    $appName = \App\Models\SystemSetting::get('branding.app_name', 'Forever Loved');
+    // Tenant-aware: on a reseller's white-labeled front page the footer must carry their
+    // business name, not the platform's. Falls back to branding.app_name off-tenant.
+    $appName = \App\Helpers\SiteShareMetaHelper::appDisplayName();
+
+    // On a reseller's own site the platform's marketing links are dropped — see home-header for
+    // the reasoning. Privacy Policy and Terms of Use deliberately stay: the platform really is
+    // the data processor, and a memorial site with no legal pages at all is worse than one
+    // pointing at ours.
+    $tenantSite = \App\Helpers\ThemeSetting::isResellerSite() ? \App\Helpers\ThemeSetting::tenant() : null;
+    $homeUrl = $tenantSite ? $tenantSite->publicBaseUrl() : route('home');
     $tagline = \App\Models\SystemSetting::get('branding.tagline', 'Celebrate lives that matter');
     $footerDescription = \App\Models\SystemSetting::get(
         'branding.footer_description',
@@ -16,7 +25,7 @@
 
             {{-- Brand --}}
             <div>
-                <a href="{{ route('home') }}" class="inline-flex items-center gap-2">
+                <a href="{{ $homeUrl }}" class="inline-flex items-center gap-2">
                     <img class="dark:hidden h-14 lg:h-16 w-auto object-contain" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="{{ $appName }}" />
                     <img class="hidden dark:block h-14 lg:h-16 w-auto object-contain" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="{{ $appName }}" />
                 </a>
@@ -36,10 +45,14 @@
                                class="footer-link">{{ $item->label }}</a>
                         </li>
                     @empty
-                        <li><a href="{{ route('home') }}" class="footer-link">Home</a></li>
-                        <li><a href="{{ route('memorial.directory') }}" class="footer-link">Find Memorial</a></li>
+                        <li><a href="{{ $homeUrl }}" class="footer-link">Home</a></li>
+                        @unless ($tenantSite)
+                            <li><a href="{{ route('memorial.directory') }}" class="footer-link">Find Memorial</a></li>
+                        @endunless
                         <li><a href="{{ route('memorial.create.step1') }}" class="footer-link">Create Memorial</a></li>
-                        <li><a href="{{ route('pricing') }}" class="footer-link">Pricing</a></li>
+                        @unless ($tenantSite)
+                            <li><a href="{{ route('pricing') }}" class="footer-link">Pricing</a></li>
+                        @endunless
                     @endforelse
                 </ul>
             </div>
@@ -55,8 +68,10 @@
                                class="footer-link">{{ $item->label }}</a>
                         </li>
                     @empty
-                        <li><a href="{{ route('about') }}" class="footer-link">About Us</a></li>
-                        <li><a href="{{ route('contact') }}" class="footer-link">Contact Us</a></li>
+                        @unless ($tenantSite)
+                            <li><a href="{{ route('about') }}" class="footer-link">About Us</a></li>
+                            <li><a href="{{ route('contact') }}" class="footer-link">Contact Us</a></li>
+                        @endunless
                         <li><a href="{{ route('privacy-policy') }}" class="footer-link">Privacy Policy</a></li>
                         <li><a href="{{ route('terms-of-use') }}" class="footer-link">Terms of Use</a></li>
                     @endforelse
@@ -80,10 +95,12 @@
                             <span class="text-sm text-gray-600 dark:text-gray-400">{{ $supportHours }}</span>
                         </li>
                     @endif
-                    <li class="flex items-center gap-2.5">
-                        <svg class="lucide h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
-                        <a href="{{ route('contact') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Send a Message</a>
-                    </li>
+                    @unless ($tenantSite)
+                        <li class="flex items-center gap-2.5">
+                            <svg class="lucide h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+                            <a href="{{ route('contact') }}" class="text-sm text-gray-600 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition">Send a Message</a>
+                        </li>
+                    @endunless
                 </ul>
             </div>
         </div>

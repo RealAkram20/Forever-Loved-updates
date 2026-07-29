@@ -28,6 +28,7 @@ class Reseller extends Model
         'reseller_tier_id',
         'status',
         'logo_path',
+        'logo_dark_path',
         'favicon_path',
         'primary_color',
         'pesapal_enabled',
@@ -72,6 +73,101 @@ class Reseller extends Model
     public function hasVerifiedCustomDomain(): bool
     {
         return $this->custom_domain !== null && $this->custom_domain_status === self::DOMAIN_VERIFIED;
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Public addresses
+     |--------------------------------------------------------------------------
+     | Everything that shows or links to a reseller address goes through here.
+     | Nine views used to concatenate slug + config('reseller.domain') inline, which
+     | printed a confident "acme.foreverloved.com" on a localhost subdirectory install
+     | — an address nothing can serve, offered to the reseller as final.
+     |
+     | These answer two separate questions: where the pages are *meant* to live once
+     | deployed (publicHost), and where they can actually be reached *right now*
+     | (publicBaseUrl). Those differ in every environment that isn't production.
+     */
+
+    /**
+     * Host-header routing needs the app to own the whole document root. Route::domain()
+     * carries no path prefix, so on a subdirectory install — APP_URL ending in /Forever —
+     * there is no URL that reaches a host-routed page at all, for subdomains or for a
+     * reseller's own custom domain.
+     */
+    public static function hostRoutingAvailable(): bool
+    {
+        return trim((string) parse_url((string) config('app.url'), PHP_URL_PATH), '/') === '';
+    }
+
+    /**
+     * Subdomains additionally need the app to actually answer on the reseller base domain.
+     * Pointing RESELLER_APP_DOMAIN at a domain the app is not served from makes every
+     * minted {slug}.{base} address dead on arrival — which is the default state, since the
+     * config falls back to a hardcoded 'foreverloved.com'.
+     */
+    public static function subdomainRoutingAvailable(): bool
+    {
+        if (! self::hostRoutingAvailable()) {
+            return false;
+        }
+
+        $host = strtolower((string) (parse_url((string) config('app.url'), PHP_URL_HOST) ?: ''));
+        $base = strtolower((string) config('reseller.domain'));
+
+        return $host !== '' && $base !== '' && ($host === $base || str_ends_with($host, '.'.$base));
+    }
+
+    /** The host these pages are meant to be served from once deployed correctly. */
+    public function publicHost(): string
+    {
+        return $this->hasVerifiedCustomDomain()
+            ? $this->custom_domain
+            : $this->slug.'.'.config('reseller.domain');
+    }
+
+    /**
+     * True when this environment cannot serve publicHost(), so publicBaseUrl() is handing
+     * back a development stand-in. The UI must say so rather than presenting a dead
+     * address as the one to give a family.
+     */
+    public function usingFallbackAddress(): bool
+    {
+        return $this->hasVerifiedCustomDomain()
+            ? ! self::hostRoutingAvailable()
+            : ! self::subdomainRoutingAvailable();
+    }
+
+    /**
+     * The base URL that actually works right now — the real host when host routing is
+     * available, else the path-based /r/{slug} route, so reseller pages are reachable in
+     * development instead of only existing in production.
+     */
+    public function publicBaseUrl(): string
+    {
+        // Built from config, not url(): the availability checks above read config('app.url'),
+        // and url() resolves against the *current request's* root. Letting the two disagree
+        // would make this return a different address inside a queued job or console command
+        // (notifications, invites) than it does in a web request.
+        if ($this->usingFallbackAddress()) {
+            return rtrim((string) config('app.url'), '/').'/r/'.$this->slug;
+        }
+
+        $scheme = parse_url((string) config('app.url'), PHP_URL_SCHEME) ?: 'https';
+
+        return $scheme.'://'.$this->publicHost();
+    }
+
+    /** Absolute URL for one of this reseller's memorial slugs. */
+    public function publicUrlForSlug(string $slug): string
+    {
+        return $this->publicBaseUrl().'/'.$slug;
+    }
+
+    /** publicBaseUrl() without the scheme, for display in a <code> block. */
+    public function publicDisplayAddress(): string
+    {
+        return (string) preg_replace('#^https?://#', '', $this->publicBaseUrl());
     }
 
     /**

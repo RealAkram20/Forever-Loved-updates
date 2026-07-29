@@ -27,8 +27,8 @@
         <x-common.component-card title="Account Details" desc="Your subdomain and plan tier are managed by the platform admin.">
             <dl class="grid grid-cols-1 gap-4 sm:grid-cols-3 text-sm">
                 <div>
-                    <dt class="text-gray-500 dark:text-gray-400">Subdomain</dt>
-                    <dd class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ $reseller->slug }}.{{ config('reseller.domain') }}</dd>
+                    <dt class="text-gray-500 dark:text-gray-400">Your address</dt>
+                    <dd class="mt-1"><x-common.reseller-address :reseller="$reseller" :copy="false" /></dd>
                 </div>
                 <div>
                     <dt class="text-gray-500 dark:text-gray-400">Tier</dt>
@@ -41,7 +41,7 @@
             </dl>
         </x-common.component-card>
 
-        <x-common.component-card title="Custom Domain" desc="Use your own domain for your memorial pages instead of your {{ $reseller->slug }}.{{ config('reseller.domain') }} subdomain.">
+        <x-common.component-card title="Custom Domain" desc="Use your own domain for your memorial pages instead of your {{ $reseller->publicHost() }} subdomain.">
             @if (! $domainsEnabled)
                 <p class="text-sm text-gray-500 dark:text-gray-400">This isn't turned on yet — ask your platform admin to enable custom domains.</p>
             @elseif (! $domainRoutingInTier)
@@ -53,7 +53,7 @@
                         <p class="text-sm font-medium text-gray-800 dark:text-white/90">Not included in your {{ $reseller->tier?->name ?? 'current' }} tier</p>
                         <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                             Your memorials stay available at
-                            <span class="font-mono">{{ $reseller->slug }}.{{ config('reseller.domain') }}</span>.
+                            <span class="font-mono">{{ $reseller->publicDisplayAddress() }}</span>.
                             Get in touch if you'd like to use your own domain.
                         </p>
                     </div>
@@ -98,7 +98,7 @@
                         </ol>
                         <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
                             DNS changes usually appear within minutes, but can take up to 48 hours. Your
-                            <span class="font-mono">{{ $reseller->slug }}.{{ config('reseller.domain') }}</span>
+                            <span class="font-mono">{{ $reseller->publicDisplayAddress() }}</span>
                             address keeps working throughout, so nothing goes offline while you set this up.
                         </p>
                     </div>
@@ -153,9 +153,9 @@
 
         <x-common.component-card title="More Settings">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <a href="{{ route('reseller.branding') }}" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition">
-                    <p class="font-medium text-gray-800 dark:text-white/90">Branding</p>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Logo, favicon, and primary color</p>
+                <a href="{{ route('reseller.appearance') }}" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition">
+                    <p class="font-medium text-gray-800 dark:text-white/90">Appearance</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Logo, favicon, colours and fonts</p>
                 </a>
                 <a href="{{ route('reseller.payments') }}" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition">
                     <p class="font-medium text-gray-800 dark:text-white/90">Payment Settings</p>

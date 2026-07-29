@@ -14,7 +14,15 @@
                     <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ $reseller->name }}</h2>
                     <x-admin.status-badge :status="$reseller->status" />
                 </div>
-                <p class="mt-1 font-mono text-sm text-gray-500 dark:text-gray-400">{{ $reseller->slug }}.{{ config('reseller.domain') }}</p>
+                <p class="mt-1 font-mono text-sm text-gray-500 dark:text-gray-400">{{ $reseller->publicDisplayAddress() }}</p>
+                @if ($reseller->usingFallbackAddress())
+                    {{-- Admin needs to know the roster is showing a stand-in, not the live
+                         address — this is the page they answer "what's my URL?" from. --}}
+                    <p class="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                        Temporary — subdomain routing is unavailable in this environment. Live address will be
+                        <code class="font-mono">{{ $reseller->publicHost() }}</code>.
+                    </p>
+                @endif
             </div>
 
             <div class="flex flex-wrap items-center gap-2">

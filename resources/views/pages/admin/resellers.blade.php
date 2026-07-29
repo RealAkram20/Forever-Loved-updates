@@ -21,6 +21,25 @@
             </button>
         </div>
 
+        @unless (\App\Models\Reseller::subdomainRoutingAvailable())
+            {{-- Said once, at the top, rather than on every row. Without this the roster
+                 reads as a list of live businesses when in fact no reseller subdomain can
+                 be served at all — and the addresses shown are development stand-ins. --}}
+            <div class="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 9v4m0 3v.01M10.3 4.3 2.6 17.6A1.5 1.5 0 0 0 3.9 20h16.2a1.5 1.5 0 0 0 1.3-2.4L13.7 4.3a1.5 1.5 0 0 0-2.6 0Z"/></svg>
+                <div class="text-sm">
+                    <p class="font-medium text-amber-900 dark:text-amber-200">Subdomain routing is not available in this environment</p>
+                    <p class="mt-0.5 text-amber-800 dark:text-amber-300/90">
+                        <code class="font-mono">APP_URL</code> is <code class="font-mono">{{ config('app.url') }}</code> and the reseller base domain is
+                        <code class="font-mono">{{ config('reseller.domain') }}</code>. Host-header routing needs the app served from a bare
+                        <code class="font-mono">{{ config('reseller.domain') }}</code> with no subdirectory, so the addresses below are temporary
+                        <code class="font-mono">/r/{slug}</code> stand-ins that work here. See
+                        <span class="font-medium">RESELLER-PRODUCTION-CHECKLIST.md</span> §1–2.
+                    </p>
+                </div>
+            </div>
+        @endunless
+
         @if (session('success'))
             <div class="mb-4 rounded-lg bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-700 dark:text-green-400">{{ session('success') }}</div>
         @endif
@@ -100,7 +119,7 @@
                                             {{ $reseller->name }}
                                         </a>
                                         <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                                            <span class="font-mono">{{ $reseller->slug }}.{{ config('reseller.domain') }}</span>
+                                            <span class="font-mono">{{ $reseller->publicDisplayAddress() }}</span>
                                             @if ($reseller->custom_domain)
                                                 <span class="text-gray-300 dark:text-gray-600">&middot;</span>
                                                 <span class="font-mono">{{ $reseller->custom_domain }}</span>

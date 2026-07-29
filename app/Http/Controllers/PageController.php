@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\SiteShareMetaHelper;
+use App\Helpers\ThemeSetting;
 use App\Models\Memorial;
 use App\Models\Page;
 use App\Models\SubscriptionPlan;
@@ -11,13 +12,29 @@ use App\Services\SiteLayoutService;
 
 class PageController extends Controller
 {
+    /**
+     * The home page, for the platform and for a reseller's own front page alike.
+     *
+     * Reseller\... does not need its own design: a reseller's white-labeled front page is this
+     * page, with their logo, palette, fonts, name and memorials — which is what
+     * PublicMemorialController::indexForReseller() delegates here for.
+     *
+     * The memorial list is tenant-scoped both ways. Previously it selected every public
+     * memorial regardless of owner, which meant reseller-owned memorials surfaced on the
+     * *platform's* homepage — directly contradicting MemorialDirectoryController, which
+     * excludes them on the grounds that they "belong on the reseller's own branded domain".
+     */
     public function home()
     {
-        $appName = SystemSetting::get('branding.app_name', 'Forever Loved');
+        $reseller = ThemeSetting::tenant();
+
+        $appName = SiteShareMetaHelper::appDisplayName();
         $tagline = SystemSetting::get('branding.tagline', 'Celebrate lives that matter');
 
         $popularMemorials = Memorial::where('is_public', true)
             ->where('status', Memorial::STATUS_ACTIVE)
+            ->when($reseller, fn ($q) => $q->where('reseller_id', $reseller->id))
+            ->unless($reseller, fn ($q) => $q->whereNull('reseller_id'))
             ->whereNotNull('first_name')
             ->whereNotNull('last_name')
             ->withCount(['views as view_count', 'tributes as tribute_count'])

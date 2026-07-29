@@ -49,8 +49,24 @@ class SiteShareMetaHelper
         return $meta;
     }
 
+    /**
+     * The name this site presents itself as.
+     *
+     * A reseller's own business name when one is active, so their pages' <title>, og:site_name
+     * and share cards say who they are. This is not a themeable setting a reseller can edit —
+     * it is their account name — hence the direct tenant read rather than a ThemeSetting key.
+     *
+     * Without this, a memorial shared from a reseller's white-labeled domain surfaced the
+     * *platform's* name in the link preview, on the one surface the family actually forwards.
+     */
     public static function appDisplayName(): string
     {
+        $tenantName = ThemeSetting::tenant()?->name;
+
+        if (filled($tenantName)) {
+            return (string) $tenantName;
+        }
+
         return (string) SystemSetting::get('branding.app_name', config('app.name', 'Forever Loved'));
     }
 

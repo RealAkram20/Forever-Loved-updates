@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Helpers\AiConfigHelper;
 use App\Helpers\PlanLimitsHelper;
+use App\Helpers\QueueHealthHelper;
+use App\Helpers\ThemeSetting;
+use App\Jobs\GenerateBiography;
 use App\Models\Memorial;
+use App\Models\Reseller;
 use App\Services\BiographyGenerator;
 use App\Services\GeminiBioGeneratorService;
 use App\Services\NotificationService;
@@ -54,8 +58,15 @@ class MemorialController extends Controller
                 $base->where('user_id', $user->id);
             }
         } else {
+            // Tenant-scoped, matching the home page and the public directory: searching from a
+            // reseller's own site used to return the platform's memorials and other resellers',
+            // and none of the tenant's own were distinguishable in the results.
+            $tenant = ThemeSetting::tenant();
+
             $base->where('is_public', true)
                 ->where('status', Memorial::STATUS_ACTIVE)
+                ->when($tenant, fn ($q) => $q->where('reseller_id', $tenant->id))
+                ->unless($tenant, fn ($q) => $q->whereNull('reseller_id'))
                 ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
         }
 
@@ -90,7 +101,7 @@ class MemorialController extends Controller
             $query = Memorial::with(['owner', 'reseller', 'media', 'tributes' => fn ($q) => $q->with('user')->whereNotNull('user_id')])
                 ->latest();
 
-            \App\Models\Reseller::applyFilter($query, $request->query('reseller'));
+            Reseller::applyFilter($query, $request->query('reseller'));
 
             $memorials = $query->paginate(10)->withQueryString();
         } else {
@@ -103,7 +114,7 @@ class MemorialController extends Controller
             'isAdmin' => $isAdmin,
             // Only admins get the scope selector; the component renders nothing for an
             // empty collection, which is exactly what a non-admin should see.
-            'resellers' => $isAdmin ? \App\Models\Reseller::filterOptions() : collect(),
+            'resellers' => $isAdmin ? Reseller::filterOptions() : collect(),
         ]);
     }
 
@@ -682,14 +693,14 @@ class MemorialController extends Controller
 
         // Queue when the cron is demonstrably alive so a 60s provider call
         // never blocks a web worker; the edit page polls the status endpoint.
-        if (\App\Helpers\QueueHealthHelper::schedulerHealthy()) {
-            $requestId = (string) \Illuminate\Support\Str::uuid();
+        if (QueueHealthHelper::schedulerHealthy()) {
+            $requestId = (string) Str::uuid();
             Cache::put(
-                \App\Jobs\GenerateBiography::CACHE_PREFIX.$requestId,
+                GenerateBiography::CACHE_PREFIX.$requestId,
                 ['status' => 'queued', 'memorial_id' => $memorial->id] + $quota,
-                now()->addMinutes(\App\Jobs\GenerateBiography::CACHE_TTL_MINUTES)
+                now()->addMinutes(GenerateBiography::CACHE_TTL_MINUTES)
             );
-            dispatch(new \App\Jobs\GenerateBiography($memorial->id, $structuredData, $requestId, $noCache, $quota));
+            dispatch(new GenerateBiography($memorial->id, $structuredData, $requestId, $noCache, $quota));
 
             return response()->json(['status' => 'queued', 'request_id' => $requestId] + $quota, 202);
         }
@@ -716,7 +727,7 @@ class MemorialController extends Controller
     {
         $this->authorize('update', $memorial);
 
-        $state = Cache::get(\App\Jobs\GenerateBiography::CACHE_PREFIX.$requestId);
+        $state = Cache::get(GenerateBiography::CACHE_PREFIX.$requestId);
         if (! is_array($state) || ($state['memorial_id'] ?? null) !== $memorial->id) {
             return response()->json(['message' => 'Unknown or expired generation request.'], 404);
         }

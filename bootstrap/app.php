@@ -1,9 +1,16 @@
 <?php
 
+use App\Http\Middleware\AddRequestLogContext;
+use App\Http\Middleware\InstallMiddleware;
+use App\Http\Middleware\ResolveResellerByHost;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,8 +26,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // and generated URLs use the wrong scheme.
         $middleware->trustProxies(at: '*');
 
-        $middleware->prependToGroup('web', \App\Http\Middleware\InstallMiddleware::class);
-        $middleware->appendToGroup('web', \App\Http\Middleware\AddRequestLogContext::class);
+        $middleware->prependToGroup('web', InstallMiddleware::class);
+        $middleware->appendToGroup('web', AddRequestLogContext::class);
+
+        // Every page on a reseller's host belongs to that reseller. Only two routes declare a
+        // domain, so without this the login screen their clients use, and our own pricing page,
+        // were served unbranded on their white-labeled domain. Short-circuits on our own host
+        // before any query, so the platform pays nothing for it.
+        $middleware->appendToGroup('web', ResolveResellerByHost::class);
 
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));
@@ -31,16 +44,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Attach a redacted snapshot of the request to every reported exception.
         $exceptions->context(function (Throwable $e) {
             $request = request();
-            if (! $request instanceof \Illuminate\Http\Request) {
+            if (! $request instanceof Request) {
                 return [];
             }
 

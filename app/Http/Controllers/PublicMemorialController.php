@@ -7,11 +7,13 @@ use App\Helpers\MemorialStatsHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Models\Memorial;
 use App\Models\MemorialView;
-use App\Models\Post;
+use App\Models\Page;
+use App\Models\PaymentOrder;
+use App\Models\Reseller;
 use App\Models\Tribute;
-use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PublicMemorialController extends Controller
 {
@@ -21,9 +23,9 @@ class PublicMemorialController extends Controller
      */
     public function show(string $slug)
     {
-        $cmsPage = \App\Models\Page::getBySlug($slug);
+        $cmsPage = Page::getBySlug($slug);
         if ($cmsPage && $cmsPage->is_published && ! $cmsPage->isSystemLayoutPage()) {
-            return app(\App\Http\Controllers\PageController::class)->showPage($slug);
+            return app(PageController::class)->showPage($slug);
         }
 
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
@@ -48,22 +50,46 @@ class PublicMemorialController extends Controller
      */
     public function showForReseller(string $reseller, string $slug)
     {
-        $resolvedReseller = app(\App\Models\Reseller::class);
+        $resolvedReseller = app(Reseller::class);
 
         $memorial = Memorial::where('slug', $slug)->where('reseller_id', $resolvedReseller->id)->firstOrFail();
 
         return $this->renderMemorial($memorial);
     }
 
+    /**
+     * The reseller's own front page — the destination for the base address every reseller
+     * screen shows and offers to copy. Until this existed that address had no route at all: it
+     * 404'd on the path fallback, and on a real subdomain fell through to the *platform's*
+     * homepage, complete with our logo, our copy and our pricing.
+     *
+     * Deliberately the same page as the platform home rather than a reduced listing of its own.
+     * A reseller's front page should be the full designed home page wearing their brand, and
+     * PageController::home() already resolves logo, palette, fonts, name and memorials through
+     * the active tenant — so there is nothing here to duplicate, and no second design to keep
+     * in step with the first.
+     *
+     * $reseller is unused for the same positional-argument reason as showForReseller() above;
+     * the tenant comes from the container binding, which the route middleware has already set.
+     */
+    public function indexForReseller(?string $reseller = null)
+    {
+        // Fail loudly rather than silently rendering the platform home page if the middleware
+        // ever stops binding — that regression is the whole bug this route exists to fix.
+        app(Reseller::class);
+
+        return app(PageController::class)->home();
+    }
+
     private function renderMemorial(Memorial $memorial)
     {
         // Allow owner to view their own memorial even if private
-        if (!$memorial->is_public && $memorial->user_id !== auth()->id()) {
+        if (! $memorial->is_public && $memorial->user_id !== auth()->id()) {
             abort(404);
         }
 
         // Deactivated/suspended memorials are hidden from public (admin can still view via dashboard)
-        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && !auth()?->user()?->hasRole(['admin', 'super-admin'])) {
+        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && ! auth()?->user()?->hasRole(['admin', 'super-admin'])) {
             abort(404);
         }
 
@@ -90,7 +116,7 @@ class PublicMemorialController extends Controller
 
         $pendingPaymentOrder = null;
         if (auth()->id() && auth()->id() === $memorial->user_id) {
-            $pendingPaymentOrder = \App\Models\PaymentOrder::where('memorial_id', $memorial->id)
+            $pendingPaymentOrder = PaymentOrder::where('memorial_id', $memorial->id)
                 ->where('user_id', auth()->id())
                 ->where('status', 'pending')
                 ->latest()
@@ -120,11 +146,11 @@ class PublicMemorialController extends Controller
     {
         $memorial = Memorial::where('slug', $memorial_slug)->firstOrFail();
 
-        if (!$memorial->is_public && $memorial->user_id !== auth()->id()) {
+        if (! $memorial->is_public && $memorial->user_id !== auth()->id()) {
             abort(404);
         }
 
-        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && !auth()?->user()?->hasRole(['admin', 'super-admin'])) {
+        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && ! auth()?->user()?->hasRole(['admin', 'super-admin'])) {
             abort(404);
         }
 
@@ -176,11 +202,11 @@ class PublicMemorialController extends Controller
     {
         $memorial = Memorial::where('slug', $memorial_slug)->firstOrFail();
 
-        if (!$memorial->is_public && $memorial->user_id !== auth()->id()) {
+        if (! $memorial->is_public && $memorial->user_id !== auth()->id()) {
             abort(404);
         }
 
-        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && !auth()?->user()?->hasRole(['admin', 'super-admin'])) {
+        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && ! auth()?->user()?->hasRole(['admin', 'super-admin'])) {
             abort(404);
         }
 
@@ -227,7 +253,7 @@ class PublicMemorialController extends Controller
     {
         $counts = $memorial->tributes()
             ->where('is_approved', true)
-            ->selectRaw("type, COUNT(*) as cnt")
+            ->selectRaw('type, COUNT(*) as cnt')
             ->groupBy('type')
             ->pluck('cnt', 'type');
 
@@ -243,7 +269,8 @@ class PublicMemorialController extends Controller
     {
         $ip = $request->ip() ?? '';
         $ua = $request->userAgent() ?? '';
-        return hash('sha256', $ip . '|' . $ua);
+
+        return hash('sha256', $ip.'|'.$ua);
     }
 
     private function recordView(Memorial $memorial, Request $request): void
@@ -256,7 +283,7 @@ class PublicMemorialController extends Controller
                 ->where('visitor_hash', $hash)
                 ->where('viewed_at', '>=', $today)
                 ->exists();
-            if (!$existing) {
+            if (! $existing) {
                 MemorialView::create([
                     'memorial_id' => $memorial->id,
                     'visitor_hash' => $hash,
@@ -264,11 +291,10 @@ class PublicMemorialController extends Controller
                 ]);
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Memorial view count skipped', [
+            Log::warning('Memorial view count skipped', [
                 'memorial_id' => $memorial->id,
                 'error' => $e->getMessage(),
             ]);
         }
     }
-
 }

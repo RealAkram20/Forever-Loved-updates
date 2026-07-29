@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Helpers\ThemeSetting;
 use App\Models\Reseller;
 use Closure;
 use Illuminate\Http\Request;
@@ -33,6 +34,8 @@ class ResolveResellerByCustomDomain
         }
 
         app()->instance(Reseller::class, $reseller);
+        // Their own domain, so their own site — see ThemeSetting::isResellerSite().
+        ThemeSetting::markResolvedFromRequest();
 
         return $next($request);
     }
