@@ -38,8 +38,15 @@ class MemorialMediaController extends Controller
 
         $request->validate(['photo' => ['required', 'image', 'max:5120']]); // 5MB
 
-        $path = $request->file('photo')->store(StorageHelper::memorialProfilePath($memorial->id), 'public');
-        $memorial->update(['profile_photo_path' => $path]);
+        $photo = $request->file('photo');
+        $path = $photo->store(StorageHelper::memorialProfilePath($memorial->id), 'public');
+
+        // Recorded because a profile photo never gets a media row, so it is invisible to
+        // any usage sum that only looks at the media table.
+        $memorial->update([
+            'profile_photo_path' => $path,
+            'profile_photo_size' => $photo->getSize(),
+        ]);
 
         return response()->json([
             'success' => true,

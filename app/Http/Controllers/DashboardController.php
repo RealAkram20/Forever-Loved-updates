@@ -19,6 +19,16 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+
+        // Resellers' real home is their own business dashboard (client memorials, clients,
+        // plans, onboarding). Rendered directly here — not a redirect — so the URL stays
+        // /dashboard instead of exposing a separate /reseller one for the same page.
+        // EnsureResellerActive (applied to this route) has already checked their reseller
+        // isn't suspended and bound it into the container by the time we get here.
+        if ($user->hasRole('reseller')) {
+            return app(\App\Http\Controllers\Reseller\DashboardController::class)->index($request);
+        }
+
         $isAdmin = $user->hasRole(['admin', 'super-admin']);
 
         $data = [

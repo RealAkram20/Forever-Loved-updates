@@ -22,6 +22,7 @@ class MemorialPolicy
     {
         return $memorial->user_id === $user->id
             || $user->hasRole(['admin', 'super-admin'])
+            || $memorial->isManagedByResellerStaff($user)
             || ($memorial->is_public && !$memorial->expires_at?->isPast());
     }
 
@@ -47,6 +48,7 @@ class MemorialPolicy
     public function delete(User $user, Memorial $memorial): bool
     {
         return $memorial->user_id === $user->id
-            || $user->hasRole(['admin', 'super-admin']);
+            || $user->hasRole(['admin', 'super-admin'])
+            || $memorial->isManagedByResellerStaff($user);
     }
 }

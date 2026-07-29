@@ -13,6 +13,7 @@ class PaymentOrder extends Model
     protected $fillable = [
         'user_id',
         'memorial_id',
+        'reseller_id',
         'subscription_plan_id',
         'merchant_reference',
         'order_tracking_id',
@@ -41,6 +42,11 @@ class PaymentOrder extends Model
     public function memorial(): BelongsTo
     {
         return $this->belongsTo(Memorial::class);
+    }
+
+    public function reseller(): BelongsTo
+    {
+        return $this->belongsTo(Reseller::class);
     }
 
     public function plan(): BelongsTo

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Reseller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,7 +14,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::with('roles');
+        $query = User::with('roles', 'reseller');
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -26,10 +27,13 @@ class UserController extends Controller
             $query->whereHas('roles', fn ($q) => $q->where('name', $role));
         }
 
+        Reseller::applyFilter($query, $request->input('reseller'));
+
         $users = $query->latest()->paginate(15)->withQueryString();
         $roles = Role::orderBy('name')->get();
+        $resellers = Reseller::filterOptions();
 
-        return view('pages.users.index', compact('users', 'roles'));
+        return view('pages.users.index', compact('users', 'roles', 'resellers'));
     }
 
     public function create()

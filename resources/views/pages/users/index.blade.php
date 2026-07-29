@@ -28,6 +28,7 @@
                             <option value="{{ $role->name }}" {{ request('role') === $role->name ? 'selected' : '' }}>{{ ucfirst($role->name) }}</option>
                         @endforeach
                     </select>
+                    <x-admin.reseller-filter :resellers="$resellers" :standalone="false" />
                     <button type="submit"
                         class="btn btn-secondary btn-md">
                         Filter
@@ -48,6 +49,9 @@
                             <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Name</th>
                             <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">Email</th>
                             <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Role</th>
+                            @if ($resellers->isNotEmpty())
+                                <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">Owner</th>
+                            @endif
                             <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">Memorials</th>
                             <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">Joined</th>
                             <th class="pb-3 text-right font-medium text-gray-500 dark:text-gray-400">Actions</th>
@@ -71,6 +75,9 @@
                                         {{ $roleName }}
                                     </span>
                                 </td>
+                                @if ($resellers->isNotEmpty())
+                                    <td class="py-3 hidden lg:table-cell"><x-admin.owner-tag :reseller="$user->reseller" /></td>
+                                @endif
                                 <td class="py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{{ $user->memorials_count ?? $user->memorials()->count() }}</td>
                                 <td class="py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{{ $user->created_at->format('M d, Y') }}</td>
                                 <td class="py-3 text-right">
@@ -96,7 +103,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="py-8 text-center text-gray-500 dark:text-gray-400">No users found.</td>
+                                <td colspan="{{ $resellers->isNotEmpty() ? 7 : 6 }}" class="py-8 text-center text-gray-500 dark:text-gray-400">No users found.</td>
                             </tr>
                         @endforelse
                     </tbody>

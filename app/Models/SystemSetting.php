@@ -118,6 +118,18 @@ class SystemSetting extends Model
         'smtp.from_address' => ['value' => '', 'type' => 'string', 'group' => 'smtp'],
         'smtp.from_name' => ['value' => '', 'type' => 'string', 'group' => 'smtp'],
 
+        // Custom domains (resellers can route their own domain to their tenant). Off by
+        // default and target_host stays empty until the platform admin has settled on
+        // hosting — that value is what a reseller's CNAME needs to point at.
+        'domains.custom_domains_enabled' => ['value' => '0', 'type' => 'boolean', 'group' => 'domains'],
+        'domains.target_host' => ['value' => '', 'type' => 'string', 'group' => 'domains'],
+
+        // Reseller program defaults. reserved_slugs is additive on top of the hardcoded
+        // infrastructure blocklist in Reseller::reservedSlugs() — it exists so an admin can
+        // fence off brand terms without a deploy.
+        'reseller.default_tier_id' => ['value' => '', 'type' => 'string', 'group' => 'reseller'],
+        'reseller.reserved_slugs' => ['value' => '', 'type' => 'string', 'group' => 'reseller'],
+
         // Notifications (enabled by default)
         'notifications.email_enabled' => ['value' => '1', 'type' => 'boolean', 'group' => 'notifications'],
         'notifications.push_enabled' => ['value' => '1', 'type' => 'boolean', 'group' => 'notifications'],

@@ -9,6 +9,27 @@ class MenuHelper
         return auth()->user()?->hasRole(['admin', 'super-admin']) ?? false;
     }
 
+    public static function isReseller(): bool
+    {
+        return auth()->user()?->hasRole('reseller') ?? false;
+    }
+
+    /**
+     * Main nav items for reseller staff.
+     */
+    public static function getResellerNavItems(): array
+    {
+        return [
+            ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
+            ['icon' => 'memorial', 'name' => 'Memorials', 'path' => url('/reseller/memorials')],
+            ['icon' => 'users', 'name' => 'Clients', 'path' => url('/reseller/clients')],
+            ['icon' => 'billing', 'name' => 'Plans', 'path' => url('/reseller/plans')],
+            ['icon' => 'appearance', 'name' => 'Branding', 'path' => url('/reseller/branding')],
+            ['icon' => 'subscription', 'name' => 'Payment Settings', 'path' => url('/reseller/payments')],
+            ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/reseller/settings')],
+        ];
+    }
+
     /**
      * Main nav items for regular users.
      */
@@ -25,34 +46,71 @@ class MenuHelper
     }
 
     /**
-     * Main nav items for admin / super-admin.
+     * Main nav items for admin / super-admin. Kept for backwards-compat callers;
+     * prefer getAdminMenuGroups() for the actual (grouped) admin sidebar.
      */
     public static function getAdminMainNavItems(): array
     {
+        return collect(self::getAdminMenuGroups())->flatMap(fn ($group) => $group['items'])->all();
+    }
+
+    /**
+     * Admin sidebar, split into labeled groups instead of one long flat list plus a
+     * single catch-all "Settings" dropdown — with ~20 destinations across very different
+     * concerns (content, reseller program, platform config), grouping is what makes any
+     * one of them findable without scanning the whole thing.
+     */
+    public static function getAdminMenuGroups(): array
+    {
         return [
-            ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
-            ['icon' => 'memorial', 'name' => 'Memorials', 'path' => url('/memorials')],
-            ['icon' => 'search', 'name' => 'Find Memorial', 'path' => url('/find-memorial')],
-            ['icon' => 'notification', 'name' => 'Notifications', 'path' => url('/notifications')],
-            ['icon' => 'calendar', 'name' => 'Calendar', 'path' => url('/calendar')],
-            ['icon' => 'users', 'name' => 'Users', 'path' => url('/users')],
-            ['icon' => 'pages', 'name' => 'Pages', 'path' => url('/settings/pages')],
-            ['icon' => 'menus', 'name' => 'Menus', 'path' => url('/settings/menus')],
-            ['icon' => 'appearance', 'name' => 'Appearance', 'path' => url('/settings/appearance')],
             [
-                'name' => 'Settings',
-                'icon' => 'settings',
-                'subItems' => [
-                    ['name' => 'General', 'path' => url('/settings')],
-                    ['name' => 'AI Configuration', 'path' => url('/settings/ai')],
-                    ['name' => 'Permissions', 'path' => url('/settings/permissions')],
-                    ['name' => 'Payments', 'path' => url('/settings/payments')],
-                    ['name' => 'Payment Orders', 'path' => url('/settings/payment-orders')],
-                    ['name' => 'Subscriptions', 'path' => url('/settings/subscriptions')],
-                    ['name' => 'Plans', 'path' => url('/settings/plans')],
-                    ['name' => 'SMTP / Email', 'path' => url('/settings/smtp')],
-                    ['name' => 'Notifications', 'path' => url('/settings/notifications')],
-                    ['name' => 'System Updates', 'path' => url('/settings/updates')],
+                'title' => 'Overview',
+                'items' => [
+                    ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
+                    ['icon' => 'notification', 'name' => 'Notifications', 'path' => url('/notifications')],
+                    ['icon' => 'calendar', 'name' => 'Calendar', 'path' => url('/calendar')],
+                ],
+            ],
+            [
+                'title' => 'Content',
+                'items' => [
+                    ['icon' => 'memorial', 'name' => 'Memorials', 'path' => url('/memorials')],
+                    ['icon' => 'search', 'name' => 'Find Memorial', 'path' => url('/find-memorial')],
+                    ['icon' => 'pages', 'name' => 'Pages', 'path' => url('/settings/pages')],
+                    ['icon' => 'menus', 'name' => 'Menus', 'path' => url('/settings/menus')],
+                ],
+            ],
+            [
+                // Who they are, what we charge them, how the program runs. 'match' lets the
+                // roster stay highlighted on a per-reseller detail page, which a plain
+                // exact-path comparison would leave with nothing lit at all.
+                'title' => 'Resellers',
+                'items' => [
+                    ['icon' => 'store', 'name' => 'Resellers', 'path' => url('/settings/resellers'), 'match' => 'settings/resellers'],
+                    ['icon' => 'pricing', 'name' => 'Pricing', 'path' => url('/settings/reseller-pricing')],
+                    ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/settings/reseller-settings')],
+                ],
+            ],
+            [
+                'title' => 'Users & Access',
+                'items' => [
+                    ['icon' => 'users', 'name' => 'Users', 'path' => url('/users')],
+                    ['icon' => 'settings', 'name' => 'Permissions', 'path' => url('/settings/permissions')],
+                ],
+            ],
+            [
+                'title' => 'Platform Settings',
+                'items' => [
+                    ['icon' => 'settings', 'name' => 'General', 'path' => url('/settings')],
+                    ['icon' => 'appearance', 'name' => 'Appearance', 'path' => url('/settings/appearance')],
+                    ['icon' => 'settings', 'name' => 'AI Configuration', 'path' => url('/settings/ai')],
+                    ['icon' => 'billing', 'name' => 'Payments', 'path' => url('/settings/payments')],
+                    ['icon' => 'billing', 'name' => 'Payment Orders', 'path' => url('/settings/payment-orders')],
+                    ['icon' => 'subscription', 'name' => 'Subscriptions', 'path' => url('/settings/subscriptions')],
+                    ['icon' => 'billing', 'name' => 'Plans', 'path' => url('/settings/plans')],
+                    ['icon' => 'settings', 'name' => 'SMTP / Email', 'path' => url('/settings/smtp')],
+                    ['icon' => 'notification', 'name' => 'Notification Settings', 'path' => url('/settings/notifications')],
+                    ['icon' => 'settings', 'name' => 'System Updates', 'path' => url('/settings/updates')],
                 ],
             ],
         ];
@@ -60,11 +118,23 @@ class MenuHelper
 
     public static function getMainNavItems(): array
     {
-        return self::isAdmin() ? self::getAdminMainNavItems() : self::getUserMainNavItems();
+        if (self::isAdmin()) {
+            return self::getAdminMainNavItems();
+        }
+
+        if (self::isReseller()) {
+            return self::getResellerNavItems();
+        }
+
+        return self::getUserMainNavItems();
     }
 
     public static function getMenuGroups(): array
     {
+        if (self::isAdmin()) {
+            return self::getAdminMenuGroups();
+        }
+
         return [
             ['title' => 'Menu', 'items' => self::getMainNavItems()],
         ];
@@ -139,6 +209,10 @@ class MenuHelper
             'settings' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.0175 2.75C10.1679 2.75 9.42075 3.33646 9.21677 4.15889L8.92868 5.31898C8.88609 5.49044 8.75714 5.63111 8.58512 5.69678C8.30383 5.8041 8.02968 5.92567 7.76372 6.06053C7.59865 6.14426 7.40337 6.15018 7.2339 6.07631L6.09942 5.58222C5.31794 5.24207 4.40451 5.48885 3.90193 6.17777L3.15193 7.2065C2.72283 7.7951 2.73213 8.58698 3.17459 9.16538L3.87559 10.0814C3.98877 10.2292 4.02465 10.4182 3.97589 10.5949C3.91102 10.8302 3.86154 11.0707 3.82835 11.3155C3.80353 11.498 3.69693 11.6588 3.53795 11.7534L2.48913 12.3781C1.7588 12.813 1.42437 13.6842 1.68186 14.4975L1.95686 15.3665C2.24124 16.264 3.16043 16.8077 4.08372 16.623L5.26121 16.3873C5.43901 16.3518 5.62108 16.398 5.75897 16.5071C5.97688 16.6793 6.20615 16.8376 6.44536 16.9808C6.60424 17.0758 6.71384 17.2333 6.74312 17.4144C6.93025 18.5726 7.97423 19.4101 9.14779 19.3445L9.51202 19.324C10.3404 19.2776 11.0524 18.7237 11.3035 17.9405L11.6113 17.0012C11.6697 16.8228 11.8068 16.6833 11.9843 16.6162C12.2554 16.5139 12.5185 16.3959 12.7722 16.2633C12.9402 16.1755 13.1402 16.1653 13.3158 16.2357L14.5064 16.7125C15.3028 17.0318 16.2082 16.7547 16.6899 16.0413L17.3699 15.0342C17.7741 14.4353 17.7414 13.6517 17.2906 13.0878L16.5485 12.1592C16.4299 12.0109 16.3897 11.8178 16.4374 11.6365C16.5019 11.3938 16.5504 11.1458 16.5822 10.8937C16.6062 10.7044 16.7155 10.5377 16.88 10.4406L17.9644 9.80078C18.711 9.36002 19.0536 8.47247 18.789 7.6457L18.4923 6.71931C18.2017 5.81241 17.2672 5.27165 16.3393 5.47247L15.2113 5.71654C15.033 5.75506 14.8479 5.71079 14.7077 5.59825C14.4928 5.42594 14.2666 5.26728 14.0306 5.12345C13.8724 5.0273 13.7637 4.86921 13.7358 4.68854L13.5359 3.39482C13.3905 2.45432 12.5822 1.75 11.6302 1.75H11.0175V2.75ZM12 9.25C10.4812 9.25 9.25 10.4812 9.25 12C9.25 13.5188 10.4812 14.75 12 14.75C13.5188 14.75 14.75 13.5188 14.75 12C14.75 10.4812 13.5188 9.25 12 9.25ZM7.75 12C7.75 9.65279 9.65279 7.75 12 7.75C14.3472 7.75 16.25 9.65279 16.25 12C16.25 14.3472 14.3472 16.25 12 16.25C9.65279 16.25 7.75 14.3472 7.75 12Z" fill="currentColor"/></svg>',
 
             'billing' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2 7C2 5.34315 3.34315 4 5 4H19C20.6569 4 22 5.34315 22 7V17C22 18.6569 20.6569 20 19 20H5C3.34315 20 2 18.6569 2 17V7ZM5 6C4.44772 6 4 6.44772 4 7V17C4 17.5523 4.44772 18 5 18H19C19.5523 18 20 17.5523 20 17V7C20 6.44772 19.5523 6 19 6H5ZM6 11C6 10.4477 6.44772 10 7 10H17C17.5523 10 18 10.4477 18 11C18 11.5523 17.5523 12 17 12H7C6.44772 12 6 11.5523 6 11ZM6 14C6 13.4477 6.44772 13 7 13H13C13.5523 13 14 13.4477 14 14C14 14.5523 13.5523 15 13 15H7C6.44772 15 6 14.5523 6 14Z" fill="currentColor"></path></svg>',
+
+            'store' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.25 8.75H20.75M4.75 8.75V19C4.75 19.8284 5.42157 20.5 6.25 20.5H17.75C18.5784 20.5 19.25 19.8284 19.25 19V8.75M3.25 8.75L4.85 4.7C5.07 4.13 5.62 3.75 6.25 3.75H17.75C18.38 3.75 18.93 4.13 19.15 4.7L20.75 8.75M9.5 20.5V15.25C9.5 14.4216 10.1716 13.75 11 13.75H13C13.8284 13.75 14.5 14.4216 14.5 15.25V20.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+
+            'pricing' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.75 11.44V5.25C3.75 4.42157 4.42157 3.75 5.25 3.75H11.44C11.8378 3.75 12.2193 3.90804 12.5006 4.18934L19.8107 11.4994C20.3964 12.0852 20.3964 13.035 19.8107 13.6207L13.6207 19.8107C13.035 20.3964 12.0852 20.3964 11.4994 19.8107L4.18934 12.5006C3.90804 12.2193 3.75 11.8378 3.75 11.44Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="8.25" cy="8.25" r="1.25" fill="currentColor"/></svg>',
 
             'subscription' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12H15V22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         ];

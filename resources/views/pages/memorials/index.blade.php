@@ -10,7 +10,8 @@
             @if (session('error'))
                 <div class="p-4 mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400">{{ session('error') }}</div>
             @endif
-            <div class="flex justify-end mb-4">
+            <div class="flex flex-wrap items-center justify-end gap-3 mb-4">
+                <x-admin.reseller-filter :resellers="$resellers" />
                 <a href="{{ route('memorials.create') }}"
                     class="btn btn-primary btn-md">
                     Create Memorial
@@ -34,6 +35,11 @@
                                     <th class="px-5 py-3 text-left sm:px-6">
                                         <p class="font-medium text-gray-500 dark:text-gray-400 text-theme-xs">Manager</p>
                                     </th>
+                                    @if ($resellers->isNotEmpty())
+                                        <th class="px-5 py-3 text-left sm:px-6">
+                                            <p class="font-medium text-gray-500 dark:text-gray-400 text-theme-xs">Owner</p>
+                                        </th>
+                                    @endif
                                     <th class="px-5 py-3 text-left sm:px-6">
                                         <p class="font-medium text-gray-500 dark:text-gray-400 text-theme-xs">Contributors</p>
                                     </th>
@@ -87,6 +93,11 @@
                                         <td class="px-5 py-4 sm:px-6">
                                             <p class="text-gray-500 dark:text-gray-400 text-theme-sm">{{ $memorial->owner?->name ?? '—' }}</p>
                                         </td>
+                                        @if ($resellers->isNotEmpty())
+                                            <td class="px-5 py-4 sm:px-6">
+                                                <x-admin.owner-tag :reseller="$memorial->reseller" />
+                                            </td>
+                                        @endif
                                         <td class="px-5 py-4 sm:px-6">
                                             <div class="flex -space-x-2">
                                                 @forelse ($contributors as $contributor)

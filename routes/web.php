@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ResellerController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CalendarController;
@@ -15,6 +16,11 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicMemorialController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\WidgetController;
+use App\Http\Middleware\EmbedFrameHeaders;
+use App\Http\Middleware\EnsureResellerActive;
+use App\Http\Middleware\ResolveReseller;
+use App\Http\Middleware\ResolveResellerByCustomDomain;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes (login, register, password reset, etc.)
@@ -55,7 +61,7 @@ Route::prefix('create-memorial')->name('memorial.create.')->group(function () {
 
 // Dashboard routes (protected)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->middleware(EnsureResellerActive::class)->name('dashboard');
 
     Route::post('memorials/{memorial}/status', [MemorialController::class, 'updateStatus'])->name('memorials.status');
     Route::patch('memorials/{memorial}/section', [MemorialController::class, 'updateSection'])->name('memorials.section');
@@ -151,6 +157,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/plans/{plan}', [SettingsController::class, 'updatePlan'])->name('plans.update');
         Route::delete('/plans/{plan}', [SettingsController::class, 'destroyPlan'])->name('plans.destroy');
 
+        // Custom-domain config moved under the reseller program's own Settings page —
+        // it was never platform-wide in any meaningful sense. Kept as a redirect so
+        // existing bookmarks don't 404.
+        Route::get('/domains', fn () => redirect()->route('settings.reseller-settings'))->name('domains');
+
         Route::get('/updates', [SettingsController::class, 'updates'])->name('updates');
 
         Route::get('/menus', [\App\Http\Controllers\Admin\MenuController::class, 'edit'])->name('menus.edit');
@@ -174,6 +185,71 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pages/{slug}/meta', [\App\Http\Controllers\Admin\PageController::class, 'updatePageMeta'])->name('pages.meta.update');
         Route::get('/pages/{slug}/edit', [\App\Http\Controllers\Admin\PageController::class, 'edit'])->name('pages.edit');
         Route::delete('/pages/{slug}', [\App\Http\Controllers\Admin\PageController::class, 'destroy'])->name('pages.destroy');
+
+        // ─── Reseller program (super-admin) ───────────────────────────
+        // Three destinations, each with its own nav entry: the roster (/resellers),
+        // what we charge them (/reseller-pricing), and how the program is configured
+        // (/reseller-settings). Pricing and settings deliberately sit on sibling paths
+        // rather than under /resellers/* so the roster can claim that whole prefix and
+        // stay highlighted on a per-reseller detail page.
+        Route::get('/resellers', [ResellerController::class, 'index'])->name('resellers');
+        Route::post('/resellers', [ResellerController::class, 'store'])->name('resellers.store');
+        Route::get('/resellers/{reseller}', [ResellerController::class, 'show'])->name('resellers.show')->whereNumber('reseller');
+        Route::put('/resellers/{reseller}', [ResellerController::class, 'update'])->name('resellers.update');
+        Route::post('/resellers/{reseller}/suspend', [ResellerController::class, 'suspend'])->name('resellers.suspend');
+        Route::post('/resellers/{reseller}/activate', [ResellerController::class, 'activate'])->name('resellers.activate');
+        Route::post('/resellers/{reseller}/rollover', [ResellerController::class, 'rollover'])->name('resellers.rollover');
+        Route::post('/resellers/{reseller}/verify-domain', [ResellerController::class, 'verifyDomain'])->name('resellers.verify-domain');
+        Route::post('/resellers/{reseller}/restore', [ResellerController::class, 'restore'])->name('resellers.restore');
+        Route::post('/resellers/{reseller}/login-as', [ResellerController::class, 'loginAs'])->name('resellers.login-as');
+        Route::post('/resellers/{reseller}/payments', [ResellerController::class, 'recordPayment'])->name('resellers.payments.store');
+
+        Route::get('/reseller-pricing', [\App\Http\Controllers\Admin\ResellerTierController::class, 'index'])->name('reseller-pricing');
+        Route::post('/reseller-tiers', [\App\Http\Controllers\Admin\ResellerTierController::class, 'store'])->name('reseller-tiers.store');
+        Route::put('/reseller-tiers/{resellerTier}', [\App\Http\Controllers\Admin\ResellerTierController::class, 'update'])->name('reseller-tiers.update');
+        Route::delete('/reseller-tiers/{resellerTier}', [\App\Http\Controllers\Admin\ResellerTierController::class, 'destroy'])->name('reseller-tiers.destroy');
+
+        Route::get('/reseller-settings', [\App\Http\Controllers\Admin\ResellerSettingsController::class, 'edit'])->name('reseller-settings');
+        Route::put('/reseller-settings', [\App\Http\Controllers\Admin\ResellerSettingsController::class, 'update'])->name('reseller-settings.update');
+    });
+
+    // Lets a super-admin return to their own account after using "Login as" on a reseller.
+    // Deliberately outside the role:reseller-gated group below — reachable while
+    // authenticated AS the impersonated reseller owner, who has no admin role.
+    Route::post('/reseller/stop-impersonating', [ResellerController::class, 'stopImpersonating'])->name('reseller.stop-impersonating');
+
+    // ─── Reseller staff area ──────────────────────────────────────────
+    Route::prefix('reseller')->name('reseller.')->middleware(['role:reseller', EnsureResellerActive::class])->group(function () {
+        // The dashboard itself lives at /dashboard (see the 'dashboard' route above), which
+        // delegates to Reseller\DashboardController::index() directly for reseller staff —
+        // no reason to expose a second, redundant URL for the same page. This bare /reseller
+        // redirect just keeps old links/bookmarks working.
+        Route::get('/', fn () => redirect()->route('dashboard'));
+        Route::get('/memorials', [\App\Http\Controllers\Reseller\DashboardController::class, 'memorials'])->name('memorials');
+        Route::get('/memorials/create', [\App\Http\Controllers\Reseller\DashboardController::class, 'createMemorial'])->name('memorials.create');
+        Route::post('/memorials', [\App\Http\Controllers\Reseller\DashboardController::class, 'storeMemorial'])->name('memorials.store');
+
+        Route::get('/clients', [\App\Http\Controllers\Reseller\ClientController::class, 'index'])->name('clients');
+        Route::post('/clients', [\App\Http\Controllers\Reseller\ClientController::class, 'store'])->name('clients.store');
+        Route::put('/clients/{user}', [\App\Http\Controllers\Reseller\ClientController::class, 'update'])->name('clients.update');
+        Route::delete('/clients/{user}', [\App\Http\Controllers\Reseller\ClientController::class, 'destroy'])->name('clients.destroy');
+
+        Route::get('/plans', [\App\Http\Controllers\Reseller\PlanController::class, 'index'])->name('plans');
+        Route::post('/plans', [\App\Http\Controllers\Reseller\PlanController::class, 'store'])->name('plans.store');
+        Route::put('/plans/{plan}', [\App\Http\Controllers\Reseller\PlanController::class, 'update'])->name('plans.update');
+        Route::delete('/plans/{plan}', [\App\Http\Controllers\Reseller\PlanController::class, 'destroy'])->name('plans.destroy');
+
+        Route::get('/settings', [\App\Http\Controllers\Reseller\SettingsController::class, 'edit'])->name('settings');
+        Route::put('/settings', [\App\Http\Controllers\Reseller\SettingsController::class, 'update'])->name('settings.update');
+        Route::put('/settings/domain', [\App\Http\Controllers\Reseller\SettingsController::class, 'updateCustomDomain'])->name('settings.domain.update');
+        Route::post('/settings/domain/verify', [\App\Http\Controllers\Reseller\SettingsController::class, 'verifyCustomDomain'])->name('settings.domain.verify');
+
+        Route::get('/branding', [\App\Http\Controllers\Reseller\BrandingController::class, 'edit'])->name('branding');
+        Route::put('/branding', [\App\Http\Controllers\Reseller\BrandingController::class, 'update'])->name('branding.update');
+
+        Route::get('/payments', [\App\Http\Controllers\Reseller\PaymentSettingsController::class, 'edit'])->name('payments');
+        Route::put('/payments', [\App\Http\Controllers\Reseller\PaymentSettingsController::class, 'update'])->name('payments.update');
+        Route::post('/payments/register-ipn', [\App\Http\Controllers\Reseller\PaymentSettingsController::class, 'registerIpn'])->name('payments.register-ipn');
     });
 });
 
@@ -215,6 +291,41 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::post('/tribute-post', [MemorialMediaController::class, 'storeTributePost'])->name('tribute-post');
     Route::post('/background-music', [MemorialMediaController::class, 'uploadBackgroundMusic'])->name('background-music');
     Route::delete('/background-music', [MemorialMediaController::class, 'removeBackgroundMusic'])->name('background-music.delete');
+});
+
+// Embed widget (public, unauthenticated) - read-only memorial view for iframe embedding
+// on a reseller's own external site, via public/embed.js.
+Route::get('/widget/{slug}', [WidgetController::class, 'show'])
+    ->name('widget.show')
+    ->where('slug', '[a-z0-9\-]+')
+    ->middleware(EmbedFrameHeaders::class);
+
+// Reseller white-labeled subdomain (e.g. acme.foreverloved.com) - public memorial pages
+// only, scoped strictly to that reseller's own memorials. Matches on Host header, so it
+// never competes with the apex catch-all route below.
+Route::domain('{reseller}.'.config('reseller.domain'))->group(function () {
+    Route::get('/{slug}', [PublicMemorialController::class, 'showForReseller'])
+        ->name('memorial.public.reseller')
+        ->where(['reseller' => '[a-z0-9\-]+', 'slug' => '[a-z0-9\-]+'])
+        ->middleware(ResolveReseller::class);
+});
+
+// Reseller's own verified custom domain (e.g. memorials.acmefuneral.com) — same public
+// memorial page, resolved by Host header against `resellers.custom_domain` instead of
+// the subdomain pattern above. {domain} would otherwise match ANY hostname — including
+// this app's own (e.g. "localhost", or *.foreverloved.com already handled above) — which
+// would shadow routes like /dashboard or /login for our own site, since Route::domain()
+// groups don't automatically defer to non-domain-restricted routes registered elsewhere.
+// The exclusion regex below is what actually keeps this scoped to genuinely foreign hosts.
+$appHost = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
+$resellerBaseDomain = config('reseller.domain');
+$foreignDomainPattern = '^(?!'.preg_quote($appHost, '#').'$)(?!'.preg_quote($resellerBaseDomain, '#').'$)(?!.*\.'.preg_quote($resellerBaseDomain, '#').'$).+$';
+
+Route::domain('{domain}')->group(function () use ($foreignDomainPattern) {
+    Route::get('/{slug}', [PublicMemorialController::class, 'showForReseller'])
+        ->name('memorial.public.custom-domain')
+        ->where(['slug' => '[a-z0-9\-]+', 'domain' => $foreignDomainPattern])
+        ->middleware(ResolveResellerByCustomDomain::class);
 });
 
 // Payment callback & IPN (no auth - Pesapal redirects/IPN calls)

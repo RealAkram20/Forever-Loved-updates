@@ -27,15 +27,9 @@ class ReconcilePendingPayments extends Command
     /** Orders pending longer than this are considered abandoned. */
     private const MAX_AGE_HOURS = 48;
 
-    public function handle(PesapalService $pesapal, PaymentResultProcessor $processor): int
+    public function handle(PaymentResultProcessor $processor): int
     {
         $expired = $this->expireAbandonedOrders();
-
-        if (! $pesapal->isEnabled()) {
-            $this->info("Pesapal not configured; expired {$expired} abandoned order(s), nothing to verify.");
-
-            return self::SUCCESS;
-        }
 
         $orders = PaymentOrder::where('status', 'pending')
             ->where('payment_gateway', 'pesapal')
@@ -48,6 +42,13 @@ class ReconcilePendingPayments extends Command
         $completed = $failed = $unreachable = 0;
 
         foreach ($orders as $order) {
+            // Each order re-verifies against whichever gateway it was actually paid
+            // through — the platform's own credentials, or the owning reseller's.
+            $pesapal = PesapalService::forReseller($order->reseller);
+            if (! $pesapal->isEnabled()) {
+                continue;
+            }
+
             try {
                 $status = $pesapal->getTransactionStatus($order->order_tracking_id);
                 if ($status === null) {

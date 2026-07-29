@@ -23,6 +23,8 @@ class Memorial extends Model
 
     protected $fillable = [
         'user_id',
+        'reseller_id',
+        'original_reseller_id',
         'slug',
         'title',
         'full_name',
@@ -62,6 +64,7 @@ class Memorial extends Model
         'completion_status',
         'background_music',
         'profile_photo_path',
+        'profile_photo_size',
         'is_public',
         'status',
         'visitor_count',
@@ -125,6 +128,11 @@ class Memorial extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function reseller(): BelongsTo
+    {
+        return $this->belongsTo(Reseller::class);
     }
 
     public function subscriptionPlan(): BelongsTo
@@ -229,6 +237,19 @@ class Memorial extends Model
         return $this->hasMany(Media::class);
     }
 
+    /**
+     * Bytes this memorial accounts for: its gallery media plus the profile photo, which
+     * has no media row of its own.
+     *
+     * This is *referenced* size, not disk size. Replacing a profile photo currently leaves
+     * the old file behind, so actual disk use can exceed this — an orphan-cleanup job would
+     * be needed before this number could be treated as a billing input rather than a guide.
+     */
+    public function storageBytes(): int
+    {
+        return (int) $this->media()->sum('size') + (int) $this->profile_photo_size;
+    }
+
     public function storyChapters(): HasMany
     {
         return $this->hasMany(StoryChapter::class)->orderBy('sort_order');
@@ -275,7 +296,8 @@ class Memorial extends Model
     }
 
     /**
-     * Check if a user can edit this memorial (owner, collaborator with editor role, or admin).
+     * Check if a user can edit this memorial (owner, collaborator with editor role, admin, or
+     * reseller staff managing their own tenant's memorial).
      */
     public function canBeEditedBy(?User $user): bool
     {
@@ -291,11 +313,27 @@ class Memorial extends Model
             return true;
         }
 
+        if ($this->isManagedByResellerStaff($user)) {
+            return true;
+        }
+
         return $this->collaborators()
             ->where('user_id', $user->id)
             ->where('role', 'editor')
             ->whereNotNull('accepted_at')
             ->exists();
+    }
+
+    /**
+     * Reseller staff manage every memorial under their own tenant, regardless of which
+     * end-client user actually owns it. Shared by canBeEditedBy() and MemorialPolicy so the
+     * rule lives in exactly one place.
+     */
+    public function isManagedByResellerStaff(User $user): bool
+    {
+        return $this->reseller_id !== null
+            && $user->reseller_id === $this->reseller_id
+            && $user->hasRole('reseller');
     }
 
     public function galleryMedia()

@@ -116,6 +116,7 @@ class PaymentController extends Controller
             $order = PaymentOrder::create([
                 'user_id' => $user->id,
                 'memorial_id' => $memorial->id,
+                'reseller_id' => $memorial->reseller_id,
                 'subscription_plan_id' => $plan->id,
                 'merchant_reference' => $merchantRef,
                 'amount' => $plan->price,
@@ -135,8 +136,10 @@ class PaymentController extends Controller
             ]);
         }
 
-        // Pesapal: create order and redirect to payment
-        $pesapal = app(PesapalService::class);
+        // Pesapal: create order and redirect to payment. When the memorial belongs to a
+        // reseller with their own gateway configured, checkout runs on their credentials
+        // so client money lands directly in their account, not the platform's.
+        $pesapal = PesapalService::forReseller($memorial->reseller);
         if (! $pesapal->isEnabled()) {
             return response()->json(['success' => false, 'error' => 'Pesapal is not configured. Check Admin → Settings → Payments.'], 400);
         }
@@ -144,6 +147,7 @@ class PaymentController extends Controller
         $order = PaymentOrder::create([
             'user_id' => $user->id,
             'memorial_id' => $memorial->id,
+            'reseller_id' => $memorial->reseller_id,
             'subscription_plan_id' => $plan->id,
             'merchant_reference' => $merchantRef,
             'amount' => $plan->price,
@@ -239,7 +243,7 @@ class PaymentController extends Controller
             return redirect()->route('payment.complete', ['result' => 'error', 'message' => 'Order already processed.']);
         }
 
-        $pesapal = app(PesapalService::class);
+        $pesapal = PesapalService::forReseller($order->reseller);
         $status = null;
         foreach ([0, 1, 2, 3] as $attempt) {
             if ($attempt > 0) {
@@ -351,7 +355,7 @@ class PaymentController extends Controller
             ], 200);
         }
 
-        $pesapal = app(PesapalService::class);
+        $pesapal = PesapalService::forReseller($order->reseller);
         $status = null;
         foreach ([0, 1, 2, 3] as $attempt) {
             if ($attempt > 0) {

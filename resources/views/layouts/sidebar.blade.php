@@ -47,11 +47,15 @@
             const key = groupIndex + '-' + itemIndex;
             return this.openSubmenus[key] || false;
         },
-        isActive(path) {
+        isActive(path, prefix) {
+            const current = '{{ $currentPath }}';
+            // An item may claim a whole path prefix (e.g. Resellers owning
+            // settings/resellers/12), so a detail page still lights its parent.
+            if (prefix && (current === prefix || current.startsWith(prefix + '/'))) return true;
             const pathPart = path.startsWith('http') ? (new URL(path)).pathname : path;
             const base = '{{ rtrim(parse_url(config('app.url'), PHP_URL_PATH) ?: '/', '/') }}';
             const pathForMatch = base && pathPart.startsWith(base) ? (pathPart.slice(base.length) || '/').replace(/^\//, '') : pathPart.replace(/^\//, '');
-            return window.location.pathname === pathPart || '{{ $currentPath }}' === pathForMatch;
+            return window.location.pathname === pathPart || current === pathForMatch;
         }
     }"
     :class="{
@@ -187,7 +191,7 @@
                                         <!-- Simple Menu Item -->
                                         <a href="{{ $item['path'] }}" class="menu-item group"
                                             :class="[
-                                                isActive('{{ $item['path'] }}') ? 'menu-item-active' :
+                                                isActive('{{ $item['path'] }}', '{{ $item['match'] ?? '' }}') ? 'menu-item-active' :
                                                 'menu-item-inactive',
                                                 (!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ?
                                                 'xl:justify-center' :
@@ -196,7 +200,7 @@
 
                                             <!-- Icon -->
                                             <span
-                                                :class="isActive('{{ $item['path'] }}') ? 'menu-item-icon-active' :
+                                                :class="isActive('{{ $item['path'] }}', '{{ $item['match'] ?? '' }}') ? 'menu-item-icon-active' :
                                                     'menu-item-icon-inactive'">
                                                 {!! MenuHelper::getIconSvg($item['icon']) !!}
                                             </span>

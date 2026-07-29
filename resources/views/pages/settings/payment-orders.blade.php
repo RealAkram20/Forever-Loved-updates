@@ -26,18 +26,21 @@
     <div class="space-y-6">
         <x-common.component-card title="Payment Orders" desc="Billing is per memorial. View and manage all payment transactions. Admin cannot assign payments to themselves.">
             {{-- Status filter --}}
-            <div class="mb-4 flex flex-wrap items-center gap-2">
-                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Filter:</span>
-                <a href="{{ route('settings.payment-orders') }}"
-                    class="rounded-full px-3 py-1 text-xs font-medium transition {{ !request('status') ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
-                    All
-                </a>
-                @foreach (['pending', 'completed', 'failed', 'cancelled'] as $s)
-                    <a href="{{ route('settings.payment-orders', ['status' => $s]) }}"
-                        class="rounded-full px-3 py-1 text-xs font-medium transition {{ request('status') === $s ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
-                        {{ ucfirst($s) }}
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Filter:</span>
+                    <a href="{{ route('settings.payment-orders', array_filter(['reseller' => request('reseller')])) }}"
+                        class="rounded-full px-3 py-1 text-xs font-medium transition {{ !request('status') ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                        All
                     </a>
-                @endforeach
+                    @foreach (['pending', 'completed', 'failed', 'cancelled'] as $s)
+                        <a href="{{ route('settings.payment-orders', array_filter(['status' => $s, 'reseller' => request('reseller')])) }}"
+                            class="rounded-full px-3 py-1 text-xs font-medium transition {{ request('status') === $s ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                            {{ ucfirst($s) }}
+                        </a>
+                    @endforeach
+                </div>
+                <x-admin.reseller-filter :resellers="$resellers" />
             </div>
 
             @if ($orders->isEmpty())
@@ -83,6 +86,9 @@
                                     <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Date</th>
                                     <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">User</th>
                                     <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Memorial</th>
+                                    @if ($resellers->isNotEmpty())
+                                        <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Owner</th>
+                                    @endif
                                     <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Plan</th>
                                     <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Amount</th>
                                     <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Status</th>
@@ -107,6 +113,9 @@
                                                 <span class="text-amber-600 dark:text-amber-400">No memorial</span>
                                             @endif
                                         </td>
+                                        @if ($resellers->isNotEmpty())
+                                            <td class="py-3" x-show="!editing"><x-admin.owner-tag :reseller="$order->reseller" /></td>
+                                        @endif
                                         <td class="py-3 text-gray-700 dark:text-gray-300" x-show="!editing">{{ $order->plan->name ?? 'N/A' }}</td>
                                         <td class="py-3 text-gray-800 dark:text-white/90" x-show="!editing">{{ \App\Helpers\PriceHelper::format($order->amount) }} {{ $order->currency }}</td>
                                         <td class="py-3" x-show="!editing">
@@ -130,7 +139,7 @@
                                                 </button>
                                             </div>
                                         </td>
-                                        <td colspan="8" x-show="editing" x-cloak class="bg-gray-50 dark:bg-gray-800/50 p-4">
+                                        <td colspan="{{ $resellers->isNotEmpty() ? 9 : 8 }}" x-show="editing" x-cloak class="bg-gray-50 dark:bg-gray-800/50 p-4">
                                             <form action="{{ route('settings.payment-orders.update', $order) }}" method="POST" class="space-y-3">
                                                 @csrf @method('PUT')
                                                 <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
