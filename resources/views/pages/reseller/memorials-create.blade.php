@@ -3,7 +3,38 @@
 @section('content')
     <x-common.page-breadcrumb pageTitle="Create Memorial for a Client" />
 
+    @if (session('error'))
+        <div class="mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">{{ session('error') }}</div>
+    @endif
+
+    @php $remaining = $reseller->memorialsRemaining(); @endphp
+
+    @if ($remaining === 0)
+        {{-- Out of quota: replace the form rather than disable it. A form you can fill in
+             but never submit is worse than no form. --}}
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] px-6 py-12 text-center">
+            <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.75v5M12 16h.01"/></svg>
+            <p class="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">You've used all {{ number_format($reseller->memorialAllowance()) }} profiles in your {{ $reseller->tier?->name ?? 'current' }} tier</p>
+            <p class="mx-auto mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400">
+                Your existing memorials are unaffected. Get in touch to raise your allowance
+                @if ($reseller->tier?->price_per_additional_profile > 0)
+                    — additional profiles are {{ \App\Helpers\PriceHelper::format($reseller->tier->price_per_additional_profile) }} each.
+                @else
+                    .
+                @endif
+            </p>
+            <a href="{{ route('reseller.memorials') }}" class="btn btn-secondary btn-md mt-5">Back to memorials</a>
+        </div>
+    @else
     <x-common.component-card title="Client &amp; Memorial Details" desc="We'll invite the client by email so they can manage the memorial too.">
+        @if ($remaining !== null && $remaining <= 5)
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/25 dark:bg-amber-900/20">
+                <p class="text-sm text-amber-800 dark:text-amber-300">
+                    {{ $remaining }} of {{ number_format($reseller->memorialAllowance()) }} profiles left in your {{ $reseller->tier?->name }} tier.
+                </p>
+            </div>
+        @endif
+
         <form action="{{ route('reseller.memorials.store') }}" method="POST" class="space-y-5">
             @csrf
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -58,4 +89,5 @@
             </div>
         </form>
     </x-common.component-card>
+    @endif
 @endsection

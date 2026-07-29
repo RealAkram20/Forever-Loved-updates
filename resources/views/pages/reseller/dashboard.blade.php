@@ -32,8 +32,20 @@
             <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-500 mb-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
             </div>
-            <h3 class="text-2xl font-bold text-gray-800 dark:text-white/90">{{ $memorialCount }}</h3>
+            <h3 class="text-2xl font-bold text-gray-800 dark:text-white/90">
+                {{ $memorialCount }}@if ($memorialAllowance !== null)<span class="text-base font-normal text-gray-400 dark:text-gray-500"> / {{ number_format($memorialAllowance) }}</span>@endif
+            </h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Client memorials</p>
+            @if ($memorialAllowance !== null)
+                {{-- A bare count can't tell you you're about to run out. The bar can. --}}
+                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                    <div class="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] {{ $memorialsRemaining === 0 ? 'bg-red-500' : ($memorialsRemaining <= 5 ? 'bg-amber-500' : 'bg-brand-500') }}"
+                        style="width: {{ $memorialAllowance > 0 ? min(100, round($memorialCount / $memorialAllowance * 100)) : 100 }}%"></div>
+                </div>
+                <p class="mt-1.5 text-xs {{ $memorialsRemaining === 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400' }}">
+                    {{ $memorialsRemaining === 0 ? 'Allowance used up' : $memorialsRemaining.' remaining' }}
+                </p>
+            @endif
         </div>
         <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-4 sm:p-5">
             <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-500 mb-2">

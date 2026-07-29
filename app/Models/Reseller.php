@@ -109,6 +109,49 @@ class Reseller extends Model
         return $this->status === self::STATUS_ACTIVE;
     }
 
+    /*
+     |--------------------------------------------------------------------------
+     | Tier entitlements
+     |--------------------------------------------------------------------------
+     | A tier is what the platform sold this reseller. Everything below reads from
+     | it so the answer to "are they allowed to?" lives in one place.
+     |
+     | Two deliberately different defaults for a reseller with no tier assigned:
+     | features are denied (they were never granted, and the widget already failed
+     | closed this way), but quotas are treated as unmetered. Blocking creation
+     | outright would make a freshly created reseller unusable until an admin
+     | performs a second, easily forgotten step.
+     */
+
+    public function tierAllows(string $feature): bool
+    {
+        return (bool) ($this->tier?->{'feature_'.$feature} ?? false);
+    }
+
+    /** Included memorial profiles, or null for unlimited / unmetered. */
+    public function memorialAllowance(): ?int
+    {
+        return $this->tier?->memorial_profile_allowance;
+    }
+
+    public function memorialsUsed(): int
+    {
+        return $this->memorials()->count();
+    }
+
+    /** Profiles left before overage, or null when there is no cap to run out of. */
+    public function memorialsRemaining(): ?int
+    {
+        $allowance = $this->memorialAllowance();
+
+        return $allowance === null ? null : max(0, $allowance - $this->memorialsUsed());
+    }
+
+    public function hasMemorialCapacity(): bool
+    {
+        return $this->memorialsRemaining() !== 0;
+    }
+
     /**
      * Constrain any reseller_id-bearing query from a request filter value. Shared by the
      * platform-wide Users / Memorials / Plans / Payment Orders lists, which all span both

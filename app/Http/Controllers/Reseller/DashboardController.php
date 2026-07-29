@@ -17,7 +17,9 @@ class DashboardController extends Controller
         return view('pages.reseller.dashboard', [
             'title' => 'Reseller Dashboard',
             'reseller' => $reseller,
-            'memorialCount' => Memorial::where('reseller_id', $reseller->id)->count(),
+            'memorialCount' => $reseller->memorialsUsed(),
+            'memorialAllowance' => $reseller->memorialAllowance(),
+            'memorialsRemaining' => $reseller->memorialsRemaining(),
             'clientCount' => User::where('reseller_id', $reseller->id)
                 ->whereHas('roles', fn ($q) => $q->where('name', 'user'))->count(),
             'planCount' => $reseller->plans()->count(),
@@ -41,6 +43,7 @@ class DashboardController extends Controller
     {
         return view('pages.reseller.memorials-create', [
             'title' => 'Create Memorial for a Client',
+            'reseller' => $request->user()->reseller()->with('tier')->first(),
         ]);
     }
 
@@ -63,7 +66,18 @@ class DashboardController extends Controller
             'is_public' => ['nullable', 'boolean'],
         ]);
 
-        $reseller = $request->user()->reseller;
+        $reseller = $request->user()->reseller()->with('tier')->first();
+
+        // Checked here rather than only in the view: this is the single path that ever
+        // stamps reseller_id onto a memorial, so it is the only place the tier's included
+        // quota can actually be held. A disabled button is a courtesy, not a control.
+        if (! $reseller->hasMemorialCapacity()) {
+            return back()->withInput()->with('error', sprintf(
+                'You have used all %d memorial profiles included in the %s tier. Contact us to raise your allowance.',
+                $reseller->memorialAllowance(),
+                $reseller->tier?->name ?? 'current'
+            ));
+        }
 
         $client = User::where('email', strtolower($validated['client_email']))->first();
         if (! $client) {

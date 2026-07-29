@@ -20,10 +20,15 @@ class SettingsController extends Controller
 {
     public function edit(Request $request)
     {
+        $reseller = $request->user()->reseller()->with('tier')->first();
+
         return view('pages.reseller.settings', [
             'title' => 'Settings',
-            'reseller' => $request->user()->reseller,
+            'reseller' => $reseller,
+            // Two independent gates: the platform must offer custom domains at all, and
+            // this reseller's tier must include domain routing. Both have to hold.
             'domainsEnabled' => SystemSetting::get('domains.custom_domains_enabled', false),
+            'domainRoutingInTier' => $reseller->tierAllows('domain_routing'),
             'domainTargetHost' => SystemSetting::get('domains.target_host', ''),
         ]);
     }
@@ -41,7 +46,13 @@ class SettingsController extends Controller
 
     public function updateCustomDomain(Request $request, DomainVerificationService $domains)
     {
-        $reseller = $request->user()->reseller;
+        $reseller = $request->user()->reseller()->with('tier')->first();
+
+        abort_unless(
+            SystemSetting::get('domains.custom_domains_enabled', false) && $reseller->tierAllows('domain_routing'),
+            403,
+            'Custom domains are not included in your current tier.'
+        );
 
         $validated = $request->validate([
             'custom_domain' => [
@@ -63,7 +74,13 @@ class SettingsController extends Controller
 
     public function verifyCustomDomain(Request $request, DomainVerificationService $domains)
     {
-        $reseller = $request->user()->reseller;
+        $reseller = $request->user()->reseller()->with('tier')->first();
+
+        abort_unless(
+            SystemSetting::get('domains.custom_domains_enabled', false) && $reseller->tierAllows('domain_routing'),
+            403,
+            'Custom domains are not included in your current tier.'
+        );
 
         if (! $reseller->custom_domain) {
             return back()->with('error', 'Add a custom domain first.');

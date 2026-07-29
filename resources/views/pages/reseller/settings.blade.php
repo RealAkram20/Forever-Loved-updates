@@ -44,6 +44,20 @@
         <x-common.component-card title="Custom Domain" desc="Use your own domain for your memorial pages instead of your {{ $reseller->slug }}.{{ config('reseller.domain') }} subdomain.">
             @if (! $domainsEnabled)
                 <p class="text-sm text-gray-500 dark:text-gray-400">This isn't turned on yet — ask your platform admin to enable custom domains.</p>
+            @elseif (! $domainRoutingInTier)
+                {{-- Distinct from the message above on purpose: "not available yet" and
+                     "not in what you bought" call for different next steps. --}}
+                <div class="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-white/[0.03] p-4">
+                    <svg class="mt-0.5 h-4 w-4 shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 10.5V7.5a5 5 0 0 1 10 0v3M5.75 10.5h12.5a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H5.75a1.5 1.5 0 0 1-1.5-1.5v-7a1.5 1.5 0 0 1 1.5-1.5Z"/></svg>
+                    <div>
+                        <p class="text-sm font-medium text-gray-800 dark:text-white/90">Not included in your {{ $reseller->tier?->name ?? 'current' }} tier</p>
+                        <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                            Your memorials stay available at
+                            <span class="font-mono">{{ $reseller->slug }}.{{ config('reseller.domain') }}</span>.
+                            Get in touch if you'd like to use your own domain.
+                        </p>
+                    </div>
+                </div>
             @else
                 <form action="{{ route('reseller.settings.domain.update') }}" method="POST" class="max-w-md space-y-4">
                     @csrf @method('PUT')

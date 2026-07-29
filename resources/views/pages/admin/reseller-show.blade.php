@@ -54,10 +54,21 @@
         </div>
     @endunless
 
+    @php $allowance = $reseller->memorialAllowance(); $remaining = $reseller->memorialsRemaining(); @endphp
+
+    @if ($remaining === 0)
+        <div class="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/25 dark:bg-red-900/20">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.75v5M12 16h.01"/></svg>
+            <p class="text-sm text-red-800 dark:text-red-300">
+                At their tier limit — {{ number_format($allowance) }} of {{ number_format($allowance) }} profiles used. They can't create new memorials until you raise the allowance or move them to a larger tier.
+            </p>
+        </div>
+    @endif
+
     {{-- Counts --}}
     <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         @foreach ([
-            ['label' => 'Memorials', 'value' => number_format($reseller->memorials_count)],
+            ['label' => 'Memorials', 'value' => number_format($reseller->memorials_count).($allowance !== null ? ' / '.number_format($allowance) : '')],
             ['label' => 'Staff', 'value' => number_format($reseller->staff_count)],
             ['label' => 'Plans', 'value' => number_format($reseller->plans_count)],
             ['label' => 'Collected', 'value' => \App\Helpers\PriceHelper::format($revenue)],

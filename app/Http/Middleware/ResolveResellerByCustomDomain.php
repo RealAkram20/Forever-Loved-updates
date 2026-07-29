@@ -13,6 +13,12 @@ use Symfony\Component\HttpFoundation\Response;
  * group in routes/web.php, which is registered after the subdomain pattern so it only ever
  * sees genuinely different hostnames. Only a verified domain resolves; anything else 404s,
  * since an unverified/failed domain hasn't proven DNS ownership yet.
+ *
+ * Deliberately does NOT re-check tier.feature_domain_routing. Setting a domain up requires
+ * the entitlement (Reseller\SettingsController), but once verified it keeps serving even if
+ * the reseller is later downgraded — pulling a live domain would dark a published memorial
+ * page for the family visiting it, which is too harsh a consequence for a billing change.
+ * Downgrades are handled by talking to the reseller, not by 404ing their mourners.
  */
 class ResolveResellerByCustomDomain
 {
