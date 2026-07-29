@@ -27,6 +27,8 @@ class User extends Authenticatable
         'push_notifications_enabled',
         'email_notifications_enabled',
         'in_app_notifications_enabled',
+        'reseller_id',
+        'original_reseller_id',
     ];
 
     protected $appends = [
@@ -76,6 +78,11 @@ class User extends Authenticatable
     public function memorials(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Memorial::class);
+    }
+
+    public function reseller(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Reseller::class);
     }
 
     public function tributes(): \Illuminate\Database\Eloquent\Relations\HasMany

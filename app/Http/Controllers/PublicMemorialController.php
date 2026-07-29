@@ -28,6 +28,35 @@ class PublicMemorialController extends Controller
 
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
 
+        return $this->renderMemorial($memorial);
+    }
+
+    /**
+     * Display a memorial on its reseller's white-labeled subdomain, or on their own
+     * verified custom domain (same action either way). Scoped strictly to that
+     * reseller's own memorials — without the reseller_id constraint, any reseller
+     * subdomain could serve any platform memorial by slug, defeating white-labeling.
+     * No CMS-page fallback here: these are memorial-pages-only in Phase 1.
+     *
+     * $reseller is unused — the actual reseller comes from the container binding set by
+     * ResolveReseller/ResolveResellerByCustomDomain. It MUST stay the first parameter
+     * though: Laravel splices route parameters into controller args positionally (by
+     * route-parameter order — domain-level params first, then URI params — not by name),
+     * so this needs to occupy the same slot the domain-level placeholder always fills for
+     * both routes that call this action ({reseller} on the subdomain route, {domain} on
+     * the custom-domain route), whatever that value happens to be, with $slug second.
+     */
+    public function showForReseller(string $reseller, string $slug)
+    {
+        $resolvedReseller = app(\App\Models\Reseller::class);
+
+        $memorial = Memorial::where('slug', $slug)->where('reseller_id', $resolvedReseller->id)->firstOrFail();
+
+        return $this->renderMemorial($memorial);
+    }
+
+    private function renderMemorial(Memorial $memorial)
+    {
         // Allow owner to view their own memorial even if private
         if (!$memorial->is_public && $memorial->user_id !== auth()->id()) {
             abort(404);
@@ -59,8 +88,6 @@ class PublicMemorialController extends Controller
         $stats = MemorialStatsHelper::get($memorial);
         $tributeCounts = $this->getTributeTypeCounts($memorial);
 
-        // Owner-only nudge: paid-plan checkout was started but never completed
-        // (Phase-2 dedup guarantees at most one pending order per purchase).
         $pendingPaymentOrder = null;
         if (auth()->id() && auth()->id() === $memorial->user_id) {
             $pendingPaymentOrder = \App\Models\PaymentOrder::where('memorial_id', $memorial->id)

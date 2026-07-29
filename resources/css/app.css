@@ -11,6 +11,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * html gets the `dark` class synchronously in <head>, before <body> exists, so a
+ * JS-driven `body.classList.add('dark', 'bg-gray-900')` always lags until Alpine
+ * boots — causing a visible flash of the light background on slower-loading pages.
+ * A plain CSS rule has no such timing gap: it applies the instant html.dark exists.
+ */
+html.dark body {
+    background-color: #101828;
+}
+
 @theme {
   --font-*: initial;
   --font-outfit: Outfit, sans-serif;

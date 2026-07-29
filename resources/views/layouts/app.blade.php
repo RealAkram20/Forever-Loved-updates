@@ -37,13 +37,10 @@
                 },
                 updateTheme() {
                     const html = document.documentElement;
-                    const body = document.body;
                     if (this.theme === 'dark') {
                         html.classList.add('dark');
-                        body.classList.add('dark', 'bg-gray-900');
                     } else {
                         html.classList.remove('dark');
-                        body.classList.remove('dark', 'bg-gray-900');
                     }
                 }
             });
@@ -97,17 +94,17 @@
         });
     </script>
 
-    <!-- Apply theme immediately to prevent flash -->
+    <!-- Apply theme immediately to prevent flash. body's dark background is handled
+         by a plain CSS rule (html.dark body) instead of a class here, since document.body
+         doesn't exist yet at this point in <head> parsing. -->
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
             const theme = savedTheme || window.__defaultTheme || 'light';
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
-                if (document.body) document.body.classList.add('dark', 'bg-gray-900');
             } else {
                 document.documentElement.classList.remove('dark');
-                if (document.body) document.body.classList.remove('dark', 'bg-gray-900');
             }
         })();
     </script>
@@ -241,6 +238,19 @@
                 'ml-0': $store.sidebar.isMobileOpen
             }">
             @include('layouts.app-header')
+
+            @if (session('impersonator_id'))
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-amber-500 px-4 py-2.5 text-sm text-white md:px-6">
+                    <span>Viewing as <strong>{{ auth()->user()->reseller?->name ?? auth()->user()->name }}</strong> (reseller).</span>
+                    <form action="{{ route('reseller.stop-impersonating') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="rounded-lg bg-white/20 px-3 py-1 font-medium hover:bg-white/30 transition">
+                            Return to Admin
+                        </button>
+                    </form>
+                </div>
+            @endif
+
             <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 dark:bg-gray-900">
                 @yield('content')
             </div>

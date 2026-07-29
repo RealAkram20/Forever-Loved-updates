@@ -1,0 +1,259 @@
+@extends('layouts.app')
+
+@section('content')
+    {{-- Header --}}
+    <div class="mb-6">
+        <a href="{{ route('settings.resellers') }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors duration-150 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l-6 6 6 6"/></svg>
+            All resellers
+        </a>
+
+        <div class="mt-3 flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">{{ $reseller->name }}</h2>
+                    <x-admin.status-badge :status="$reseller->status" />
+                </div>
+                <p class="mt-1 font-mono text-sm text-gray-500 dark:text-gray-400">{{ $reseller->slug }}.{{ config('reseller.domain') }}</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <form action="{{ route('settings.resellers.login-as', $reseller) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary btn-md">Log in as owner</button>
+                </form>
+                @if ($reseller->isActive())
+                    <form action="{{ route('settings.resellers.suspend', $reseller) }}" method="POST"
+                        onsubmit="return confirm('Suspend {{ addslashes($reseller->name) }}? Their public memorials and subdomain keep working — only their own dashboard access is blocked.')">
+                        @csrf
+                        <button type="submit" class="btn btn-danger-soft btn-md">Suspend</button>
+                    </form>
+                @else
+                    <form action="{{ route('settings.resellers.activate', $reseller) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-primary btn-md">Reactivate</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    @if (session('success'))
+        <div class="mb-4 rounded-lg bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-700 dark:text-green-400">{{ session('success') }}</div>
+    @endif
+    @if (session('error'))
+        <div class="mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">{{ session('error') }}</div>
+    @endif
+
+    @unless ($reseller->isActive())
+        <div class="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/25 dark:bg-amber-900/20">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 8.5v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+            <p class="text-sm text-amber-800 dark:text-amber-300">
+                This reseller is suspended. Their staff can't sign in, but every public memorial page and their subdomain keep serving as normal.
+            </p>
+        </div>
+    @endunless
+
+    {{-- Counts --}}
+    <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        @foreach ([
+            ['label' => 'Memorials', 'value' => number_format($reseller->memorials_count)],
+            ['label' => 'Staff', 'value' => number_format($reseller->staff_count)],
+            ['label' => 'Plans', 'value' => number_format($reseller->plans_count)],
+            ['label' => 'Collected', 'value' => \App\Helpers\PriceHelper::format($revenue)],
+        ] as $stat)
+            <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] px-5 py-4">
+                <p class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ $stat['label'] }}</p>
+                <p class="mt-1.5 text-2xl font-semibold tabular-nums text-gray-800 dark:text-white/90">{{ $stat['value'] }}</p>
+            </div>
+        @endforeach
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        {{-- ─── Left column: what they've actually built ─────────────── --}}
+        <div class="space-y-6 xl:col-span-2">
+            <x-common.component-card title="Memorials" desc="The 10 most recent memorials hosted under this reseller.">
+                @if ($memorials->isEmpty())
+                    <p class="py-4 text-sm text-gray-500 dark:text-gray-400">No memorials yet.</p>
+                @else
+                    <ul class="-my-2 divide-y divide-gray-100 dark:divide-gray-800">
+                        @foreach ($memorials as $memorial)
+                            <li class="flex items-center justify-between gap-4 py-3">
+                                <div class="min-w-0">
+                                    <a href="{{ route('memorials.show', $memorial) }}" class="block truncate text-sm font-medium text-gray-800 transition-colors duration-150 hover:text-brand-500 dark:text-white/90 dark:hover:text-brand-400">
+                                        {{ $memorial->full_name }}
+                                    </a>
+                                    <p class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">{{ $memorial->owner->name ?? 'No owner' }}</p>
+                                </div>
+                                <span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ $memorial->created_at?->format('M j, Y') }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if ($reseller->memorials_count > $memorials->count())
+                        <p class="pt-4 text-xs text-gray-500 dark:text-gray-400">
+                            Showing {{ $memorials->count() }} of {{ number_format($reseller->memorials_count) }}.
+                        </p>
+                    @endif
+                @endif
+            </x-common.component-card>
+
+            <x-common.component-card title="Their plans" desc="What this reseller sells to their own clients. They control these; you only see them.">
+                @if ($plans->isEmpty())
+                    <p class="py-4 text-sm text-gray-500 dark:text-gray-400">They haven't published any plans yet.</p>
+                @else
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        @foreach ($plans as $plan)
+                            <div class="rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3">
+                                <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ $plan->name }}</p>
+                                <p class="mt-0.5 text-sm tabular-nums text-gray-500 dark:text-gray-400">{{ \App\Helpers\PriceHelper::format($plan->price) }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-common.component-card>
+
+            <x-common.component-card title="Recent payments" desc="Orders placed against this reseller's plans.">
+                @if ($orders->isEmpty())
+                    <p class="py-4 text-sm text-gray-500 dark:text-gray-400">No payments recorded yet.</p>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[28rem] text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-100 dark:border-gray-800">
+                                    <th class="pb-2 text-left text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Date</th>
+                                    <th class="pb-2 text-left text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Client</th>
+                                    <th class="pb-2 text-right text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Amount</th>
+                                    <th class="pb-2 text-right text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                @foreach ($orders as $order)
+                                    <tr>
+                                        <td class="py-2.5 text-gray-500 dark:text-gray-400">{{ $order->created_at?->format('M j, Y') }}</td>
+                                        <td class="py-2.5 text-gray-800 dark:text-white/90">{{ $order->user->name ?? 'Deleted user' }}</td>
+                                        <td class="py-2.5 text-right tabular-nums text-gray-800 dark:text-white/90">{{ \App\Helpers\PriceHelper::format($order->amount) }} {{ $order->currency }}</td>
+                                        <td class="py-2.5 text-right">
+                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                                                {{ $order->status === 'completed' ? 'bg-green-50 text-green-700 dark:bg-green-900/25 dark:text-green-400' : '' }}
+                                                {{ $order->status === 'pending' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/25 dark:text-amber-400' : '' }}
+                                                {{ in_array($order->status, ['failed', 'cancelled']) ? 'bg-red-50 text-red-700 dark:bg-red-900/25 dark:text-red-400' : '' }}">
+                                                {{ ucfirst($order->status) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </x-common.component-card>
+        </div>
+
+        {{-- ─── Right column: what you control ───────────────────────── --}}
+        <div class="space-y-6">
+            <x-common.component-card title="Account">
+                <dl class="space-y-4 text-sm">
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Owner</dt>
+                        <dd class="mt-1 text-gray-800 dark:text-white/90">{{ $reseller->owner?->name ?? '—' }}</dd>
+                        @if ($reseller->owner)
+                            <dd class="text-xs text-gray-500 dark:text-gray-400">{{ $reseller->owner->email }}</dd>
+                        @endif
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Joined</dt>
+                        <dd class="mt-1 text-gray-800 dark:text-white/90">{{ $reseller->created_at?->format('F j, Y') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Own payment gateway</dt>
+                        <dd class="mt-1 text-gray-800 dark:text-white/90">
+                            {{ $reseller->pesapal_enabled ? 'Pesapal ('.($reseller->pesapal_environment ?: 'unset').')' : 'Platform default' }}
+                        </dd>
+                    </div>
+                </dl>
+
+                <form action="{{ route('settings.resellers.update', $reseller) }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-5">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="name" value="{{ $reseller->name }}">
+                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Tier</label>
+                    <div class="flex gap-2">
+                        <select name="reseller_tier_id"
+                            class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden">
+                            <option value="">No tier</option>
+                            @foreach ($tiers as $tier)
+                                <option value="{{ $tier->id }}" {{ $reseller->reseller_tier_id === $tier->id ? 'selected' : '' }}>{{ $tier->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="submit" class="btn btn-secondary btn-md">Save</button>
+                    </div>
+                    @if ($reseller->tier)
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            {{ \App\Helpers\PriceHelper::format($reseller->tier->annual_price) }}/yr &middot;
+                            {{ $reseller->tier->memorial_profile_allowance ?? 'Unlimited' }} profiles included
+                        </p>
+                    @endif
+                </form>
+            </x-common.component-card>
+
+            <x-common.component-card title="Custom domain">
+                @if ($reseller->custom_domain)
+                    <div>
+                        <p class="font-mono text-sm text-gray-800 dark:text-white/90">{{ $reseller->custom_domain }}</p>
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                            <x-admin.domain-badge :status="$reseller->custom_domain_status" />
+                            @if ($reseller->custom_domain_verified_at)
+                                <span class="text-xs text-gray-500 dark:text-gray-400">since {{ $reseller->custom_domain_verified_at->format('M j, Y') }}</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if ($reseller->custom_domain_status !== \App\Models\Reseller::DOMAIN_VERIFIED)
+                        <form action="{{ route('settings.resellers.verify-domain', $reseller) }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-5"
+                            onsubmit="return confirm('Mark this domain verified? Only do this once you have confirmed the DNS is correct yourself — it skips the TXT-record check entirely.')">
+                            @csrf
+                            <button type="submit" class="btn btn-secondary btn-sm">Mark verified manually</button>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                A support override for when DNS propagation lag is hiding a TXT record that's already correct.
+                            </p>
+                        </form>
+                    @endif
+                @else
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        They're using their {{ config('reseller.domain') }} subdomain. A custom domain is set up by the reseller from their own settings.
+                    </p>
+                @endif
+            </x-common.component-card>
+
+            {{-- Partnership lifecycle. Deliberately not on the roster's row menu — these
+                 reassign every client and memorial and need their consequence spelled out. --}}
+            <div class="rounded-2xl border border-red-200 dark:border-red-500/25 bg-white dark:bg-white/[0.03]">
+                <div class="px-6 py-5">
+                    <h3 class="text-base font-medium text-gray-800 dark:text-white/90">Partnership</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">For when the agreement with this reseller ends or resumes.</p>
+                </div>
+                <div class="space-y-5 border-t border-gray-100 dark:border-gray-800 p-6">
+                    <form action="{{ route('settings.resellers.rollover', $reseller) }}" method="POST"
+                        onsubmit="return confirm('Roll over every client and memorial to direct platform ownership? This is meant for when the partnership has ended. It can be reversed with Restore.')">
+                        @csrf
+                        <button type="submit" class="btn btn-danger-soft btn-sm">Roll over clients</button>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            Moves all {{ number_format($reseller->staff_count) }} accounts and {{ number_format($reseller->memorials_count) }} memorials to direct platform ownership. Nothing is deleted, and the original link is remembered so this can be undone.
+                        </p>
+                    </form>
+
+                    <form action="{{ route('settings.resellers.restore', $reseller) }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-5">
+                        @csrf
+                        <button type="submit" class="btn btn-secondary btn-sm" @disabled($rolledOverCount === 0)>Restore clients</button>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            @if ($rolledOverCount > 0)
+                                Reassigns the {{ number_format($rolledOverCount) }} previously rolled-over account(s) back to this reseller.
+                            @else
+                                Nothing to restore — no accounts have been rolled over.
+                            @endif
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection

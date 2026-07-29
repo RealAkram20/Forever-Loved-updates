@@ -180,7 +180,7 @@ class SettingsController extends Controller
 
     public function destroyRole(Role $role)
     {
-        if (in_array($role->name, ['super-admin', 'admin', 'user'])) {
+        if (in_array($role->name, ['super-admin', 'admin', 'user', 'reseller'])) {
             return back()->with('error', 'Cannot delete system roles.');
         }
 
@@ -780,6 +780,9 @@ class SettingsController extends Controller
 
         return back()->with('success', 'Subscription updated.');
     }
+
+    // Custom-domain settings moved to Admin\ResellerSettingsController — they're part of
+    // the reseller program, not platform-wide config, and now live on its Settings page.
 
     // ─── System Updates ─────────────────────────────────────────────
 

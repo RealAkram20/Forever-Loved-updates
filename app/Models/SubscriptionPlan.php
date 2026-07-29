@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SubscriptionPlan extends Model
@@ -11,6 +12,7 @@ class SubscriptionPlan extends Model
     use HasFactory;
 
     protected $fillable = [
+        'reseller_id',
         'name',
         'slug',
         'description',
@@ -58,18 +60,39 @@ class SubscriptionPlan extends Model
     }
 
     /**
-     * The plan the pricing views badge as "Most Popular" and preselect.
-     * At most one plan carries the flag; admin sets it in Settings → Plans.
+     * The plan the pricing views badge as "Most Popular" and preselect, scoped to the
+     * platform's own global plans (reseller_id null) unless a reseller is given.
+     * At most one plan per scope carries the flag; admin sets it in Settings → Plans.
      */
-    public static function popular(): ?self
+    public static function popular(?int $resellerId = null): ?self
     {
-        return static::query()->where('is_active', true)->where('is_popular', true)->first();
+        return static::query()->where('is_active', true)->where('is_popular', true)
+            ->where('reseller_id', $resellerId)->first();
     }
 
-    /** Clear the flag everywhere else — "most popular" is a single choice. */
+    /**
+     * Clear the flag on every other plan in the same scope (global vs. this reseller's own) —
+     * "most popular" is a single choice per scope, not across the whole platform.
+     */
     public function makeSolePopular(): void
     {
-        static::query()->where('id', '!=', $this->id)->where('is_popular', true)->update(['is_popular' => false]);
+        static::query()->where('id', '!=', $this->id)->where('is_popular', true)
+            ->where('reseller_id', $this->reseller_id)->update(['is_popular' => false]);
+    }
+
+    public function scopeGlobal($query)
+    {
+        return $query->whereNull('reseller_id');
+    }
+
+    public function scopeForReseller($query, int $resellerId)
+    {
+        return $query->where('reseller_id', $resellerId);
+    }
+
+    public function reseller(): BelongsTo
+    {
+        return $this->belongsTo(Reseller::class);
     }
 
     public function subscriptions(): HasMany

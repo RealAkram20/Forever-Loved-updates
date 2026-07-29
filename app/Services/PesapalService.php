@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Reseller;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ class PesapalService
     private string $consumerSecret;
     private ?string $token = null;
     private ?int $tokenExpiresAt = null;
+    private ?Reseller $reseller = null;
 
     public function __construct()
     {
@@ -24,6 +26,28 @@ class PesapalService
         $this->consumerSecret = SystemSetting::get('payments.pesapal_consumer_secret', '');
     }
 
+    /**
+     * Client money for a reseller's memorials flows through the reseller's own Pesapal
+     * account, not the platform's. When the given reseller has their own credentials
+     * configured, use them; otherwise fall through to the platform's global credentials
+     * (SystemSetting) so platform-direct checkouts are unaffected.
+     */
+    public static function forReseller(?Reseller $reseller): self
+    {
+        $service = new self();
+
+        if ($reseller && $reseller->pesapal_enabled && $reseller->pesapal_consumer_key && $reseller->pesapal_consumer_secret) {
+            $service->reseller = $reseller;
+            $service->baseUrl = $reseller->pesapal_environment === 'live'
+                ? 'https://pay.pesapal.com/v3'
+                : 'https://cybqa.pesapal.com/pesapalv3';
+            $service->consumerKey = $reseller->pesapal_consumer_key;
+            $service->consumerSecret = $reseller->pesapal_consumer_secret;
+        }
+
+        return $service;
+    }
+
     public function isConfigured(): bool
     {
         return ! empty($this->consumerKey) && ! empty($this->consumerSecret);
@@ -31,6 +55,10 @@ class PesapalService
 
     public function isEnabled(): bool
     {
+        if ($this->reseller) {
+            return $this->reseller->pesapal_enabled && $this->isConfigured();
+        }
+
         return (bool) SystemSetting::get('payments.pesapal_enabled', false) && $this->isConfigured();
     }
 
@@ -151,7 +179,11 @@ class PesapalService
             return ['success' => false, 'error' => $this->errorMessage($data, 'IPN registration failed.')];
         }
 
-        SystemSetting::set('payments.pesapal_ipn_id', $data['ipn_id']);
+        if ($this->reseller) {
+            $this->reseller->update(['pesapal_ipn_id' => $data['ipn_id']]);
+        } else {
+            SystemSetting::set('payments.pesapal_ipn_id', $data['ipn_id']);
+        }
 
         return [
             'success' => true,
@@ -199,7 +231,9 @@ class PesapalService
      */
     public function ensureIpnId(): ?string
     {
-        $ipnId = trim((string) SystemSetting::get('payments.pesapal_ipn_id', ''));
+        $ipnId = $this->reseller
+            ? trim((string) $this->reseller->pesapal_ipn_id)
+            : trim((string) SystemSetting::get('payments.pesapal_ipn_id', ''));
         if ($ipnId !== '') {
             return $ipnId;
         }

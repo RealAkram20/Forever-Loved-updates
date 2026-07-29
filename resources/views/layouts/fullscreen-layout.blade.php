@@ -45,13 +45,10 @@
                 },
                 updateTheme() {
                     const html = document.documentElement;
-                    const body = document.body;
                     if (this.theme === 'dark') {
                         html.classList.add('dark');
-                        body.classList.add('dark', 'bg-gray-900');
                     } else {
                         html.classList.remove('dark');
-                        body.classList.remove('dark', 'bg-gray-900');
                     }
                 }
             });
@@ -87,17 +84,17 @@
         });
     </script>
 
-    <!-- Apply theme immediately to prevent flash -->
+    <!-- Apply theme immediately to prevent flash. body's dark background is handled
+         by a plain CSS rule (html.dark body) instead of a class here, since document.body
+         doesn't exist yet at this point in <head> parsing. -->
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
             const theme = savedTheme || window.__defaultTheme || 'light';
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
-                if (document.body) document.body.classList.add('dark', 'bg-gray-900');
             } else {
                 document.documentElement.classList.remove('dark');
-                if (document.body) document.body.classList.remove('dark', 'bg-gray-900');
             }
         })();
     </script>

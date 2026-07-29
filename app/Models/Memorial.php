@@ -23,6 +23,8 @@ class Memorial extends Model
 
     protected $fillable = [
         'user_id',
+        'reseller_id',
+        'original_reseller_id',
         'slug',
         'title',
         'full_name',
@@ -125,6 +127,11 @@ class Memorial extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function reseller(): BelongsTo
+    {
+        return $this->belongsTo(Reseller::class);
     }
 
     public function subscriptionPlan(): BelongsTo
@@ -275,7 +282,8 @@ class Memorial extends Model
     }
 
     /**
-     * Check if a user can edit this memorial (owner, collaborator with editor role, or admin).
+     * Check if a user can edit this memorial (owner, collaborator with editor role, admin, or
+     * reseller staff managing their own tenant's memorial).
      */
     public function canBeEditedBy(?User $user): bool
     {
@@ -291,11 +299,27 @@ class Memorial extends Model
             return true;
         }
 
+        if ($this->isManagedByResellerStaff($user)) {
+            return true;
+        }
+
         return $this->collaborators()
             ->where('user_id', $user->id)
             ->where('role', 'editor')
             ->whereNotNull('accepted_at')
             ->exists();
+    }
+
+    /**
+     * Reseller staff manage every memorial under their own tenant, regardless of which
+     * end-client user actually owns it. Shared by canBeEditedBy() and MemorialPolicy so the
+     * rule lives in exactly one place.
+     */
+    public function isManagedByResellerStaff(User $user): bool
+    {
+        return $this->reseller_id !== null
+            && $user->reseller_id === $this->reseller_id
+            && $user->hasRole('reseller');
     }
 
     public function galleryMedia()

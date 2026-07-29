@@ -2,11 +2,38 @@
 
 namespace App\Helpers;
 
+use App\Models\Reseller;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Storage;
 
 class BrandingHelper
 {
+    /**
+     * Per-reseller branding override. Active inside the public reseller-subdomain route
+     * group (ResolveReseller binds the resolved Reseller into the container there), and
+     * falls back to the logged-in user's own reseller everywhere else in the authenticated
+     * app — so a reseller's staff and their clients see the same branding on every page
+     * they can reach (dashboard, memorial editing, notifications, ...), not just the
+     * /reseller/* staff routes that happen to bind it explicitly.
+     */
+    private static function tenantOverride(string $key): ?string
+    {
+        $reseller = app()->bound(Reseller::class)
+            ? app(Reseller::class)
+            : auth()->user()?->reseller;
+
+        if (! $reseller) {
+            return null;
+        }
+
+        return match ($key) {
+            'logo_path' => $reseller->logo_path,
+            'favicon_path' => $reseller->favicon_path,
+            'primary_color' => $reseller->primary_color,
+            default => null,
+        } ?: null;
+    }
+
     private static function publicDiskPathUrl(?string $path, string $fallbackAsset): string
     {
         if (empty($path)) {
@@ -21,34 +48,44 @@ class BrandingHelper
     }
 
     /**
-     * Get the logo URL for use in layouts. Returns custom logo if set, else default.
+     * Get the logo URL for use in layouts. Returns the reseller's own logo when resolved,
+     * else the platform's custom logo if set, else the default.
      */
     public static function logoUrl(?string $variant = 'light'): string
     {
         return self::publicDiskPathUrl(
-            SystemSetting::get('branding.logo_path'),
+            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_path'),
             'images/logo/logo.svg'
         );
     }
 
     /**
      * Get the logo URL for dark mode. Uses logo_dark_path if set, else same as light.
+     * Resellers only have a single logo in Phase 1 (no separate dark-mode asset), so
+     * their logo stands in for both variants when resolved.
      */
     public static function logoDarkUrl(): string
     {
         return self::publicDiskPathUrl(
-            SystemSetting::get('branding.logo_dark_path'),
+            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_dark_path'),
             'images/logo/logo-dark.svg'
         );
     }
 
     /**
-     * Get the icon/small logo URL (collapsed sidebar).
+     * Get the icon/small logo URL (collapsed sidebar). The favicon is the square-format
+     * asset actually meant for this size, so it wins if set — same priority order as
+     * faviconUrl() — else the full logo gets used, else the platform's default icon.
      */
     public static function logoIconUrl(): string
     {
+        $favicon = self::tenantOverride('favicon_path') ?? SystemSetting::get('branding.favicon_path');
+        if (! empty($favicon) && Storage::disk('public')->exists($favicon)) {
+            return StorageHelper::publicUrl($favicon) ?? asset('images/logo/logo-icon.svg');
+        }
+
         return self::publicDiskPathUrl(
-            SystemSetting::get('branding.logo_path'),
+            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_path'),
             'images/logo/logo-icon.svg'
         );
     }
@@ -59,7 +96,7 @@ class BrandingHelper
     public static function authLogoUrl(): string
     {
         return self::publicDiskPathUrl(
-            SystemSetting::get('branding.logo_path'),
+            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_path'),
             'images/logo/auth-logo.svg'
         );
     }
@@ -75,17 +112,18 @@ class BrandingHelper
     }
 
     /**
-     * Get the favicon URL.
+     * Get the favicon URL. Reseller's own favicon wins if set, else their logo, else the
+     * platform's favicon/logo, else the default.
      */
     public static function faviconUrl(): string
     {
-        $favicon = SystemSetting::get('branding.favicon_path');
+        $favicon = self::tenantOverride('favicon_path') ?? SystemSetting::get('branding.favicon_path');
         if (! empty($favicon) && Storage::disk('public')->exists($favicon)) {
             return StorageHelper::publicUrl($favicon) ?? asset('favicon.ico');
         }
 
         return self::publicDiskPathUrl(
-            SystemSetting::get('branding.logo_path'),
+            self::tenantOverride('logo_path') ?? SystemSetting::get('branding.logo_path'),
             'favicon.ico'
         );
     }
@@ -95,7 +133,7 @@ class BrandingHelper
      */
     public static function primaryColor(): string
     {
-        return SystemSetting::get('branding.primary_color', '#465fff');
+        return self::tenantOverride('primary_color') ?? SystemSetting::get('branding.primary_color', '#465fff');
     }
 
     /**
