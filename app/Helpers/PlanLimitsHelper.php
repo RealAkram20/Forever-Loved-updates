@@ -19,14 +19,14 @@ class PlanLimitsHelper
     public static function getEffectivePlan(Memorial $memorial): ?SubscriptionPlan
     {
         if (static::isSubscriptionOverdue($memorial)) {
-            return static::getFreePlan();
+            return static::getFreePlan($memorial->reseller_id);
         }
 
         if ($memorial->subscriptionPlan) {
             return $memorial->subscriptionPlan;
         }
 
-        return static::getFreePlan();
+        return static::getFreePlan($memorial->reseller_id);
     }
 
     /**
@@ -58,11 +58,34 @@ class PlanLimitsHelper
         return ['allowed' => true, 'reason' => null];
     }
 
-    private static function getFreePlan(): ?SubscriptionPlan
+    /**
+     * The plan that governs a memorial when it has none of its own, or its subscription
+     * has lapsed. This decides what a memorial is allowed to do, so which row it resolves
+     * to matters.
+     *
+     * Scoped by tenant: a reseller's own free tier governs their memorials, the platform's
+     * governs the platform's. Unscoped, this returned whichever row the database happened
+     * to yield first — so once resellers publish their own plans, a funeral home's limits
+     * could silently start governing a direct platform memorial, or the reverse.
+     *
+     * A reseller without a free tier of their own falls back to the platform's, so
+     * entitlements never resolve to null and lock a memorial out of its own features.
+     */
+    private static function getFreePlan(?int $resellerId = null): ?SubscriptionPlan
     {
-        return SubscriptionPlan::where('slug', 'free')
-            ->where('is_active', true)
-            ->first();
+        $lookup = function (?int $scope) {
+            return SubscriptionPlan::where('is_active', true)
+                ->when($scope === null,
+                    fn ($q) => $q->whereNull('reseller_id'),
+                    fn ($q) => $q->where('reseller_id', $scope))
+                // An explicit 'free' slug wins; a zero price is the fallback signal.
+                ->where(fn ($q) => $q->where('slug', 'free')->orWhere('price', 0))
+                ->orderByRaw("CASE WHEN slug = 'free' THEN 0 ELSE 1 END")
+                ->orderBy('sort_order')
+                ->first();
+        };
+
+        return ($resellerId !== null ? $lookup($resellerId) : null) ?? $lookup(null);
     }
 
     /**
