@@ -30,16 +30,17 @@
 
         {{-- Program at a glance. Four numbers, no decoration — this is a reference strip,
              not a dashboard, so it stays quiet enough to scan past. --}}
-        <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
             @foreach ([
                 ['label' => 'Resellers', 'value' => $stats['total']],
                 ['label' => 'Active', 'value' => $stats['active']],
                 ['label' => 'Suspended', 'value' => $stats['suspended']],
+                ['label' => 'Payment overdue', 'value' => $stats['overdue'], 'alert' => $stats['overdue'] > 0],
                 ['label' => 'Memorials hosted', 'value' => $stats['memorials']],
             ] as $stat)
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] px-5 py-4">
                     <p class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ $stat['label'] }}</p>
-                    <p class="mt-1.5 text-2xl font-semibold tabular-nums text-gray-800 dark:text-white/90">{{ number_format($stat['value']) }}</p>
+                    <p class="mt-1.5 text-2xl font-semibold tabular-nums {{ !empty($stat['alert']) ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-white/90' }}">{{ number_format($stat['value']) }}</p>
                 </div>
             @endforeach
         </div>
@@ -55,7 +56,7 @@
                 </form>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    @foreach ([['', 'All'], ['active', 'Active'], ['suspended', 'Suspended']] as [$value, $label])
+                    @foreach ([['', 'All'], ['active', 'Active'], ['suspended', 'Suspended'], ['overdue', 'Overdue']] as [$value, $label])
                         <a href="{{ route('settings.resellers', array_filter(['status' => $value, 'q' => request('q')])) }}"
                             class="rounded-full px-3 py-1 text-xs font-medium transition-colors duration-150 {{ request('status', '') === $value ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' }}">
                             {{ $label }}
@@ -86,6 +87,7 @@
                                 <th class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Memorials</th>
                                 <th class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Staff</th>
                                 <th class="px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Plans</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Billing</th>
                                 <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Status</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500"><span class="sr-only">Actions</span></th>
                             </tr>
@@ -112,6 +114,9 @@
                                     <td class="px-3 py-4 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ $reseller->memorials_count }}</td>
                                     <td class="px-3 py-4 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ $reseller->staff_count }}</td>
                                     <td class="px-3 py-4 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ $reseller->plans_count }}</td>
+                                    <td class="px-3 py-4">
+                                        <x-admin.billing-badge :reseller="$reseller" />
+                                    </td>
                                     <td class="px-3 py-4">
                                         <x-admin.status-badge :status="$reseller->status" />
                                     </td>

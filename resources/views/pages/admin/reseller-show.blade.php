@@ -207,6 +207,103 @@
                 </form>
             </x-common.component-card>
 
+            {{-- Billing: what they owe the platform. Not to be confused with "Collected"
+                 above, which is their clients paying them. --}}
+            <x-common.component-card title="Billing">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-2xl font-semibold tabular-nums text-gray-800 dark:text-white/90">
+                            {{ \App\Helpers\PriceHelper::format($reseller->amountDue()) }}
+                        </p>
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">due at renewal</p>
+                    </div>
+                    <x-admin.billing-badge :reseller="$reseller" />
+                </div>
+
+                <dl class="space-y-2 border-t border-gray-100 dark:border-gray-800 pt-5 text-sm">
+                    <div class="flex items-baseline justify-between gap-3">
+                        <dt class="text-gray-500 dark:text-gray-400">{{ $reseller->tier?->name ?? 'No tier' }} annual</dt>
+                        <dd class="tabular-nums text-gray-800 dark:text-white/90">{{ \App\Helpers\PriceHelper::format($reseller->tier?->annual_price ?? 0) }}</dd>
+                    </div>
+                    @if ($reseller->overageProfiles() > 0)
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="text-gray-500 dark:text-gray-400">
+                                {{ $reseller->overageProfiles() }} over allowance
+                                <span class="text-xs">&times; {{ \App\Helpers\PriceHelper::format($reseller->tier->price_per_additional_profile) }}</span>
+                            </dt>
+                            <dd class="tabular-nums text-gray-800 dark:text-white/90">{{ \App\Helpers\PriceHelper::format($reseller->overageAmount()) }}</dd>
+                        </div>
+                    @endif
+                    @if ($reseller->billing_period_end)
+                        <div class="flex items-baseline justify-between gap-3 border-t border-gray-100 dark:border-gray-800 pt-2">
+                            <dt class="text-gray-500 dark:text-gray-400">Renews</dt>
+                            <dd class="text-gray-800 dark:text-white/90">{{ $reseller->billing_period_end->format('M j, Y') }}</dd>
+                        </div>
+                    @endif
+                </dl>
+
+                <div x-data="{ open: false }" class="border-t border-gray-100 dark:border-gray-800 pt-5">
+                    <button type="button" @click="open = !open" class="btn btn-secondary btn-sm">Record a payment</button>
+
+                    <form x-show="open" x-cloak action="{{ route('settings.resellers.payments.store', $reseller) }}" method="POST" class="mt-4 space-y-3">
+                        @csrf
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Amount ({{ $currency }})</label>
+                                <input type="number" name="amount" step="0.01" min="0" value="{{ old('amount', $reseller->amountDue()) }}" required
+                                    class="h-9 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm tabular-nums text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden" />
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Paid on</label>
+                                <input type="date" name="paid_at" value="{{ old('paid_at', now()->toDateString()) }}" required
+                                    class="h-9 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Method</label>
+                            <select name="method" class="h-9 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden">
+                                @foreach (\App\Models\ResellerPayment::methods() as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('method') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Reference <span class="font-normal text-gray-400">(optional)</span></label>
+                            <input type="text" name="reference" value="{{ old('reference') }}" placeholder="Transfer ref, invoice no."
+                                class="h-9 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden" />
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            @if ($reseller->billing_period_end?->isFuture())
+                                Extends their period to {{ $reseller->billing_period_end->copy()->addYear()->format('M j, Y') }} — renewals stay on the same anniversary.
+                            @else
+                                Starts a one-year period from today.
+                            @endif
+                        </p>
+                        <div class="flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm">Record payment</button>
+                            <button type="button" @click="open = false" class="btn btn-secondary btn-sm">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                @if ($payments->isNotEmpty())
+                    <ul class="-mb-2 divide-y divide-gray-100 dark:divide-gray-800 border-t border-gray-100 dark:border-gray-800">
+                        @foreach ($payments as $payment)
+                            <li class="flex items-baseline justify-between gap-3 py-2.5 text-sm">
+                                <div class="min-w-0">
+                                    <p class="text-gray-800 dark:text-white/90">{{ $payment->paid_at->format('M j, Y') }}</p>
+                                    <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                                        {{ \App\Models\ResellerPayment::methods()[$payment->method] ?? $payment->method }}
+                                        @if ($payment->reference) &middot; {{ $payment->reference }} @endif
+                                    </p>
+                                </div>
+                                <span class="shrink-0 tabular-nums text-gray-800 dark:text-white/90">{{ \App\Helpers\PriceHelper::format($payment->amount) }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </x-common.component-card>
+
             <x-common.component-card title="Custom domain">
                 @if ($reseller->custom_domain)
                     <div>

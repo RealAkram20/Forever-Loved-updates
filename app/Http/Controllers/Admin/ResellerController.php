@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Memorial;
 use App\Models\Reseller;
+use App\Models\ResellerPayment;
 use App\Models\ResellerTier;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -20,6 +21,7 @@ class ResellerController extends Controller
 
         $resellers = Reseller::with('tier', 'owner')
             ->withCount(['memorials', 'staff', 'plans'])
+            ->when($status === 'overdue', fn ($query) => $query->whereNotNull('billing_period_end')->whereDate('billing_period_end', '<', now()))
             ->when($request->filled('q'), function ($query) use ($request) {
                 $term = '%'.$request->input('q').'%';
                 $query->where(fn ($w) => $w->where('name', 'like', $term)
@@ -40,6 +42,7 @@ class ResellerController extends Controller
                 'total' => Reseller::count(),
                 'active' => Reseller::where('status', Reseller::STATUS_ACTIVE)->count(),
                 'suspended' => Reseller::where('status', Reseller::STATUS_SUSPENDED)->count(),
+                'overdue' => Reseller::whereNotNull('billing_period_end')->whereDate('billing_period_end', '<', now())->count(),
                 'memorials' => Memorial::whereNotNull('reseller_id')->count(),
             ],
             'defaultTierId' => SystemSetting::get('reseller.default_tier_id') ?: null,
@@ -65,6 +68,8 @@ class ResellerController extends Controller
             'orders' => $reseller->paymentOrders()->with('user')->latest()->limit(10)->get(),
             'revenue' => $reseller->paymentOrders()->where('status', 'completed')->sum('amount'),
             'rolledOverCount' => User::where('original_reseller_id', $reseller->id)->whereNull('reseller_id')->count(),
+            'payments' => $reseller->payments()->with('recordedBy')->limit(10)->get(),
+            'currency' => SystemSetting::get('payments.currency', 'USD'),
         ]);
     }
 
@@ -171,6 +176,57 @@ class ResellerController extends Controller
         Memorial::where('original_reseller_id', $reseller->id)->whereNull('reseller_id')->update(['reseller_id' => $reseller->id]);
 
         return back()->with('success', "\"{$reseller->name}\"'s clients and memorials reassigned back to them.");
+    }
+
+    /**
+     * Record a payment the reseller made to the platform and roll their billing period
+     * forward by a year.
+     *
+     * The new period starts from the old end date rather than today, so a reseller who
+     * pays three weeks late does not silently get three extra weeks — renewals stay on
+     * their original anniversary. Only a first payment, or one after a lapse long enough
+     * that the old period is already in the past, starts from today.
+     */
+    public function recordPayment(Request $request, Reseller $reseller)
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0'],
+            'method' => ['required', Rule::in(array_keys(ResellerPayment::methods()))],
+            'paid_at' => ['required', 'date'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $start = $reseller->billing_period_end && $reseller->billing_period_end->isFuture()
+            ? $reseller->billing_period_end->copy()
+            : now()->startOfDay();
+
+        $end = $start->copy()->addYear();
+
+        ResellerPayment::create([
+            'reseller_id' => $reseller->id,
+            'amount' => $validated['amount'],
+            'currency' => SystemSetting::get('payments.currency', 'USD'),
+            'period_start' => $start,
+            'period_end' => $end,
+            // Snapshotted so this row still explains itself if the tier is later edited.
+            'tier_name' => $reseller->tier?->name,
+            'tier_annual_price' => $reseller->tier?->annual_price,
+            'overage_profiles' => $reseller->overageProfiles(),
+            'overage_amount' => $reseller->overageAmount(),
+            'method' => $validated['method'],
+            'reference' => $validated['reference'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+            'paid_at' => $validated['paid_at'],
+            'recorded_by_user_id' => $request->user()->id,
+        ]);
+
+        $reseller->update([
+            'billing_period_start' => $start,
+            'billing_period_end' => $end,
+        ]);
+
+        return back()->with('success', "Payment recorded. Renews {$end->format('F j, Y')}.");
     }
 
     /**

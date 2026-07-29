@@ -39,6 +39,8 @@ class Reseller extends Model
         'custom_domain_token',
         'custom_domain_status',
         'custom_domain_verified_at',
+        'billing_period_start',
+        'billing_period_end',
     ];
 
     protected function casts(): array
@@ -47,6 +49,8 @@ class Reseller extends Model
             'pesapal_enabled' => 'boolean',
             'pesapal_consumer_secret' => 'encrypted',
             'custom_domain_verified_at' => 'datetime',
+            'billing_period_start' => 'date',
+            'billing_period_end' => 'date',
         ];
     }
 
@@ -185,6 +189,69 @@ class Reseller extends Model
         }
 
         return (int) min(100, round($this->storageUsedBytes() / $limit * 100));
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Billing
+     |--------------------------------------------------------------------------
+     | What the reseller owes the platform, and whether they are current. Kept
+     | gateway-agnostic: these answer "how much and when", not "how it was taken".
+     */
+
+    public const BILLING_NOT_STARTED = 'not_started';
+
+    public const BILLING_ACTIVE = 'active';
+
+    public const BILLING_DUE_SOON = 'due_soon';
+
+    public const BILLING_OVERDUE = 'overdue';
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(ResellerPayment::class)->latest('paid_at');
+    }
+
+    /** Profiles beyond the tier's included allowance. Zero when uncapped. */
+    public function overageProfiles(): int
+    {
+        $allowance = $this->memorialAllowance();
+
+        return $allowance === null ? 0 : max(0, $this->memorialsUsed() - $allowance);
+    }
+
+    public function overageAmount(): float
+    {
+        return round($this->overageProfiles() * (float) ($this->tier?->price_per_additional_profile ?? 0), 2);
+    }
+
+    /** Annual price plus whatever they have run over. */
+    public function amountDue(): float
+    {
+        return round((float) ($this->tier?->annual_price ?? 0) + $this->overageAmount(), 2);
+    }
+
+    /**
+     * Null until billing has started — deliberately not 0, so "never invoiced" and
+     * "due today" can't be confused at a glance.
+     */
+    public function daysUntilRenewal(): ?int
+    {
+        return $this->billing_period_end
+            ? (int) now()->startOfDay()->diffInDays($this->billing_period_end->startOfDay(), false)
+            : null;
+    }
+
+    public function billingStatus(): string
+    {
+        $days = $this->daysUntilRenewal();
+
+        return match (true) {
+            $days === null => self::BILLING_NOT_STARTED,
+            $days < 0 => self::BILLING_OVERDUE,
+            $days <= 30 => self::BILLING_DUE_SOON,
+            default => self::BILLING_ACTIVE,
+        };
     }
 
     /**

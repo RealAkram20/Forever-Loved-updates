@@ -202,6 +202,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/resellers/{reseller}/verify-domain', [ResellerController::class, 'verifyDomain'])->name('resellers.verify-domain');
         Route::post('/resellers/{reseller}/restore', [ResellerController::class, 'restore'])->name('resellers.restore');
         Route::post('/resellers/{reseller}/login-as', [ResellerController::class, 'loginAs'])->name('resellers.login-as');
+        Route::post('/resellers/{reseller}/payments', [ResellerController::class, 'recordPayment'])->name('resellers.payments.store');
 
         Route::get('/reseller-pricing', [\App\Http\Controllers\Admin\ResellerTierController::class, 'index'])->name('reseller-pricing');
         Route::post('/reseller-tiers', [\App\Http\Controllers\Admin\ResellerTierController::class, 'store'])->name('reseller-tiers.store');
