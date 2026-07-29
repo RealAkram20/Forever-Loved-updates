@@ -238,6 +238,36 @@ class Memorial extends Model
     }
 
     /**
+     * The address this memorial should be shared at.
+     *
+     * For a reseller-owned memorial that is their verified custom domain, or failing that
+     * their subdomain — never the platform's apex. The white-label routes existed and
+     * worked, but nothing in the product ever generated one, so every share link, canonical
+     * URL and notification handed families the platform's brand instead of the funeral
+     * home's. A subdomain nobody is ever given is not a white-label.
+     */
+    public function publicUrl(): string
+    {
+        $reseller = $this->reseller;
+
+        if (! $reseller) {
+            return route('memorial.public', ['slug' => $this->slug], true);
+        }
+
+        if ($reseller->hasVerifiedCustomDomain()) {
+            return route('memorial.public.custom-domain', [
+                'domain' => $reseller->custom_domain,
+                'slug' => $this->slug,
+            ], true);
+        }
+
+        return route('memorial.public.reseller', [
+            'reseller' => $reseller->slug,
+            'slug' => $this->slug,
+        ], true);
+    }
+
+    /**
      * Bytes this memorial accounts for: its gallery media plus the profile photo, which
      * has no media row of its own.
      *

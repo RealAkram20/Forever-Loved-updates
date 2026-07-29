@@ -36,7 +36,7 @@ class WidgetController extends Controller
 
         return view('pages.widget.show', [
             'memorial' => $memorial,
-            'fullUrl' => route('memorial.public', $memorial->slug),
+            'fullUrl' => $memorial->publicUrl(),
         ]);
     }
 }

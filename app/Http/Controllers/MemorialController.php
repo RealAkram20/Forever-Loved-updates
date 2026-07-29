@@ -72,7 +72,7 @@ class MemorialController extends Controller
             'profession' => $m->primary_profession,
             'photo' => $m->profile_photo_url,
             'years' => $m->birth_death_years,
-            'url' => route('memorial.public', $m->slug),
+            'url' => $m->publicUrl(),
         ]);
 
         return response()->json(['results' => $results]);

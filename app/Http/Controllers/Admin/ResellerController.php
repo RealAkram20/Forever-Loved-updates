@@ -173,16 +173,28 @@ class ResellerController extends Controller
      */
     public function rollover(Reseller $reseller)
     {
-        User::where('reseller_id', $reseller->id)->update(['reseller_id' => null]);
+        // Clients only. Detaching the reseller's own staff and owner would strand them:
+        // EnsureResellerActive aborts anyone whose reseller_id is null, so the owner would
+        // be locked out of a business that is still active, told they were "suspended".
+        $clients = User::where('reseller_id', $reseller->id)
+            ->whereHas('roles', fn ($q) => $q->where('name', 'user'));
+
+        $count = (clone $clients)->count();
+        $clients->update(['reseller_id' => null]);
+
+        $memorials = Memorial::where('reseller_id', $reseller->id)->count();
         Memorial::where('reseller_id', $reseller->id)->update(['reseller_id' => null]);
 
-        return back()->with('success', "\"{$reseller->name}\"'s clients and memorials rolled over to direct platform ownership.");
+        return back()->with('success', "{$count} clients and {$memorials} memorials from \"{$reseller->name}\" rolled over to direct platform ownership. Their staff accounts are untouched.");
     }
 
     /** Reverses a prior rollover when a reseller renews. */
     public function restore(Reseller $reseller)
     {
-        User::where('original_reseller_id', $reseller->id)->whereNull('reseller_id')->update(['reseller_id' => $reseller->id]);
+        User::where('original_reseller_id', $reseller->id)
+            ->whereNull('reseller_id')
+            ->whereHas('roles', fn ($q) => $q->where('name', 'user'))
+            ->update(['reseller_id' => $reseller->id]);
         Memorial::where('original_reseller_id', $reseller->id)->whereNull('reseller_id')->update(['reseller_id' => $reseller->id]);
 
         return back()->with('success', "\"{$reseller->name}\"'s clients and memorials reassigned back to them.");
@@ -253,6 +265,13 @@ class ResellerController extends Controller
     {
         if (! $reseller->owner) {
             return back()->with('error', 'This reseller has no owner account to log in as yet.');
+        }
+
+        // Impersonating a suspended reseller lands on EnsureResellerActive's 403, and the
+        // error layout carries no impersonation banner — so there is no "Return to Admin"
+        // button and every sidebar link 403s too. Refuse up front instead of stranding.
+        if (! $reseller->isActive()) {
+            return back()->with('error', 'Reactivate this reseller before logging in as them — while suspended, their dashboard is blocked and you would have no way back.');
         }
 
         $request->session()->put('impersonator_id', $request->user()->id);

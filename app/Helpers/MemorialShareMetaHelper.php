@@ -30,7 +30,7 @@ class MemorialShareMetaHelper
         }
         $title = Str::limit($title, self::TITLE_LIMIT, '…');
 
-        $canonical = route('memorial.public', ['slug' => $memorial->slug], true);
+        $canonical = $memorial->publicUrl();
 
         return [
             'title' => $title,

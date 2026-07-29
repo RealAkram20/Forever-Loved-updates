@@ -119,7 +119,7 @@
                                         </td>
                                         <td class="px-5 py-4 sm:px-6">
                                             <div class="flex items-center gap-2">
-                                                <a href="{{ route('memorial.public', $memorial->slug) }}" target="_blank" title="View" class="p-1.5 text-brand-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-lg transition-colors">
+                                                <a href="{{ $memorial->publicUrl() }}" target="_blank" title="View" class="p-1.5 text-brand-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-lg transition-colors">
                                                     <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                                 </a>
                                                 <a href="{{ route('memorials.edit', $memorial) }}" title="Edit" class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
@@ -202,7 +202,7 @@
                                         <td class="whitespace-nowrap px-4 py-3 text-sm text-gray-800 dark:text-white/90 sm:px-5">{{ $memorial->is_public ? 'Public' : 'Private' }}</td>
                                         <td class="whitespace-nowrap px-4 py-3 sm:px-5">
                                             <div class="flex flex-nowrap items-center gap-2">
-                                                <a href="{{ route('memorial.public', $memorial->slug) }}" title="View" class="p-1.5 text-brand-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-lg transition-colors">
+                                                <a href="{{ $memorial->publicUrl() }}" title="View" class="p-1.5 text-brand-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-lg transition-colors">
                                                     <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                                 </a>
                                                 <a href="{{ route('memorials.edit', $memorial) }}" title="Edit" class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">

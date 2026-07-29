@@ -42,7 +42,7 @@
             <div class="swiper-wrapper">
                 @foreach ($popularMemorials as $memorial)
                 <div class="swiper-slide">
-                    <a href="{{ route('memorial.public', $memorial->slug) }}"
+                    <a href="{{ $memorial->publicUrl() }}"
                        class="group block rounded-2xl bg-white shadow-[0_2px_16px_rgba(35,43,84,0.06)] ring-1 ring-gray-900/[0.04] dark:ring-white/10 dark:bg-gray-800/60 p-5 transition hover:shadow-[0_8px_28px_rgba(35,43,84,0.12)] hover:-translate-y-0.5">
                         <div class="flex items-center gap-4 mb-4">
                             <div class="h-16 w-16 shrink-0 rounded-xl bg-brand-50 dark:bg-brand-500/10 overflow-hidden">

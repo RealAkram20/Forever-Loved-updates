@@ -55,6 +55,10 @@ class MemorialDirectoryController extends Controller
     {
         $query = Memorial::query()
             ->where('is_public', true)
+            // Reseller-owned memorials belong on the reseller's own branded domain. Listing
+            // a funeral home's client under the platform's brand — and driving traffic to
+            // the platform rather than to them — is the opposite of white-labelling.
+            ->whereNull('reseller_id')
             ->where('status', Memorial::STATUS_ACTIVE)
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
 
@@ -141,7 +145,7 @@ class MemorialDirectoryController extends Controller
             'age_at_death' => $m->age_at_death,
             'visitor_count' => $m->visitor_count ?? 0,
             'tributes_count' => $m->tributes_count ?? 0,
-            'url' => route('memorial.public', $m->slug),
+            'url' => $m->publicUrl(),
         ]);
 
         return response()->json([

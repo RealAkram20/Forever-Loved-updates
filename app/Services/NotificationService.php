@@ -454,7 +454,7 @@ class NotificationService
     ): void {
         $actionUrl = $tribute?->share_id
             ? route('memorial.tribute.public', ['memorial_slug' => $memorial->slug, 'share_id' => $tribute->share_id])
-            : route('memorial.public', $memorial->slug);
+            : $memorial->publicUrl();
 
         $deceasedName = $memorial->full_name ?? 'your loved one';
         $tributeMessage = static::formatTributeMessage($authorName, $tributeType, $deceasedName);
@@ -516,7 +516,7 @@ class NotificationService
     ): void {
         $actionUrl = ($post && $post->share_id)
             ? route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id])
-            : route('memorial.public', $memorial->slug);
+            : $memorial->publicUrl();
 
         $deceasedName = $memorial->full_name ?? 'your loved one';
         $author = $authorName ?? ($post?->user?->name ?? $memorial->owner?->name ?? 'Someone');
@@ -651,7 +651,7 @@ class NotificationService
             title: 'Memorial Assigned to You',
             message: "The memorial for {$memorial->full_name} has been assigned to your account.",
             icon: 'memorial',
-            actionUrl: route('memorial.public', $memorial->slug),
+            actionUrl: $memorial->publicUrl(),
             data: [
                 'memorial_id' => $memorial->id,
                 'memorial_name' => $memorial->full_name,
@@ -675,7 +675,7 @@ class NotificationService
 
         $actionUrl = $tribute->share_id
             ? route('memorial.tribute.public', ['memorial_slug' => $memorial->slug, 'share_id' => $tribute->share_id])
-            : route('memorial.public', $memorial->slug);
+            : $memorial->publicUrl();
 
         if ($comment->parent_id) {
             $parent = $comment->parent;
@@ -745,7 +745,7 @@ class NotificationService
 
         $actionUrl = $post->share_id
             ? route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id])
-            : route('memorial.public', $memorial->slug);
+            : $memorial->publicUrl();
 
         if ($comment->parent_id) {
             $parent = $comment->parent;

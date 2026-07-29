@@ -280,6 +280,9 @@ class PageController extends Controller
 
         if (in_array(\App\PageBuilder\Widgets\MemorialShowcaseWidget::type(), $types, true)) {
             $context['popularMemorials'] = \App\Models\Memorial::where('is_public', true)
+                // Same reason as the directory: a reseller's clients are not the platform's
+                // shop window.
+                ->whereNull('reseller_id')
                 ->where('status', \App\Models\Memorial::STATUS_ACTIVE)
                 ->whereNotNull('first_name')
                 ->whereNotNull('last_name')

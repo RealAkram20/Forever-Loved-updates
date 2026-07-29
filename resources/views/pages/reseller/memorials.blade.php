@@ -39,7 +39,7 @@
                                 <td class="py-2 pr-4 text-gray-600 dark:text-gray-400">{{ ucfirst($memorial->status) }}</td>
                                 <td class="py-2 pr-4 text-gray-600 dark:text-gray-400">{{ $memorial->created_at->format('M j, Y') }}</td>
                                 <td class="py-2 text-right">
-                                    <a href="{{ route('memorial.public', $memorial->slug) }}" target="_blank" class="text-brand-500 hover:underline">View</a>
+                                    <a href="{{ $memorial->publicUrl() }}" target="_blank" class="text-brand-500 hover:underline">View</a>
                                 </td>
                             </tr>
                         @endforeach

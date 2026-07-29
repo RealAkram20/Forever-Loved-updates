@@ -88,7 +88,7 @@ class MemorialSchemaHelper
             $data['image'] = $imageUrl;
         }
 
-        $data['url'] = route('memorial.public', ['slug' => $memorial->slug], true);
+        $data['url'] = $memorial->publicUrl();
 
         return self::dropEmpty($data);
     }
