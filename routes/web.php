@@ -235,6 +235,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/memorials/create', [\App\Http\Controllers\Reseller\DashboardController::class, 'createMemorial'])->name('memorials.create');
         Route::post('/memorials', [\App\Http\Controllers\Reseller\DashboardController::class, 'storeMemorial'])->name('memorials.store');
 
+        Route::get('/analytics', [\App\Http\Controllers\Reseller\AnalyticsController::class, 'index'])->name('analytics');
+
         Route::get('/clients', [\App\Http\Controllers\Reseller\ClientController::class, 'index'])->name('clients');
         Route::post('/clients', [\App\Http\Controllers\Reseller\ClientController::class, 'store'])->name('clients.store');
         Route::put('/clients/{user}', [\App\Http\Controllers\Reseller\ClientController::class, 'update'])->name('clients.update');

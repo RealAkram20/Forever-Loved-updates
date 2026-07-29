@@ -71,6 +71,39 @@
                     <button type="submit" class="btn btn-primary btn-md">{{ $reseller->custom_domain ? 'Update Domain' : 'Save Domain' }}</button>
                 </form>
 
+                @unless ($reseller->custom_domain)
+                    {{-- Shown before saving, not after. The two DNS records used to appear
+                         only once a domain was already submitted, so there was no way to
+                         know any DNS work was involved — the form looked like it did
+                         nothing. Say what the job is before asking someone to start it. --}}
+                    <div class="mt-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-white/[0.03] p-5">
+                        <p class="text-sm font-medium text-gray-800 dark:text-white/90">What you'll need to do</p>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Two DNS records at whoever manages your domain — your registrar, or your web host's control panel.
+                            We'll show you the exact values to copy after you save.
+                        </p>
+                        <ol class="mt-4 space-y-3">
+                            <li class="flex gap-3">
+                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 text-[0.6875rem] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">1</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">
+                                    Add a <span class="font-mono font-medium text-gray-800 dark:text-gray-200">TXT</span> record so we can confirm the domain is yours.
+                                </span>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 text-[0.6875rem] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">2</span>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">
+                                    Add a <span class="font-mono font-medium text-gray-800 dark:text-gray-200">CNAME</span> record so visitors reach your memorial pages.
+                                </span>
+                            </li>
+                        </ol>
+                        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                            DNS changes usually appear within minutes, but can take up to 48 hours. Your
+                            <span class="font-mono">{{ $reseller->slug }}.{{ config('reseller.domain') }}</span>
+                            address keeps working throughout, so nothing goes offline while you set this up.
+                        </p>
+                    </div>
+                @endunless
+
                 @if ($reseller->custom_domain)
                     <div class="mt-6 border-t border-gray-100 dark:border-gray-800 pt-6 space-y-5">
                         <div class="flex items-center gap-2">
@@ -89,11 +122,9 @@
                             <div>
                                 <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Step 1 — prove you own this domain</p>
                                 <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">Add this TXT record at your domain registrar or DNS provider, then verify:</p>
-                                <div class="overflow-x-auto rounded-lg bg-gray-100 dark:bg-gray-800 p-3 text-xs text-gray-700 dark:text-gray-300 space-y-1">
-                                    <p><span class="text-gray-500 dark:text-gray-400">Type:</span> TXT</p>
-                                    <p><span class="text-gray-500 dark:text-gray-400">Host:</span> _foreverloved-verify.{{ $reseller->custom_domain }}</p>
-                                    <p><span class="text-gray-500 dark:text-gray-400">Value:</span> {{ $reseller->custom_domain_token }}</p>
-                                </div>
+                                <x-common.dns-record type="TXT"
+                                    host="_foreverloved-verify.{{ $reseller->custom_domain }}"
+                                    :value="$reseller->custom_domain_token" />
                                 <form action="{{ route('reseller.settings.domain.verify') }}" method="POST" class="mt-3">
                                     @csrf
                                     <button type="submit" class="btn btn-secondary btn-sm">Verify Now</button>
@@ -106,11 +137,9 @@
                             <div>
                                 <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Step 2 — point your domain here</p>
                                 @if ($domainTargetHost)
-                                    <div class="overflow-x-auto rounded-lg bg-gray-100 dark:bg-gray-800 p-3 text-xs text-gray-700 dark:text-gray-300 space-y-1">
-                                        <p><span class="text-gray-500 dark:text-gray-400">Type:</span> CNAME</p>
-                                        <p><span class="text-gray-500 dark:text-gray-400">Host:</span> {{ $reseller->custom_domain }}</p>
-                                        <p><span class="text-gray-500 dark:text-gray-400">Value:</span> {{ $domainTargetHost }}</p>
-                                    </div>
+                                    <x-common.dns-record type="CNAME"
+                                        :host="$reseller->custom_domain"
+                                        :value="$domainTargetHost" />
                                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">SSL for your domain is set up separately once this is pointed correctly — your platform admin will confirm once it's live.</p>
                                 @else
                                     <p class="text-sm text-gray-500 dark:text-gray-400">Ownership verified — waiting on your platform admin to finish setting up where domains should point. Check back soon.</p>

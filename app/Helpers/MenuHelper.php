@@ -36,10 +36,15 @@ class MenuHelper
     {
         return [
             [
+                // Analytics only appears when the tier includes it, so the nav never offers
+                // a page whose whole content is "this isn't in your plan".
                 'title' => 'Overview',
-                'items' => [
+                'items' => array_values(array_filter([
                     ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
-                ],
+                    auth()->user()?->reseller?->tierAllows('business_analytics')
+                        ? ['icon' => 'charts', 'name' => 'Analytics', 'path' => url('/reseller/analytics')]
+                        : null,
+                ])),
             ],
             [
                 // 'match' keeps Memorials lit on /reseller/memorials/create, which is
