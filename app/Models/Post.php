@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\HtmlHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +34,16 @@ class Post extends Model
             'metadata' => 'array',
             'is_published' => 'boolean',
         ];
+    }
+
+    /**
+     * Sanitised on read, for the same reason as Tribute::getMessageAttribute(): the Life
+     * feed's JS assigns this straight to innerHTML, and rows written before content was
+     * sanitised on save still hold whatever was submitted.
+     */
+    public function getContentAttribute(?string $value): ?string
+    {
+        return $value === null ? null : HtmlHelper::sanitize($value);
     }
 
     public const TYPE_TEXT = 'text';

@@ -150,7 +150,7 @@
                                         @csrf @method('PUT')
                                         <select name="role"
                                             class="h-9 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-1 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden">
-                                            @foreach ($roles as $role)
+                                            @foreach ($assignableRoles as $role)
                                                 <option value="{{ $role->name }}" {{ $user->hasRole($role->name) ? 'selected' : '' }}>{{ $role->name }}</option>
                                             @endforeach
                                         </select>

@@ -13,6 +13,7 @@ use App\Models\UserSubscription;
 use App\Services\NotificationService;
 use App\Services\PaymentResultProcessor;
 use App\Services\PesapalService;
+use App\Support\ProtectedRoles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
@@ -142,7 +143,7 @@ class SettingsController extends Controller
 
     // ─── Permissions ─────────────────────────────────────────────────
 
-    public function permissions()
+    public function permissions(Request $request)
     {
         $roles = Role::with('permissions')->orderBy('name')->get();
         $permissions = Permission::orderBy('name')->get();
@@ -151,6 +152,10 @@ class SettingsController extends Controller
         return view('pages.settings.permissions', [
             'title' => 'Permissions',
             'roles' => $roles,
+            // The per-user dropdown lists only what this admin may actually grant, so the
+            // form cannot offer a choice updateUserRole() would then 403 on. $roles keeps
+            // every role, because the permission matrix above still has to show them all.
+            'assignableRoles' => ProtectedRoles::assignableQuery($request->user())->orderBy('name')->get(),
             'permissions' => $permissions,
             'users' => $users,
         ]);
@@ -172,6 +177,11 @@ class SettingsController extends Controller
         $request->validate([
             'role' => 'required|string|exists:roles,name',
         ]);
+
+        // Same gate as Admin\UserController: this screen is reachable by any admin, and
+        // without it the role dropdown here was a one-click self-promotion to super-admin.
+        ProtectedRoles::guardTarget($request->user(), $user);
+        ProtectedRoles::guardAssignment($request->user(), $request->role);
 
         $user->syncRoles([$request->role]);
 

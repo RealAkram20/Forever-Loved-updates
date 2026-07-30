@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\HtmlHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +29,20 @@ class Tribute extends Model
         return [
             'is_approved' => 'boolean',
         ];
+    }
+
+    /**
+     * Sanitised on the way out, not only on the way in.
+     *
+     * Writes have been sanitised for a while, but two things that did not cover: rows stored
+     * before that (a note left by any visitor, kept verbatim), and the JSON API, which handed
+     * `message` to the memorial page's JS to be assigned to innerHTML. Cleaning at the read
+     * boundary closes both at once — no backfill migration, and a serializer added later is
+     * safe without its author having to remember.
+     */
+    public function getMessageAttribute(?string $value): ?string
+    {
+        return $value === null ? null : HtmlHelper::sanitize($value);
     }
 
     public const TYPE_FLOWER = 'flower';
