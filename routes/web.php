@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AppearanceController;
 use App\Http\Controllers\Admin\MenuController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ResellerController;
 use App\Http\Controllers\Admin\ResellerSettingsController;
 use App\Http\Controllers\Admin\ResellerTierController;
@@ -42,7 +43,7 @@ require __DIR__.'/auth.php';
 | Reseller root pages — MUST precede the platform home route below
 |--------------------------------------------------------------------------
 | Laravel matches routes in registration order, and a route with no domain constraint
-| matches ANY host. So `Route::get('/')` below was answering acme.foreverloved.com/ with the
+| matches ANY host. So `Route::get('/')` below was answering acme.<base domain>/ with the
 | platform's landing page — our logo, our copy, our pricing, on a reseller's white-labeled
 | domain. Registering these two first is what makes the reseller root theirs.
 |
@@ -141,6 +142,16 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // ─── One memorial's report ────────────────────────────────────────
+    // Registered for every signed-in user rather than inside the admin or reseller groups:
+    // the memorial's own family reaches it too. MemorialPolicy::report() decides — owner,
+    // their editors, the reseller hosting it, and platform admins. Deliberately a narrower
+    // gate than viewing the memorial itself, which any visitor may do.
+    Route::get('/memorials/{slug}/report', [App\Http\Controllers\MemorialReportController::class, 'show'])
+        ->where('slug', '[a-z0-9\-]+')->name('memorials.report');
+    Route::get('/memorials/{slug}/report/download', [App\Http\Controllers\MemorialReportController::class, 'download'])
+        ->where('slug', '[a-z0-9\-]+')->name('memorials.report.download');
+
     // Calendar
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar');
     Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events');
@@ -151,6 +162,20 @@ Route::middleware(['auth'])->group(function () {
     // ─── Users Management (admin only) ──────────────────────────────
     Route::middleware('role:admin|super-admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
+
+        // ─── Reports ──────────────────────────────────────────────
+        // Deliberately at /reports rather than under the /settings prefix: reports are
+        // something an admin reads, not something they configure, and the nav gives them
+        // their own Overview entry. Individual reports gate themselves further — the
+        // reseller-billing one is super-admin only, enforced in the report class.
+        //
+        // {format} is whitelisted here as well as in ExporterFactory, so no request can
+        // name a class. {report} resolves through the registry keyed by audience.
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{report}', [ReportController::class, 'show'])
+            ->where('report', '[a-z0-9\-]+')->name('reports.show');
+        Route::get('/reports/{report}/download/{format}', [ReportController::class, 'download'])
+            ->where(['report' => '[a-z0-9\-]+', 'format' => 'pdf|xlsx|csv'])->name('reports.download');
     });
 
     // Admin push onboarding dismiss
@@ -286,6 +311,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/memorials', [App\Http\Controllers\Reseller\DashboardController::class, 'storeMemorial'])->name('memorials.store');
 
         Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
+
+        // ─── Reports ──────────────────────────────────────────────────
+        // Same three endpoints the admin has, resolved against the reseller audience. The
+        // tenant is never a route parameter: report classes receive the Reseller that
+        // EnsureResellerActive bound from the authenticated user's own reseller_id.
+        Route::get('/reports', [App\Http\Controllers\Reseller\ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{report}', [App\Http\Controllers\Reseller\ReportController::class, 'show'])
+            ->where('report', '[a-z0-9\-]+')->name('reports.show');
+        Route::get('/reports/{report}/download/{format}', [App\Http\Controllers\Reseller\ReportController::class, 'download'])
+            ->where(['report' => '[a-z0-9\-]+', 'format' => 'pdf|xlsx|csv'])->name('reports.download');
 
         Route::get('/clients', [ClientController::class, 'index'])->name('clients');
         Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');

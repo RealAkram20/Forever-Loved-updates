@@ -3,9 +3,12 @@
 namespace App\Providers;
 
 use App\Helpers\ThemeSetting;
+use App\Listeners\RecordLastLogin;
 use App\Models\Menu;
 use App\Services\SeoMetaResolver;
 use App\SiteBlocks\SiteBlockRegistry;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -30,6 +33,11 @@ class AppServiceProvider extends ServiceProvider
         if ($appUrl) {
             URL::forceRootUrl(rtrim($appUrl, '/'));
         }
+
+        // Registered explicitly rather than relying on event discovery, which is off by
+        // default once the app is cached — a listener that silently stops running in
+        // production is worse than no listener at all.
+        Event::listen(Login::class, RecordLastLogin::class);
 
         View::composer('layouts.fullscreen-layout', function ($view) {
             app(SeoMetaResolver::class)->applyToFullscreenLayout($view);

@@ -51,6 +51,10 @@ class PaymentResultProcessor
 
                 $locked->update([
                     'status' => 'completed',
+                    // Stamped here, inside the same lock that performs the transition, so
+                    // it records when the money was confirmed rather than when the row was
+                    // last written. Revenue reports group on this.
+                    'paid_at' => now(),
                     'confirmation_code' => $status['confirmation_code'] ?? null,
                 ]);
 

@@ -20,6 +20,7 @@ class PaymentOrder extends Model
         'amount',
         'currency',
         'status',
+        'paid_at',
         'payment_gateway',
         'payment_method',
         'confirmation_code',
@@ -30,6 +31,7 @@ class PaymentOrder extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'paid_at' => 'datetime',
             'metadata' => 'array',
         ];
     }

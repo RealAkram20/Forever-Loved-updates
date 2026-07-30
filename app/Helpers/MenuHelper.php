@@ -55,6 +55,11 @@ class MenuHelper
                 'items' => [
                     ['icon' => 'memorial', 'name' => 'Memorials', 'path' => url('/reseller/memorials'), 'match' => 'reseller/memorials'],
                     ['icon' => 'users', 'name' => 'Clients', 'path' => url('/reseller/clients')],
+                    // Unlike Analytics, Reports is never hidden by tier — most of the
+                    // catalogue is the reseller's own operational and billing records.
+                    // Only the engagement report inside it is gated, and it shows the
+                    // pitch rather than disappearing.
+                    ['icon' => 'charts', 'name' => 'Reports', 'path' => url('/reseller/reports'), 'match' => 'reseller/reports'],
                 ],
             ],
             // The reseller's own site. Gated on the same rule as the page-builder area itself
@@ -123,6 +128,9 @@ class MenuHelper
                 'title' => 'Overview',
                 'items' => [
                     ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
+                    // 'match' keeps Reports lit on an individual report page, which is
+                    // reached from the catalogue rather than from its own nav entry.
+                    ['icon' => 'charts', 'name' => 'Reports', 'path' => url('/reports'), 'match' => 'reports'],
                     ['icon' => 'notification', 'name' => 'Notifications', 'path' => url('/notifications')],
                     ['icon' => 'calendar', 'name' => 'Calendar', 'path' => url('/calendar')],
                 ],
