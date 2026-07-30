@@ -12,6 +12,7 @@ use App\PageBuilder\WidgetRegistry;
 use App\Services\PageLayoutService;
 use App\Support\PageBuilderAccess;
 use App\Support\ResellerPageContext;
+use App\Support\StandardPages;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,10 +31,13 @@ use InvalidArgumentException;
  *  - Every query is constrained to $reseller->id. A reseller can only ever see, edit or
  *    delete their own pages, and their slugs live in a namespace separate from the
  *    platform's and from every other reseller's.
- *  - There are no system-layout pages here (Home/Pricing/Contact are the platform's), so
- *    everything is a plain, deletable custom page served at their own host.
  *  - The whole area is gated behind the tier's feature_page_builder flag, the same way
  *    Analytics is gated behind feature_business_analytics.
+ *
+ * Pages come in two kinds. Standard pages (StandardPages) are the ones every site has —
+ * About, Pricing, Contact and so on — switched on and off rather than created and deleted;
+ * a reseller used to get none of them, because Page::reservedSlugs() refused the slugs and
+ * the host middleware redirected the paths. Custom pages are anything else they build.
  */
 class PageController extends Controller
 {
@@ -66,20 +70,79 @@ class PageController extends Controller
             ]);
         }
 
+        $owned = Page::where('reseller_id', $reseller->id)->get()->keyBy('slug');
+
         return view('pages.reseller.pages.index', [
             'title' => 'Pages',
             'reseller' => $reseller,
             'locked' => false,
-            // Custom pages only — the homepage is a system page shown separately, never in
-            // this deletable list.
-            'pages' => Page::where('reseller_id', $reseller->id)
-                ->where('slug', '!=', Page::SLUG_VISITOR_HOME)
-                ->orderBy('title')
-                ->get(),
-            'homePage' => Page::where('reseller_id', $reseller->id)
-                ->where('slug', Page::SLUG_VISITOR_HOME)
-                ->first(),
+            // Custom pages only — standard ones are listed separately with a switch rather
+            // than a delete button, since removing a site's About page is a different act
+            // from turning it off.
+            'pages' => $owned->reject(fn (Page $page) => StandardPages::isStandard($page->slug))
+                ->sortBy('title')
+                ->values(),
+            // slug => ['definition' => ..., 'page' => ?Page]. A missing row simply reads as
+            // off; the row is created on first enable.
+            'standardPages' => collect(StandardPages::catalogue())
+                ->map(fn (array $definition, string $slug) => [
+                    'slug' => $slug,
+                    'definition' => $definition,
+                    'page' => $owned->get($slug),
+                    'enabled' => (bool) $owned->get($slug)?->is_published,
+                ])
+                ->values(),
+            'homePage' => $owned->get(Page::SLUG_VISITOR_HOME),
         ]);
+    }
+
+    /**
+     * Switch a standard page on or off.
+     *
+     * On: create the row if this tenant has never had one — seeded from the platform's
+     * equivalent where that makes sense, so a reseller's privacy policy starts as real text
+     * rather than a blank page nobody remembers to write — then publish it.
+     *
+     * Off: unpublish. Never delete. A reseller who hides their pricing page for a month and
+     * switches it back on should find their own copy, not an empty one.
+     */
+    public function toggleStandard(Request $request, string $slug): RedirectResponse
+    {
+        $reseller = $this->reseller($request);
+        $this->ensureEntitled($reseller);
+
+        abort_unless(StandardPages::isStandard($slug), 404);
+
+        $enable = $request->boolean('enabled');
+        $definition = StandardPages::definition($slug);
+
+        if (! $enable && ! StandardPages::isDisableable($slug)) {
+            return back()->with('error', "“{$definition['title']}” cannot be switched off — every site needs one.");
+        }
+
+        $page = Page::where('reseller_id', $reseller->id)->where('slug', $slug)->first();
+
+        if (! $page) {
+            $page = Page::create([
+                'reseller_id' => $reseller->id,
+                'slug' => $slug,
+                'title' => $definition['title'],
+                // Seeded from ours so the page is publishable immediately. Legal text they
+                // have not read yet is still better than a site with no policy at all, and
+                // it is theirs to edit from the moment it exists.
+                'content' => $definition['seed_from_platform'] ? Page::getBySlug($slug)?->content : null,
+                'layout' => null,
+                'is_published' => $enable,
+            ]);
+        } else {
+            $page->update(['is_published' => $enable]);
+        }
+
+        Page::clearSlugCache($slug, $reseller->id);
+
+        return back()->with('success', $enable
+            ? "“{$page->title}” is now live on your site."
+            : "“{$page->title}” is hidden. Your content is kept.");
     }
 
     /**
@@ -387,11 +450,17 @@ class PageController extends Controller
 
         $page = $this->findPage($reseller, $slug);
 
-        // The homepage is a system page: it is the site's front door, not a disposable entry.
-        if ($page->isSystemLayoutPage()) {
+        // Standard pages are switched off, not deleted. Deleting would throw away content the
+        // reseller may want back the moment they re-enable, and for the homepage and the legal
+        // pages there is no "off" at all.
+        if (StandardPages::isStandard($page->slug)) {
+            $verb = StandardPages::isDisableable($page->slug)
+                ? 'Switch it off instead — your content is kept.'
+                : 'Every site needs one.';
+
             return redirect()
                 ->route('reseller.pages.index')
-                ->with('error', 'The homepage cannot be deleted. Clear its sections instead if you want the default layout back.');
+                ->with('error', "“{$page->title}” cannot be deleted. {$verb}");
         }
 
         $this->deleteOgImage($page);

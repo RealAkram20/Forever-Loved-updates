@@ -32,13 +32,21 @@ use Symfony\Component\HttpFoundation\Response;
 class ResolveResellerByHost
 {
     /**
-     * Platform pages that are about the platform. Kept deliberately short — anything a
-     * reseller's clients legitimately need on their host must keep working: auth, the
-     * dashboard, memorial management, and the create-memorial flow (which already scopes
-     * plans per reseller). privacy-policy and terms-of-use stay too: the platform really is
-     * the data processor, and serving no legal pages at all is worse than serving ours.
+     * These four used to be redirected unconditionally, because the only About and Pricing
+     * pages that existed were the platform's and serving them here would advertise us on a
+     * reseller's domain. A reseller can now have their own, so the question changed from
+     * "is this one of our pages?" to "has this tenant switched theirs on?" — see
+     * StandardPages::isEnabledFor(). Off, or never enabled, still redirects to their front
+     * page exactly as before.
+     *
+     * privacy-policy and terms-of-use were never in this list and still are not: they fall
+     * back to ours when a tenant has none, since serving no legal pages at all is worse than
+     * serving generic ones.
+     *
+     * Everything else a reseller's clients need — auth, the dashboard, memorial management,
+     * the create-memorial flow — is untouched and always passes through.
      */
-    private const PLATFORM_ONLY_PATHS = [
+    private const TENANT_OPTIONAL_PATHS = [
         'about',
         'pricing',
         'contact',
@@ -77,10 +85,19 @@ class ResolveResellerByHost
         app()->instance(Reseller::class, $reseller);
         ThemeSetting::markResolvedFromRequest();
 
-        if (in_array(trim($request->path(), '/'), self::PLATFORM_ONLY_PATHS, true)) {
+        $path = trim($request->path(), '/');
+
+        if (in_array($path, self::TENANT_OPTIONAL_PATHS, true)
+            && ! \App\Support\StandardPages::isEnabledFor($path, $reseller->id)) {
             // Their front page, on their host — not the platform equivalent, which would hand
             // the visitor off to us.
-            return redirect('/');
+            //
+            // Built from the request rather than redirect('/'), which routes through the URL
+            // generator: AppServiceProvider calls URL::forceRootUrl(config('app.url')) to make
+            // subdirectory installs work, so every generated path is rooted at the platform's
+            // own address. redirect('/') on acme.example.com therefore sent the visitor to
+            // example.com — precisely the hand-off this branch exists to prevent.
+            return redirect()->to($request->getSchemeAndHttpHost().'/');
         }
 
         return $next($request);

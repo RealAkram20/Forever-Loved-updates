@@ -9,6 +9,7 @@ use App\Models\Page;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
 use App\Services\SiteLayoutService;
+use App\Support\StandardPages;
 
 class PageController extends Controller
 {
@@ -89,14 +90,19 @@ class PageController extends Controller
 
     public function pricing()
     {
+        $tenantId = ThemeSetting::siteTenantId();
+
+        // sellableOnHost, not sellableTo: this page is public, so the visitor is usually
+        // anonymous and their own reseller_id answers nothing. Keyed off the viewer it would
+        // print the platform's prices on a reseller's own pricing page.
         $plans = SubscriptionPlan::where('is_active', true)
-            ->sellableTo(auth()->user())
+            ->sellableOnHost($tenantId, auth()->user())
             ->orderBy('sort_order')
             ->get();
 
         $currency = SystemSetting::get('payments.currency', 'USD');
 
-        $layoutPage = Page::getBySlug('pricing');
+        $layoutPage = StandardPages::resolve('pricing', $tenantId);
         if ($layoutPage && $layoutPage->hasLayout()) {
             return view('pages.visitor.page-layout', [
                 'title' => $layoutPage->title ?: 'Pricing & Features',
@@ -127,67 +133,53 @@ class PageController extends Controller
         ]);
     }
 
-    public function about()
+    /**
+     * The three plain content pages, which differ only in slug, heading and fallback blade.
+     *
+     * All of them resolve for whichever site is being served. They used to call
+     * Page::getBySlug() with no tenant, so on a reseller's own domain these routes could only
+     * ever find *our* page — which is why About was redirected away entirely and why the legal
+     * pages showed the platform's text on a white-labeled site.
+     *
+     * StandardPages::resolve() handles the one deliberate exception: privacy-policy and
+     * terms-of-use fall back to ours when a tenant has none of their own, because a site with
+     * no policy at all is worse than one with generic text.
+     */
+    private function contentPage(string $slug, string $defaultTitle, string $fallbackView)
     {
-        $page = Page::getBySlug('about');
-        $shareMeta = SiteShareMetaHelper::forCmsPage($page, 'About Us', 'about');
+        $tenantId = ThemeSetting::siteTenantId();
+        $page = StandardPages::resolve($slug, $tenantId);
+        $shareMeta = SiteShareMetaHelper::forCmsPage($page, $defaultTitle, $slug);
 
         if ($page && $page->hasLayout()) {
             return view('pages.visitor.page-layout', [
-                'title' => $page->title ?: 'About Us',
+                'title' => $page->title ?: $defaultTitle,
                 'widgets' => $page->layout['widgets'],
                 'layoutContext' => [],
                 'shareMeta' => $shareMeta,
             ]);
         }
 
-        return view('pages.visitor.about', [
-            'title' => $page?->title ?? 'About Us',
+        return view($fallbackView, [
+            'title' => $page?->title ?? $defaultTitle,
             'page' => $page,
             'shareMeta' => $shareMeta,
         ]);
+    }
+
+    public function about()
+    {
+        return $this->contentPage('about', 'About Us', 'pages.visitor.about');
     }
 
     public function privacyPolicy()
     {
-        $page = Page::getBySlug('privacy-policy');
-        $shareMeta = SiteShareMetaHelper::forCmsPage($page, 'Privacy Policy', 'privacy-policy');
-
-        if ($page && $page->hasLayout()) {
-            return view('pages.visitor.page-layout', [
-                'title' => $page->title ?: 'Privacy Policy',
-                'widgets' => $page->layout['widgets'],
-                'layoutContext' => [],
-                'shareMeta' => $shareMeta,
-            ]);
-        }
-
-        return view('pages.visitor.privacy-policy', [
-            'title' => $page?->title ?? 'Privacy Policy',
-            'page' => $page,
-            'shareMeta' => $shareMeta,
-        ]);
+        return $this->contentPage('privacy-policy', 'Privacy Policy', 'pages.visitor.privacy-policy');
     }
 
     public function termsOfUse()
     {
-        $page = Page::getBySlug('terms-of-use');
-        $shareMeta = SiteShareMetaHelper::forCmsPage($page, 'Terms of Use', 'terms-of-use');
-
-        if ($page && $page->hasLayout()) {
-            return view('pages.visitor.page-layout', [
-                'title' => $page->title ?: 'Terms of Use',
-                'widgets' => $page->layout['widgets'],
-                'layoutContext' => [],
-                'shareMeta' => $shareMeta,
-            ]);
-        }
-
-        return view('pages.visitor.terms-of-use', [
-            'title' => $page?->title ?? 'Terms of Use',
-            'page' => $page,
-            'shareMeta' => $shareMeta,
-        ]);
+        return $this->contentPage('terms-of-use', 'Terms of Use', 'pages.visitor.terms-of-use');
     }
 
     /**

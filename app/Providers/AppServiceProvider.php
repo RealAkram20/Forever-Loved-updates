@@ -57,7 +57,7 @@ class AppServiceProvider extends ServiceProvider
             //
             // Resolved here rather than in each blade so a fourth menu location cannot be
             // added later and quietly leak.
-            $tenantId = ThemeSetting::isResellerSite() ? ThemeSetting::tenant()?->id : null;
+            $tenantId = ThemeSetting::siteTenantId();
 
             $view->with([
                 'headerNavItems' => Menu::navigationFor(Menu::LOCATION_HEADER, $tenantId),

@@ -23,6 +23,9 @@ class Reseller extends Model
 
     protected $fillable = [
         'name',
+        // Where their Contact page sends enquiries. Seeded from the owner's account so it
+        // works immediately; separable because enquiries usually belong in a shared inbox.
+        'contact_email',
         'slug',
         'owner_user_id',
         'reseller_tier_id',

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\SiteShareMetaHelper;
+use App\Helpers\ThemeSetting;
 use App\Models\Memorial;
 use App\Models\Page;
+use App\Support\StandardPages;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,7 +23,7 @@ class MemorialDirectoryController extends Controller
             return $this->directoryResults($request);
         }
 
-        $layoutPage = Page::getBySlug(Page::SLUG_FIND_MEMORIAL);
+        $layoutPage = StandardPages::resolve(Page::SLUG_FIND_MEMORIAL, ThemeSetting::siteTenantId());
         if ($layoutPage && $layoutPage->hasLayout()) {
             return view('pages.memorial-directory.page-layout', [
                 'title' => $layoutPage->title ?: 'Find Memorial',
@@ -53,12 +55,24 @@ class MemorialDirectoryController extends Controller
      */
     public function directoryResults(Request $request): JsonResponse
     {
+        // siteTenantId(), not tenant(): which memorials a directory lists follows whose site
+        // it is, never who is looking at it. Keyed off the viewer, a reseller's own staff
+        // would see their memorials in the platform's directory.
+        $tenantId = ThemeSetting::siteTenantId();
+
         $query = Memorial::query()
             ->where('is_public', true)
-            // Reseller-owned memorials belong on the reseller's own branded domain. Listing
-            // a funeral home's client under the platform's brand — and driving traffic to
-            // the platform rather than to them — is the opposite of white-labelling.
-            ->whereNull('reseller_id')
+            // Each directory lists the memorials of the site it is served on, and only those.
+            //
+            // On the platform's host that means ours alone: listing a funeral home's client
+            // under our brand — and driving traffic to us rather than to them — is the
+            // opposite of white-labelling, which is why this was hardcoded to NULL. But the
+            // hardcoding also meant a reseller's own directory would have listed nothing at
+            // all, since none of their memorials are platform-owned.
+            ->when($tenantId,
+                fn ($q) => $q->where('reseller_id', $tenantId),
+                fn ($q) => $q->whereNull('reseller_id'),
+            )
             ->where('status', Memorial::STATUS_ACTIVE)
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
 

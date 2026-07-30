@@ -3,17 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\SiteShareMetaHelper;
-use App\Models\Page;
+use App\Helpers\ThemeSetting;
 use App\Models\SystemSetting;
+use App\Support\StandardPages;
 use Illuminate\Http\Request;
 
 class ContactController extends Controller
 {
     public function show()
     {
-        $appName = SystemSetting::get('branding.app_name', 'Forever Loved');
+        // siteTenantId(): the page belongs to whichever site is being served, not to the
+        // reseller a signed-in visitor happens to belong to.
+        $tenant = ThemeSetting::siteTenant();
+        $appName = $tenant?->name ?: SystemSetting::get('branding.app_name', 'Forever Loved');
 
-        $layoutPage = Page::getBySlug('contact');
+        $layoutPage = StandardPages::resolve('contact', $tenant?->id);
         if ($layoutPage && $layoutPage->hasLayout()) {
             return view('pages.visitor.page-layout', [
                 'title' => $layoutPage->title ?: 'Contact Us',
@@ -56,7 +60,14 @@ class ContactController extends Controller
             return back()->with('error', 'Email is not configured yet. Please try again later.');
         }
 
-        if (! SystemSetting::get('smtp.from_address')) {
+        // The enquiry belongs to whichever site it was sent from. A family writing to a
+        // funeral home on that funeral home's own domain must not reach the platform's
+        // inbox — and, until this page existed for tenants, there was nowhere else for it
+        // to go. Their address falls back to ours if they have left it blank.
+        $tenant = ThemeSetting::siteTenant();
+        $toAddress = $tenant?->contact_email ?: SystemSetting::get('smtp.from_address');
+
+        if (! $toAddress) {
             return back()->with('error', 'No recipient email configured. Please try again later.');
         }
 
@@ -67,6 +78,8 @@ class ContactController extends Controller
             email: $request->input('email'),
             subject: $request->input('subject'),
             body: $request->input('message'),
+            toAddress: $toAddress,
+            siteName: $tenant?->name,
         ));
 
         return back()->with('success', 'Your message has been sent. We\'ll get back to you soon.');

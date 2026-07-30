@@ -11,7 +11,7 @@
     @endif
 
     <div class="space-y-6">
-        <x-common.component-card title="Business Name">
+        <x-common.component-card title="Business details">
             <form action="{{ route('reseller.settings.update') }}" method="POST" class="space-y-4">
                 @csrf @method('PUT')
                 <div class="max-w-md">
@@ -19,6 +19,16 @@
                     <input type="text" name="name" value="{{ $reseller->name }}" required
                         class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
                     @error('name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                </div>
+                <div class="max-w-md">
+                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Contact email</label>
+                    <input type="email" name="contact_email" value="{{ old('contact_email', $reseller->contact_email) }}"
+                        placeholder="enquiries@yourbusiness.com"
+                        class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Where messages from your Contact page are sent. Leave blank and they come to us to forward on.
+                    </p>
+                    @error('contact_email') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                 </div>
                 <button type="submit" class="btn btn-primary btn-md">Save</button>
             </form>

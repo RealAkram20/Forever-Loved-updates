@@ -8,6 +8,7 @@ use App\Models\MenuItem;
 use App\Models\Page;
 use App\Models\Reseller;
 use App\Support\PageBuilderAccess;
+use App\Support\StandardPages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -100,19 +101,36 @@ class MenuController extends Controller
             }
         }
 
-        // Their own pages only. getBySlugForReseller()'s counterpart for a full list — a
-        // platform page in this menu would send their visitor to our site.
-        $pages = [];
+        // Their own pages only — a platform page here would send their visitor to our site.
+        //
+        // Standard pages appear only while switched on. Listing a page whose path currently
+        // redirects to their front page would build a nav item that bounces the visitor, and
+        // switching one off has to remove it from the picker as well as from the site.
+        $standard = [];
+        $custom = [];
+
         foreach (Page::query()->where('reseller_id', $reseller->id)->orderBy('title')->get() as $page) {
             if ($page->slug === Page::SLUG_VISITOR_HOME) {
                 continue; // Already offered as "Home" above.
             }
-            $pages['cms.page::'.$page->slug] = $page->title.' · /'.$page->slug;
+
+            $option = $page->title.' · '.$page->publicPath();
+
+            if (StandardPages::isStandard($page->slug)) {
+                if (StandardPages::isEnabledFor($page->slug, $reseller->id)) {
+                    $standard['cms.page::'.$page->slug] = $option;
+                }
+
+                continue;
+            }
+
+            $custom['cms.page::'.$page->slug] = $option;
         }
 
         return array_filter([
             'Site' => $site,
-            'Your pages' => $pages,
+            'Standard pages' => $standard,
+            'Your pages' => $custom,
         ]);
     }
 
@@ -142,6 +160,12 @@ class MenuController extends Controller
             // Scoped: without the reseller_id the picker would accept any platform page slug
             // typed by hand and publish a link to our site from their navigation.
             if (! Page::query()->where('reseller_id', $reseller->id)->where('slug', $slug)->exists()) {
+                return [null, null];
+            }
+
+            // A standard page that is switched off has a path that redirects to their front
+            // page, so linking it would build a nav item that bounces the visitor.
+            if (StandardPages::isStandard($slug) && ! StandardPages::isEnabledFor($slug, $reseller->id)) {
                 return [null, null];
             }
 

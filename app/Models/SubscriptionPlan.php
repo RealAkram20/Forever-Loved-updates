@@ -99,10 +99,35 @@ class SubscriptionPlan extends Model
      * pricing on the platform's own pricing page and letting anyone subscribe to another
      * tenant's plan — including a free one, for that tenant's entitlements at no cost.
      */
+    /**
+     * Plans a given *person* may buy — keyed off who they already belong to.
+     *
+     * Right for the dashboard and the signup flow, where the viewer is signed in and their
+     * reseller_id is the answer. Wrong for a public page, where the visitor is usually
+     * anonymous: see scopeSellableOnHost().
+     */
     public function scopeSellableTo($query, ?User $viewer = null)
     {
         return $viewer?->reseller_id
             ? $query->where('reseller_id', $viewer->reseller_id)
+            : $query->whereNull('reseller_id');
+    }
+
+    /**
+     * Plans a given *site* is selling — keyed off whose host is being served.
+     *
+     * A public pricing page has to ask this question rather than sellableTo(): a visitor with
+     * no account, or with an account belonging to a different reseller, would otherwise be
+     * shown the platform's plans (or another tenant's) on a reseller's own domain. The viewer
+     * is only consulted as a tiebreak when there is no tenant on the request, which keeps the
+     * platform's own pricing page behaving exactly as before.
+     */
+    public function scopeSellableOnHost($query, ?int $resellerId = null, ?User $viewer = null)
+    {
+        $resellerId ??= $viewer?->reseller_id;
+
+        return $resellerId
+            ? $query->where('reseller_id', $resellerId)
             : $query->whereNull('reseller_id');
     }
 

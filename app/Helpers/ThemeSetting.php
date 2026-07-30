@@ -79,6 +79,27 @@ class ThemeSetting
     }
 
     /**
+     * The tenant whose *content* this request should serve, or null for the platform's.
+     *
+     * Deliberately stricter than tenant(). That one falls back to the signed-in user's own
+     * reseller so branding follows a reseller's staff and clients everywhere they go, which
+     * is right for colours and logos. It is wrong for pages: it would serve a reseller's own
+     * About and Pricing on the *platform's* domain to anyone affiliated with them, and leave
+     * them no way to read ours.
+     *
+     * Content follows the host. Whose site is this, not who is looking at it.
+     */
+    public static function siteTenant(): ?Reseller
+    {
+        return self::isResellerSite() ? self::tenant() : null;
+    }
+
+    public static function siteTenantId(): ?int
+    {
+        return self::siteTenant()?->id;
+    }
+
+    /**
      * Whether this request is being served as a reseller's *own public site*, as opposed to a
      * reseller-affiliated user browsing the platform's site.
      *

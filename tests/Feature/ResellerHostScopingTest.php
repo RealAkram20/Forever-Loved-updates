@@ -117,8 +117,30 @@ it('redirects the platform marketing pages to the reseller front page', function
     $acme = hostTenant();
 
     foreach (['about', 'pricing', 'contact', 'find-memorial'] as $path) {
-        $this->get(resellerHost($acme).'/'.$path)->assertRedirect('/');
+        // Their front page, not ours. This used to assert a bare '/', which passed while the
+        // redirect actually landed on the platform's host: AppServiceProvider calls
+        // URL::forceRootUrl(config('app.url')) for subdirectory installs, so redirect('/')
+        // resolved to the platform root on every reseller host — the exact hand-off the
+        // middleware's own comment says it exists to prevent. Asserting the absolute address
+        // is what makes that visible.
+        $this->get(resellerHost($acme).'/'.$path)->assertRedirect(resellerHost($acme).'/');
     }
+});
+
+it('serves a standard page on a reseller host once they switch it on', function () {
+    $acme = hostTenant();
+
+    App\Models\Page::create([
+        'reseller_id' => $acme->id,
+        'slug' => 'about',
+        'title' => 'About Acme',
+        'content' => '<p>Acme, since 1961.</p>',
+        'is_published' => true,
+    ]);
+
+    $this->get(resellerHost($acme).'/about')
+        ->assertOk()
+        ->assertSee('Acme, since 1961', false);
 });
 
 it('still serves the platform marketing pages on the platform host', function () {

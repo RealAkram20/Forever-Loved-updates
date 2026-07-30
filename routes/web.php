@@ -378,6 +378,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/pages', [App\Http\Controllers\Reseller\PageController::class, 'index'])->name('pages.index');
         Route::get('/pages/homepage', [App\Http\Controllers\Reseller\PageController::class, 'editHome'])->name('pages.home');
+        // Standard pages (About, Pricing, Contact, …) are switched on and off rather than
+        // created and deleted. Declared before the {slug} routes so 'standard' is never read
+        // as a page slug.
+        Route::put('/pages/standard/{slug}', [App\Http\Controllers\Reseller\PageController::class, 'toggleStandard'])
+            ->name('pages.standard.toggle')->where('slug', '[a-z0-9\-]+');
         Route::get('/pages/create', [App\Http\Controllers\Reseller\PageController::class, 'create'])->name('pages.create');
         Route::post('/pages', [App\Http\Controllers\Reseller\PageController::class, 'store'])->name('pages.store');
         Route::post('/pages/preview', [App\Http\Controllers\Reseller\PageController::class, 'preview'])->name('pages.preview');

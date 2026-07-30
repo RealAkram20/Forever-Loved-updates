@@ -47,6 +47,65 @@
             </span>
         </a>
 
+        {{-- The pages every site has. Switched on and off rather than created and deleted —
+             turning one off keeps the content, so re-enabling restores their own copy. --}}
+        <x-common.component-card title="Standard pages"
+            desc="The pages most sites have. Switch on the ones you want; your visitors only see what is on."
+            class="mb-8">
+            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                @foreach ($standardPages as $row)
+                    @continue($row['slug'] === \App\Models\Page::SLUG_VISITOR_HOME)
+                    @php
+                        $definition = $row['definition'];
+                        $page = $row['page'];
+                        $enabled = $row['enabled'];
+                        $lockedOn = ! $definition['disableable'];
+                    @endphp
+                    <div class="flex flex-wrap items-center justify-between gap-3 py-3.5">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ $page->title ?? $definition['title'] }}</p>
+                                <span class="font-mono text-xs text-gray-400 dark:text-gray-500">/{{ $row['slug'] }}</span>
+                                @if ($lockedOn)
+                                    <span class="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Always on</span>
+                                @elseif ($enabled)
+                                    <span class="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">On</span>
+                                @else
+                                    <span class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">Off</span>
+                                @endif
+                            </div>
+                            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $definition['blurb'] }}</p>
+                        </div>
+
+                        <div class="flex shrink-0 flex-wrap items-center gap-2">
+                            @if ($page && $enabled)
+                                <a href="{{ $page->publicUrl() }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    View
+                                </a>
+                            @endif
+                            @if ($page)
+                                <a href="{{ route('reseller.pages.edit', $row['slug']) }}" class="btn btn-primary btn-sm">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    Edit
+                                </a>
+                            @endif
+                            @unless ($lockedOn)
+                                <form action="{{ route('reseller.pages.standard.toggle', $row['slug']) }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+                                    <input type="hidden" name="enabled" value="{{ $enabled ? 0 : 1 }}">
+                                    <button type="submit" class="btn {{ $enabled ? 'btn-secondary' : 'btn-primary' }} btn-sm">
+                                        {{ $enabled ? 'Turn off' : 'Turn on' }}
+                                    </button>
+                                </form>
+                            @endunless
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </x-common.component-card>
+
         <x-common.component-card title="Your pages"
             desc="Each page is published on your own site. Use Add page for a new URL, or Edit to change its layout and details.">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
