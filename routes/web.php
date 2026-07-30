@@ -368,6 +368,14 @@ Route::middleware(['auth'])->group(function () {
         // tenant. Gated inside the controller by the tier's feature_page_builder flag —
         // the index shows the pitch when it's locked, writes 403. `create` precedes the
         // {slug} routes so it is never read as a page slug.
+        // The navigation on their own site. Gated inside the controller on the same rule as
+        // the page builder — menus point at those pages, so the two travel together.
+        Route::get('/menus', [App\Http\Controllers\Reseller\MenuController::class, 'edit'])->name('menus.edit');
+        Route::post('/menus/items', [App\Http\Controllers\Reseller\MenuController::class, 'storeItem'])->name('menus.items.store');
+        Route::put('/menus/items/{item}', [App\Http\Controllers\Reseller\MenuController::class, 'updateItem'])->name('menus.items.update')->whereNumber('item');
+        Route::delete('/menus/items/{item}', [App\Http\Controllers\Reseller\MenuController::class, 'destroyItem'])->name('menus.items.destroy')->whereNumber('item');
+        Route::post('/menus/reorder', [App\Http\Controllers\Reseller\MenuController::class, 'reorder'])->name('menus.reorder');
+
         Route::get('/pages', [App\Http\Controllers\Reseller\PageController::class, 'index'])->name('pages.index');
         Route::get('/pages/homepage', [App\Http\Controllers\Reseller\PageController::class, 'editHome'])->name('pages.home');
         Route::get('/pages/create', [App\Http\Controllers\Reseller\PageController::class, 'create'])->name('pages.create');

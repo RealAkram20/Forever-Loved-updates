@@ -44,22 +44,27 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer(['components.home-header', 'components.visitor-footer'], function ($view) {
-            // The header and footer menus are the *platform's* own, built in Admin → Menus, and
-            // they point at our About, Pricing, Contact and directory. On a reseller's own site
-            // they are withheld: the blades' built-in fallbacks are tenant-aware and drop those
-            // destinations, whereas an admin-defined item is opaque here — there is no way to
-            // tell "Pricing" apart from a link the reseller would legitimately want.
+            // Whose menus these are is decided by whose site is being served.
             //
-            // Done here rather than in each blade so a fourth menu location cannot be added
-            // later and quietly leak.
-            $resellerSite = ThemeSetting::isResellerSite();
+            // The platform's menus (reseller_id NULL, built in Admin → Menus) point at our
+            // About, Pricing, Contact and directory, and must never appear on a reseller's
+            // white-labeled domain — an admin-defined item is opaque here, so there is no way
+            // to tell "Pricing" apart from a link the reseller would legitimately want. That
+            // used to mean serving nothing at all on a reseller site, which left them a
+            // one-item nav they had no way to change. Now they get their own set, built in
+            // Reseller → Menus, and fall through to the blades' tenant-aware defaults only
+            // while they have not defined one.
+            //
+            // Resolved here rather than in each blade so a fourth menu location cannot be
+            // added later and quietly leak.
+            $tenantId = ThemeSetting::isResellerSite() ? ThemeSetting::tenant()?->id : null;
 
             $view->with([
-                'headerNavItems' => $resellerSite ? collect() : Menu::navigationFor(Menu::LOCATION_HEADER),
-                'footerQuickItems' => $resellerSite ? collect() : Menu::navigationFor(Menu::LOCATION_FOOTER_QUICK),
-                'footerCompanyItems' => $resellerSite ? collect() : Menu::navigationFor(Menu::LOCATION_FOOTER_COMPANY),
-                'footerQuickMenu' => $resellerSite ? null : Menu::query()->where('location', Menu::LOCATION_FOOTER_QUICK)->first(),
-                'footerCompanyMenu' => $resellerSite ? null : Menu::query()->where('location', Menu::LOCATION_FOOTER_COMPANY)->first(),
+                'headerNavItems' => Menu::navigationFor(Menu::LOCATION_HEADER, $tenantId),
+                'footerQuickItems' => Menu::navigationFor(Menu::LOCATION_FOOTER_QUICK, $tenantId),
+                'footerCompanyItems' => Menu::navigationFor(Menu::LOCATION_FOOTER_COMPANY, $tenantId),
+                'footerQuickMenu' => Menu::forLocation(Menu::LOCATION_FOOTER_QUICK, $tenantId),
+                'footerCompanyMenu' => Menu::forLocation(Menu::LOCATION_FOOTER_COMPANY, $tenantId),
             ]);
         });
     }

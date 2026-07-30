@@ -69,6 +69,10 @@ class MenuHelper
                 'title' => 'Website',
                 'items' => [
                     ['icon' => 'pages', 'name' => 'Pages', 'path' => url('/reseller/pages'), 'match' => 'reseller/pages'],
+                    // Their site's header and footer navigation. Sits beside Pages because it
+                    // is what makes those pages reachable — without it a white-labeled site
+                    // has a one-item nav and no way to link anything the reseller builds.
+                    ['icon' => 'menus', 'name' => 'Menus', 'path' => url('/reseller/menus'), 'match' => 'reseller/menus'],
                 ],
             ] : null,
             [

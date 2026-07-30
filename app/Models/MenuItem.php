@@ -55,11 +55,17 @@ class MenuItem extends Model
 
         if ($this->route_name === 'cms.page') {
             $slug = is_array($this->route_parameters) ? ($this->route_parameters['slug'] ?? null) : null;
-            if (is_string($slug) && $slug !== '') {
-                return url('/'.$slug);
+            if (! is_string($slug) || $slug === '') {
+                return '#';
             }
 
-            return '#';
+            // A reseller's page lives at *their* address. url() resolves against the current
+            // request root, which is right on their own host but wrong for the /r/{slug} path
+            // fallback that subdirectory and development installs use — there it would point
+            // at the platform's /{slug} instead of theirs.
+            $reseller = $this->menu?->reseller;
+
+            return $reseller ? $reseller->publicUrlForSlug($slug) : url('/'.$slug);
         }
 
         if (is_string($this->route_name) && $this->route_name !== '' && Route::has($this->route_name)) {
