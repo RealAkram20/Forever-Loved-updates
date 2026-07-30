@@ -47,9 +47,9 @@ beforeEach(function () {
 });
 
 it('renders the reseller roster', function () {
-    // .env's APP_URL is a localhost subdirectory, so no {slug}.{base} address can be served
-    // here. The roster must show the address that works and say the rest is temporary —
-    // printing acme.foreverloved.com would be handing an admin a dead URL to pass on.
+    // APP_URL is a bare localhost here, so no {slug}.{base} address can be served. The
+    // roster must show the address that works and say the rest is temporary — printing
+    // acme.<base> would be handing an admin a dead URL to pass on.
     $this->actingAs($this->admin)
         ->get('http://localhost/settings/resellers')
         ->assertOk()
@@ -60,7 +60,9 @@ it('renders the reseller roster', function () {
 });
 
 it('shows real subdomain addresses on the roster once deployed correctly', function () {
-    config(['app.url' => 'https://'.config('reseller.domain')]);
+    // Both pinned: reseller.domain derives from APP_URL now, so building APP_URL from it
+    // was circular and resolved to the bare 'localhost' the test environment runs on.
+    config(['reseller.domain' => 'example.test', 'app.url' => 'https://example.test']);
 
     $this->actingAs($this->admin)
         ->get('http://localhost/settings/resellers')

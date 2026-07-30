@@ -4,7 +4,7 @@
     A reseller's public address, as it can actually be reached right now.
 
     Six pages used to build this inline as `{{ $slug }}.{{ config('reseller.domain') }}`,
-    which on a subdirectory install printed a confident acme.foreverloved.com — a host
+    which on a subdirectory install printed a confident acme.<base domain> — a host
     nothing answers on — and the copy button prefixed it with a hardcoded https://.
 
     When the environment cannot serve the real host, Reseller::publicBaseUrl() hands back

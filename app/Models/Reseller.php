@@ -81,7 +81,7 @@ class Reseller extends Model
      |--------------------------------------------------------------------------
      | Everything that shows or links to a reseller address goes through here.
      | Nine views used to concatenate slug + config('reseller.domain') inline, which
-     | printed a confident "acme.foreverloved.com" on a localhost subdirectory install
+     | printed a confident "acme.<base domain>" on a localhost subdirectory install
      | — an address nothing can serve, offered to the reseller as final.
      |
      | These answer two separate questions: where the pages are *meant* to live once
@@ -103,8 +103,11 @@ class Reseller extends Model
     /**
      * Subdomains additionally need the app to actually answer on the reseller base domain.
      * Pointing RESELLER_APP_DOMAIN at a domain the app is not served from makes every
-     * minted {slug}.{base} address dead on arrival — which is the default state, since the
-     * config falls back to a hardcoded 'foreverloved.com'.
+     * minted {slug}.{base} address dead on arrival.
+     *
+     * The base domain now derives from APP_URL rather than a hardcoded one, so this is
+     * true by default on a real deployment instead of needing a matching env var — but a
+     * single-label host is still rejected below.
      */
     public static function subdomainRoutingAvailable(): bool
     {
@@ -114,6 +117,13 @@ class Reseller extends Model
 
         $host = strtolower((string) (parse_url((string) config('app.url'), PHP_URL_HOST) ?: ''));
         $base = strtolower((string) config('reseller.domain'));
+
+        // A base with no dot is a bare hostname — 'localhost', or a machine name on a LAN.
+        // Some browsers resolve acme.localhost and most systems do not, so we refuse to
+        // hand anyone that address and fall back to the /r/{slug} path instead.
+        if (! str_contains($base, '.')) {
+            return false;
+        }
 
         return $host !== '' && $base !== '' && ($host === $base || str_ends_with($host, '.'.$base));
     }

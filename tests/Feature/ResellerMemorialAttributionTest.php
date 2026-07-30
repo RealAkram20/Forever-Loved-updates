@@ -101,7 +101,9 @@ it('does not override an explicitly set reseller', function () {
 });
 
 it('gives a client-created memorial the reseller white-labeled address', function () {
-    config(['app.url' => 'https://'.config('reseller.domain')]);
+    // Both pinned: reseller.domain derives from APP_URL now, so building APP_URL from it
+    // was circular and resolved to the bare 'localhost' the test environment runs on.
+    config(['reseller.domain' => 'example.test', 'app.url' => 'https://example.test']);
     $acme = attributionTenant();
     $client = attributionClient($acme);
 

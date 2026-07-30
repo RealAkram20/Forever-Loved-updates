@@ -40,9 +40,12 @@ function whiteLabelTenant(string $slug, ?string $customDomain = null): Reseller
  * anything asserting a {slug}.{base} address has to say it is testing a correct deployment,
  * otherwise it is asserting an address this environment cannot serve.
  */
-function deployedOnBaseDomain(): void
+function deployedOnBaseDomain(string $base = 'example.test'): void
 {
-    config(['app.url' => 'https://'.config('reseller.domain')]);
+    // Both pinned explicitly. reseller.domain now derives from APP_URL, so reading it back
+    // out of config to build APP_URL was circular — and in the test environment it resolved
+    // to the bare host 'localhost', which cannot carry subdomains at all.
+    config(['reseller.domain' => $base, 'app.url' => 'https://'.$base]);
 }
 
 it('gives a reseller memorial its subdomain address, not the platform one', function () {
@@ -77,9 +80,9 @@ it('falls back to the subdomain while a custom domain is unverified', function (
 });
 
 it('hands out a reachable path address when the app is on a subdirectory', function () {
-    // The reported bug: APP_URL is http://localhost/Forever, so acme.foreverloved.com is
-    // not an address anything can serve — but it was shown as the reseller's own URL.
-    config(['app.url' => 'http://localhost/Forever']);
+    // The reported bug: APP_URL is a localhost subdirectory, so acme.<base> is not an
+    // address anything can serve — but it was shown as the reseller's own URL.
+    config(['reseller.domain' => 'example.test', 'app.url' => 'http://localhost/Forever']);
     $acme = whiteLabelTenant('acme');
     $memorial = Memorial::factory()->create(['reseller_id' => $acme->id, 'slug' => 'jane-doe']);
 
@@ -90,10 +93,11 @@ it('hands out a reachable path address when the app is on a subdirectory', funct
 });
 
 it('hands out a path address when APP_URL host is not the reseller base domain', function () {
-    // No subdirectory, but the app does not answer on foreverloved.com, so every minted
-    // subdomain is still dead. This is the default state: RESELLER_APP_DOMAIN is unset and
-    // config/reseller.php falls back to a hardcoded domain.
-    config(['app.url' => 'https://example.test']);
+    // No subdirectory, but the app does not answer on the reseller base domain, so every
+    // minted subdomain is still dead. Reachable only by setting RESELLER_APP_DOMAIN to a
+    // domain the app is not served from — config/reseller.php derives it from APP_URL
+    // otherwise, which cannot produce this mismatch on its own.
+    config(['reseller.domain' => 'elsewhere.test', 'app.url' => 'https://example.test']);
     $acme = whiteLabelTenant('acme');
 
     expect(Reseller::hostRoutingAvailable())->toBeTrue();
@@ -103,7 +107,7 @@ it('hands out a path address when APP_URL host is not the reseller base domain',
 
 it('still names the intended production host while using a fallback address', function () {
     // The reseller must not be left thinking /r/acme is what they hand to a family.
-    config(['app.url' => 'http://localhost/Forever']);
+    config(['reseller.domain' => 'example.test', 'app.url' => 'http://localhost/Forever']);
     $acme = whiteLabelTenant('acme');
 
     expect($acme->publicHost())->toBe('acme.'.config('reseller.domain'));
@@ -144,6 +148,11 @@ it('keeps the path fallback route scoped to the right tenant', function () {
 });
 
 it('leaves a direct platform memorial on the platform domain', function () {
+    // Base domain pinned to something the app is not served from, so "does not contain the
+    // reseller base domain" is a real assertion. Left to derive, it would equal the app's
+    // own host and the check could never fail.
+    config(['reseller.domain' => 'example.test']);
+
     $memorial = Memorial::factory()->create(['reseller_id' => null, 'slug' => 'jane-doe']);
 
     expect($memorial->publicUrl())

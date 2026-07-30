@@ -18,9 +18,20 @@ class DomainVerificationService
         return Str::random(32);
     }
 
+    /**
+     * The TXT record host a reseller must create. Derived from the app's own domain rather
+     * than a hardcoded brand string, and exposed publicly so the settings screen prints
+     * exactly what this service will later look up — the two drifting apart would leave
+     * resellers adding a record that never verifies.
+     */
+    public function txtHost(string $domain): string
+    {
+        return config('reseller.verification_prefix').'.'.$domain;
+    }
+
     public function verifyTxt(string $domain, string $token): bool
     {
-        $host = '_foreverloved-verify.'.$domain;
+        $host = $this->txtHost($domain);
 
         try {
             $records = dns_get_record($host, DNS_TXT);

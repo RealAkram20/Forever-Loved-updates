@@ -122,8 +122,11 @@
                             <div>
                                 <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Step 1 — prove you own this domain</p>
                                 <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">Add this TXT record at your domain registrar or DNS provider, then verify:</p>
+                                {{-- Asked for from the service that will do the lookup, so the
+                                     record we tell them to add is by construction the one we
+                                     check for. --}}
                                 <x-common.dns-record type="TXT"
-                                    host="_foreverloved-verify.{{ $reseller->custom_domain }}"
+                                    :host="app(\App\Services\DomainVerificationService::class)->txtHost($reseller->custom_domain)"
                                     :value="$reseller->custom_domain_token" />
                                 <form action="{{ route('reseller.settings.domain.verify') }}" method="POST" class="mt-3">
                                     @csrf
