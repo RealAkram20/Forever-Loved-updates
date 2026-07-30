@@ -172,8 +172,8 @@
                     </div>
                 </div>
             @else
-                <a href="{{ route('login') }}" class="btn btn-secondary btn-md">Sign in</a>
-                <a href="{{ route('register') }}" class="btn btn-primary btn-md">Sign up</a>
+                <a href="{{ \App\Support\ResellerAuthUrls::login() }}" class="btn btn-secondary btn-md">Sign in</a>
+                <a href="{{ \App\Support\ResellerAuthUrls::register() }}" class="btn btn-primary btn-md">Sign up</a>
             @endif
         </div>
 
@@ -273,8 +273,8 @@
                 </form>
             @else
                 <div class="pt-2 flex gap-2">
-                    <a href="{{ route('login') }}" class="btn btn-secondary btn-md flex-1">Sign in</a>
-                    <a href="{{ route('register') }}" class="btn btn-primary btn-md flex-1">Sign up</a>
+                    <a href="{{ \App\Support\ResellerAuthUrls::login() }}" class="btn btn-secondary btn-md flex-1">Sign in</a>
+                    <a href="{{ \App\Support\ResellerAuthUrls::register() }}" class="btn btn-primary btn-md flex-1">Sign up</a>
                 </div>
             @endif
         </nav>

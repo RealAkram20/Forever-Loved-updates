@@ -34,14 +34,16 @@ class MenuHelper
      */
     public static function getResellerMenuGroups(): array
     {
-        return [
+        $reseller = auth()->user()?->reseller;
+
+        return array_values(array_filter([
             [
                 // Analytics only appears when the tier includes it, so the nav never offers
                 // a page whose whole content is "this isn't in your plan".
                 'title' => 'Overview',
                 'items' => array_values(array_filter([
                     ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
-                    auth()->user()?->reseller?->tierAllows('business_analytics')
+                    $reseller?->tierAllows('business_analytics')
                         ? ['icon' => 'charts', 'name' => 'Analytics', 'path' => url('/reseller/analytics')]
                         : null,
                 ])),
@@ -55,6 +57,15 @@ class MenuHelper
                     ['icon' => 'users', 'name' => 'Clients', 'path' => url('/reseller/clients')],
                 ],
             ],
+            // The reseller's own site. Gated on the same rule as the page-builder area itself
+            // (tier flag, or a super-admin logged in as them) so the nav never links a page
+            // that would 403 — the pattern Analytics already follows above.
+            \App\Support\PageBuilderAccess::allows($reseller) ? [
+                'title' => 'Website',
+                'items' => [
+                    ['icon' => 'pages', 'name' => 'Pages', 'path' => url('/reseller/pages'), 'match' => 'reseller/pages'],
+                ],
+            ] : null,
             [
                 'title' => 'Your business',
                 'items' => [
@@ -67,7 +78,7 @@ class MenuHelper
                     ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/reseller/settings'), 'match' => 'reseller/settings'],
                 ],
             ],
-        ];
+        ]));
     }
 
     /**

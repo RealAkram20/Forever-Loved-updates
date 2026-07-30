@@ -114,6 +114,6 @@ class PasswordlessLoginController extends Controller
         $user = User::where('email', $email)->firstOrFail();
         Auth::login($user, $request->boolean('remember'));
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(\App\Support\PostAuthRedirect::url($user));
     }
 }

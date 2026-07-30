@@ -47,14 +47,51 @@ class PublicMemorialController extends Controller
      * so this needs to occupy the same slot the domain-level placeholder always fills for
      * both routes that call this action ({reseller} on the subdomain route, {domain} on
      * the custom-domain route), whatever that value happens to be, with $slug second.
+     *
+     * A memorial wins a slug over a CMS page of the same name: memorials are the product,
+     * they far outnumber pages, and the reseller page builder already refuses to save a
+     * slug that clashes with one of their memorials. If no memorial matches, a published
+     * page of theirs with that slug is served (their About page, a landing page, …).
      */
     public function showForReseller(string $reseller, string $slug)
     {
         $resolvedReseller = app(Reseller::class);
 
-        $memorial = Memorial::where('slug', $slug)->where('reseller_id', $resolvedReseller->id)->firstOrFail();
+        $memorial = Memorial::where('slug', $slug)->where('reseller_id', $resolvedReseller->id)->first();
+        if ($memorial) {
+            return $this->renderMemorial($memorial);
+        }
 
-        return $this->renderMemorial($memorial);
+        $page = Page::getBySlugForReseller($slug, $resolvedReseller->id);
+        if ($page && $page->is_published) {
+            return $this->renderResellerPage($resolvedReseller, $page);
+        }
+
+        abort(404);
+    }
+
+    /**
+     * A reseller's own CMS page, on their host — the tenant-scoped equivalent of
+     * PageController::showPage(). Rendered through the same widget pipeline the platform
+     * pages use, with this reseller's plans and memorials as context so a Pricing or
+     * Showcase widget shows their data, never ours.
+     */
+    private function renderResellerPage(Reseller $reseller, Page $page)
+    {
+        $widgets = is_array($page->layout['widgets'] ?? null) ? $page->layout['widgets'] : [];
+
+        return view('pages.visitor.page-layout', [
+            'title' => $page->title,
+            'widgets' => $widgets,
+            'layoutContext' => \App\Support\ResellerPageContext::forWidgets(
+                $reseller,
+                array_column($widgets, 'type')
+            ),
+            'shareMeta' => \App\Helpers\SiteShareMetaHelper::forCmsPageDirect(
+                $page,
+                $reseller->publicUrlForSlug($page->slug)
+            ),
+        ]);
     }
 
     /**

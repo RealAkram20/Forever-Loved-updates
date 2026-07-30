@@ -309,6 +309,20 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/payments', [PaymentSettingsController::class, 'edit'])->name('payments');
         Route::put('/payments', [PaymentSettingsController::class, 'update'])->name('payments.update');
         Route::post('/payments/register-ipn', [PaymentSettingsController::class, 'registerIpn'])->name('payments.register-ipn');
+
+        // The reseller's own website: the same page builder the admin has, scoped to this
+        // tenant. Gated inside the controller by the tier's feature_page_builder flag —
+        // the index shows the pitch when it's locked, writes 403. `create` precedes the
+        // {slug} routes so it is never read as a page slug.
+        Route::get('/pages', [App\Http\Controllers\Reseller\PageController::class, 'index'])->name('pages.index');
+        Route::get('/pages/homepage', [App\Http\Controllers\Reseller\PageController::class, 'editHome'])->name('pages.home');
+        Route::get('/pages/create', [App\Http\Controllers\Reseller\PageController::class, 'create'])->name('pages.create');
+        Route::post('/pages', [App\Http\Controllers\Reseller\PageController::class, 'store'])->name('pages.store');
+        Route::post('/pages/preview', [App\Http\Controllers\Reseller\PageController::class, 'preview'])->name('pages.preview');
+        Route::get('/pages/{slug}/edit', [App\Http\Controllers\Reseller\PageController::class, 'edit'])->name('pages.edit')->where('slug', '[a-z0-9\-]+');
+        Route::put('/pages/{slug}/layout', [App\Http\Controllers\Reseller\PageController::class, 'updateLayout'])->name('pages.layout.update')->where('slug', '[a-z0-9\-]+');
+        Route::post('/pages/{slug}/meta', [App\Http\Controllers\Reseller\PageController::class, 'updatePageMeta'])->name('pages.meta.update')->where('slug', '[a-z0-9\-]+');
+        Route::delete('/pages/{slug}', [App\Http\Controllers\Reseller\PageController::class, 'destroy'])->name('pages.destroy')->where('slug', '[a-z0-9\-]+');
     });
 });
 
@@ -371,6 +385,24 @@ Route::get('/r/{reseller}', [PublicMemorialController::class, 'indexForReseller'
     ->name('reseller.public.index-path')
     ->where('reseller', '[a-z0-9\-]+')
     ->middleware(ResolveReseller::class);
+
+// Reseller-scoped auth for the path fallback (dev / subdirectory installs), so a reseller's
+// clients can sign in and register inside the reseller's own space instead of on the platform
+// site. On real subdomains / custom domains the shared auth routes already resolve on the
+// reseller host (ResolveResellerByHost binds the tenant there), so these exist purely for
+// environments without host routing. MUST precede the /r/{reseller}/{slug} memorial route
+// below so 'login' and 'register' are matched here, not read as memorial slugs.
+Route::prefix('r/{reseller}')
+    ->where(['reseller' => '[a-z0-9\-]+'])
+    ->middleware(ResolveReseller::class)
+    ->group(function () {
+        Route::middleware('guest')->group(function () {
+            Route::get('login', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'create'])->name('reseller.login');
+            Route::post('login', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'store'])->middleware('throttle:6,1');
+            Route::get('register', [\App\Http\Controllers\Auth\RegisteredUserController::class, 'create'])->name('reseller.register');
+            Route::post('register', [\App\Http\Controllers\Auth\RegisteredUserController::class, 'store'])->middleware('throttle:6,1');
+        });
+    });
 
 Route::get('/r/{reseller}/{slug}', [PublicMemorialController::class, 'showForReseller'])
     ->name('memorial.public.reseller-path')

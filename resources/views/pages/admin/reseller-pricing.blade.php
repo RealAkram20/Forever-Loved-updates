@@ -14,6 +14,7 @@
             'feature_embedding' => false,
             'feature_domain_routing' => false,
             'feature_business_analytics' => false,
+            'feature_page_builder' => false,
             'is_active' => true,
         ];
     @endphp
@@ -115,6 +116,7 @@
                                 'feature_embedding' => 'Embeddable memorial widget',
                                 'feature_domain_routing' => 'Custom domain routing',
                                 'feature_business_analytics' => 'Business analytics',
+                                'feature_page_builder' => 'Website & page builder',
                             ] as $field => $label)
                                 <li class="flex items-center gap-2.5 {{ $tier->{$field} ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-600' }}">
                                     @if ($tier->{$field})
@@ -147,6 +149,7 @@
                                         'feature_embedding' => $tier->feature_embedding,
                                         'feature_domain_routing' => $tier->feature_domain_routing,
                                         'feature_business_analytics' => $tier->feature_business_analytics,
+                                        'feature_page_builder' => $tier->feature_page_builder,
                                         'is_active' => $tier->is_active,
                                     ];
                                 @endphp
@@ -246,6 +249,7 @@
                                 ['feature_embedding', 'Embeddable memorial widget', "Lets them drop a memorial onto their own website with an iframe."],
                                 ['feature_domain_routing', 'Custom domain routing', 'Lets them serve memorials from their own domain instead of a subdomain.'],
                                 ['feature_business_analytics', 'Business analytics', 'Visitor and engagement reporting across their memorials.'],
+                                ['feature_page_builder', 'Website & page builder', 'Lets them build and publish their own pages on their site with the drag-and-drop editor.'],
                                 ['is_active', 'Available for new resellers', 'Turn off to retire a tier without affecting whoever is already on it.'],
                             ] as [$field, $label, $help])
                                 <label class="flex cursor-pointer items-start gap-3">

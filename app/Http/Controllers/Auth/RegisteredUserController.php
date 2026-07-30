@@ -45,11 +45,24 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        // Registering on a reseller's site (subdomain, custom domain, or /r/{slug}) makes the
+        // new account that reseller's client, not a platform user — the white-label whole point.
+        // The tenant is whatever the host / path middleware bound for this request.
+        $reseller = \App\Helpers\ThemeSetting::tenant();
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'reseller_id' => $reseller?->id,
+            'original_reseller_id' => $reseller?->id,
         ]);
+
+        // A reseller's client gets the plain 'user' role, matching how the reseller's own
+        // "add client" flow onboards families.
+        if ($reseller) {
+            $user->assignRole('user');
+        }
 
         event(new Registered($user));
 
@@ -57,6 +70,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect(\App\Support\PostAuthRedirect::url($user));
     }
 }

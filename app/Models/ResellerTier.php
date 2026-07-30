@@ -21,6 +21,7 @@ class ResellerTier extends Model
         'feature_embedding',
         'feature_domain_routing',
         'feature_business_analytics',
+        'feature_page_builder',
         'is_active',
     ];
 
@@ -34,6 +35,7 @@ class ResellerTier extends Model
             'feature_embedding' => 'boolean',
             'feature_domain_routing' => 'boolean',
             'feature_business_analytics' => 'boolean',
+            'feature_page_builder' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];

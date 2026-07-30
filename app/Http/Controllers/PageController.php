@@ -44,6 +44,26 @@ class PageController extends Controller
             ->filter(fn ($m) => $m->completion_percentage >= 40)
             ->take(8);
 
+        // A reseller who has built their own homepage layout gets it on their front page,
+        // rendered with their plans and memorials as context. Until they add sections, this
+        // falls through to the shared branded home layout below.
+        if ($reseller) {
+            $resellerHome = Page::getBySlugForReseller(Page::SLUG_VISITOR_HOME, $reseller->id);
+            if ($resellerHome && $resellerHome->hasLayout()) {
+                $widgets = $resellerHome->layout['widgets'];
+
+                return view('pages.visitor.page-layout', [
+                    'title' => $resellerHome->title ?: 'Home',
+                    'widgets' => $widgets,
+                    'layoutContext' => array_merge(
+                        \App\Support\ResellerPageContext::forWidgets($reseller, array_column($widgets, 'type')),
+                        ['popularMemorials' => $popularMemorials, 'tagline' => $tagline]
+                    ),
+                    'shareMeta' => SiteShareMetaHelper::forHome(),
+                ]);
+            }
+        }
+
         $layoutPage = Page::getBySlug(Page::SLUG_VISITOR_HOME);
         if ($layoutPage && $layoutPage->hasLayout()) {
             return view('pages.visitor.page-layout', [

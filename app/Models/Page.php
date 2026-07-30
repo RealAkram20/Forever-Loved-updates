@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class Page extends Model
@@ -68,6 +69,7 @@ class Page extends Model
     }
 
     protected $fillable = [
+        'reseller_id',
         'slug',
         'title',
         'meta_title',
@@ -86,15 +88,44 @@ class Page extends Model
         ];
     }
 
+    public function reseller(): BelongsTo
+    {
+        return $this->belongsTo(Reseller::class);
+    }
+
+    /**
+     * A platform page by slug (reseller_id IS NULL). Reseller pages are deliberately
+     * invisible here so a tenant's "about" can never be served on the platform's own host.
+     */
     public static function getBySlug(string $slug): ?self
     {
-        return Cache::remember("page.{$slug}", 3600, function () use ($slug) {
-            return static::where('slug', $slug)->first();
+        return Cache::remember(self::platformCacheKey($slug), 3600, function () use ($slug) {
+            return static::whereNull('reseller_id')->where('slug', $slug)->first();
         });
     }
 
-    public static function clearSlugCache(string $slug): void
+    /** A specific reseller's page by slug, cached per tenant so slugs never collide across sites. */
+    public static function getBySlugForReseller(string $slug, int $resellerId): ?self
     {
-        Cache::forget("page.{$slug}");
+        return Cache::remember(self::resellerCacheKey($slug, $resellerId), 3600, function () use ($slug, $resellerId) {
+            return static::where('reseller_id', $resellerId)->where('slug', $slug)->first();
+        });
+    }
+
+    public static function clearSlugCache(string $slug, ?int $resellerId = null): void
+    {
+        Cache::forget($resellerId === null
+            ? self::platformCacheKey($slug)
+            : self::resellerCacheKey($slug, $resellerId));
+    }
+
+    private static function platformCacheKey(string $slug): string
+    {
+        return "page.platform.{$slug}";
+    }
+
+    private static function resellerCacheKey(string $slug, int $resellerId): string
+    {
+        return "page.reseller.{$resellerId}.{$slug}";
     }
 }
