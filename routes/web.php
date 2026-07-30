@@ -177,6 +177,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/permissions/roles', [SettingsController::class, 'storeRole'])->name('roles.store');
         Route::put('/permissions/users/{user}/role', [SettingsController::class, 'updateUserRole'])->name('users.role');
         Route::delete('/permissions/roles/{role}', [SettingsController::class, 'destroyRole'])->name('roles.destroy');
+        // Create permissions and grant them to roles.
+        Route::post('/permissions/permissions', [SettingsController::class, 'storePermission'])->name('permissions.store');
+        Route::delete('/permissions/permissions/{permission}', [SettingsController::class, 'destroyPermission'])->name('permissions.destroy')->whereNumber('permission');
+        Route::put('/permissions/roles/{role}/permissions', [SettingsController::class, 'updateRolePermissions'])->name('roles.permissions')->whereNumber('role');
 
         Route::get('/payments', [SettingsController::class, 'payments'])->name('payments');
         Route::put('/payments', [SettingsController::class, 'updatePayments'])->name('payments.update');
@@ -288,6 +292,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/clients/{user}', [ClientController::class, 'update'])->name('clients.update');
         Route::delete('/clients/{user}', [ClientController::class, 'destroy'])->name('clients.destroy');
 
+        // Reseller's own staff (the 'reseller' role) — owner-only, enforced in the controller.
+        Route::get('/staff', [App\Http\Controllers\Reseller\StaffController::class, 'index'])->name('staff');
+        Route::post('/staff', [App\Http\Controllers\Reseller\StaffController::class, 'store'])->name('staff.store');
+        Route::delete('/staff/{user}', [App\Http\Controllers\Reseller\StaffController::class, 'destroy'])->name('staff.destroy')->whereNumber('user');
+
         Route::get('/plans', [PlanController::class, 'index'])->name('plans');
         Route::post('/plans', [PlanController::class, 'store'])->name('plans.store');
         Route::put('/plans/{plan}', [PlanController::class, 'update'])->name('plans.update');
@@ -328,6 +337,16 @@ Route::middleware(['auth'])->group(function () {
 
 // Memorial API (AJAX - no page reload)
 Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.')->group(function () {
+    // Memorial team: invite / re-role / remove people who help manage this memorial. Auth
+    // required (the actions themselves also enforce canManageTeam), unlike the public tribute
+    // and reaction endpoints in this group.
+    Route::middleware('auth')->group(function () {
+        Route::get('/collaborators', [\App\Http\Controllers\MemorialCollaboratorController::class, 'index'])->name('collaborators.index');
+        Route::post('/collaborators', [\App\Http\Controllers\MemorialCollaboratorController::class, 'store'])->middleware('throttle:12,1')->name('collaborators.store');
+        Route::patch('/collaborators/{collaborator}', [\App\Http\Controllers\MemorialCollaboratorController::class, 'update'])->whereNumber('collaborator')->name('collaborators.update');
+        Route::delete('/collaborators/{collaborator}', [\App\Http\Controllers\MemorialCollaboratorController::class, 'destroy'])->whereNumber('collaborator')->name('collaborators.destroy');
+    });
+
     Route::patch('/section', [MemorialApiController::class, 'updateSection'])->name('section');
     Route::post('/tribute', [MemorialApiController::class, 'storeTribute'])->name('tribute');
     Route::post('/track-share', [MemorialApiController::class, 'trackShare'])->name('track-share');

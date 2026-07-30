@@ -505,6 +505,115 @@
         </div>
     </form>
 
+    {{-- Memorial team: invite people to help manage this memorial. Shown only to whoever may
+         manage the team (owner, admin, reseller staff). The invite form itself is gated on the
+         plan's advanced-privacy feature for a plain owner; admins and reseller staff always
+         see it. --}}
+    @php
+        $teamUser = auth()->user();
+        $canManageTeam = $teamUser && $memorial->canManageTeam($teamUser);
+        $teamInviteAllowed = $canManageTeam && (
+            $teamUser->hasRole(['admin', 'super-admin'])
+            || $memorial->isManagedByResellerStaff($teamUser)
+            || \App\Helpers\PlanLimitsHelper::canUseAdvancedPrivacy($memorial)
+        );
+    @endphp
+    @if ($canManageTeam)
+        <div class="mt-6" x-data="memorialCollaborators('{{ $memorial->slug }}')" x-init="load()">
+            <x-common.component-card title="Team" desc="Invite people to help manage this memorial. Editors can change everything; viewers can only look.">
+                @if ($teamInviteAllowed)
+                    <form @submit.prevent="invite()" class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div class="flex-1">
+                            <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Email address</label>
+                            <input type="email" x-model="email" required placeholder="name@example.com"
+                                class="h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-600 dark:text-white" />
+                        </div>
+                        <div class="w-full sm:w-44">
+                            <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Role</label>
+                            <select x-model="role" class="h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-600 dark:text-white">
+                                <option value="editor">Editor — can edit</option>
+                                <option value="viewer">Viewer — read only</option>
+                            </select>
+                        </div>
+                        <button type="submit" :disabled="sending" class="btn btn-primary btn-md disabled:opacity-50">
+                            <span x-show="!sending">Send invite</span>
+                            <span x-show="sending" x-cloak>Sending…</span>
+                        </button>
+                    </form>
+                @else
+                    <div class="mb-5 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                        Inviting people to help manage this memorial is a premium feature.
+                        <a href="{{ route('pricing') }}" class="font-medium underline">Upgrade the plan</a> to enable it.
+                    </div>
+                @endif
+
+                <p x-show="collaborators.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No one else helps manage this memorial yet.</p>
+                <ul class="divide-y divide-gray-100 dark:divide-gray-800" x-show="collaborators.length > 0" x-cloak>
+                    <template x-for="c in collaborators" :key="c.id">
+                        <li class="flex items-center justify-between gap-3 py-2.5">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90" x-text="c.name || c.email"></p>
+                                <p class="truncate text-xs text-gray-500 dark:text-gray-400" x-text="c.email"></p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <select x-model="c.role" @change="updateRole(c)"
+                                    class="h-8 rounded-lg border border-gray-300 bg-transparent px-2 text-xs dark:border-gray-600 dark:text-white">
+                                    <option value="editor">Editor</option>
+                                    <option value="viewer">Viewer</option>
+                                </select>
+                                <button type="button" @click="remove(c)"
+                                    class="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                                    title="Remove">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+            </x-common.component-card>
+        </div>
+
+        <script>
+            function memorialCollaborators(slug) {
+                const base = '{{ url('/m') }}/' + slug + '/collaborators';
+                const csrf = () => document.querySelector('meta[name="csrf-token"]').content;
+                const json = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+                return {
+                    collaborators: [], email: '', role: 'editor', sending: false,
+                    async load() {
+                        try {
+                            const r = await fetch(base, { headers: { 'Accept': 'application/json' } });
+                            if (r.ok) this.collaborators = (await r.json()).collaborators || [];
+                        } catch (e) {}
+                    },
+                    async invite() {
+                        this.sending = true;
+                        try {
+                            const r = await fetch(base, { method: 'POST', headers: { ...json, 'X-CSRF-TOKEN': csrf() }, body: JSON.stringify({ email: this.email, role: this.role }) });
+                            const d = await r.json();
+                            if (r.ok) { this.collaborators.unshift(d.collaborator); this.email = ''; this.role = 'editor'; window.$toast?.('success', d.message); }
+                            else window.$toast?.('error', d.message || 'Could not send the invite.');
+                        } catch (e) { window.$toast?.('error', 'Could not send the invite.'); }
+                        finally { this.sending = false; }
+                    },
+                    async updateRole(c) {
+                        try {
+                            const r = await fetch(base + '/' + c.id, { method: 'PATCH', headers: { ...json, 'X-CSRF-TOKEN': csrf() }, body: JSON.stringify({ role: c.role }) });
+                            if (r.ok) window.$toast?.('success', 'Role updated.');
+                        } catch (e) { window.$toast?.('error', 'Could not update the role.'); }
+                    },
+                    async remove(c) {
+                        if (!window.confirm('Remove ' + (c.name || c.email) + ' from this memorial?')) return;
+                        try {
+                            const r = await fetch(base + '/' + c.id, { method: 'DELETE', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() } });
+                            if (r.ok) this.collaborators = this.collaborators.filter(x => x.id !== c.id);
+                        } catch (e) { window.$toast?.('error', 'Could not remove them.'); }
+                    },
+                };
+            }
+        </script>
+    @endif
+
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.store('autoSave', { status: '' });

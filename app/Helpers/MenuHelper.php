@@ -68,15 +68,20 @@ class MenuHelper
             ] : null,
             [
                 'title' => 'Your business',
-                'items' => [
+                'items' => array_values(array_filter([
                     ['icon' => 'pricing', 'name' => 'Plans', 'path' => url('/reseller/plans')],
                     // Named to match the admin's own entry, and pointing at the merged page —
                     // logo, favicon and the full colour/font set now live in one place rather
                     // than a "Branding" page that only controlled a single colour.
                     ['icon' => 'appearance', 'name' => 'Appearance', 'path' => url('/reseller/appearance')],
+                    // Staff administer the whole reseller account, so only the owner may manage
+                    // them — the nav entry is hidden for everyone else, matching the route guard.
+                    ($reseller && auth()->id() === $reseller->owner_user_id)
+                        ? ['icon' => 'users', 'name' => 'Staff', 'path' => url('/reseller/staff'), 'match' => 'reseller/staff']
+                        : null,
                     ['icon' => 'billing', 'name' => 'Payments', 'path' => url('/reseller/payments')],
                     ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/reseller/settings'), 'match' => 'reseller/settings'],
-                ],
+                ])),
             ],
         ]));
     }

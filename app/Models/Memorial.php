@@ -397,6 +397,24 @@ class Memorial extends Model
             && $user->hasRole('reseller');
     }
 
+    /**
+     * Who may manage this memorial's *team* — invite, re-role, or remove collaborators.
+     * Deliberately narrower than canBeEditedBy(): the owner, a platform admin, and reseller
+     * staff for their own tenant can manage the team, but a plain editor collaborator cannot,
+     * so an invited contributor can help run the memorial without silently building their own
+     * roster of further editors.
+     */
+    public function canManageTeam(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $this->user_id === $user->id
+            || $user->hasRole(['admin', 'super-admin'])
+            || $this->isManagedByResellerStaff($user);
+    }
+
     public function galleryMedia()
     {
         $usedInPosts = DB::table('post_media')->pluck('media_id')->toArray();

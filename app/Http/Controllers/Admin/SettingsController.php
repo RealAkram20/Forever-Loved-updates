@@ -189,6 +189,41 @@ class SettingsController extends Controller
         return back()->with('success', 'Role deleted successfully.');
     }
 
+    public function storePermission(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100|unique:permissions,name',
+        ]);
+
+        Permission::create(['name' => $request->name, 'guard_name' => 'web']);
+
+        return back()->with('success', 'Permission created.');
+    }
+
+    public function destroyPermission(Permission $permission)
+    {
+        $permission->delete();
+
+        return back()->with('success', 'Permission deleted.');
+    }
+
+    /**
+     * Replace a role's whole permission set from the submitted checkboxes. A role with no
+     * boxes ticked submits no `permissions` key at all, which must clear the role rather than
+     * leave it untouched — so an absent key is treated as an empty set.
+     */
+    public function updateRolePermissions(Request $request, Role $role)
+    {
+        $validated = $request->validate([
+            'permissions' => ['array'],
+            'permissions.*' => ['string', 'exists:permissions,name'],
+        ]);
+
+        $role->syncPermissions($validated['permissions'] ?? []);
+
+        return back()->with('success', "Permissions updated for the {$role->name} role.");
+    }
+
     // ─── Payments ────────────────────────────────────────────────────
 
     public function payments()
