@@ -35,7 +35,7 @@
     @if (! \App\Support\InstallerVite::hasManifest() && ! \App\Support\InstallerVite::hasUsableBuildWithoutManifest())
         <div class="install-fallback" role="alert" style="max-width:42rem;margin:0 auto;padding:1rem 1.25rem;border-bottom:1px solid #fecaca;background:#fef2f2;color:#7f1d1d;font-family:system-ui,sans-serif;font-size:14px;line-height:1.55;">
             <strong>Installer assets missing.</strong>
-            <span style="display:block;margin-top:.35rem">Upload the full <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">public/build</code> folder from <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">npm run build</code> (include <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">manifest.json</code> and <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">assets/*</code>), or use <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">/setup.php</code> instead.</span>
+            <span style="display:block;margin-top:.35rem">Upload the full <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">public/build</code> folder from <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">npm run build</code> (include <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">manifest.json</code> and <code style="background:#fee2e2;padding:.1rem .35rem;border-radius:3px">assets/*</code>). The installer still works without them — only its styling is missing.</span>
         </div>
     @endif
     <div class="flex min-h-screen flex-col items-center justify-center px-4 py-10">
