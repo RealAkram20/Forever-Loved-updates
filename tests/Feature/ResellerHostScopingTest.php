@@ -3,6 +3,7 @@
 use App\Models\Memorial;
 use App\Models\Menu;
 use App\Models\MenuItem;
+use App\Models\Page;
 use App\Models\Reseller;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -113,34 +114,47 @@ it('does not treat a multi-label subdomain as a reseller', function () {
 |--------------------------------------------------------------------------
 */
 
-it('redirects the platform marketing pages to the reseller front page', function () {
+it('serves the reseller their own standard pages by default', function () {
+    // These four used to redirect unconditionally, because the only About and Pricing that
+    // existed were the platform's. A reseller is now provisioned with their own, published.
     $acme = hostTenant();
 
     foreach (['about', 'pricing', 'contact', 'find-memorial'] as $path) {
-        // Their front page, not ours. This used to assert a bare '/', which passed while the
-        // redirect actually landed on the platform's host: AppServiceProvider calls
-        // URL::forceRootUrl(config('app.url')) for subdirectory installs, so redirect('/')
-        // resolved to the platform root on every reseller host — the exact hand-off the
-        // middleware's own comment says it exists to prevent. Asserting the absolute address
-        // is what makes that visible.
-        $this->get(resellerHost($acme).'/'.$path)->assertRedirect(resellerHost($acme).'/');
+        $this->get(resellerHost($acme).'/'.$path)->assertOk();
     }
 });
 
-it('serves a standard page on a reseller host once they switch it on', function () {
+it('redirects a standard page the reseller has switched off', function () {
     $acme = hostTenant();
 
-    App\Models\Page::create([
-        'reseller_id' => $acme->id,
-        'slug' => 'about',
-        'title' => 'About Acme',
-        'content' => '<p>Acme, since 1961.</p>',
-        'is_published' => true,
+    Page::where('reseller_id', $acme->id)->where('slug', 'about')->update(['is_published' => false]);
+    Page::clearSlugCache('about', $acme->id);
+
+    // Their front page, not ours. This used to assert a bare '/', which passed while the
+    // redirect actually landed on the platform's host: AppServiceProvider calls
+    // URL::forceRootUrl(config('app.url')) for subdirectory installs, so redirect('/')
+    // resolved to the platform root on every reseller host — the exact hand-off the
+    // middleware's own comment says it exists to prevent. Asserting the absolute address is
+    // what makes that visible.
+    $this->get(resellerHost($acme).'/about')->assertRedirect(resellerHost($acme).'/');
+});
+
+it('serves the reseller\'s own copy, never the platform\'s', function () {
+    Page::create([
+        'reseller_id' => null, 'slug' => 'about', 'title' => 'About Us',
+        'content' => '<p>The platform story.</p>', 'is_published' => true,
     ]);
+
+    $acme = hostTenant();
+
+    Page::where('reseller_id', $acme->id)->where('slug', 'about')
+        ->update(['title' => 'About Acme', 'content' => '<p>Acme, since 1961.</p>']);
+    Page::clearSlugCache('about', $acme->id);
 
     $this->get(resellerHost($acme).'/about')
         ->assertOk()
-        ->assertSee('Acme, since 1961', false);
+        ->assertSee('Acme, since 1961', false)
+        ->assertDontSee('The platform story', false);
 });
 
 it('still serves the platform marketing pages on the platform host', function () {
@@ -166,15 +180,29 @@ it('keeps auth and legal pages working on a reseller host', function () {
 |--------------------------------------------------------------------------
 */
 
-it('drops the platform marketing nav on a reseller front page', function () {
+it('navigates to the reseller\'s own pages, never the platform\'s', function () {
+    // This used to assert the nav was *empty* on a reseller host, which was the only way to
+    // keep our About and Pricing off their domain while those were the only ones that
+    // existed. They now have their own set, so the question is no longer "are these links
+    // absent" but "where do these links point".
     $acme = hostTenant();
 
-    $this->get(resellerHost($acme).'/')
-        ->assertOk()
-        ->assertDontSee('>About<', false)
-        ->assertDontSee('>Pricing<', false)
-        ->assertDontSee('>Find Memorial<', false)
-        ->assertDontSee('>Contact<', false);
+    $html = $this->get(resellerHost($acme).'/')->assertOk()->getContent();
+
+    preg_match_all('/<a[^>]+href="([^"]*)"[^>]*>\s*(About|Pricing|Find Memorial|Contact)\s*<\/a>/', $html, $m, PREG_SET_ORDER);
+
+    expect($m)->not->toBeEmpty();
+
+    // Every one must sit inside their own space. publicBaseUrl() is whichever address
+    // actually works here — their subdomain in production, the /r/{slug} path in an
+    // environment that cannot do host routing — so comparing against it covers both without
+    // asserting on the deployment shape. A relative href resolves against the host the
+    // visitor is already on, which is also theirs.
+    foreach ($m as [$_, $href, $label]) {
+        $ownsIt = str_starts_with($href, $acme->publicBaseUrl()) || str_starts_with($href, '/');
+
+        expect($ownsIt)->toBeTrue("Nav link “{$label}” leaves their site: {$href}");
+    }
 });
 
 it('keeps the platform marketing nav on the platform home page', function () {

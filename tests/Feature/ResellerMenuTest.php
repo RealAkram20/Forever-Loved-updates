@@ -60,7 +60,7 @@ function platformHeaderMenu(): Menu
 
     MenuItem::create([
         'menu_id' => $menu->id,
-        'label' => 'Pricing',
+        'label' => 'Platform Pricing',
         'route_name' => 'pricing',
         'sort_order' => 0,
     ]);
@@ -83,9 +83,10 @@ it('lets a reseller build their own header menu', function () {
 
     $menu = Menu::forLocation(Menu::LOCATION_HEADER, $owner->reseller_id);
 
+    // Appended to the default nav they are provisioned with, not replacing it.
     expect($menu)->not->toBeNull()
         ->and($menu->reseller_id)->toBe($owner->reseller_id)
-        ->and($menu->rootMenuItems()->pluck('label')->all())->toBe(['Our services']);
+        ->and($menu->rootMenuItems()->pluck('label')->all())->toContain('Our services');
 });
 
 it('keeps one reseller out of another reseller\'s menu', function () {
@@ -159,10 +160,13 @@ it('never serves the platform menu on a reseller site', function () {
     $owner = menuReseller();
     $reseller = $owner->reseller;
 
-    // A reseller who has built nothing gets the blades' tenant-aware fallback, not ours.
-    expect(Menu::navigationFor(Menu::LOCATION_HEADER, $reseller->id))->toBeEmpty()
+    // Their header is their own provisioned default — never our items, whatever it contains.
+    $theirs = Menu::navigationFor(Menu::LOCATION_HEADER, $reseller->id);
+
+    expect($theirs->pluck('label')->all())->not->toContain('Platform Pricing')
+        ->and($theirs->pluck('route_name')->all())->not->toContain('pricing')
         // ...while the platform's own site still gets its menu.
-        ->and(Menu::navigationFor(Menu::LOCATION_HEADER, null)->pluck('label')->all())->toBe(['Pricing']);
+        ->and(Menu::navigationFor(Menu::LOCATION_HEADER, null)->pluck('label')->all())->toBe(['Platform Pricing']);
 });
 
 it('offers a reseller only their own pages as destinations', function () {
@@ -175,10 +179,11 @@ it('offers a reseller only their own pages as destinations', function () {
         ->assertOk()
         ->assertSee('Our Services')
         ->assertDontSee('Platform Only')
-        // The platform's marketing pages are not offered either — on a reseller host those
-        // paths redirect back to their front page anyway.
-        ->assertDontSee('Pricing ·')
-        ->assertDontSee('About ·');
+        // Their own About and Pricing *are* offered now — as their pages, addressed through
+        // cms.page. What must never appear is a platform route option, which would put a
+        // link to our site in their navigation.
+        ->assertDontSee('value="pricing"', false)
+        ->assertDontSee('value="about"', false);
 });
 
 it('refuses a hand-typed platform page as a menu destination', function () {

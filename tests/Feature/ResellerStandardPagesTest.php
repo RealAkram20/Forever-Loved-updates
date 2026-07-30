@@ -4,12 +4,14 @@ use App\Helpers\QueueHealthHelper;
 use App\Jobs\SendContactEmail;
 use App\Models\Memorial;
 use App\Models\Menu;
+use App\Models\MenuItem;
 use App\Models\Page;
 use App\Models\Reseller;
 use App\Models\ResellerTier;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\ResellerSiteProvisioner;
 use App\Support\StandardPages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -140,17 +142,24 @@ it('rejects a slug that is not a standard page', function () {
 
 // ─── Enablement decides the routing ─────────────────────────────────────────
 
-it('resolves an enabled page for the tenant and nothing when off', function () {
+it('starts every standard page enabled', function () {
     $owner = standardPagesReseller();
     $id = $owner->reseller_id;
 
+    foreach (StandardPages::slugs() as $slug) {
+        expect(StandardPages::isEnabledFor($slug, $id))->toBeTrue("{$slug} should be on by default");
+    }
+});
+
+it('resolves nothing once a page is switched off', function () {
+    $owner = standardPagesReseller();
+    $id = $owner->reseller_id;
+
+    $this->actingAs($owner)->put('http://localhost/reseller/pages/standard/about', ['enabled' => 0]);
     expect(StandardPages::isEnabledFor('about', $id))->toBeFalse();
 
     enableStandard($owner, 'about');
     expect(StandardPages::isEnabledFor('about', $id))->toBeTrue();
-
-    $this->actingAs($owner)->put('http://localhost/reseller/pages/standard/about', ['enabled' => 0]);
-    expect(StandardPages::isEnabledFor('about', $id))->toBeFalse();
 });
 
 it('falls back to the platform copy for legal pages only', function () {
@@ -160,25 +169,26 @@ it('falls back to the platform copy for legal pages only', function () {
     $owner = standardPagesReseller();
     $id = $owner->reseller_id;
 
-    // A tenant with no rows still answers /privacy-policy — no policy at all is worse than
-    // a generic one — but must never serve our About on their domain.
+    // Simulating a tenant provisioned before these pages existed — the fallback is what
+    // keeps their site answering /privacy-policy at all.
+    Page::where('reseller_id', $id)->whereIn('slug', ['privacy-policy', 'about'])->delete();
+    Page::clearSlugCache('privacy-policy', $id);
+    Page::clearSlugCache('about', $id);
+
+    // No policy at all is worse than a generic one — but our About must never be served on
+    // their domain.
     expect(StandardPages::resolve('privacy-policy', $id))->not->toBeNull()
         ->and(StandardPages::resolve('about', $id))->toBeNull();
 });
 
 // ─── End to end, on their actual host ───────────────────────────────────────
 
-it('serves the reseller\'s own About page once switched on', function () {
+it('serves the reseller\'s own About page out of the box', function () {
     Page::create(['slug' => 'about', 'title' => 'About Us', 'content' => '<p>The platform story.</p>', 'is_published' => true]);
 
     $owner = standardPagesReseller();
     $host = 'http://'.$owner->reseller->slug.'.'.config('reseller.domain');
 
-    // Off: the path redirects to *their* front page. Asserted on the absolute address
-    // because URL::forceRootUrl() would otherwise land the visitor on the platform's.
-    $this->get($host.'/about')->assertRedirect($host.'/');
-
-    enableStandard($owner, 'about');
     Page::where('reseller_id', $owner->reseller_id)->where('slug', 'about')
         ->update(['content' => '<p>Three generations of service.</p>']);
     Page::clearSlugCache('about', $owner->reseller_id);
@@ -189,8 +199,75 @@ it('serves the reseller\'s own About page once switched on', function () {
         // Their host must never print ours.
         ->assertDontSee('The platform story', false);
 
-    // The platform's own About is untouched.
+    // Switched off, the path redirects to *their* front page. Asserted on the absolute
+    // address because URL::forceRootUrl() would otherwise land the visitor on the platform's.
+    $this->actingAs($owner)->put('http://localhost/reseller/pages/standard/about', ['enabled' => 0]);
+    auth()->logout();
+
+    $this->get($host.'/about')->assertRedirect($host.'/');
+
+    // The platform's own About is untouched throughout.
     $this->get('http://localhost/about')->assertOk()->assertSee('The platform story', false);
+});
+
+it('provisions a default navigation pointing at their own pages', function () {
+    $owner = standardPagesReseller();
+    $reseller = $owner->reseller;
+
+    $header = Menu::navigationFor(Menu::LOCATION_HEADER, $reseller->id);
+
+    expect($header->pluck('label')->all())->toBe(['Home', 'About', 'Pricing', 'Find Memorial', 'Contact']);
+
+    // Every link resolves to their address, not ours — the point of provisioning them as
+    // cms.page entries rather than platform routes.
+    foreach ($header as $item) {
+        expect($item->resolvedUrl())->toStartWith($reseller->publicBaseUrl());
+    }
+
+    expect(Menu::navigationFor(Menu::LOCATION_FOOTER_COMPANY, $reseller->id)->pluck('label')->all())
+        ->toBe(['About Us', 'Contact Us', 'Privacy Policy', 'Terms of Use']);
+});
+
+it('appends only the missing links when backfilling an older menu', function () {
+    $owner = standardPagesReseller();
+    $reseller = $owner->reseller;
+
+    // A header as it looked before standard pages existed: hand-built, one link by route.
+    Menu::navigationFor(Menu::LOCATION_HEADER, $reseller->id)->each->delete();
+    $menu = Menu::forLocation(Menu::LOCATION_HEADER, $reseller->id);
+    MenuItem::create(['menu_id' => $menu->id, 'label' => 'Welcome', 'route_name' => 'home', 'sort_order' => 0]);
+
+    ResellerSiteProvisioner::provision($reseller->fresh(), appendMissingLinks: true);
+
+    $labels = Menu::navigationFor(Menu::LOCATION_HEADER, $reseller->id)->pluck('label')->all();
+
+    // Their own label and position survive, and `route=home` is recognised as already
+    // covering the homepage — otherwise a second "Home" lands beside it.
+    expect($labels)->toBe(['Welcome', 'About', 'Pricing', 'Find Memorial', 'Contact']);
+});
+
+it('adds nothing on a second backfill', function () {
+    $owner = standardPagesReseller();
+    $reseller = $owner->reseller;
+
+    $before = MenuItem::count();
+    ResellerSiteProvisioner::provision($reseller, appendMissingLinks: true);
+
+    expect(MenuItem::count())->toBe($before);
+});
+
+it('leaves an existing menu alone when provisioning runs again', function () {
+    $owner = standardPagesReseller();
+    $reseller = $owner->reseller;
+
+    Menu::navigationFor(Menu::LOCATION_HEADER, $reseller->id)->skip(1)->each->delete();
+    $reseller->refresh();
+
+    ResellerSiteProvisioner::provision($reseller);
+
+    // A reseller who has pruned their header has made a decision; a second run must not
+    // refill it. The backfill migration and the creation hook both rely on this.
+    expect(Menu::navigationFor(Menu::LOCATION_HEADER, $reseller->id))->toHaveCount(1);
 });
 
 // ─── The two scoping bugs ───────────────────────────────────────────────────
@@ -312,13 +389,13 @@ it('offers a standard page in the menu picker only while it is on', function () 
 
     $this->actingAs($owner)->get('http://localhost/reseller/menus')
         ->assertOk()
-        ->assertDontSee('About Us ·');
+        ->assertSee('About Us ·');
 
-    enableStandard($owner, 'about');
+    $this->actingAs($owner)->put('http://localhost/reseller/pages/standard/about', ['enabled' => 0]);
 
     $this->actingAs($owner)->get('http://localhost/reseller/menus')
         ->assertOk()
-        ->assertSee('About Us ·');
+        ->assertDontSee('About Us ·');
 });
 
 it('refuses a menu link to a switched-off standard page', function () {

@@ -11,6 +11,27 @@ class Reseller extends Model
 {
     use HasFactory;
 
+    /**
+     * A new reseller's site is usable the moment it exists.
+     *
+     * Standard pages and menus both defaulted to empty, so a brand-new tenant's site had no
+     * About, no Pricing, no Contact and a header reading "Home" and nothing else — every one
+     * of them a switch somebody had to find first, and some of them behind a tier flag they
+     * may not have. Provisioning here rather than in Admin\ResellerController for the reason
+     * Memorial::booted() gives about reseller_id: there is more than one way a reseller gets
+     * created (the admin form, a seeder, a factory), and a hook cannot be forgotten by the
+     * next one.
+     *
+     * ResellerSiteProvisioner is additive and idempotent, so this only ever fills in what is
+     * missing — a reseller who later switches a page off keeps it off.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (self $reseller) {
+            \App\Support\ResellerSiteProvisioner::provision($reseller);
+        });
+    }
+
     public const STATUS_ACTIVE = 'active';
 
     public const STATUS_SUSPENDED = 'suspended';

@@ -193,10 +193,14 @@ it('does not serve an unpublished reseller page', function () {
 
 // ── Homepage editing ───────────────────────────────────────────────────────────────────
 
-it('opens the homepage editor and creates the home page on first edit', function () {
+it('opens the homepage editor with a layout to edit', function () {
     $owner = pageBuilderReseller(['feature_page_builder' => true]);
 
-    expect(Page::where('reseller_id', $owner->reseller_id)->where('slug', Page::SLUG_VISITOR_HOME)->exists())->toBeFalse();
+    // The row exists from provisioning, but with no layout — their front page renders the
+    // shared branded default until they build one. (Seeding from the platform's layout, when
+    // the platform has one, is covered by the next test.)
+    $before = Page::where('reseller_id', $owner->reseller_id)->where('slug', Page::SLUG_VISITOR_HOME)->first();
+    expect($before)->not->toBeNull()->and($before->hasLayout())->toBeFalse();
 
     $this->actingAs($owner)->get('http://localhost/reseller/pages/homepage')
         ->assertOk()->assertSee('__PAGE_BUILDER__', false);
@@ -231,13 +235,10 @@ it('renders a reseller custom homepage layout on their front page', function () 
     $owner = pageBuilderReseller(['feature_page_builder' => true]);
     $reseller = $owner->reseller;
 
-    Page::create([
-        'reseller_id' => $reseller->id,
-        'slug' => Page::SLUG_VISITOR_HOME,
-        'title' => 'Home',
-        'layout' => headingLayout('Welcome to our funeral home'),
-        'is_published' => true,
-    ]);
+    // Provisioned on creation now, so this sets the layout rather than creating the row.
+    Page::where('reseller_id', $reseller->id)->where('slug', Page::SLUG_VISITOR_HOME)
+        ->update(['layout' => headingLayout('Welcome to our funeral home')]);
+    Page::clearSlugCache(Page::SLUG_VISITOR_HOME, $reseller->id);
 
     $this->get('http://localhost/r/'.$reseller->slug)
         ->assertOk()
@@ -247,13 +248,8 @@ it('renders a reseller custom homepage layout on their front page', function () 
 it('will not delete or re-slug the homepage', function () {
     $owner = pageBuilderReseller(['feature_page_builder' => true]);
 
-    Page::create([
-        'reseller_id' => $owner->reseller_id,
-        'slug' => Page::SLUG_VISITOR_HOME,
-        'title' => 'Home',
-        'layout' => headingLayout('Home'),
-        'is_published' => true,
-    ]);
+    Page::where('reseller_id', $owner->reseller_id)->where('slug', Page::SLUG_VISITOR_HOME)
+        ->update(['layout' => headingLayout('Home')]);
 
     // Delete is refused; the page survives.
     $this->actingAs($owner)->delete('http://localhost/reseller/pages/'.Page::SLUG_VISITOR_HOME)

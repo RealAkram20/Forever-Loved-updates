@@ -53,6 +53,8 @@ class MenuItem extends Model
             return url($this->url);
         }
 
+        $reseller = $this->menu?->reseller;
+
         if ($this->route_name === 'cms.page') {
             $slug = is_array($this->route_parameters) ? ($this->route_parameters['slug'] ?? null) : null;
             if (! is_string($slug) || $slug === '') {
@@ -63,13 +65,24 @@ class MenuItem extends Model
             // request root, which is right on their own host but wrong for the /r/{slug} path
             // fallback that subdirectory and development installs use — there it would point
             // at the platform's /{slug} instead of theirs.
-            $reseller = $this->menu?->reseller;
+            if (! $reseller) {
+                return url('/'.$slug);
+            }
 
-            return $reseller ? $reseller->publicUrlForSlug($slug) : url('/'.$slug);
+            return $slug === Page::SLUG_VISITOR_HOME
+                ? $reseller->publicBaseUrl()
+                : $reseller->publicUrlForSlug($slug);
         }
 
         if (is_string($this->route_name) && $this->route_name !== '' && Route::has($this->route_name)) {
-            return route($this->route_name, $this->route_parameters ?? []);
+            // Relative for a reseller's menu. AppServiceProvider calls
+            // URL::forceRootUrl(config('app.url')) so subdirectory installs work, which pins
+            // every absolute generated URL to the *platform's* address — so route() here would
+            // put a link to our site in their navigation. A path resolves against whatever
+            // host the visitor is already on, which is theirs.
+            return $reseller
+                ? route($this->route_name, $this->route_parameters ?? [], false)
+                : route($this->route_name, $this->route_parameters ?? []);
         }
 
         return '#';
