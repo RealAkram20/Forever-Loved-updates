@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use PDO;
 use PDOException;
 
@@ -176,10 +177,14 @@ class InstallController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
+        // Hashed here rather than at step 5. This array is written to
+        // storage/app/install-data.json so the run can resume after a timeout, and it was
+        // carrying the super-admin's password in clear text — left on disk indefinitely if
+        // the install never reached step 8, which is exactly when a run gets abandoned.
         session(['install.admin' => [
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => $validated['password'],
+            'password_hash' => Hash::make($validated['password']),
         ]]);
 
         return redirect()->route('install.run');
@@ -319,11 +324,16 @@ class InstallController extends Controller
 
     private function stepCreateAdmin(array $admin): void
     {
+        // Already hashed by storeAdmin(); `password` is cast as 'hashed' on the model, which
+        // skips re-hashing a value that is already a hash. The legacy key is still honoured
+        // so a run that started before this change can finish.
+        $hash = $admin['password_hash'] ?? Hash::make($admin['password'] ?? Str::random(32));
+
         $user = User::firstOrCreate(
             ['email' => $admin['email']],
             [
                 'name' => $admin['name'],
-                'password' => Hash::make($admin['password']),
+                'password' => $hash,
             ]
         );
         $user->assignRole('super-admin');

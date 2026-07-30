@@ -15,6 +15,7 @@ use App\Models\Tribute;
 use App\Models\TributeComment;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Support\GuestIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -89,32 +90,32 @@ class MemorialApiController extends Controller
             return response()->json(['error' => 'Name and email are required for guests'], 422);
         }
 
-        // If guest: use existing user's name when email exists, else create new user
+        // A registered address belongs to its owner, not to whoever typed it. Adopting the
+        // match here published the tribute under that member's name and photo.
+        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
+            return GuestIdentity::requiresLoginResponse('leave a tribute');
+        }
+
+        // Unknown address: create the account this flow has always created for them.
         if (! $userId && $guestEmail) {
-            $existingUser = User::where('email', strtolower($guestEmail))->first();
-            if ($existingUser) {
-                $userId = $existingUser->id;
-                $guestName = $existingUser->name;
-            } else {
-                $user = User::create([
-                    'name' => $guestName,
-                    'email' => strtolower($guestEmail),
-                    'password' => null,
-                ]);
+            $user = User::create([
+                'name' => $guestName,
+                'email' => strtolower($guestEmail),
+                'password' => null,
+            ]);
 
-                NotificationService::notifyNewUserSignup($user);
+            NotificationService::notifyNewUserSignup($user);
 
-                $setupUrl = route('password.request');
-                \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
-                    to: $guestEmail,
-                    name: $guestName,
-                    subject: 'Welcome to Forever-Loved - Complete your account',
-                    body: "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: ".route('login.passwordless'),
-                ));
+            $setupUrl = route('password.request');
+            \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
+                to: $guestEmail,
+                name: $guestName,
+                subject: 'Welcome to Forever-Loved - Complete your account',
+                body: "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: ".route('login.passwordless'),
+            ));
 
-                $userId = $user->id;
-                $guestName = $user->name;
-            }
+            $userId = $user->id;
+            $guestName = $user->name;
         }
 
         $tribute = Tribute::create([
@@ -244,6 +245,9 @@ class MemorialApiController extends Controller
     public function posts(string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (! $this->canRead($memorial)) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
 
         $posts = $memorial->posts()
             ->where('is_published', true)
@@ -262,6 +266,10 @@ class MemorialApiController extends Controller
     public function chapters(string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (! $this->canRead($memorial)) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
+
         $chapters = $memorial->storyChapters()->orderBy('sort_order')->get();
 
         return response()->json(['chapters' => $chapters]);
@@ -383,7 +391,7 @@ class MemorialApiController extends Controller
             'user_id' => $request->user()?->id,
             'type' => $validated['type'],
             'title' => $validated['title'] ?? null,
-            'content' => $validated['content'] ?? null,
+            'content' => HtmlHelper::sanitize($validated['content'] ?? null) ?: null,
             'location' => $validated['location'] ?? null,
             'metadata' => $validated['metadata'] ?? null,
         ]);
@@ -415,6 +423,13 @@ class MemorialApiController extends Controller
             'content' => ['nullable', 'string', 'max:5000'],
             'location' => ['nullable', 'string', 'max:255'],
         ]);
+
+        // Sanitised on the way in, like every other rich-text write. This one was passing
+        // the validated array straight through, and the Life feed assigns the response's
+        // `content` to innerHTML — so an editor's markup reached the DOM twice unfiltered.
+        if (array_key_exists('content', $validated)) {
+            $validated['content'] = HtmlHelper::sanitize($validated['content']) ?: null;
+        }
 
         $post->update($validated);
 
@@ -448,6 +463,9 @@ class MemorialApiController extends Controller
     public function tributes(string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (! $this->canRead($memorial)) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
 
         $tributes = $memorial->tributes()
             ->where('is_approved', true)
@@ -556,13 +574,10 @@ class MemorialApiController extends Controller
         $guestName = $validated['guest_name'] ?? null;
         $guestEmail = $validated['guest_email'] ?? null;
 
-        if (! $userId && $guestEmail) {
-            $existingUser = User::where('email', strtolower($guestEmail))->first();
-            if ($existingUser) {
-                $userId = $existingUser->id;
-                $guestName = $existingUser->name;
-                $guestEmail = null;
-            }
+        // Resolving the address to its account let anyone subscribe a member — and, via
+        // update/unsubscribe below, read and change that member's notification settings.
+        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
+            return GuestIdentity::requiresLoginResponse('manage notifications');
         }
 
         if (! $userId && ! $guestEmail) {
@@ -609,17 +624,13 @@ class MemorialApiController extends Controller
         $userId = $request->user()?->id;
         $guestEmail = $validated['guest_email'] ?? null;
 
-        if (! $userId && $guestEmail) {
-            $existingUser = User::where('email', strtolower($guestEmail))->first();
-            if ($existingUser) {
-                $userId = $existingUser->id;
-                $guestEmail = null;
-            }
+        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
+            return GuestIdentity::requiresLoginResponse('manage notifications');
         }
 
         $sub = $userId
             ? MemorialSubscription::where('memorial_id', $memorial->id)->where('user_id', $userId)->first()
-            : MemorialSubscription::where('memorial_id', $memorial->id)->where('guest_email', strtolower($guestEmail))->first();
+            : ($guestEmail ? MemorialSubscription::where('memorial_id', $memorial->id)->where('guest_email', strtolower($guestEmail))->first() : null);
 
         if (! $sub) {
             return response()->json(['error' => 'Subscription not found'], 404);
@@ -643,12 +654,8 @@ class MemorialApiController extends Controller
         $userId = $request->user()?->id;
         $guestEmail = $request->input('guest_email');
 
-        if (! $userId && $guestEmail) {
-            $existingUser = User::where('email', strtolower($guestEmail))->first();
-            if ($existingUser) {
-                $userId = $existingUser->id;
-                $guestEmail = null;
-            }
+        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
+            return GuestIdentity::requiresLoginResponse('manage notifications');
         }
 
         $deleted = $userId
@@ -668,12 +675,10 @@ class MemorialApiController extends Controller
         $userId = $request->user()?->id;
         $guestEmail = $request->query('email');
 
-        if (! $userId && $guestEmail) {
-            $existingUser = User::where('email', strtolower($guestEmail))->first();
-            if ($existingUser) {
-                $userId = $existingUser->id;
-                $guestEmail = null;
-            }
+        // Answering for a registered address made this an oracle: it confirmed the address
+        // had an account and handed back that person's notification preferences.
+        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
+            return response()->json(['subscribed' => false]);
         }
 
         $sub = $userId
@@ -729,12 +734,29 @@ class MemorialApiController extends Controller
     }
 
     /**
+     * May the caller *read* this memorial's content through the API?
+     *
+     * The read endpoints were split three ways: comments(), reactions() and stats() checked
+     * `is_public`, while posts(), tributes() and chapters() checked nothing at all — so a
+     * private memorial's life feed, tributes and chapters were served to anyone who knew the
+     * slug, even though the page itself 404s for them. One gate for all six.
+     *
+     * It also has to admit the people who can edit: the page deliberately lets an owner view
+     * their own unpublished memorial, and the strict `is_public` endpoints were returning 404
+     * to them on their own content.
+     */
+    private function canRead(Memorial $memorial): bool
+    {
+        return $memorial->is_public || $this->canEdit($memorial);
+    }
+
+    /**
      * Get comments for a post.
      */
     public function comments(string $slug, int $postId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (! $memorial->is_public) {
+        if (! $this->canRead($memorial)) {
             return response()->json(['error' => 'Not found'], 404);
         }
         $post = $memorial->posts()->findOrFail($postId);
@@ -784,12 +806,9 @@ class MemorialApiController extends Controller
             return response()->json(['error' => 'Name and email are required for guests'], 422);
         }
 
-        if (! $userId && $guestEmail) {
-            $existingUser = User::where('email', strtolower($guestEmail))->first();
-            if ($existingUser) {
-                $userId = $existingUser->id;
-                $guestName = $existingUser->name;
-            }
+        // Typing a member's address must not sign their name to your comment.
+        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
+            return GuestIdentity::requiresLoginResponse('comment');
         }
 
         $parentId = $validated['parent_id'] ?? null;
@@ -833,7 +852,7 @@ class MemorialApiController extends Controller
     public function reactions(string $slug, int $postId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (! $memorial->is_public) {
+        if (! $this->canRead($memorial)) {
             return response()->json(['error' => 'Not found'], 404);
         }
         $post = $memorial->posts()->findOrFail($postId);
@@ -874,12 +893,9 @@ class MemorialApiController extends Controller
             return response()->json(['error' => 'Name and email are required for guests'], 422);
         }
 
-        if (! $userId && $guestEmail) {
-            $existingUser = User::where('email', strtolower($guestEmail))->first();
-            if ($existingUser) {
-                $userId = $existingUser->id;
-                $guestName = $existingUser->name;
-            }
+        // Same rule as chapter comments: a registered address is its owner's to use.
+        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
+            return GuestIdentity::requiresLoginResponse('comment');
         }
 
         $parentId = $validated['parent_id'] ?? null;
@@ -1004,7 +1020,7 @@ class MemorialApiController extends Controller
     public function stats(string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (! $memorial->is_public) {
+        if (! $this->canRead($memorial)) {
             return response()->json(['error' => 'Not found'], 404);
         }
 

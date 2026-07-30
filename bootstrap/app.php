@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Str;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -28,6 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->prependToGroup('web', InstallMiddleware::class);
         $middleware->appendToGroup('web', AddRequestLogContext::class);
+
+        // Binds each session to the password it was created under, which is what makes
+        // Auth::logoutOtherDevices() (ProfileController::updatePassword) actually end the
+        // other sessions. Without it that call rehashes and returns, the attacker's session
+        // stays live, and changing your password after a compromise achieves nothing.
+        $middleware->appendToGroup('web', AuthenticateSession::class);
 
         // Every page on a reseller's host belongs to that reseller. Only two routes declare a
         // domain, so without this the login screen their clients use, and our own pricing page,

@@ -136,13 +136,48 @@ class LaraUpdaterController extends BaseLaraUpdaterController
 
     // ─── Internals ──────────────────────────────────────────────────────
 
+    /**
+     * Where locally-hosted update archives live, newest location first.
+     *
+     * They used to sit in public/updates/, which put the complete application source — 638
+     * files, every config/*.php — one guessable URL away for anyone on the internet, since
+     * the folder's .htaccess had to allow .zip so the updater could fetch its own archive
+     * over HTTP. It never needed HTTP for that: the file is on the same disk. Serving them
+     * from storage/ removes the URL entirely.
+     *
+     * public/updates is still read so an install that has not yet moved its archives keeps
+     * updating; its .htaccess now refuses to serve them over the web.
+     *
+     * @return list<string>
+     */
+    private function localUpdateDirs(): array
+    {
+        return [storage_path('app/updates'), public_path('updates')];
+    }
+
+    private function findLocalUpdateFile(string $filename): ?string
+    {
+        // Defends the join: `archive` comes from a JSON file that an update itself can
+        // rewrite, and "../../.env" would otherwise resolve outside these directories.
+        $filename = basename($filename);
+
+        foreach ($this->localUpdateDirs() as $dir) {
+            $path = $dir.'/'.$filename;
+            if (is_file($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
     private function getLastVersionInfo(): ?array
     {
-        $localPath = public_path('updates/laraupdater.json');
+        $localPath = $this->findLocalUpdateFile('laraupdater.json');
 
-        if (file_exists($localPath)) {
-            $data = json_decode(file_get_contents($localPath), true);
-            if (is_array($data) && ! empty($data['version'])) {
+        if ($localPath !== null) {
+            $data = $this->decodeManifest((string) file_get_contents($localPath));
+            if ($data !== null) {
                 return $data;
             }
         }
@@ -157,12 +192,29 @@ class LaraUpdaterController extends BaseLaraUpdaterController
             if ($json === false) {
                 return null;
             }
-            $data = json_decode($json, true);
 
-            return (is_array($data) && ! empty($data['version'])) ? $data : null;
+            return $this->decodeManifest($json);
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    /**
+     * Parses laraupdater.json, tolerating a UTF-8 byte-order mark.
+     *
+     * The shipped manifest has one — PowerShell's Out-File writes it by default — and
+     * json_decode treats it as a syntax error, so the local read silently returned null and
+     * every check fell through to fetching the same file over HTTP instead. That masked the
+     * bug while the folder was public; it would have read as "Could not reach update server"
+     * the moment it was not.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function decodeManifest(string $json): ?array
+    {
+        $data = json_decode(ltrim($json, "\xEF\xBB\xBF \t\n\r\0\x0B"), true);
+
+        return (is_array($data) && ! empty($data['version'])) ? $data : null;
     }
 
     private function downloadZip(string $filename): string|false
@@ -172,7 +224,25 @@ class LaraUpdaterController extends BaseLaraUpdaterController
         $tmpDir = base_path(config('laraupdater.tmp_folder_name', 'tmp'));
         File::ensureDirectoryExists($tmpDir, 0755);
 
-        $localFile = $tmpDir.'/'.$filename;
+        $localFile = $tmpDir.'/'.basename($filename);
+
+        // Self-hosted archive: copy it off disk. This is the normal path — update_baseurl
+        // defaults to this app's own /updates — and going over HTTP to fetch a file we are
+        // sitting on is what forced that folder to be publicly readable in the first place.
+        if ($source = $this->findLocalUpdateFile($filename)) {
+            $this->appendLog('Using local archive: '.$source);
+
+            if (! File::copy($source, $localFile)) {
+                $this->appendLog('Could not copy the local archive into '.$tmpDir.'.', 'err');
+
+                return false;
+            }
+
+            $this->appendLog('Archive ready.');
+
+            return $localFile;
+        }
+
         $remoteUrl = rtrim((string) config('laraupdater.update_baseurl'), '/').'/'.$filename;
 
         $this->appendLog('GET '.$remoteUrl);

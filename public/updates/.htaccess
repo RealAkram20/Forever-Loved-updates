@@ -1,3 +1,20 @@
-# LaraUpdater must be able to HTTP-fetch RELEASE-*.zip from this folder (same as LARA_UPDATER_URL).
-# Blocking .zip here breaks "Update Now" with 403/404 when the app downloads from its own domain.
+# Update archives are no longer served over the web.
+#
+# They used to live here because the updater fetched its own archive by HTTP from this
+# domain, which meant .zip had to stay readable — and a release archive is the complete
+# application source, so anyone could download it from a guessable URL.
+#
+# LaraUpdaterController now reads the archive off disk (storage/app/updates/), so nothing
+# needs to reach this folder. The deny stays because installs that predate the move may
+# still have archives sitting here.
+
 Options -Indexes
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

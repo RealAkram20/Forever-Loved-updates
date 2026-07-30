@@ -7,6 +7,7 @@ use App\Models\Memorial;
 use App\Models\PaymentOrder;
 use App\Models\UserSubscription;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Applies a verified Pesapal transaction status to a payment order.
@@ -49,6 +50,22 @@ class PaymentResultProcessor
                     return self::OUTCOME_CANCELLED;
                 }
 
+                // What the gateway says was paid, against what we asked for. Nothing checked
+                // this before: "completed" alone activated the subscription, whatever sum
+                // actually changed hands. Underpayment leaves the order pending for a human
+                // to look at rather than silently granting a paid plan.
+                if ($this->isUnderpaid($locked, $status)) {
+                    Log::warning('Pesapal reported a smaller amount than the order', [
+                        'merchant_reference' => $locked->merchant_reference,
+                        'expected' => $locked->amount,
+                        'expected_currency' => $locked->currency,
+                        'reported' => $status['amount'] ?? null,
+                        'reported_currency' => $status['currency'] ?? null,
+                    ]);
+
+                    return self::OUTCOME_PENDING;
+                }
+
                 $locked->update([
                     'status' => 'completed',
                     // Stamped here, inside the same lock that performs the transition, so
@@ -71,6 +88,29 @@ class PaymentResultProcessor
         }
 
         return self::OUTCOME_PENDING;
+    }
+
+    /**
+     * True only when the gateway reported a figure we can compare and it falls short.
+     *
+     * Deliberately one-sided and tolerant: a response that omits `amount` (or names a
+     * different currency, which we cannot convert) is not treated as underpayment, because
+     * refusing to activate on a field the gateway simply did not send would strand paying
+     * customers. Overpayment likewise activates. This catches the case that costs money.
+     */
+    private function isUnderpaid(PaymentOrder $order, array $status): bool
+    {
+        if (! isset($status['amount']) || ! is_numeric($status['amount'])) {
+            return false;
+        }
+
+        $reportedCurrency = strtoupper(trim((string) ($status['currency'] ?? '')));
+        if ($reportedCurrency !== '' && $reportedCurrency !== strtoupper((string) $order->currency)) {
+            return false;
+        }
+
+        // A cent of slack for float representation and gateway rounding.
+        return (float) $status['amount'] < ((float) $order->amount - 0.01);
     }
 
     public function activateSubscription(PaymentOrder $order): void

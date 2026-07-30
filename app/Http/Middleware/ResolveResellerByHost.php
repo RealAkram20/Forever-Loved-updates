@@ -49,8 +49,11 @@ class ResolveResellerByHost
     {
         $host = strtolower($request->getHost());
 
-        // The common case, and the one that must cost nothing: our own host.
-        if ($host === strtolower((string) (parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost'))) {
+        // The common case, and the one that must cost nothing: our own host. Both the bare
+        // and www. forms count — routes/web.php excludes the same pair from the reseller
+        // custom-domain pattern, and the two have to agree or a request would be routed as
+        // the platform's while being themed as somebody's tenant.
+        if (in_array($host, \App\Support\ResellerDomain::platformHosts(parse_url((string) config('app.url'), PHP_URL_HOST)), true)) {
             // Clear any tenant a *previous* request left bound. Under PHP-FPM the container is
             // rebuilt per request so this is a no-op, but under a long-running worker (Octane)
             // or in tests the bindings persist — and a leaked tenant would serve one reseller's

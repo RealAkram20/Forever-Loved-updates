@@ -17,8 +17,16 @@ return [
     'script_filename' => 'upgrade.php',
 
     /*
-    * URL where your updates are stored.
-    * Set via LARA_UPDATER_URL in .env, or defaults to APP_URL/updates (public/updates/ folder).
+    * Remote fallback only.
+    *
+    * Self-hosted archives belong in storage/app/updates/ (laraupdater.json + RELEASE-*.zip);
+    * the updater reads those off disk and never touches this URL. It used to serve them from
+    * public/updates/ over HTTP, which made the full application source downloadable by
+    * anyone who guessed the filename.
+    *
+    * Set LARA_UPDATER_URL only when updates come from a genuinely different server. Use
+    * https: the response is extracted over the running application, so anything able to
+    * tamper with it can replace your code.
     */
     'update_baseurl' => env('LARA_UPDATER_URL') ?: rtrim(config('app.url'), '/') . '/updates',
 

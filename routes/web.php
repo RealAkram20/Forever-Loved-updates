@@ -56,7 +56,17 @@ require __DIR__.'/auth.php';
 */
 $appHost = parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost';
 $resellerBaseDomain = config('reseller.domain');
-$foreignDomainPattern = '^(?!'.preg_quote($appHost, '#').'$)(?!'.preg_quote($resellerBaseDomain, '#').'$)(?!.*\.'.preg_quote($resellerBaseDomain, '#').'$).+$';
+
+// Every hostname that is *us*. Only the exact APP_URL host was excluded before, so a site
+// reachable at both example.com and www.example.com had its www address read as a foreign
+// custom domain: the catch-all group below claimed `/`, ResolveResellerByCustomDomain found
+// no reseller for it, and the home page 404'd for anyone who typed the www form.
+$ownHosts = \App\Support\ResellerDomain::platformHosts($appHost);
+
+$foreignDomainPattern = '^'
+    .implode('', array_map(fn (string $host) => '(?!'.preg_quote($host, '#').'$)', $ownHosts))
+    .'(?!'.preg_quote($resellerBaseDomain, '#').'$)'
+    .'(?!.*\.'.preg_quote($resellerBaseDomain, '#').'$).+$';
 
 Route::domain('{reseller}.'.$resellerBaseDomain)->group(function () {
     Route::get('/', [PublicMemorialController::class, 'indexForReseller'])
@@ -383,20 +393,23 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     });
 
     Route::patch('/section', [MemorialApiController::class, 'updateSection'])->name('section');
-    Route::post('/tribute', [MemorialApiController::class, 'storeTribute'])->name('tribute');
+    // The guest-writable endpoints below carry throttles because they are reachable without
+    // signing in: each one either creates rows, sends mail, or accepts uploads, and none of
+    // them had a limit. The authenticated editor routes rely on the policy check instead.
+    Route::post('/tribute', [MemorialApiController::class, 'storeTribute'])->middleware('throttle:20,1')->name('tribute');
     Route::post('/track-share', [MemorialApiController::class, 'trackShare'])->name('track-share');
     Route::get('/stats', [MemorialApiController::class, 'stats'])->name('stats');
-    Route::post('/reaction', [MemorialApiController::class, 'storeReaction'])->name('reaction');
+    Route::post('/reaction', [MemorialApiController::class, 'storeReaction'])->middleware('throttle:60,1')->name('reaction');
     Route::get('/posts', [MemorialApiController::class, 'posts'])->name('posts');
     Route::post('/posts', [MemorialApiController::class, 'storePost'])->name('posts.store');
     Route::patch('/posts/{postId}', [MemorialApiController::class, 'updatePost'])->name('posts.update');
     Route::delete('/posts/{postId}', [MemorialApiController::class, 'deletePost'])->name('posts.delete');
     Route::get('/posts/{postId}/comments', [MemorialApiController::class, 'comments'])->name('posts.comments');
-    Route::post('/posts/{postId}/comments', [MemorialApiController::class, 'storeComment'])->name('posts.comments.store');
+    Route::post('/posts/{postId}/comments', [MemorialApiController::class, 'storeComment'])->middleware('throttle:30,1')->name('posts.comments.store');
     Route::delete('/comments/{commentId}', [MemorialApiController::class, 'deleteComment'])->name('comments.delete');
     Route::get('/posts/{postId}/reactions', [MemorialApiController::class, 'reactions'])->name('posts.reactions');
     Route::get('/tributes', [MemorialApiController::class, 'tributes'])->name('tributes');
-    Route::post('/tributes/{tributeId}/comments', [MemorialApiController::class, 'storeTributeComment'])->name('tributes.comments.store');
+    Route::post('/tributes/{tributeId}/comments', [MemorialApiController::class, 'storeTributeComment'])->middleware('throttle:30,1')->name('tributes.comments.store');
     Route::delete('/tribute-comments/{commentId}', [MemorialApiController::class, 'deleteTributeComment'])->name('tributes.comments.delete');
     Route::patch('/tributes/{tributeId}', [MemorialApiController::class, 'updateTribute'])->name('tributes.update');
     Route::delete('/tributes/{tributeId}', [MemorialApiController::class, 'deleteTribute'])->name('tributes.delete');
@@ -405,7 +418,7 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::patch('/chapters/{chapterId}', [MemorialApiController::class, 'updateChapter'])->name('chapters.update');
     Route::delete('/chapters/{chapterId}', [MemorialApiController::class, 'deleteChapter'])->name('chapters.delete');
     // Memorial subscriptions
-    Route::post('/subscribe', [MemorialApiController::class, 'subscribe'])->name('subscribe');
+    Route::post('/subscribe', [MemorialApiController::class, 'subscribe'])->middleware('throttle:20,1')->name('subscribe');
     Route::put('/subscribe', [MemorialApiController::class, 'updateSubscription'])->name('subscribe.update');
     Route::delete('/subscribe', [MemorialApiController::class, 'unsubscribe'])->name('subscribe.delete');
     Route::get('/subscribe/check', [MemorialApiController::class, 'checkSubscription'])->name('subscribe.check');
@@ -415,7 +428,7 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::patch('/gallery/{mediaId}', [MemorialMediaController::class, 'updateGalleryMedia'])->name('gallery.update');
     Route::delete('/gallery/{mediaId}', [MemorialMediaController::class, 'deleteGalleryMedia'])->name('gallery.delete');
     Route::post('/post-media', [MemorialMediaController::class, 'uploadPostMedia'])->name('post-media');
-    Route::post('/tribute-post', [MemorialMediaController::class, 'storeTributePost'])->name('tribute-post');
+    Route::post('/tribute-post', [MemorialMediaController::class, 'storeTributePost'])->middleware('throttle:10,1')->name('tribute-post');
     Route::post('/background-music', [MemorialMediaController::class, 'uploadBackgroundMusic'])->name('background-music');
     Route::delete('/background-music', [MemorialMediaController::class, 'removeBackgroundMusic'])->name('background-music.delete');
 });

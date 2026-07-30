@@ -35,6 +35,29 @@ class ResellerDomain
     }
 
     /**
+     * Every hostname that should be treated as the platform's own rather than a reseller's.
+     *
+     * A site is nearly always reachable at both example.com and www.example.com, but only
+     * the exact APP_URL host was ever recognised — so on the other form the reseller
+     * custom-domain routes claimed `/` and the home page 404'd. Both forms, port stripped,
+     * lowercased, so callers can compare a raw Host header directly.
+     *
+     * @return list<string>
+     */
+    public static function platformHosts(?string $appHost): array
+    {
+        $host = strtolower((string) preg_replace('/:\d+$/', '', (string) $appHost));
+
+        if ($host === '') {
+            $host = 'localhost';
+        }
+
+        $sibling = str_starts_with($host, 'www.') ? substr($host, 4) : 'www.'.$host;
+
+        return array_values(array_unique(array_filter([$host, $sibling])));
+    }
+
+    /**
      * Host prefix for the custom-domain ownership challenge: <prefix>.<their domain>.
      *
      * Namespaced by the app's own first label so the record is self-describing in a

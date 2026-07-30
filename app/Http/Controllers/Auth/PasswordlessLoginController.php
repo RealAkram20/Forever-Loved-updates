@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class PasswordlessLoginController extends Controller
@@ -98,21 +99,43 @@ class PasswordlessLoginController extends Controller
         $email = strtolower($validated['email']);
         $code = $validated['code'];
 
+        // Per-address, not just per-IP. The route throttle counts requests from one client;
+        // a six-digit code guessed from a pool of addresses is exactly the attack that gets
+        // past it. Mirrors how LoginRequest keys its limiter on email|ip.
+        $throttleKey = 'login-code:'.$email;
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            throw ValidationException::withMessages([
+                'code' => trans('auth.throttle', [
+                    'seconds' => $seconds = RateLimiter::availableIn($throttleKey),
+                    'minutes' => ceil($seconds / 60),
+                ]),
+            ]);
+        }
+
         $loginCode = LoginCode::where('email', $email)
             ->where('code', $code)
             ->latest()
             ->first();
 
         if (!$loginCode || !$loginCode->isValid()) {
+            RateLimiter::hit($throttleKey, 900);
+
             throw ValidationException::withMessages([
                 'code' => 'Invalid or expired code. Please try again.',
             ]);
         }
 
         $loginCode->markUsed();
+        RateLimiter::clear($throttleKey);
 
         $user = User::where('email', $email)->firstOrFail();
         Auth::login($user, $request->boolean('remember'));
+
+        // Without this the pre-login session id survives authentication, so anyone who could
+        // plant that id holds an authenticated session afterwards. The password login path
+        // has always regenerated here; this one did not.
+        $request->session()->regenerate();
 
         return redirect()->intended(\App\Support\PostAuthRedirect::url($user));
     }

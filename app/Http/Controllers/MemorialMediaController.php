@@ -10,6 +10,7 @@ use App\Models\Memorial;
 use App\Models\Post;
 use App\Models\StoryChapter;
 use App\Services\NotificationService;
+use App\Support\GuestIdentity;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Storage;
 class MemorialMediaController extends Controller
 {
     private const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+    /** Per-request cap on the guest chapter endpoint, which is reachable without signing in. */
+    private const MAX_TRIBUTE_POST_FILES = 10;
     private const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     private const ALLOWED_VIDEO_MIMES = ['video/mp4', 'video/webm', 'video/quicktime'];
     private const ALLOWED_AUDIO_MIMES = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'];
@@ -211,9 +214,12 @@ class MemorialMediaController extends Controller
             'title' => ['nullable', 'string', 'max:255'],
             'content' => ['nullable', 'string', 'max:50000'],
             'story_chapter_id' => ['nullable', 'integer', 'exists:story_chapters,id'],
-            'media_ids' => ['nullable', 'array'],
+            'media_ids' => ['nullable', 'array', 'max:'.self::MAX_TRIBUTE_POST_FILES],
             'media_ids.*' => ['integer', 'exists:media,id'],
-            'files' => ['nullable', 'array'],
+            // Bounded. This endpoint takes no authentication, and the array had no size
+            // limit — one request could carry an unlimited number of 100MB files, which is
+            // a storage bill and a full disk rather than an attack anyone needs skill for.
+            'files' => ['nullable', 'array', 'max:'.self::MAX_TRIBUTE_POST_FILES],
             'files.*' => ['file', 'max:102400'], // 100MB
             'guest_name' => ['nullable', 'string', 'max:255'],
             'guest_email' => ['nullable', 'email'],
@@ -244,29 +250,44 @@ class MemorialMediaController extends Controller
             return response()->json(['error' => 'Name and email are required to add your chapter'], 422);
         }
 
+        // A registered address is its owner's; adopting the match published this chapter,
+        // and any media attached to it, under that member's name.
+        if (!$userId && GuestIdentity::isRegistered($guestEmail)) {
+            return GuestIdentity::requiresLoginResponse('add your chapter');
+        }
+
         if (!$userId && $guestEmail) {
-            $existingUser = \App\Models\User::where('email', strtolower($guestEmail))->first();
-            if ($existingUser) {
-                $userId = $existingUser->id;
-            } else {
-                $user = \App\Models\User::create([
-                    'name' => $guestName,
-                    'email' => strtolower($guestEmail),
-                    'password' => null,
-                ]);
-                $userId = $user->id;
-            }
+            $user = \App\Models\User::create([
+                'name' => $guestName,
+                'email' => strtolower($guestEmail),
+                'password' => null,
+            ]);
+            $userId = $user->id;
+        }
+
+        // Scoped to THIS memorial before anything is attached or linked. The validation rules
+        // say only `exists:media,id` / `exists:story_chapters,id` — any row in the table — and
+        // this endpoint takes no authentication, so an attacker could enumerate ids and attach
+        // a *private* memorial's photos (or another reseller's) to a post on a public one and
+        // then simply read them off the page.
+        $mediaIds = $memorial->media()
+            ->whereIn('id', $validated['media_ids'] ?? [])
+            ->pluck('id')
+            ->all();
+
+        $chapterId = $validated['story_chapter_id'] ?? null;
+        if ($chapterId && ! $memorial->storyChapters()->whereKey($chapterId)->exists()) {
+            $chapterId = null;
         }
 
         $post = $memorial->posts()->create([
             'user_id' => $userId,
-            'story_chapter_id' => $validated['story_chapter_id'] ?? null,
+            'story_chapter_id' => $chapterId,
             'type' => 'gallery',
             'title' => $validated['title'] ?? null,
             'content' => HtmlHelper::sanitize($validated['content'] ?? null),
         ]);
 
-        $mediaIds = $validated['media_ids'] ?? [];
         $sortOrder = 0;
 
         // Upload new files
