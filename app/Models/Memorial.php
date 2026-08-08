@@ -102,6 +102,8 @@ class Memorial extends Model
         'background_music',
         'profile_photo_path',
         'profile_photo_size',
+        'cover_photo_path',
+        'cover_photo_size',
         'is_public',
         'status',
         'visitor_count',
@@ -188,6 +190,14 @@ class Memorial extends Model
     public function getProfilePhotoUrlAttribute(): ?string
     {
         return StorageHelper::publicUrl($this->profile_photo_path);
+    }
+
+    /**
+     * Get the public URL for the memorial's cover banner.
+     */
+    public function getCoverPhotoUrlAttribute(): ?string
+    {
+        return StorageHelper::publicUrl($this->cover_photo_path);
     }
 
     /**
@@ -299,8 +309,8 @@ class Memorial extends Model
     }
 
     /**
-     * Bytes this memorial accounts for: its gallery media plus the profile photo, which
-     * has no media row of its own.
+     * Bytes this memorial accounts for: its gallery media plus the profile photo and cover
+     * banner, neither of which has a media row of its own.
      *
      * This is *referenced* size, not disk size. Replacing a profile photo currently leaves
      * the old file behind, so actual disk use can exceed this — an orphan-cleanup job would
@@ -308,7 +318,9 @@ class Memorial extends Model
      */
     public function storageBytes(): int
     {
-        return (int) $this->media()->sum('size') + (int) $this->profile_photo_size;
+        return (int) $this->media()->sum('size')
+            + (int) $this->profile_photo_size
+            + (int) $this->cover_photo_size;
     }
 
     public function storyChapters(): HasMany
@@ -415,13 +427,23 @@ class Memorial extends Model
             || $this->isManagedByResellerStaff($user);
     }
 
+    /**
+     * Photos and videos that belong to the gallery proper — this memorial's media minus
+     * anything already attached to a life post, so a picture doesn't appear twice.
+     *
+     * The exclusion is a correlated NOT EXISTS rather than a `whereNotIn` over
+     * `DB::table('post_media')->pluck('media_id')`: that older form pulled *every* media id
+     * on the platform into PHP and inlined them all into the query, so the cost grew with
+     * total site content instead of with this memorial's, on a page anyone can load.
+     */
     public function galleryMedia()
     {
-        $usedInPosts = DB::table('post_media')->pluck('media_id')->toArray();
-
         return $this->media()
             ->whereIn('type', ['photo', 'video'])
-            ->when(! empty($usedInPosts), fn ($q) => $q->whereNotIn('id', $usedInPosts));
+            ->whereNotExists(fn ($q) => $q
+                ->select(DB::raw(1))
+                ->from('post_media')
+                ->whereColumn('post_media.media_id', 'media.id'));
     }
 
     /**

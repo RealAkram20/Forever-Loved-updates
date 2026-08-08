@@ -179,7 +179,7 @@ it('refuses a guest tribute claiming a registered address', function () {
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
     $this->postJson("/m/{$memorial->slug}/tribute", [
-        'type' => 'note',
+        'type' => 'prayer',
         'message' => 'Signed by someone else',
         'guest_name' => 'Impostor',
         'guest_email' => 'member@example.com',
@@ -190,11 +190,33 @@ it('refuses a guest tribute claiming a registered address', function () {
     expect($memorial->tributes()->where('user_id', $member->id)->exists())->toBeFalse();
 });
 
+it('accepts every offered tribute type and rejects retired ones', function () {
+    $memorial = Memorial::factory()->create(['is_public' => true]);
+
+    foreach (\App\Models\Tribute::TYPES as $i => $type) {
+        $this->postJson("/m/{$memorial->slug}/tribute", [
+            'type' => $type,
+            'guest_name' => 'Visitor '.$i,
+            'guest_email' => "visitor{$i}@example.com",
+        ])->assertOk();
+    }
+
+    expect($memorial->tributes()->count())->toBe(count(\App\Models\Tribute::TYPES));
+
+    // 'note' was merged into 'prayer'; nothing in the UI renders or offers it any more, so
+    // the API must not quietly keep minting rows of a type the page cannot display.
+    $this->postJson("/m/{$memorial->slug}/tribute", [
+        'type' => 'note',
+        'guest_name' => 'Visitor N',
+        'guest_email' => 'visitor-n@example.com',
+    ])->assertStatus(422);
+});
+
 it('still accepts a tribute from a genuinely new address', function () {
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
     $this->postJson("/m/{$memorial->slug}/tribute", [
-        'type' => 'note',
+        'type' => 'prayer',
         'message' => 'Rest well',
         'guest_name' => 'New Visitor',
         'guest_email' => 'new-visitor@example.com',

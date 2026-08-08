@@ -437,6 +437,8 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::get('/subscribe/check', [MemorialApiController::class, 'checkSubscription'])->name('subscribe.check');
     // Media uploads
     Route::post('/profile-photo', [MemorialMediaController::class, 'uploadProfilePhoto'])->name('profile-photo');
+    Route::post('/cover-photo', [MemorialMediaController::class, 'uploadCoverPhoto'])->name('cover-photo');
+    Route::delete('/cover-photo', [MemorialMediaController::class, 'removeCoverPhoto'])->name('cover-photo.delete');
     Route::post('/gallery', [MemorialMediaController::class, 'uploadGalleryMedia'])->name('gallery');
     Route::patch('/gallery/{mediaId}', [MemorialMediaController::class, 'updateGalleryMedia'])->name('gallery.update');
     Route::delete('/gallery/{mediaId}', [MemorialMediaController::class, 'deleteGalleryMedia'])->name('gallery.delete');

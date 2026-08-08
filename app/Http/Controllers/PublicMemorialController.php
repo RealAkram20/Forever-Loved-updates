@@ -140,16 +140,18 @@ class PublicMemorialController extends Controller
 
         $tributes = $memorial->tributes()
             ->where('is_approved', true)
-            ->with(['user', 'comments'])
+            ->withMessage()
+            ->with($this->tributeRelations())
             ->latest()
             ->paginate(20);
 
-        $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
+        $this->loadMemorialRelations($memorial);
 
         $canEdit = $memorial->canBeEditedBy(auth()->user());
 
         $stats = MemorialStatsHelper::get($memorial);
         $tributeCounts = $this->getTributeTypeCounts($memorial);
+        $tributeWrittenCounts = $this->getTributeTypeCounts($memorial, true);
 
         $pendingPaymentOrder = null;
         if (auth()->id() && auth()->id() === $memorial->user_id) {
@@ -168,6 +170,7 @@ class PublicMemorialController extends Controller
             'isAuthenticated' => auth()->check(),
             'memorialStats' => $stats,
             'tributeCounts' => $tributeCounts,
+            'tributeWrittenCounts' => $tributeWrittenCounts,
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => null,
             'scrollToChapterId' => null,
@@ -195,7 +198,7 @@ class PublicMemorialController extends Controller
             abort(404);
         }
 
-        $tribute = $memorial->tributes()->where('is_approved', true)->where('share_id', $share_id)->with(['user', 'comments'])->firstOrFail();
+        $tribute = $memorial->tributes()->where('is_approved', true)->where('share_id', $share_id)->with($this->tributeRelations())->firstOrFail();
 
         if ($memorial->is_public) {
             $this->recordView($memorial, request());
@@ -203,18 +206,20 @@ class PublicMemorialController extends Controller
 
         $tributes = $memorial->tributes()
             ->where('is_approved', true)
+            ->withMessage()
             ->where('id', '!=', $tribute->id)
-            ->with(['user', 'comments'])
+            ->with($this->tributeRelations())
             ->latest()
             ->paginate(20);
 
-        $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
+        $this->loadMemorialRelations($memorial);
 
         $canEdit = $memorial->canBeEditedBy(auth()->user());
 
         $stats = MemorialStatsHelper::get($memorial);
 
         $tributeCounts = $this->getTributeTypeCounts($memorial);
+        $tributeWrittenCounts = $this->getTributeTypeCounts($memorial, true);
 
         return view('pages.memorials.public', [
             'title' => $memorial->full_name,
@@ -225,6 +230,7 @@ class PublicMemorialController extends Controller
             'isAuthenticated' => auth()->check(),
             'memorialStats' => $stats,
             'tributeCounts' => $tributeCounts,
+            'tributeWrittenCounts' => $tributeWrittenCounts,
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => $tribute->id,
             'scrollToChapterId' => null,
@@ -259,17 +265,19 @@ class PublicMemorialController extends Controller
 
         $tributes = $memorial->tributes()
             ->where('is_approved', true)
-            ->with(['user', 'comments'])
+            ->withMessage()
+            ->with($this->tributeRelations())
             ->latest()
             ->paginate(20);
 
-        $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
+        $this->loadMemorialRelations($memorial);
 
         $canEdit = $memorial->canBeEditedBy(auth()->user());
 
         $stats = MemorialStatsHelper::get($memorial);
 
         $tributeCounts = $this->getTributeTypeCounts($memorial);
+        $tributeWrittenCounts = $this->getTributeTypeCounts($memorial, true);
 
         return view('pages.memorials.public', [
             'title' => $memorial->full_name,
@@ -279,6 +287,7 @@ class PublicMemorialController extends Controller
             'isAuthenticated' => auth()->check(),
             'memorialStats' => $stats,
             'tributeCounts' => $tributeCounts,
+            'tributeWrittenCounts' => $tributeWrittenCounts,
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
             'scrollToTributeId' => null,
             'scrollToChapterId' => $post->id,
@@ -286,20 +295,60 @@ class PublicMemorialController extends Controller
         ]);
     }
 
-    private function getTributeTypeCounts(Memorial $memorial): array
+    /**
+     * Everything pages.memorials.public touches while rendering a tribute, in one go.
+     *
+     * Tribute::comments() already pulls its own author and replies, but neither the
+     * reaction tally in the card footer nor the reply authors come with it — those were
+     * a query per tribute and a query per reply on a page that shows twenty at a time.
+     */
+    private function tributeRelations(): array
+    {
+        return ['user', 'reactions', 'comments.replies.user'];
+    }
+
+    /**
+     * The memorial's own relations, same reasoning: the life-post partial reads the post's
+     * author, its chapter and its reaction count for every post in the feed.
+     */
+    private function loadMemorialRelations(Memorial $memorial): void
+    {
+        $memorial->load([
+            'media',
+            'storyChapters',
+            'posts.media',
+            'posts.user',
+            'posts.storyChapter',
+            'posts.reactions',
+            'posts.comments.replies.user',
+        ]);
+    }
+
+    /**
+     * Tallies per tribute type.
+     *
+     * Two different totals are wanted on the page and they are not the same number. The
+     * one-tap cards count every tap, written or not — that tally is what those cards are
+     * for. The filter pills sit above the feed and have to count what the feed actually
+     * shows, or tapping "Flowers 8" turns up two items.
+     *
+     * @param  bool  $writtenOnly  Count only tributes carrying a message.
+     */
+    private function getTributeTypeCounts(Memorial $memorial, bool $writtenOnly = false): array
     {
         $counts = $memorial->tributes()
             ->where('is_approved', true)
+            ->when($writtenOnly, fn ($q) => $q->withMessage())
             ->selectRaw('type, COUNT(*) as cnt')
             ->groupBy('type')
             ->pluck('cnt', 'type');
 
-        return [
-            'flower' => (int) ($counts['flower'] ?? 0),
-            'candle' => (int) ($counts['candle'] ?? 0),
-            'note' => (int) ($counts['note'] ?? 0),
-            'total' => (int) $counts->sum(),
-        ];
+        $buckets = ['total' => (int) $counts->sum()];
+        foreach (Tribute::TYPES as $type) {
+            $buckets[$type] = (int) ($counts[$type] ?? 0);
+        }
+
+        return $buckets;
     }
 
     private function visitorHash(Request $request): string

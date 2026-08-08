@@ -58,6 +58,76 @@ class MemorialMediaController extends Controller
     }
 
     /**
+     * Upload the cover banner shown behind the profile photo. Admin or owner only.
+     *
+     * Deliberately not plan-gated: the banner is part of how a memorial presents itself
+     * rather than a paid extra, so every plan can set one. It still passes through the
+     * same canModifyMedia() check as the profile photo, which is what stops uploads to a
+     * memorial whose subscription has lapsed.
+     */
+    public function uploadCoverPhoto(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
+        if (!$mediaCheck['allowed']) {
+            return response()->json(['error' => $mediaCheck['reason']], 403);
+        }
+
+        // Wider than the profile photo allowance: a banner is a landscape crop that stays
+        // sharp across a full-width card, so 5MB would force visible compression.
+        $request->validate(['photo' => ['required', 'image', 'max:8192']]); // 8MB
+
+        $photo = $request->file('photo');
+        $path = $photo->store(StorageHelper::memorialCoverPath($memorial->id), 'public');
+
+        $previous = $memorial->cover_photo_path;
+
+        $memorial->update([
+            'cover_photo_path' => $path,
+            'cover_photo_size' => $photo->getSize(),
+        ]);
+
+        // Replacing a cover would otherwise leave the old file on disk, counted against
+        // nothing and reachable by anyone who kept the URL.
+        if ($previous && $previous !== $path) {
+            Storage::disk('public')->delete($previous);
+        }
+
+        return response()->json([
+            'success' => true,
+            'url' => StorageHelper::publicUrl($path),
+        ]);
+    }
+
+    /**
+     * Remove the cover banner, falling the card back to its default header. Admin or owner only.
+     */
+    public function removeCoverPhoto(string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (!$this->canEdit($memorial)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
+        if (!$mediaCheck['allowed']) {
+            return response()->json(['error' => $mediaCheck['reason']], 403);
+        }
+
+        if ($memorial->cover_photo_path) {
+            Storage::disk('public')->delete($memorial->cover_photo_path);
+            $memorial->update([
+                'cover_photo_path' => null,
+                'cover_photo_size' => null,
+            ]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Upload gallery media (images or videos <100MB). Admin or owner only.
      */
     public function uploadGalleryMedia(Request $request, string $slug): JsonResponse

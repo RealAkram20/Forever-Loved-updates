@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Helpers\HtmlHelper;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,9 +47,38 @@ class Tribute extends Model
     }
 
     public const TYPE_FLOWER = 'flower';
+
     public const TYPE_CANDLE = 'candle';
-    public const TYPE_NOTE = 'note';
-    public const TYPE_IMAGE = 'image';
+
+    public const TYPE_PRAYER = 'prayer';
+
+    /**
+     * The types a tribute may be created with, in the order they are offered.
+     *
+     * Validation reads this rather than repeating an `in:` list, so adding a fourth type
+     * is one edit here instead of a hunt through the controllers.
+     */
+    public const TYPES = [
+        self::TYPE_FLOWER,
+        self::TYPE_CANDLE,
+        self::TYPE_PRAYER,
+    ];
+
+    /**
+     * The ones somebody actually wrote something on.
+     *
+     * A tap on one of the one-tap cards stores a tribute with no message. That is a
+     * reaction, not a post — it belongs in the tally under the card and nowhere else,
+     * the same way a like does. Only tributes carrying words belong in the feed.
+     *
+     * The empty rich-text cases are listed out because the editor submits markup, not an
+     * empty string, when someone opens the composer and types nothing.
+     */
+    public function scopeWithMessage(Builder $query): Builder
+    {
+        return $query->whereNotNull('message')
+            ->whereNotIn('message', ['', '<p><br></p>', '<p></p>', '<p><br/></p>']);
+    }
 
     public function memorial(): BelongsTo
     {

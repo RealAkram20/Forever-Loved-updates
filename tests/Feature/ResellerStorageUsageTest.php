@@ -55,6 +55,25 @@ it('counts gallery media and profile photos toward reseller storage', function (
         ->and($b->storageBytes())->toBe(3_000_000);
 });
 
+it('counts cover banners toward reseller storage', function () {
+    $reseller = resellerWithStorage(1);
+
+    // A cover has no media row of its own, so it is invisible to any sum that only reads
+    // the media table — the same trap profile photos fell into.
+    $a = Memorial::factory()->create([
+        'reseller_id' => $reseller->id,
+        'profile_photo_size' => 2_000_000,
+        'cover_photo_size' => 4_000_000,
+    ]);
+    $b = Memorial::factory()->create(['reseller_id' => $reseller->id, 'cover_photo_size' => null]);
+
+    Media::create(['memorial_id' => $a->id, 'path' => 'a/1.jpg', 'type' => 'photo', 'size' => 1_000_000]);
+
+    expect($a->storageBytes())->toBe(7_000_000)
+        ->and($b->storageBytes())->toBe(0)
+        ->and($reseller->storageUsedBytes())->toBe(7_000_000);
+});
+
 it('reports a percentage only when the tier caps storage', function () {
     $capped = resellerWithStorage(1);
     Memorial::factory()->create(['reseller_id' => $capped->id, 'profile_photo_size' => 1024 ** 3 / 4]);

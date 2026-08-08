@@ -37,6 +37,64 @@ document.addEventListener('DOMContentLoaded', () => {
         body,
     });
 
+    /**
+     * A tribute can be on the page twice — once in the Biography tab's preview strip and
+     * once in the Tributes tab — so its comment tally has two homes. Update every copy from
+     * a single reading, or the tab the visitor is actually looking at goes stale.
+     */
+    function bumpTributeCommentCount(tributeId, delta) {
+        const countEls = document.querySelectorAll(`[data-tribute-comment-container="${tributeId}"] [data-tribute-comment-count]`);
+        if (!countEls.length) return;
+        const current = parseInt((countEls[0].textContent || '0').replace(/\D/g, '') || 0);
+        const next = Math.max(0, current + delta);
+        countEls.forEach(el => { el.textContent = next; });
+    }
+
+    /**
+     * Keyboard and focus behaviour shared by this page's dialogs: focus moves inside on open
+     * and returns to whatever opened it on close, Tab cycles within the dialog instead of
+     * wandering onto the page behind the overlay, and Escape closes.
+     *
+     * Returns the release function — call it when hiding the dialog.
+     */
+    const DIALOG_FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    function openDialog(dialog, { initialFocus, onClose } = {}) {
+        if (!dialog) return () => {};
+        const previouslyFocused = document.activeElement;
+
+        const focusableItems = () => Array.from(dialog.querySelectorAll(DIALOG_FOCUSABLE))
+            .filter(el => el.offsetParent !== null);
+
+        const onKeydown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose?.();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+            const items = focusableItems();
+            if (!items.length) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+
+        dialog.addEventListener('keydown', onKeydown);
+        requestAnimationFrame(() => (initialFocus ?? focusableItems()[0])?.focus());
+
+        return () => {
+            dialog.removeEventListener('keydown', onKeydown);
+            if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+        };
+    }
+
     /** Full-screen strip below site header: upload % for large media on slow networks */
     function getMemorialUploadProgressUi() {
         const root = document.getElementById('memorial-upload-progress');
@@ -176,24 +234,81 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Tab switching ---
-    function switchToTab(panelId) {
-        const btn = document.querySelector(`.memorial-tab-btn[data-tab-panel="${panelId}"]`);
-        if (btn) btn.click();
+    //
+    // The Life tab was folded into Tributes & Stories, which holds its two halves in
+    // Alpine rather than as separate panels. A dozen call sites still ask for 'life' by
+    // name and every one of them means "show me the stories", so the alias is resolved
+    // here once instead of being chased through all of them.
+    const TAB_ALIASES = {
+        life: { panel: 'tributes', pane: 'stories' },
+        stories: { panel: 'tributes', pane: 'stories' },
+        tributes: { panel: 'tributes', pane: 'tributes' },
+    };
+
+    /** Select one of the two panes inside the Tributes & Stories panel. */
+    function showTributePane(pane) {
+        const el = document.getElementById('tab-tributes');
+        if (!el || typeof Alpine === 'undefined') return;
+        try {
+            const data = Alpine.$data(el);
+            if (data && Object.prototype.hasOwnProperty.call(data, 'pane')) data.pane = pane;
+        } catch (_) { /* Alpine not started; the panel opens on its default pane */ }
     }
-    document.querySelectorAll('.memorial-tab-btn').forEach(btn => {
+
+    function switchToTab(panelId) {
+        const alias = TAB_ALIASES[panelId];
+        const target = alias ? alias.panel : panelId;
+        const btn = document.querySelector(`.memorial-tab-btn[data-tab-panel="${target}"]`);
+        if (btn) btn.click();
+        // Two frames, matching how the gallery reaches its own Alpine state: the panel has
+        // to be un-hidden and Alpine has to have walked it before the pane can be set.
+        if (alias) {
+            requestAnimationFrame(() => requestAnimationFrame(() => showTributePane(alias.pane)));
+        }
+    }
+    const tabButtons = Array.from(document.querySelectorAll('.memorial-tab-btn'));
+
+    tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const panelId = btn.dataset.tabPanel;
-            document.querySelectorAll('.memorial-tab-btn').forEach(b => {
+            tabButtons.forEach(b => {
                 b.classList.remove('text-brand-600', 'dark:text-brand-400', 'border-brand-500', 'bg-brand-50/50', 'dark:bg-brand-500/10');
                 b.classList.add('text-gray-600', 'dark:text-gray-400', 'border-transparent');
+                // Roving tabindex: only the selected tab is in the tab order, so Tab moves
+                // out of the tablist and into the panel rather than across four buttons.
+                b.setAttribute('aria-selected', 'false');
+                b.setAttribute('tabindex', '-1');
             });
             btn.classList.add('text-brand-600', 'dark:text-brand-400', 'border-brand-500', 'bg-brand-50/50', 'dark:bg-brand-500/10');
             btn.classList.remove('text-gray-600', 'dark:text-gray-400', 'border-transparent');
+            btn.setAttribute('aria-selected', 'true');
+            btn.setAttribute('tabindex', '0');
 
             document.querySelectorAll('.memorial-tab-panel').forEach(p => p.classList.add('hidden'));
             const panel = document.getElementById('tab-' + panelId);
             if (panel) panel.classList.remove('hidden');
 
+            // Tributes & Stories opens with a composer on screen in either pane, so this is
+            // the last moment Quill can be fetched without the visitor waiting on it.
+            if (panelId === 'tributes') initComposerEditors();
+        });
+
+        // Arrow/Home/End navigation, per the WAI-ARIA tabs pattern.
+        btn.addEventListener('keydown', (e) => {
+            const keys = { ArrowRight: 1, ArrowLeft: -1 };
+            let target = null;
+            if (e.key in keys) {
+                const from = tabButtons.indexOf(btn);
+                target = tabButtons[(from + keys[e.key] + tabButtons.length) % tabButtons.length];
+            } else if (e.key === 'Home') {
+                target = tabButtons[0];
+            } else if (e.key === 'End') {
+                target = tabButtons[tabButtons.length - 1];
+            }
+            if (!target) return;
+            e.preventDefault();
+            target.click();
+            target.focus();
         });
     });
 
@@ -248,6 +363,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Chapter edit/delete ---
     if (canEdit) {
         // Edit chapter: open modal
+        let releaseChapterModal = null;
+
+        // Exposed so the modal's Cancel button can close it the same way Escape does,
+        // rather than only stripping the `hidden` class and stranding focus inside.
+        window.closeEditChapterModal = () => {
+            const modal = document.getElementById('edit-chapter-modal');
+            if (!modal || modal.classList.contains('hidden')) return;
+            modal.classList.add('hidden');
+            releaseChapterModal?.();
+            releaseChapterModal = null;
+        };
+        const closeChapterModal = window.closeEditChapterModal;
+
         document.addEventListener('click', (e) => {
             const editBtn = e.target.closest('[data-edit-chapter]');
             if (!editBtn) return;
@@ -261,7 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('edit-chapter-title').value = title;
             document.getElementById('edit-chapter-desc').value = desc;
             modal.classList.remove('hidden');
-            setTimeout(() => document.getElementById('edit-chapter-title')?.focus(), 100);
+            releaseChapterModal = openDialog(modal, {
+                initialFocus: document.getElementById('edit-chapter-title'),
+                onClose: closeChapterModal,
+            });
         });
 
         // Edit chapter: submit
@@ -298,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             }
                         });
-                        document.getElementById('edit-chapter-modal')?.classList.add('hidden');
+                        closeChapterModal();
                     } else if (data.error) {
                         $toast('error', data.error);
                     }
@@ -346,24 +477,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const postQuillInstances = {};
 
         function initPostEditor(postId) {
-            if (postQuillInstances[postId]) return postQuillInstances[postId];
+            if (postQuillInstances[postId]) return Promise.resolve(postQuillInstances[postId]);
             const editorEl = document.getElementById(`post-editor-${postId}`);
-            if (!editorEl || typeof Quill === 'undefined') return null;
-            const q = new Quill(`#post-editor-${postId}`, {
-                theme: 'snow',
-                placeholder: 'Write your story...',
-                modules: {
-                    toolbar: [
-                        ['bold', 'italic', 'underline'],
-                        [{ 'color': [] }],
-                        ['link', 'blockquote'],
-                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                        ['clean']
-                    ]
-                }
+            if (!editorEl) return Promise.resolve(null);
+
+            return loadQuill().then(() => {
+                if (postQuillInstances[postId]) return postQuillInstances[postId];
+                const q = new Quill(`#post-editor-${postId}`, {
+                    theme: 'snow',
+                    placeholder: 'Write your story...',
+                    modules: {
+                        toolbar: [
+                            ['bold', 'italic', 'underline'],
+                            [{ 'color': [] }],
+                            ['link', 'blockquote'],
+                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                            ['clean']
+                        ]
+                    }
+                });
+                postQuillInstances[postId] = q;
+                return q;
+            }).catch(() => {
+                $toast('error', 'The editor could not be loaded. Check your connection and try again.');
+                return null;
             });
-            postQuillInstances[postId] = q;
-            return q;
         }
 
         // Open post inline editor
@@ -382,16 +520,16 @@ document.addEventListener('DOMContentLoaded', () => {
             displayEl.classList.add('hidden');
             editEl.classList.remove('hidden');
 
-            const quill = initPostEditor(postId);
-            if (quill) {
-                const proseEl = displayEl.querySelector('.prose');
-                const html = proseEl?.innerHTML?.trim() || '';
+            const proseEl = displayEl.querySelector('.prose');
+            const html = proseEl?.innerHTML?.trim() || '';
+            initPostEditor(postId).then(quill => {
+                if (!quill) return;
                 quill.setContents([]);
                 if (html) {
                     quill.clipboard.dangerouslyPasteHTML(0, html);
                 }
                 requestAnimationFrame(() => quill.focus());
-            }
+            });
         });
 
         // Save post inline edit
@@ -514,16 +652,96 @@ document.addEventListener('DOMContentLoaded', () => {
             postFormDataWithUploadProgress(`${baseUrl}/profile-photo`, fd, { label: 'Uploading profile photo…' })
                 .then(data => {
                     if (data.success) {
-                        const container = document.querySelector('.relative.group.mb-4 > div');
+                        // Keyed by id, not by the wrapper's utility classes — those move
+                        // whenever the card layout is adjusted, and this broke silently.
+                        const container = document.getElementById('memorial-profile-photo');
                         if (container) {
                             container.innerHTML = `<img src="${data.url}" alt="" class="h-full w-full object-cover" />`;
                         }
+                        // The hero shows the same portrait, and is hidden until one exists.
+                        const heroPortrait = document.getElementById('memorial-hero-portrait');
+                        const heroPortraitImage = document.getElementById('memorial-hero-portrait-image');
+                        if (heroPortraitImage) heroPortraitImage.src = data.url;
+                        heroPortrait?.classList.remove('hidden');
                     } else if (data.error) {
                         $toast('error', data.error);
                     }
                 })
                 .catch(err => { $toast('error', err.message || 'Photo upload failed.'); });
             e.target.value = '';
+        });
+    }
+
+    // --- Cover banner upload / removal ---
+    if (canEdit) {
+        const coverRemoveBtn = document.getElementById('cover-photo-remove');
+        const coverLabel = document.getElementById('cover-photo-label');
+
+        // The cover dresses two places: the card banner and the hero backdrop. Both are
+        // updated together so an upload never leaves one of them showing the fallback.
+        const coverSurfaces = [
+            { image: document.getElementById('memorial-cover-image'), fallback: document.getElementById('memorial-cover-fallback') },
+            { image: document.getElementById('memorial-hero-image'), fallback: document.getElementById('memorial-hero-fallback') },
+        ];
+
+        const showCover = (url) => {
+            coverSurfaces.forEach(({ image, fallback }) => {
+                if (image) {
+                    image.src = url;
+                    image.classList.remove('hidden');
+                }
+                fallback?.classList.add('hidden');
+            });
+            coverRemoveBtn?.classList.remove('hidden');
+            if (coverLabel) coverLabel.textContent = 'Change cover';
+        };
+
+        const clearCover = () => {
+            coverSurfaces.forEach(({ image, fallback }) => {
+                if (image) {
+                    image.classList.add('hidden');
+                    image.removeAttribute('src');
+                }
+                fallback?.classList.remove('hidden');
+            });
+            coverRemoveBtn?.classList.add('hidden');
+            if (coverLabel) coverLabel.textContent = 'Add cover';
+        };
+
+        document.getElementById('cover-photo-input')?.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const fd = new FormData();
+            fd.append('photo', file);
+            fd.append('_token', csrf);
+            postFormDataWithUploadProgress(`${baseUrl}/cover-photo`, fd, { label: 'Uploading cover photo…' })
+                .then(data => {
+                    if (data.success) {
+                        showCover(data.url);
+                        $toast('success', 'Cover photo updated.');
+                    } else if (data.error) {
+                        $toast('error', data.error);
+                    }
+                })
+                .catch(err => { $toast('error', err.message || 'Cover upload failed.'); });
+            e.target.value = '';
+        });
+
+        coverRemoveBtn?.addEventListener('click', async () => {
+            if (!await $confirm('The banner will go back to its default look.', { title: 'Remove cover photo?', confirmText: 'Remove cover' })) return;
+            coverRemoveBtn.disabled = true;
+            fetch(`${baseUrl}/cover-photo`, fetchOpts('DELETE'))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        clearCover();
+                        $toast('success', 'Cover photo removed.');
+                    } else if (data.error) {
+                        $toast('error', data.error);
+                    }
+                })
+                .catch(() => $toast('error', 'Something went wrong.'))
+                .finally(() => { coverRemoveBtn.disabled = false; });
         });
     }
 
@@ -561,7 +779,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                     btn.type = 'button';
                                     btn.className = 'group relative block aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2';
                                     btn.setAttribute('@click', `openLightbox(${idx})`);
-                                    btn.innerHTML = `<img src="${data.media.url}" alt="Photo" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" /><div class="absolute inset-0 bg-black/0 transition group-hover:bg-black/10"></div>`;
+                                    const altText = data.media.caption || `Gallery photo ${idx + 1}`;
+                                    btn.innerHTML = `<img src="${data.media.url}" alt="${escapeHtml(altText)}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" /><div class="absolute inset-0 bg-black/0 transition group-hover:bg-black/10"></div>`;
                                     grid.appendChild(btn);
                                 }
                             }
@@ -650,6 +869,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Gallery caption edit ---
+    let releaseCaptionEditor = null;
+
+    function closeCaptionEditor() {
+        const editor = document.getElementById('gallery-caption-editor');
+        if (!editor || editor.classList.contains('hidden')) return;
+        editor.classList.add('hidden');
+        releaseCaptionEditor?.();
+        releaseCaptionEditor = null;
+    }
+
     document.addEventListener('click', (e) => {
         const editBtn = e.target.closest('[data-gallery-edit-caption]');
         if (!editBtn) return;
@@ -664,7 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mediaIdInput.value = mediaId;
         input.value = currentCaption;
         editor.classList.remove('hidden');
-        requestAnimationFrame(() => input.focus());
+        releaseCaptionEditor = openDialog(editor, { initialFocus: input, onClose: closeCaptionEditor });
     });
 
     // Caption save
@@ -696,11 +925,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             const galleryEl = document.getElementById('tab-gallery');
                             const alpineData = galleryEl && typeof Alpine !== 'undefined' ? Alpine.$data(galleryEl) : null;
                             if (alpineData?.images?.[idx]) {
-                                alpineData.images[idx].caption = caption || 'Photo';
+                                alpineData.images[idx].caption = caption || '';
+                                alpineData.images[idx].alt = caption || `Gallery photo ${idx + 1}`;
                             }
                         } catch (_) { /* lightbox will use alt text as fallback */ }
                         const img = item.querySelector('img');
-                        if (img) img.alt = caption || 'Photo';
+                        if (img) img.alt = caption || `Gallery photo ${idx + 1}`;
                     }
 
                     // Update video caption text if it's a video
@@ -710,7 +940,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (captionEl) captionEl.textContent = caption;
                     }
 
-                    editor.classList.add('hidden');
+                    closeCaptionEditor();
                     $toast('success', 'Caption updated.');
                 } else if (data.error) {
                     $toast('error', data.error);
@@ -724,20 +954,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Caption cancel
-    document.getElementById('gallery-caption-cancel')?.addEventListener('click', () => {
-        document.getElementById('gallery-caption-editor')?.classList.add('hidden');
-    });
+    document.getElementById('gallery-caption-cancel')?.addEventListener('click', closeCaptionEditor);
 
-    // Close caption editor on Escape or backdrop click
+    // Backdrop click. Escape is handled by openDialog, which also restores focus.
     document.getElementById('gallery-caption-editor')?.addEventListener('click', (e) => {
-        if (e.target.id === 'gallery-caption-editor') {
-            e.target.classList.add('hidden');
-        }
-    });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            document.getElementById('gallery-caption-editor')?.classList.add('hidden');
-        }
+        if (e.target.id === 'gallery-caption-editor') closeCaptionEditor();
     });
 
     // Caption save on Enter
@@ -749,46 +970,94 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Quill editors ---
+    // Most visitors here are reading a memorial someone shared with them and will never
+    // open an editor, so Quill is fetched the first time one is actually needed rather
+    // than blocking the first paint of every visit.
     let chapterQuill, tributeQuill, biographyQuill;
-    if (typeof Quill !== 'undefined') {
-        const quillToolbar = [
-            [{ 'size': ['small', false, 'large', 'huge'] }],
-            ['bold', 'italic', 'underline'],
-            [{ 'color': [] }],
-            ['link', 'blockquote'],
-            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-            [{ 'align': [] }],
-            ['clean'],
-            ['code-block']
-        ];
-        const quillOpts = {
-            theme: 'snow',
-            placeholder: 'Share your memories...',
-            modules: {
-                toolbar: quillToolbar
+    let quillScriptPromise = null;
+    let composerEditorsPromise = null;
+
+    function loadQuill() {
+        if (typeof Quill !== 'undefined') return Promise.resolve();
+        if (quillScriptPromise) return quillScriptPromise;
+
+        quillScriptPromise = new Promise((resolve, reject) => {
+            const css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = 'https://cdn.quilljs.com/1.3.7/quill.snow.css';
+            document.head.appendChild(css);
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.quilljs.com/1.3.7/quill.min.js';
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => {
+                // Let a later attempt retry rather than wedging every editor on the page.
+                quillScriptPromise = null;
+                reject(new Error('Quill failed to load'));
+            };
+            document.head.appendChild(script);
+        });
+
+        return quillScriptPromise;
+    }
+
+    /**
+     * The three page-level composers (chapter, tribute note, biography). Resolves once they
+     * exist, so callers can await it instead of assuming the variables are already set.
+     */
+    function initComposerEditors() {
+        if (composerEditorsPromise) return composerEditorsPromise;
+
+        const mounts = ['chapter-editor', 'tribute-editor', 'biography-editor']
+            .filter(id => document.getElementById(id));
+        if (!mounts.length) return Promise.resolve();
+
+        composerEditorsPromise = loadQuill().then(() => {
+            const quillToolbar = [
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline'],
+                [{ 'color': [] }],
+                ['link', 'blockquote'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                ['clean'],
+                ['code-block']
+            ];
+            const quillOpts = {
+                theme: 'snow',
+                placeholder: 'Share your memories...',
+                modules: {
+                    toolbar: quillToolbar
+                }
+            };
+            if (!chapterQuill && document.getElementById('chapter-editor')) {
+                chapterQuill = new Quill('#chapter-editor', quillOpts);
+                chapterQuill.on('text-change', () => {
+                    const el = document.getElementById('chapter-content');
+                    if (el) el.value = chapterQuill.root.innerHTML;
+                });
             }
-        };
-        if (document.getElementById('chapter-editor')) {
-            chapterQuill = new Quill('#chapter-editor', quillOpts);
-            chapterQuill.on('text-change', () => {
-                const el = document.getElementById('chapter-content');
-                if (el) el.value = chapterQuill.root.innerHTML;
-            });
-        }
-        if (document.getElementById('tribute-editor')) {
-            tributeQuill = new Quill('#tribute-editor', quillOpts);
-            tributeQuill.on('text-change', () => {
-                const el = document.getElementById('tribute-note-message');
-                if (el) el.value = tributeQuill.root.innerHTML;
-            });
-        }
-        if (document.getElementById('biography-editor')) {
-            biographyQuill = new Quill('#biography-editor', quillOpts);
-            biographyQuill.on('text-change', () => {
-                const el = document.getElementById('biography-content');
-                if (el) el.value = biographyQuill.root.innerHTML;
-            });
-        }
+            if (!tributeQuill && document.getElementById('tribute-editor')) {
+                tributeQuill = new Quill('#tribute-editor', quillOpts);
+                tributeQuill.on('text-change', () => {
+                    const el = document.getElementById('tribute-note-message');
+                    if (el) el.value = tributeQuill.root.innerHTML;
+                });
+            }
+            if (!biographyQuill && document.getElementById('biography-editor')) {
+                biographyQuill = new Quill('#biography-editor', quillOpts);
+                biographyQuill.on('text-change', () => {
+                    const el = document.getElementById('biography-content');
+                    if (el) el.value = biographyQuill.root.innerHTML;
+                });
+            }
+        }).catch(() => {
+            composerEditorsPromise = null;
+            $toast('error', 'The editor could not be loaded. Check your connection and try again.');
+        });
+
+        return composerEditorsPromise;
     }
 
     // --- Add story (tribute post) - any authenticated user can add ---
@@ -803,12 +1072,15 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             const target = addStoryForm || chapterFormAnchor;
             target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setTimeout(() => {
-                const titleInput = addStoryForm?.querySelector('input[name="title"]');
-                const editor = document.querySelector('#chapter-editor .ql-editor');
-                if (titleInput) titleInput.focus();
-                else if (editor) editor.focus();
-            }, 300);
+            const titleInput = addStoryForm?.querySelector('input[name="title"]');
+            if (titleInput) {
+                titleInput.focus();
+            } else {
+                // Focus once the editor exists — switchToTab only starts the fetch.
+                initComposerEditors().then(() => {
+                    document.querySelector('#chapter-editor .ql-editor')?.focus();
+                });
+            }
         }, 150);
     });
 
@@ -987,24 +1259,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayEl.classList.add('hidden');
                 editEl.classList.remove('hidden');
                 const input = editEl.querySelector('input, textarea');
-                if (section === 'biography' && biographyQuill) {
-                    // Use display content as source (what's shown on page) - most reliable
+                if (section === 'biography') {
+                    // Use display content as source (what's shown on page) - most reliable.
+                    // Read it before awaiting the editor, while the markup is untouched.
                     let initial = '';
                     const placeholder = 'Add biography...';
                     if (displayEl.textContent.trim() !== placeholder) {
                         initial = displayEl.innerHTML.trim();
                     }
-                    requestAnimationFrame(() => {
-                        biographyQuill.setContents([]);
-                        if (initial) {
-                            if (initial.includes('<')) {
-                                biographyQuill.clipboard.dangerouslyPasteHTML(0, initial);
-                            } else {
-                                const html = plainToHtml(initial);
-                                biographyQuill.clipboard.dangerouslyPasteHTML(0, html);
+                    initComposerEditors().then(() => {
+                        if (!biographyQuill) return;
+                        requestAnimationFrame(() => {
+                            biographyQuill.setContents([]);
+                            if (initial) {
+                                if (initial.includes('<')) {
+                                    biographyQuill.clipboard.dangerouslyPasteHTML(0, initial);
+                                } else {
+                                    const html = plainToHtml(initial);
+                                    biographyQuill.clipboard.dangerouslyPasteHTML(0, html);
+                                }
                             }
-                        }
-                        biographyQuill.focus();
+                            biographyQuill.focus();
+                        });
                     });
                 } else if (input) {
                     if (section !== 'biography') {
@@ -1096,23 +1372,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const tributeQuillInstances = {};
 
     function initTributeEditor(tributeId) {
-        if (tributeQuillInstances[tributeId]) return tributeQuillInstances[tributeId];
+        if (tributeQuillInstances[tributeId]) return Promise.resolve(tributeQuillInstances[tributeId]);
         const editorEl = document.getElementById(`tribute-editor-${tributeId}`);
-        if (!editorEl || typeof Quill === 'undefined') return null;
-        const q = new Quill(`#tribute-editor-${tributeId}`, {
-            theme: 'snow',
-            placeholder: 'Write your tribute message...',
-            modules: {
-                toolbar: [
-                    ['bold', 'italic', 'underline'],
-                    [{ 'color': [] }],
-                    ['link'],
-                    ['clean']
-                ]
-            }
+        if (!editorEl) return Promise.resolve(null);
+
+        return loadQuill().then(() => {
+            if (tributeQuillInstances[tributeId]) return tributeQuillInstances[tributeId];
+            const q = new Quill(`#tribute-editor-${tributeId}`, {
+                theme: 'snow',
+                placeholder: 'Write your tribute message...',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'color': [] }],
+                        ['link'],
+                        ['clean']
+                    ]
+                }
+            });
+            tributeQuillInstances[tributeId] = q;
+            return q;
+        }).catch(() => {
+            $toast('error', 'The editor could not be loaded. Check your connection and try again.');
+            return null;
         });
-        tributeQuillInstances[tributeId] = q;
-        return q;
     }
 
     // Open tribute inline editor
@@ -1131,16 +1414,16 @@ document.addEventListener('DOMContentLoaded', () => {
         displayEl.classList.add('hidden');
         editEl.classList.remove('hidden');
 
-        const quill = initTributeEditor(tributeId);
-        if (quill) {
-            const proseEl = displayEl.querySelector('.prose');
-            const html = proseEl?.innerHTML?.trim() || '';
+        const proseEl = displayEl.querySelector('.prose');
+        const html = proseEl?.innerHTML?.trim() || '';
+        initTributeEditor(tributeId).then(quill => {
+            if (!quill) return;
             quill.setContents([]);
             if (html) {
                 quill.clipboard.dangerouslyPasteHTML(0, html);
             }
             requestAnimationFrame(() => quill.focus());
-        }
+        });
     });
 
     // Save tribute inline edit
@@ -1238,15 +1521,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const guestForm = document.getElementById('guest-form');
     let pendingAction = null;
 
+    let releaseGuestModal = null;
+
     window.showGuestModal = (action) => {
         pendingAction = action;
         guestModal?.classList.remove('hidden');
+        releaseGuestModal = openDialog(guestModal, {
+            initialFocus: document.getElementById('guest-name'),
+            onClose: () => window.hideGuestModal(),
+        });
     };
 
     window.hideGuestModal = () => {
         guestModal?.classList.add('hidden');
         pendingAction = null;
+        releaseGuestModal?.();
+        releaseGuestModal = null;
     };
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-close-guest-modal]')) window.hideGuestModal();
+        if (e.target.closest('[data-close-edit-chapter-modal]')) window.closeEditChapterModal?.();
+    });
 
     guestForm?.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -1255,9 +1551,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!name || !email) return;
 
         if (pendingAction?.type === 'tribute') {
-            submitTribute(pendingAction.payload, name, email).then((ok) => {
-                if (ok) clearTributeEditor();
-            });
+            // The quick-tribute cards pass their own callback so they can burst and bump
+            // their counter once the guest's details are in; the compose form has none and
+            // keeps the original clear-the-editor behaviour.
+            if (pendingAction.callback) {
+                pendingAction.callback(name, email);
+            } else {
+                submitTribute(pendingAction.payload, name, email).then((res) => {
+                    if (res.ok) clearTributeEditor();
+                });
+            }
         } else if (pendingAction?.type === 'reaction') {
             pendingAction.callback?.(name, email) ?? submitReaction(pendingAction.payload, name, email);
         } else if (pendingAction?.type === 'comment') {
@@ -1269,7 +1572,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Tribute (flower, candle, note) ---
     // Resolves to true only when the tribute was accepted, so callers clear
     // the editor on success and keep the visitor's text on any failure.
-    function submitTribute(payload, guestName, guestEmail) {
+    /**
+     * Did somebody actually write something, or is this a bare tap?
+     *
+     * Mirrors Tribute::scopeWithMessage() on the server. The tags have to come off first:
+     * an untouched rich-text editor submits markup, not an empty string.
+     */
+    function tributeHasWords(tribute) {
+        return (tribute?.message || '')
+            .replace(/<[^>]*>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .trim().length > 0;
+    }
+
+    function submitTribute(payload, guestName, guestEmail, { revealTab = true } = {}) {
         const body = { ...payload };
         if (guestName) body.guest_name = guestName;
         if (guestEmail) body.guest_email = guestEmail;
@@ -1285,9 +1601,33 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(data => {
                 if (data.success) {
-                    appendTribute(data.tribute);
-                    updateTributeCount();
-                    return true;
+                    // A repeat tap is a success, not a failure — the server hands back the
+                    // tribute this person already left. Nothing is appended and no tally
+                    // moves, so the only thing that happens is the burst the caller played.
+                    if (data.duplicate) {
+                        // A repeat tap changes nothing. But a message written on top of an
+                        // earlier bare tap has just turned that reaction into a post, and
+                        // there is no entry in the feed for it to update, so add one.
+                        if (data.promoted && tributeHasWords(data.tribute)) {
+                            appendTribute(data.tribute, { revealTab });
+                            updateTributeCount();
+                        }
+                        return { ok: true, duplicate: true };
+                    }
+
+                    // Every tribute moves the tally under its card, written or not — that
+                    // tally counts taps, and is the whole point of the one-tap cards.
+                    updateTributeActionCount(data.tribute?.type || body.type, 1);
+
+                    // Only the ones carrying words become posts. A tap with nothing written
+                    // is a reaction: it leaves nothing in the feed, the way a like does.
+                    // appendTribute moves the filter pills, so they stay in step with what
+                    // is actually listed.
+                    if (tributeHasWords(data.tribute)) {
+                        appendTribute(data.tribute, { revealTab });
+                        updateTributeCount();
+                    }
+                    return { ok: true, duplicate: false };
                 } else if (data.requires_login) {
                     hideGuestModal();
                     $toast('warning', (data.error || 'Please sign in to continue.') + ' Taking you to sign in…');
@@ -1295,12 +1635,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (data.error) {
                     $toast('error', data.error);
                 }
-                return false;
+                return { ok: false, duplicate: false };
             })
             .catch(err => {
                 console.error('Tribute error:', err);
                 $toast('error', err.message || 'Could not submit tribute. Please try again.');
-                return false;
+                return { ok: false, duplicate: false };
             });
     }
 
@@ -1323,29 +1663,409 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('add-tribute-btn')?.addEventListener('click', () => {
         switchToTab('tributes');
-        setTimeout(() => {
-            document.getElementById('tribute-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            const editor = document.querySelector('#tribute-editor .ql-editor');
-            if (editor) editor.focus();
-        }, 100);
+        document.getElementById('tribute-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Focus once the editor exists — switchToTab only starts the fetch.
+        initComposerEditors().then(() => {
+            document.querySelector('#tribute-editor .ql-editor')?.focus();
+        });
     });
 
-    document.querySelectorAll('[data-tribute-btn]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const type = btn.dataset.tributeBtn;
-            if (type === 'note') {
-                document.querySelectorAll('.memorial-tab-btn').forEach(b => {
-                    if (b.dataset.tabPanel === 'tributes') b.click();
+    // --- One-tap tribute cards: burst on tap, count ticks up in place ---
+    //
+    // Modelled on the Instagram/TikTok double-tap: a motif pops at the point of contact and
+    // a scatter of particles radiates outward, arcing and fading. Everything runs through the
+    // Web Animations API rather than keyframes so it stays on the compositor and so repeated
+    // taps each get their own independent, interruptible run.
+    const BURST_MOTIFS = {
+        flower: {
+            pop: '<svg viewBox="0 0 48 48" width="72" height="72"><g transform="translate(24,24)"><ellipse rx="6" ry="10" cy="-10" fill="#f9a8d4"/><ellipse rx="6" ry="10" cy="-10" fill="#f472b6" transform="rotate(72)"/><ellipse rx="6" ry="10" cy="-10" fill="#f9a8d4" transform="rotate(144)"/><ellipse rx="6" ry="10" cy="-10" fill="#f472b6" transform="rotate(216)"/><ellipse rx="6" ry="10" cy="-10" fill="#f9a8d4" transform="rotate(288)"/><circle r="5" fill="#fbbf24"/></g></svg>',
+            particles: [
+                '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="#f472b6"/></svg>',
+                '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="#f9a8d4"/></svg>',
+                '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="#fbcfe8"/></svg>',
+            ],
+        },
+        candle: {
+            pop: '<svg viewBox="0 0 48 48" width="72" height="72"><ellipse cx="24" cy="24" rx="11" ry="16" fill="#f97316" opacity="0.9"/><ellipse cx="24" cy="26" rx="6" ry="11" fill="#fbbf24"/><ellipse cx="24" cy="28" rx="3" ry="6" fill="#fef3c7"/></svg>',
+            particles: [
+                '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 0l2.6 9.4L24 12l-9.4 2.6L12 24l-2.6-9.4L0 12l9.4-2.6z" fill="#fbbf24"/></svg>',
+                '<svg viewBox="0 0 24 24" width="10" height="10"><path d="M12 0l2.6 9.4L24 12l-9.4 2.6L12 24l-2.6-9.4L0 12l9.4-2.6z" fill="#fde68a"/></svg>',
+                '<svg viewBox="0 0 24 24" width="8" height="8"><circle cx="12" cy="12" r="12" fill="#fcd34d"/></svg>',
+            ],
+        },
+        prayer: {
+            pop: '<svg viewBox="0 0 48 48" width="76" height="76"><g stroke="#fbbf24" stroke-width="1.6" stroke-linecap="round" opacity="0.6"><path d="M24 2.5v3M12.9 6.8l1.8 2.5M35.1 6.8l-1.8 2.5M6.4 17.2l3 .8M41.6 17.2l-3 .8"/></g><circle cx="24" cy="17" r="12" fill="#fbbf24" opacity="0.3"/><g transform="translate(48,0) scale(-1,1)"><path d="M22.9 3.5c-2.2 2-3.9 4.6-5.1 7.7-1.7 4.3-2.6 8.8-2.6 13.5v5.6c0 2.9 1.8 5.5 4.5 6.5l3.2 1.2z" fill="#c07f4a"/><path d="M22.9 33v6.5l-4.4 2.7a4.8 4.8 0 0 1-6.6-1.6 4.8 4.8 0 0 1 1.6-6.6l5.4-3.3z" fill="#6b7d94"/></g><path d="M22.9 3.5c-2.2 2-3.9 4.6-5.1 7.7-1.7 4.3-2.6 8.8-2.6 13.5v5.6c0 2.9 1.8 5.5 4.5 6.5l3.2 1.2z" fill="#e8ab77"/><path d="M22.9 33v6.5l-4.4 2.7a4.8 4.8 0 0 1-6.6-1.6 4.8 4.8 0 0 1 1.6-6.6l5.4-3.3z" fill="#94a3b8"/></svg>',
+            particles: [
+                '<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" fill="#fcd34d"/></svg>',
+                '<svg viewBox="0 0 24 24" width="11" height="11"><path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" fill="#e0f2fe"/></svg>',
+                '<svg viewBox="0 0 24 24" width="8" height="8"><circle cx="12" cy="12" r="12" fill="#fef3c7"/></svg>',
+            ],
+        },
+    };
+
+    // --- Petal rain -------------------------------------------------------------
+    //
+    // Seven petal silhouettes, each drawn once into a hidden sprite and stamped out with
+    // <use>. The body takes `currentColor` so one shape can be recoloured per petal, and
+    // the shading is two clipped overlays — a dark side and a lit side — rather than a
+    // gradient per petal. Clipping matters: without it the highlight spills past the
+    // silhouette on the curled and twisted shapes.
+    //
+    // Seven shapes x five reds x a mirror flip is seventy distinct petals before the
+    // per-petal size, tumble and depth are applied, which is more variety than a folder
+    // of fifty fixed assets would give for a fraction of the bytes — and it stays one
+    // sprite in the DOM however many petals are in the air.
+    const PETAL_SPRITE = `
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs>
+<path id="mpb-0" d="M30 78C18 62 4 48 4 32 4 15 16 4 30 12 44 4 56 15 56 32c0 16-14 30-26 46z"/>
+<path id="mpb-1" d="M30 78C24 60 14 44 14 28 14 12 21 2 30 2s16 10 16 26c0 16-10 32-16 50z"/>
+<path id="mpb-2" d="M30 78C16 62 6 46 8 30 10 14 22 2 34 6c10 3 16 14 14 28-2 16-10 30-18 44z"/>
+<path id="mpb-3" d="M30 76C12 68 2 50 4 32 6 16 18 6 30 10c12-4 24 6 26 22 2 18-8 36-26 44z"/>
+<path id="mpb-4" d="M32 76c-7-14-10-30-8-45 2-13 7-24 13-29 5 11 5 25 2 40-3 15-5 26-7 34z"/>
+<path id="mpb-5" d="M28 78c-9-13-5-25 1-34 6-9 5-19-4-27 15-8 31 3 31 18 0 11-8 19-13 26-5 7-7 12-6 17z"/>
+<path id="mpb-6" d="M30 74c-8-10-14-22-13-34C18 28 25 18 34 16c9-2 16 5 16 16 0 14-10 30-20 42z"/>
+<clipPath id="mpc-0"><use href="#mpb-0"/></clipPath>
+<clipPath id="mpc-1"><use href="#mpb-1"/></clipPath>
+<clipPath id="mpc-2"><use href="#mpb-2"/></clipPath>
+<clipPath id="mpc-3"><use href="#mpb-3"/></clipPath>
+<clipPath id="mpc-4"><use href="#mpb-4"/></clipPath>
+<clipPath id="mpc-5"><use href="#mpb-5"/></clipPath>
+<clipPath id="mpc-6"><use href="#mpb-6"/></clipPath>
+<symbol id="mp-0" viewBox="0 0 60 80"><use href="#mpb-0" fill="currentColor"/><g clip-path="url(#mpc-0)"><path d="M30 82C16 64 0 48 0 30c0-10 3-18 9-22 4 10 5 22 4 34-1 14 4 25 17 43z" fill="#000" opacity=".2"/><path d="M36 10c9-3 19 4 20 16 1 8-1 15-5 22 1-11-1-21-6-28-3-5-8-8-9-10z" fill="#fff" opacity=".26"/><path d="M30 74c-2-16-2-32 0-52M30 74c6-12 12-24 15-36M30 74c-6-12-12-24-15-36" stroke="#000" stroke-width="1.1" opacity=".14" fill="none"/></g></symbol>
+<symbol id="mp-1" viewBox="0 0 60 80"><use href="#mpb-1" fill="currentColor"/><g clip-path="url(#mpc-1)"><path d="M30 82C22 60 12 44 12 28c0-9 2-17 6-22-1 12 0 24 3 36 3 12 7 24 9 40z" fill="#000" opacity=".2"/><path d="M34 0c8 3 14 12 14 26 0 9-3 18-6 26 1-13 0-25-2-34-2-8-4-15-6-18z" fill="#fff" opacity=".26"/><path d="M30 74c-1-18 0-38 0-52" stroke="#000" stroke-width="1.1" opacity=".14" fill="none"/></g></symbol>
+<symbol id="mp-2" viewBox="0 0 60 80"><use href="#mpb-2" fill="currentColor"/><g clip-path="url(#mpc-2)"><path d="M34 6c-7 9-10 20-8 31 2 11 6 21 4 45-16-18-28-34-26-52C6 12 20 0 34 6z" fill="#000" opacity=".18"/><path d="M34 6c11 3 17 13 16 27-1 10-4 19-9 27 2-13 1-24-2-33-3-9-6-16-5-21z" fill="#fff" opacity=".28"/></g></symbol>
+<symbol id="mp-3" viewBox="0 0 60 80"><use href="#mpb-3" fill="currentColor"/><g clip-path="url(#mpc-3)"><path d="M34 80C14 70 0 50 2 30 4 14 16 4 34 8z" fill="#000" opacity=".16"/><path d="M30 10c14-4 26 6 28 22 1 11-2 22-8 31 2-15 0-28-6-38-5-9-11-14-14-15z" fill="#fff" opacity=".22"/><path d="M31 74C29 54 29 32 32 12" stroke="#000" stroke-width="1" opacity=".13" fill="none"/></g></symbol>
+<symbol id="mp-4" viewBox="0 0 60 80"><use href="#mpb-4" fill="currentColor"/><g clip-path="url(#mpc-4)"><path d="M32 80c-9-14-12-32-10-47 1-8 3-15 6-20-1 14 0 27 3 39 3 12 5 22 1 28z" fill="#000" opacity=".24"/><path d="M37 0c6 11 6 25 3 40-1 6-2 11-3 16 0-14-1-26-2-35-1-9-2-17 2-21z" fill="#fff" opacity=".22"/></g></symbol>
+<symbol id="mp-5" viewBox="0 0 60 80"><use href="#mpb-5" fill="currentColor"/><g clip-path="url(#mpc-5)"><path d="M28 82c-11-15-7-27-1-36 6-9 5-19-6-29 6-4 13-4 19-2-8 10-9 20-5 29 4 9 5 20-7 38z" fill="#000" opacity=".22"/><path d="M41 2c11 3 17 11 17 21 0 11-8 19-13 26-3 4-6 8-7 11 3-12 7-22 8-31 1-11-2-20-5-27z" fill="#fff" opacity=".24"/></g></symbol>
+<symbol id="mp-6" viewBox="0 0 60 80"><use href="#mpb-6" fill="currentColor"/><g clip-path="url(#mpc-6)"><path d="M30 78c-10-11-16-24-15-38 1-7 4-14 9-18-2 11-1 21 2 30 3 9 6 18 4 26z" fill="#000" opacity=".22"/><path d="M34 16c11-2 18 5 18 16 0 9-4 19-10 28 3-12 3-22 1-30-2-8-7-12-9-14z" fill="#fff" opacity=".24"/></g></symbol>
+</defs></svg>`;
+
+    // Sampled off the flower artwork itself rather than picked by eye, so the petals that
+    // fall are the same violets the bouquet on the card is made of.
+    //
+    // The artwork's own lightest tints are left out. Each petal carries a white highlight
+    // overlay, and on a tint that pale the highlight takes the whole shape to near-white —
+    // which in a field of violet reads as a different object rather than as a petal
+    // catching the light.
+    const PETAL_COLOURS = ['#a060c0', '#b070d0', '#9050b0', '#c080d0', '#8040a0', '#b070c0'];
+
+    // Drawn from rather than picked uniformly, because the narrow shapes — the edge-on
+    // sliver especially — read as a hairline at small sizes. A few are what sells the
+    // field as three-dimensional; an even seventh of them looks like scratches.
+    const PETAL_SHAPES = [0, 0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 5, 5, 6, 6];
+
+    // Three depth bands. Size, opacity, blur and speed all move together, because that
+    // combination is what the eye reads as distance: the far band is small, dim and slow,
+    // the near band is large, fast and defocused like something passing the lens.
+    const PETAL_LAYERS = [
+        { share: 0.42, width: [13, 24], opacity: [0.3, 0.5], blur: 1.4, duration: [5400, 7200], tumble: 0.6, sway: [30, 90] },
+        { share: 0.40, width: [26, 46], opacity: [0.75, 1], blur: 0, duration: [3600, 5200], tumble: 1, sway: [50, 150] },
+        { share: 0.18, width: [64, 118], opacity: [0.45, 0.7], blur: 3.5, duration: [2400, 3400], tumble: 1.35, sway: [80, 220] },
+    ];
+
+    const rand = (min, max) => min + Math.random() * (max - min);
+
+    let petalLayer = null;
+    let petalsFalling = 0;
+
+    function getPetalLayer() {
+        if (petalLayer && petalLayer.isConnected) return petalLayer;
+        // Tracked separately from the layer: the sprite defines ids, so injecting it a
+        // second time because the layer went missing would duplicate every one of them.
+        if (!document.getElementById('mpb-0')) {
+            document.body.insertAdjacentHTML('beforeend', PETAL_SPRITE);
+        }
+        petalLayer = document.createElement('div');
+        petalLayer.className = 'memorial-petal-layer';
+        petalLayer.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(petalLayer);
+        return petalLayer;
+    }
+
+    /**
+     * Keyframes for one petal's whole fall.
+     *
+     * The vertical travel is linear — gravity does not ease — while the horizontal
+     * position is sampled off a sine so the petal is pushed sideways and back rather
+     * than sliding in a straight diagonal. Sampling into fixed keyframes rather than
+     * driving it per frame keeps the animation on the compositor.
+     */
+    function petalKeyframes(spec) {
+        const { fromX, toX, fromY, toY, amp, waves, phase, rx, ry, rz, scale } = spec;
+        const steps = 10;
+        const frames = [];
+
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const x = fromX + (toX - fromX) * t + Math.sin(phase + t * Math.PI * waves) * amp;
+            const y = fromY + (toY - fromY) * t;
+            // In and out at the edges of the fall, so nothing blinks into existence
+            // mid-screen and nothing is cut off at the bottom.
+            const fade = t < 0.06 ? t / 0.06 : t > 0.88 ? (1 - t) / 0.12 : 1;
+
+            frames.push({
+                offset: t,
+                opacity: fade,
+                transform: `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`
+                    + ` rotateX(${(rx * t).toFixed(1)}deg) rotateY(${(ry * t).toFixed(1)}deg) rotateZ(${(rz * t).toFixed(1)}deg)`
+                    + ` scale(${scale})`,
+            });
+        }
+
+        return frames;
+    }
+
+    // How long the field keeps emitting. Every petal's start is scattered across this
+    // window and back into negative time, so the fall is a continuous stream rather than
+    // one wave: spawning them all at once fills the screen and then empties it from the
+    // top down as the first arrivals land, leaving a bare lower half within a second.
+    const PETAL_EMIT_WINDOW = 3600;
+
+    /**
+     * Rain petals across the entire viewport.
+     *
+     * The ones given a negative delay start life part-way through their own fall, so the
+     * screen is full the instant it is asked for instead of filling from the top — and
+     * because they are genuinely mid-animation they arrive already moving rather than
+     * popping into place.
+     */
+    function rainPetals() {
+        if (prefersReducedMotion()) return;
+
+        const layer = getPetalLayer();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        // Phones get a smaller cast: the screen is narrower, so the same count reads as
+        // clutter and costs more on the weaker GPU.
+        const target = vw >= 1024 ? 110 : vw >= 640 ? 88 : 58;
+        // Repeat taps top the field back up rather than stacking a second curtain on it
+        // or being swallowed — the same contract the tap burst has, without letting the
+        // node count climb every time someone taps twice.
+        const budget = Math.max(0, target - petalsFalling);
+        if (budget === 0) return;
+
+        PETAL_LAYERS.forEach((band) => {
+            const count = Math.round(budget * band.share);
+
+            for (let i = 0; i < count; i++) {
+                // Capped against the viewport so the foreground band stays a petal
+                // sweeping past rather than a red shape covering a third of a phone.
+                const width = Math.min(rand(band.width[0], band.width[1]), vw * 0.26);
+                const shape = PETAL_SHAPES[Math.floor(Math.random() * PETAL_SHAPES.length)];
+                const colour = PETAL_COLOURS[Math.floor(Math.random() * PETAL_COLOURS.length)];
+                const height = width * (80 / 60);
+
+                const node = document.createElement('span');
+                node.className = 'memorial-petal';
+                node.style.opacity = '0';
+                if (band.blur) node.style.filter = `blur(${band.blur}px)`;
+                node.innerHTML = `<svg viewBox="0 0 60 80" width="${width.toFixed(0)}" height="${height.toFixed(0)}" style="color:${colour}"><use href="#mp-${shape}"/></svg>`;
+                layer.appendChild(node);
+
+                const fromX = rand(-width, vw);
+                const duration = rand(band.duration[0], band.duration[1]);
+                const frames = petalKeyframes({
+                    fromX,
+                    // Wind carries the whole field one way; how far depends on how long
+                    // the petal is in the air.
+                    toX: fromX + rand(-40, 170) * (duration / 4000),
+                    fromY: -height - rand(0, vh * 0.25),
+                    toY: vh + height,
+                    amp: rand(band.sway[0], band.sway[1]),
+                    waves: rand(1.5, 3.5),
+                    phase: Math.random() * Math.PI * 2,
+                    // Three axes: the Y flip is what shows the petal's back and reads as
+                    // a real petal rather than a falling sticker. Both out-of-plane spins
+                    // are kept well under a full turn, because a petal edge-on to the
+                    // screen is a hairline — spin it freely and half the field disappears
+                    // at any given moment. Z is in-plane, so it can turn as far as it likes.
+                    rx: rand(-150, 150) * band.tumble,
+                    ry: rand(150, 430) * band.tumble * (Math.random() < 0.5 ? -1 : 1),
+                    rz: rand(-540, 540) * band.tumble,
+                    // Mirrored on half of them, so a shape never repeats side by side.
+                    scale: Math.random() < 0.5 ? 1 : -1,
                 });
+
+                petalsFalling++;
+                const done = () => {
+                    node.remove();
+                    petalsFalling--;
+                };
+                node.animate(frames, {
+                    duration,
+                    // Linear: the sway is already baked into the keyframe positions, and
+                    // easing the timeline on top would make the fall speed up and stall.
+                    easing: 'linear',
+                    // Uniform across one whole fall behind us and the emit window ahead:
+                    // that keeps roughly the same number of petals in the air throughout
+                    // instead of a wave that arrives and leaves together.
+                    delay: rand(-duration * 0.9, PETAL_EMIT_WINDOW),
+                    fill: 'forwards',
+                }).finished.then(done).catch(done);
+            }
+        });
+    }
+
+    let burstLayer = null;
+
+    function getBurstLayer() {
+        if (burstLayer && burstLayer.isConnected) return burstLayer;
+        burstLayer = document.createElement('div');
+        burstLayer.className = 'memorial-burst-layer';
+        burstLayer.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(burstLayer);
+        return burstLayer;
+    }
+
+    const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function spawnBurstNode(layer, html, x, y) {
+        const node = document.createElement('span');
+        node.className = 'memorial-burst-particle';
+        node.innerHTML = html;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        layer.appendChild(node);
+        return node;
+    }
+
+    /**
+     * Fire the burst at a viewport coordinate. Safe to call repeatedly — each run owns its
+     * own nodes and removes them on finish, so a rapid series of taps overlaps cleanly.
+     */
+    function burstFrom(x, y, type, artSrc) {
+        // Motion is the whole point of this effect, so reduced-motion gets none of it
+        // rather than a watered-down version. The count still updates.
+        if (prefersReducedMotion()) return;
+
+        const motif = BURST_MOTIFS[type] || BURST_MOTIFS.prayer;
+        const layer = getBurstLayer();
+        const easeOut = 'cubic-bezier(0.23, 1, 0.32, 1)';
+
+        // A flower gets the whole screen: petals rain past from edge to edge instead of
+        // the tap throwing a handful outward. The centre pop still plays on top, so the
+        // tap keeps its own point of contact — it is the radial scatter that the rain
+        // replaces, since firing both would put two sets of petals on screen at once.
+        const rainsPetals = type === 'flower';
+        if (rainsPetals) rainPetals();
+
+        // A candle opens the full scene. Loaded on demand rather than bundled: it is the
+        // largest thing on this page by some way, and most visitors never light one. The
+        // pop below still plays over the top, so the page dims around the tap itself.
+        if (type === 'candle') {
+            import('./memorial-candle-scene.js')
+                .then(m => m.playCandleScene({ originX: x, originY: y }))
+                .catch(() => {});
+        }
+
+        // A prayer opens its own scene, and takes the card's artwork with it so the light
+        // rises out of the same hands that were pressed.
+        if (type === 'prayer') {
+            import('./memorial-prayer-scene.js')
+                .then(m => m.playPrayerScene({ originX: x, artSrc }))
+                .catch(() => {});
+        }
+
+        // The centre pop is the card's own artwork blown up, so the burst reads as the icon
+        // leaping off the card rather than a different graphic replacing it. Falls back to
+        // the inline motif when a card is drawing SVG because its PNG is absent.
+        const popHtml = artSrc
+            ? `<img src="${escapeHtml(artSrc)}" alt="" width="132" height="132" style="display:block" />`
+            : motif.pop;
+
+        // Centre pop: overshoots slightly, then settles and fades — never from scale(0).
+        const pop = spawnBurstNode(layer, popHtml, x, y);
+        pop.style.transform = 'translate(-50%, -50%)';
+        pop.animate([
+            { transform: 'translate(-50%, -50%) scale(0.4)', opacity: 0 },
+            { transform: 'translate(-50%, -50%) scale(1.15)', opacity: 1, offset: 0.35 },
+            { transform: 'translate(-50%, -50%) scale(0.95)', opacity: 0.9, offset: 0.6 },
+            { transform: 'translate(-50%, -50%) scale(1.35)', opacity: 0 },
+        ], { duration: 720, easing: easeOut, fill: 'forwards' })
+            .finished.then(() => pop.remove()).catch(() => pop.remove());
+
+        const count = rainsPetals ? 0 : 18;
+        for (let i = 0; i < count; i++) {
+            const html = motif.particles[i % motif.particles.length];
+            const node = spawnBurstNode(layer, html, x, y);
+
+            // Spread evenly around the circle, jittered so it never looks like a clock face.
+            const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+            const distance = 95 + Math.random() * 115;
+            const driftX = Math.cos(angle) * distance;
+            const driftY = Math.sin(angle) * distance;
+            // Particles fall away at the end instead of stopping dead in mid-air.
+            const gravity = 30 + Math.random() * 45;
+            const spin = (Math.random() - 0.5) * 540;
+            const duration = 820 + Math.random() * 380;
+
+            node.animate([
+                { transform: 'translate(-50%, -50%) translate(0px, 0px) scale(0.3) rotate(0deg)', opacity: 0 },
+                { transform: `translate(-50%, -50%) translate(${driftX * 0.55}px, ${driftY * 0.55 - 10}px) scale(1) rotate(${spin * 0.4}deg)`, opacity: 1, offset: 0.3 },
+                { transform: `translate(-50%, -50%) translate(${driftX}px, ${driftY + gravity}px) scale(0.55) rotate(${spin}deg)`, opacity: 0 },
+            ], { duration, easing: easeOut, fill: 'forwards' })
+                .finished.then(() => node.remove()).catch(() => node.remove());
+        }
+    }
+
+    /** Bump the "N flowers" line under a card, keeping its singular/plural correct. */
+    function updateTributeActionCount(type, delta) {
+        const el = document.querySelector(`[data-tribute-action-count="${type}"]`);
+        if (!el) return;
+        const noun = el.dataset.noun || type;
+        const next = Math.max(0, parseInt((el.textContent || '0').replace(/\D/g, '') || 0) + delta);
+        el.textContent = `${next} ${next === 1 ? noun : noun + 's'}`;
+    }
+
+    document.querySelectorAll('[data-tribute-action]').forEach(card => {
+        card.addEventListener('click', (e) => {
+            e.preventDefault();
+            const type = card.dataset.tributeAction;
+
+            // Burst from the pointer itself when there is one; keyboard activation reports
+            // 0,0, so fall back to the card's centre.
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX || rect.left + rect.width / 2;
+            const y = e.clientY || rect.top + rect.height / 2;
+            // null when the card fell back to inline SVG, which burstFrom() handles.
+            const artSrc = card.querySelector('.memorial-tribute-action__art img')?.src || null;
+
+            // Past the plan's limit the card is still a card: it plays its effect and says
+            // nothing about quotas, because a visitor tapping a candle has no idea what the
+            // owner's plan is and should not be made to care. The request is what stops —
+            // nothing is sent, so nothing is stored and no tally moves.
+            //
+            // Guests are short-circuited here too, deliberately: sending someone through
+            // sign-up for something that will not be recorded is worse than doing nothing.
+            if (card.closest('[data-tribute-quota-reached]')) {
+                burstFrom(x, y, type, artSrc);
                 return;
             }
 
+            // The tallies are moved by submitTribute now, which is the only place that knows
+            // whether what came back is a written tribute or a bare tap.
             if (isAuthenticated) {
-                submitTribute({ type });
-            } else {
-                showGuestModal({ type: 'tribute', payload: { type } });
+                // Fire immediately — waiting on the round trip is what makes a tap feel dead.
+                // It plays on every tap, including repeats: the burst confirms the tap landed,
+                // while the count only moves the first time. Same contract as double-tapping
+                // a post you have already liked.
+                burstFrom(x, y, type, artSrc);
+                submitTribute({ type }, undefined, undefined, { revealTab: false });
+                return;
             }
+
+            // Guests have to identify themselves first. Celebrating before that would be
+            // celebrating something that has not happened yet, so the burst waits.
+            showGuestModal({
+                type: 'tribute',
+                payload: { type },
+                callback: (name, email) => {
+                    submitTribute({ type }, name, email, { revealTab: false }).then(res => {
+                        if (!res.ok) return;
+                        burstFrom(rect.left + rect.width / 2, rect.top + rect.height / 2, type, artSrc);
+                    });
+                },
+            });
         });
     });
 
@@ -1361,7 +2081,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = document.getElementById('tribute-note-name')?.value?.trim();
         const email = document.getElementById('tribute-note-email')?.value?.trim();
         const typeEl = document.querySelector('input[name="tribute-type"]:checked');
-        const type = typeEl?.value || 'note';
+        const type = typeEl?.value || 'prayer';
         const message = tributeQuill ? tributeQuill.root.innerHTML : (document.getElementById('tribute-note-message')?.value?.trim() || '');
         if (!message || message === '<p><br></p>') {
             $toast('error', 'Write a message first — even a sentence is enough.');
@@ -1376,56 +2096,74 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalLabel = submitBtn.textContent;
         submitBtn.disabled = true;
         submitBtn.textContent = 'Posting…';
-        submitTribute({ type, message }, ...(isAuthenticated ? [] : [name, email])).then((ok) => {
+        submitTribute({ type, message }, ...(isAuthenticated ? [] : [name, email])).then((res) => {
             submitBtn.disabled = false;
             submitBtn.textContent = originalLabel;
-            if (ok) clearTributeEditor();
+            if (! res.ok) return;
+            clearTributeEditor();
+            // Their words were attached to the tribute of this kind they already had, so
+            // say where it went rather than leaving the form looking like it did nothing.
+            if (res.duplicate) $toast('success', 'Your message was added to the tribute you already left.');
         });
     });
 
     const tributeCardConfig = {
         flower: {
-            card: 'border-pink-200/60 dark:border-pink-800/40 bg-pink-50/40 dark:bg-pink-950/20',
-            avatar: 'bg-pink-200/70 dark:bg-pink-800/40 text-pink-700 dark:text-pink-300',
-            inner: 'bg-pink-100/50 dark:bg-pink-900/20 border border-pink-200/40 dark:border-pink-800/30',
-            label: 'text-pink-600 dark:text-pink-400',
-            labelText: 'Flower Left',
-            border: 'border-pink-200/40 dark:border-pink-800/30',
-            icon: '<svg class="h-6 w-6 text-pink-400 tribute-icon-sway" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C9.5 2 7.5 4.5 7.5 7c0 1.8 1 3.4 2.5 4.2V22h4V11.2c1.5-.8 2.5-2.4 2.5-4.2 0-2.5-2-5-4.5-5zm-2 7c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm4 0c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>',
-            inlineIcon: '<svg class="h-10 w-10 tribute-icon-sway" viewBox="0 0 48 48" fill="none"><g transform="translate(24,20)"><ellipse cx="0" cy="-8" rx="5" ry="8" fill="#f9a8d4" opacity="0.9" transform="rotate(0)"/><ellipse cx="0" cy="-8" rx="5" ry="8" fill="#f472b6" opacity="0.8" transform="rotate(72)"/><ellipse cx="0" cy="-8" rx="5" ry="8" fill="#f9a8d4" opacity="0.9" transform="rotate(144)"/><ellipse cx="0" cy="-8" rx="5" ry="8" fill="#f472b6" opacity="0.8" transform="rotate(216)"/><ellipse cx="0" cy="-8" rx="5" ry="8" fill="#f9a8d4" opacity="0.9" transform="rotate(288)"/><circle cx="0" cy="0" r="4" fill="#fbbf24"/></g><line x1="24" y1="24" x2="24" y2="44" stroke="#86efac" stroke-width="2.5" stroke-linecap="round"/><ellipse cx="18" cy="36" rx="5" ry="3" fill="#86efac" opacity="0.7" transform="rotate(-30, 18, 36)"/></svg>',
-            fallback: (name) => `A flower placed in memory of ${name}.`,
+            card: 'border-violet-200/60 dark:border-violet-800/40 bg-violet-50/40 dark:bg-violet-950/20',
+            avatar: 'bg-violet-200/70 dark:bg-violet-800/40 text-violet-700 dark:text-violet-300',
+            inner: 'bg-violet-100/50 dark:bg-violet-900/20 border border-violet-200/40 dark:border-violet-800/30',
+            border: 'border-violet-200/40 dark:border-violet-800/30',
+            fallbackArt: '<svg class="h-full w-full text-violet-400 tribute-icon-sway" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C9.5 2 7.5 4.5 7.5 7c0 1.8 1 3.4 2.5 4.2V22h4V11.2c1.5-.8 2.5-2.4 2.5-4.2 0-2.5-2-5-4.5-5zm-2 7c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm4 0c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>',
         },
         candle: {
             card: 'border-amber-200/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/20',
             avatar: 'bg-amber-200/70 dark:bg-amber-800/40 text-amber-700 dark:text-amber-300',
             inner: 'bg-amber-100/50 dark:bg-amber-900/20 border border-amber-200/40 dark:border-amber-800/30',
-            label: 'text-amber-600 dark:text-amber-400',
-            labelText: 'Candle Lit',
             border: 'border-amber-200/40 dark:border-amber-800/30',
-            icon: '<svg class="h-6 w-6 text-amber-400 tribute-icon-flicker" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-.5 0-1 .19-1.41.59l-1.3 1.3C8.78 4.4 8.5 5.13 8.5 5.91c0 1.97 1.6 3.59 3.5 3.59s3.5-1.62 3.5-3.59c0-.78-.28-1.51-.79-2.02l-1.3-1.3C13 2.19 12.5 2 12 2zm-1 8.5V22h2V10.5h-2z"/></svg>',
-            inlineIcon: '<svg class="h-10 w-10" viewBox="0 0 48 48" fill="none"><rect x="19" y="22" width="10" height="20" rx="2" fill="#fbbf24" opacity="0.85"/><rect x="20" y="22" width="3" height="20" rx="1" fill="#fde68a" opacity="0.4"/><rect x="23" y="20" width="2" height="3" rx="1" fill="#92400e"/><g class="tribute-flame-flicker" transform-origin="24 16"><ellipse cx="24" cy="14" rx="4.5" ry="7" fill="#f97316" opacity="0.9"/><ellipse cx="24" cy="13" rx="2.5" ry="5" fill="#fbbf24"/><ellipse cx="24" cy="12" rx="1.2" ry="3" fill="#fef3c7"/></g><ellipse cx="24" cy="9" rx="6" ry="3" fill="#fbbf24" opacity="0.15" class="tribute-glow-pulse"/></svg>',
-            fallback: (name) => `A flame lit in honour of ${name}.`,
+            fallbackArt: '<svg class="h-full w-full text-amber-400 tribute-icon-flicker" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-.5 0-1 .19-1.41.59l-1.3 1.3C8.78 4.4 8.5 5.13 8.5 5.91c0 1.97 1.6 3.59 3.5 3.59s3.5-1.62 3.5-3.59c0-.78-.28-1.51-.79-2.02l-1.3-1.3C13 2.19 12.5 2 12 2zm-1 8.5V22h2V10.5h-2z"/></svg>',
         },
-        note: {
-            card: 'border-gray-200/80 dark:border-gray-700/60 bg-gray-50/40 dark:bg-white/[0.02]',
-            avatar: 'bg-gray-200/70 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300',
-            inner: 'bg-white/60 dark:bg-white/[0.03] border border-gray-200/50 dark:border-gray-700/40',
-            label: 'text-gray-500 dark:text-gray-400',
-            labelText: 'Note Left',
-            border: 'border-gray-200/50 dark:border-gray-700/40',
-            icon: '<svg class="h-6 w-6 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>',
-            inlineIcon: '<svg class="h-10 w-10 tribute-icon-write" viewBox="0 0 48 48" fill="none"><path d="M34 6c-6 4-12 14-16 24l-2 8 6-4c4-8 8-16 14-22" fill="#94a3b8" opacity="0.15"/><path d="M34 6c-6 4-12 14-16 24l-2 8 6-4c4-8 8-16 14-22z" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 30l-2 8" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/><circle cx="15" cy="39" r="1.5" fill="#64748b" opacity="0.5" class="tribute-ink-dot"/></svg>',
-            fallback: (name) => `A note left for ${name}.`,
+        prayer: {
+            card: 'border-sky-200/60 dark:border-sky-800/40 bg-sky-50/40 dark:bg-sky-950/20',
+            avatar: 'bg-sky-200/70 dark:bg-sky-800/40 text-sky-700 dark:text-sky-300',
+            inner: 'bg-sky-100/50 dark:bg-sky-900/20 border border-sky-200/40 dark:border-sky-800/30',
+            border: 'border-sky-200/40 dark:border-sky-800/30',
+            fallbackArt: '<svg class="h-full w-full text-sky-400 tribute-icon-uplift" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 1.9c-1.1 1-1.95 2.3-2.55 3.85C8 7.9 7.55 10.15 7.55 12.5v2.8c0 1.45.9 2.75 2.25 3.25l1.6.6z"/><path d="M11.4 16.5v3.25l-2.2 1.35a2.4 2.4 0 0 1-3.3-.8 2.4 2.4 0 0 1 .8-3.3l2.7-1.65z"/><g transform="translate(24,0) scale(-1,1)"><path d="M11.4 1.9c-1.1 1-1.95 2.3-2.55 3.85C8 7.9 7.55 10.15 7.55 12.5v2.8c0 1.45.9 2.75 2.25 3.25l1.6.6z"/><path d="M11.4 16.5v3.25l-2.2 1.35a2.4 2.4 0 0 1-3.3-.8 2.4 2.4 0 0 1 .8-3.3l2.7-1.65z"/></g></svg>',
         },
     };
 
-    const deceasedFirst = container?.dataset.deceasedFirst || 'them';
 
+    /**
+     * The header artwork for a tribute type, matching what the tribute-art partial renders
+     * server-side so a card built here is indistinguishable from one built in Blade.
+     *
+     * The source is lifted off the one-tap card already on the page rather than assembled
+     * from a hardcoded path: that way it follows whatever the app's asset URL happens to be
+     * — subdirectory installs, a CDN, a reseller domain — without this file knowing any of
+     * it. When there is no card to read from (the tribute quota is used up, so the cards
+     * are replaced by a notice) or the card is itself drawing SVG, the inline motif stands
+     * in.
+     */
+    function tributeArtHtml(type) {
+        const cfg = tributeCardConfig[type] || tributeCardConfig.prayer;
+        const src = document.querySelector(`[data-tribute-action="${type}"] .memorial-tribute-action__art img`)?.src;
+        const art = src
+            ? `<img src="${escapeHtml(src)}" alt="" class="h-full w-full object-contain" />`
+            : cfg.fallbackArt;
+
+        return `<span data-tribute-art class="pointer-events-none block h-9 w-9 shrink-0" aria-hidden="true">${art}</span>`;
+    }
+
+    /**
+     * All of them, not the first of them. The total now appears twice — on the Tributes
+     * sub-tab and on the All filter pill — and singling one out would leave the other
+     * showing a number that was correct when the page loaded and never again.
+     */
     function updateTributeFilterCounts(type, delta) {
-        const typeEl = document.querySelector(`[data-count-${type}]`);
-        const allEl = document.querySelector('[data-count-all]');
-        if (typeEl) typeEl.textContent = parseInt(typeEl.textContent || '0', 10) + delta;
-        if (allEl) allEl.textContent = parseInt(allEl.textContent || '0', 10) + delta;
+        const bump = (el) => {
+            el.textContent = parseInt(el.textContent || '0', 10) + delta;
+        };
+        document.querySelectorAll(`[data-count-${type}]`).forEach(bump);
+        document.querySelectorAll('[data-count-all]').forEach(bump);
     }
 
     function getInitials(name) {
@@ -1442,26 +2180,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function syncTributeCardAfterSave(wrapper, t) {
         const id = wrapper.dataset.tributeId;
-        const type = t.type || 'note';
-        const cfg = tributeCardConfig[type] || tributeCardConfig.note;
-        const df = escapeHtml(deceasedFirst);
+        const type = t.type || 'prayer';
+        const cfg = tributeCardConfig[type] || tributeCardConfig.prayer;
         wrapper.dataset.tributeType = type;
         wrapper.className = `group rounded-xl border p-4 transition ${cfg.card}`;
         const body = wrapper.querySelector('[data-tribute-body]');
         if (body) {
-            body.className = `mt-3 flex items-start gap-3 rounded-lg p-3 ${cfg.inner}`;
-        }
-        const iconCol = wrapper.querySelector('[data-tribute-inline-icon]');
-        if (iconCol) {
-            iconCol.innerHTML = cfg.inlineIcon;
+            body.className = `mt-3 rounded-lg p-3 ${cfg.inner}`;
         }
         const display = id ? wrapper.querySelector(`[data-tribute-display="${id}"]`) : null;
         if (display) {
-            const msg = t.message && String(t.message).trim() && t.message !== '<p><br></p>';
-            const labelHtml = `<p class="mb-1 text-xs font-semibold uppercase tracking-wider ${cfg.label}">${cfg.labelText}</p>`;
-            display.innerHTML = msg
-                ? `${labelHtml}<div class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">${t.message}</div>`
-                : `${labelHtml}<p class="text-sm italic ${cfg.label}" style="opacity:0.8">${cfg.fallback(df)}</p>`;
+            display.innerHTML = `<div class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">${t.message || ''}</div>`;
         }
         const footer = wrapper.querySelector('[data-tribute-footer]');
         if (footer) {
@@ -1475,7 +2204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (iconsWrap) {
             const editBtn = iconsWrap.querySelector('[data-tribute-edit-trigger]');
             const editHtml = editBtn ? editBtn.outerHTML : '';
-            iconsWrap.innerHTML = editHtml + cfg.icon;
+            iconsWrap.innerHTML = editHtml + tributeArtHtml(type);
         }
     }
 
@@ -1491,28 +2220,34 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<div class="mb-3 last:mb-0 rounded-lg bg-gray-50 dark:bg-white/[0.02] px-3 py-2 ml-3 sm:ml-4 border-l-2 border-gray-200 dark:border-gray-700" data-tribute-comment-id="${c.id}"><div class="flex items-center gap-2 mb-1">${trAvatar}<p class="text-sm font-medium text-gray-900 dark:text-white/90">${escapeHtml(c.author)}</p></div><p class="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-pre-wrap">${escapeHtml(c.content)}</p><div class="flex flex-wrap items-center gap-2 mt-1"><p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(c.created_at)}</p>${del}</div></div>`;
     }
 
-    function appendTribute(t) {
+    function appendTribute(t, { revealTab = true } = {}) {
         const list = document.querySelector('[data-tributes-list]');
         if (!list) return;
-        document.querySelectorAll('.memorial-tab-btn').forEach(b => {
-            if (b.dataset.tabPanel === 'tributes') b.click();
-        });
+        // The quick-tribute cards leave this false: yanking the visitor to another tab
+        // mid-burst throws away the feedback the burst exists to give.
+        if (revealTab) {
+            // Through switchToTab rather than clicking the button directly, so the panel
+            // also lands on the Tributes pane — a new tribute revealed behind the Stories
+            // pane is a tribute the visitor cannot see.
+            switchToTab('tributes');
+        }
 
-        const cfg = tributeCardConfig[t.type] || tributeCardConfig.note;
+        const cfg = tributeCardConfig[t.type] || tributeCardConfig.prayer;
         const shareUrl = t.share_id ? `${window.location.origin}/${memorialSlug}/tribute/${t.share_id}` : `${window.location.origin}/${memorialSlug}/tribute/${t.id || 'new'}`;
         const timeEl = t.created_at_iso ? `<p class="text-xs text-gray-500 dark:text-gray-400 time-ago" data-created-at="${t.created_at_iso}">${escapeHtml(t.created_at)}</p>` : `<p class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(t.created_at)}</p>`;
         const initials = getInitials(t.author || 'A');
         const tributeAvatarEl = t.author_photo
             ? `<img src="${escapeHtml(t.author_photo)}" alt="${escapeHtml(t.author || '')}" class="h-10 w-10 shrink-0 rounded-full object-cover" />`
             : `<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${cfg.avatar}">${escapeHtml(initials)}</div>`;
-        const textContent = t.message
-            ? `<p class="mb-1 text-xs font-semibold uppercase tracking-wider ${cfg.label}">${cfg.labelText}</p>
-               <div class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">${t.message}</div>`
-            : `<p class="text-sm italic ${cfg.label}" style="opacity:0.8">${cfg.fallback(escapeHtml(deceasedFirst))}</p>`;
-        const contentBlock = `<div class="mt-3 flex items-start gap-3 rounded-lg p-3 ${cfg.inner}">
-            <div class="shrink-0 mt-0.5">${cfg.inlineIcon}</div>
-            <div class="min-w-0 flex-1">${textContent}</div>
-        </div>`;
+        // Just the message, in a tinted block. A tribute with nothing written is a reaction
+        // and gets no body at all — the same shape the Blade partial renders.
+        const contentBlock = t.message
+            ? `<div data-tribute-body class="mt-3 rounded-lg p-3 ${cfg.inner}">
+                   <div data-tribute-display="${t.id || 'new'}">
+                       <div class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">${t.message}</div>
+                   </div>
+               </div>`
+            : '';
 
         const div = document.createElement('div');
         div.id = 'tribute-' + (t.id || 'new');
@@ -1526,7 +2261,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="font-semibold text-gray-900 dark:text-white/90 truncate">${escapeHtml(t.author)}</p>
                     ${timeEl}
                 </div>
-                <div class="shrink-0">${cfg.icon}</div>
+                <div data-tribute-header-icons class="flex items-center gap-1 shrink-0">${tributeArtHtml(t.type)}</div>
             </div>
             ${contentBlock}
             <div class="mt-3 flex items-center justify-between border-t pt-3 ${cfg.border}">
@@ -1800,8 +2535,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 list.appendChild(wrap.firstElementChild);
                             }
                             if (empty) empty.classList.add('hidden');
-                            const countEl = document.querySelector(`[data-tribute-comment-container="${tributeId}"] [data-tribute-comment-count]`);
-                            if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
+                            bumpTributeCommentCount(tributeId, 1);
                             input.value = '';
                         } else if (data.error) $toast('error', data.error);
                         resetBtn();
@@ -1872,8 +2606,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     appendReply(list);
                                 }
                             }
-                            const countEl = document.querySelector(`[data-tribute-comment-container="${tributeId}"] [data-tribute-comment-count]`);
-                            if (countEl) countEl.textContent = parseInt((countEl.textContent || '0').replace(/\D/g, '') || 0) + 1;
+                            bumpTributeCommentCount(tributeId, 1);
                             input.value = '';
                             replyForm?.classList.add('hidden');
                         } else if (data.error) $toast('error', data.error);
@@ -2068,9 +2801,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const commentEl = btn.closest('[data-tribute-comment-id]');
                     commentEl?.remove();
                     const deletedCount = data.deleted_count || 1;
-                    const countEls = document.querySelectorAll(`[data-tribute-comment-container="${tributeId}"] [data-tribute-comment-count]`);
-                    const nextCount = Math.max(0, parseInt((countEls[0]?.textContent || '0').replace(/\D/g, '') || 0) - deletedCount);
-                    countEls.forEach(el => { el.textContent = nextCount; });
+                    bumpTributeCommentCount(tributeId, -deletedCount);
                     const list = document.querySelector(`[data-tribute-comments-list="${tributeId}"]`);
                     if (list && list.children.length === 0) {
                         document.querySelector(`[data-tribute-comments-empty="${tributeId}"]`)?.classList.remove('hidden');

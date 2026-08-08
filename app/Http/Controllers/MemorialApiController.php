@@ -18,6 +18,7 @@ use App\Services\NotificationService;
 use App\Support\GuestIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MemorialApiController extends Controller
 {
@@ -77,7 +78,7 @@ class MemorialApiController extends Controller
         }
 
         $validated = $request->validate([
-            'type' => ['required', 'in:flower,candle,note'],
+            'type' => ['required', Rule::in(Tribute::TYPES)],
             'message' => ['nullable', 'string', 'max:10000'],
             'guest_name' => ['required_without:user_id', 'nullable', 'string', 'max:255'],
             'guest_email' => ['required_without:user_id', 'nullable', 'email'],
@@ -118,11 +119,49 @@ class MemorialApiController extends Controller
             $guestName = $user->name;
         }
 
+        $message = HtmlHelper::sanitize($validated['message'] ?? null);
+
+        // One tribute of each kind per person, so a tally means "how many people lit a
+        // candle" rather than "how many times anyone tapped". Tapping again is not an error
+        // — the endpoint is idempotent and hands back the tribute they already left, which
+        // lets the page keep playing its burst without inflating the count.
+        //
+        // Keyed on user_id alone: the guest branch above turns every new address into an
+        // account before reaching here, so a signed-out visitor is a user by this point too.
+        $existing = $userId
+            ? Tribute::where('memorial_id', $memorial->id)
+                ->where('user_id', $userId)
+                ->where('type', $validated['type'])
+                ->first()
+            : null;
+
+        if ($existing) {
+            // Don't silently drop words someone took the trouble to write: a message sent
+            // after a bare tap fills in the one they left empty.
+            $promoted = false;
+            if ($message && ! $existing->getRawOriginal('message')) {
+                $existing->update(['message' => $message]);
+                $promoted = true;
+            }
+
+            $existing->load('user');
+
+            return response()->json([
+                'success' => true,
+                'duplicate' => true,
+                // A bare tap that has just gained words stops being a reaction and becomes
+                // a post. The page has no entry for it to update — reactions are not listed
+                // — so it needs to know to add one.
+                'promoted' => $promoted,
+                'tribute' => $this->tributePayload($existing),
+            ]);
+        }
+
         $tribute = Tribute::create([
             'memorial_id' => $memorial->id,
             'user_id' => $userId,
             'type' => $validated['type'],
-            'message' => HtmlHelper::sanitize($validated['message'] ?? null),
+            'message' => $message,
             'guest_name' => $guestName,
             'guest_email' => $guestEmail,
             'is_approved' => true,
@@ -135,17 +174,27 @@ class MemorialApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'tribute' => [
-                'id' => $tribute->id,
-                'share_id' => $tribute->share_id,
-                'type' => $tribute->type,
-                'message' => $tribute->message,
-                'author' => $authorName,
-                'author_photo' => $tribute->user?->profile_photo_url,
-                'created_at' => $tribute->created_at->diffForHumans(),
-                'created_at_iso' => $tribute->created_at->toIso8601String(),
-            ],
+            'duplicate' => false,
+            'tribute' => $this->tributePayload($tribute),
         ]);
+    }
+
+    /**
+     * The shape the memorial page expects for a single tribute. Shared by the created and
+     * already-existed branches of storeTribute() so the two can never drift apart.
+     */
+    private function tributePayload(Tribute $tribute): array
+    {
+        return [
+            'id' => $tribute->id,
+            'share_id' => $tribute->share_id,
+            'type' => $tribute->type,
+            'message' => $tribute->message,
+            'author' => $tribute->user?->name ?? $tribute->guest_name ?? 'Anonymous',
+            'author_photo' => $tribute->user?->profile_photo_url,
+            'created_at' => $tribute->created_at->diffForHumans(),
+            'created_at_iso' => $tribute->created_at->toIso8601String(),
+        ];
     }
 
     /**
@@ -469,6 +518,8 @@ class MemorialApiController extends Controller
 
         $tributes = $memorial->tributes()
             ->where('is_approved', true)
+            // Taps are reactions, not feed items — see Tribute::scopeWithMessage().
+            ->withMessage()
             ->with(['user', 'reactions'])
             ->latest()
             ->paginate(20);
@@ -492,7 +543,7 @@ class MemorialApiController extends Controller
         }
 
         $validated = $request->validate([
-            'type' => ['nullable', 'in:flower,candle,note'],
+            'type' => ['nullable', Rule::in(Tribute::TYPES)],
             'message' => ['nullable', 'string', 'max:10000'],
         ]);
 

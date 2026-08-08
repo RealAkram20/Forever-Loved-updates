@@ -313,7 +313,8 @@ class Reseller extends Model
         $memorialIds = $this->memorials()->select('id');
 
         return (int) Media::whereIn('memorial_id', $memorialIds)->sum('size')
-            + (int) $this->memorials()->sum('profile_photo_size');
+            + (int) $this->memorials()->sum('profile_photo_size')
+            + (int) $this->memorials()->sum('cover_photo_size');
     }
 
     /** The tier's storage cap in bytes, or null when uncapped / no tier assigned. */

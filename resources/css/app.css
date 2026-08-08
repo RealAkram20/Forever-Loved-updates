@@ -1465,6 +1465,312 @@ html:not(.dark) {
   to { width: 100%; }
 }
 
+/* --- One-tap tribute cards + tap burst --- */
+
+.memorial-tribute-action {
+  transition:
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+/* Instant confirmation that the tap landed, before the network round trip returns. */
+.memorial-tribute-action:active {
+  transform: scale(0.96);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .memorial-tribute-action:hover {
+    border-color: color-mix(in srgb, var(--color-brand-500, #465fff) 45%, transparent);
+    background-color: color-mix(in srgb, var(--color-brand-500, #465fff) 6%, transparent);
+  }
+}
+
+/* The artwork lifts slightly on press so the card reads as a physical button. */
+.memorial-tribute-action__art {
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.memorial-tribute-action:active .memorial-tribute-action__art {
+  transform: translateY(-2px) scale(1.06);
+}
+
+/* Idle motion on the artwork, one gesture per motif rather than a single shared bob:
+   a flower sways, a flame breathes, a bird glides. Amplitudes are deliberately small and
+   the cycles deliberately long — this sits on a memorial page, so it should read as alive
+   rather than as something demanding attention. Transform/opacity only, so it composites. */
+@keyframes tribute-art-sway {
+  0%, 100% { transform: rotate(-2.5deg) translateY(0); }
+  50% { transform: rotate(2.5deg) translateY(-2px); }
+}
+
+@keyframes tribute-art-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  45% { transform: scale(1.045); opacity: 0.94; }
+}
+
+@keyframes tribute-art-uplift {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.02); }
+}
+
+.memorial-tribute-action--flower .memorial-tribute-action__art > * {
+  animation: tribute-art-sway 4.5s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+.memorial-tribute-action--candle .memorial-tribute-action__art > * {
+  animation: tribute-art-breathe 2.6s ease-in-out infinite;
+  transform-origin: 50% 70%;
+}
+
+/* Hands rise and settle rather than drift — a lift reads as devotional where a float
+   would read as weightless. Cuffs stay put, so the origin sits low. */
+.memorial-tribute-action--prayer .memorial-tribute-action__art > * {
+  animation: tribute-art-uplift 5s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+/* Hovering pauses the drift, so the thing you are about to click holds still. */
+@media (hover: hover) and (pointer: fine) {
+  .memorial-tribute-action:hover .memorial-tribute-action__art > * {
+    animation-play-state: paused;
+  }
+}
+
+/* Particle layer for the burst. Fixed and non-interactive so it can never intercept
+   a second tap or push the page around while it plays. */
+.memorial-burst-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.memorial-burst-particle {
+  position: absolute;
+  will-change: transform, opacity;
+}
+
+.memorial-tribute-action__art--fallback,
+.memorial-burst-particle {
+  content-visibility: auto;
+}
+
+/* Full-screen petal rain for the flower tribute. It gets its own layer rather than
+   sharing the burst layer: the petals tumble on all three axes, which needs a
+   perspective on the parent, and that would otherwise apply to every burst particle
+   too. It sits one below the burst so the tap's own pop still reads on top. */
+.memorial-petal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  pointer-events: none;
+  overflow: hidden;
+  perspective: 900px;
+}
+
+/* Positioned from the origin and moved entirely by transform, so the whole fall stays
+   on the compositor. preserve-3d keeps the rotateX/rotateY flips from flattening. */
+.memorial-petal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform, opacity;
+  transform-style: preserve-3d;
+}
+
+.memorial-petal svg {
+  display: block;
+}
+
+/* Full-screen candle scene. Above the burst layer, because it is a takeover rather than
+   an accent — the tap's own pop plays through the dim and then the scene owns the screen. */
+.memorial-candle-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: #000;
+  opacity: 0;
+  /* Both ends stay unhurried even though the sequence between them runs at several times
+     the pace. The dim in and the lift out are the joins to the page either side, and a
+     fast join reads as a cut. The scene sets the way-in duration itself — see the comment
+     on entryFade — and this is the value it falls back to. */
+  transition: opacity var(--memorial-scene-in, 700ms) cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.memorial-candle-scene:focus {
+  outline: none;
+}
+
+.memorial-candle-scene.is-lit {
+  opacity: 1;
+}
+
+/* Slightly longer than the way in: the scene fades back to a page the viewer has to
+   re-find, and the candles are still burning the whole way out. */
+.memorial-candle-scene.is-closing {
+  opacity: 0;
+  transition: opacity 900ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.memorial-candle-scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The prayer scene shares the candle scene's shell but not its ground: this one paints
+   its own warm dimming into the canvas, so the element behind it stays clear and the
+   page reads faintly through the light rather than being replaced by it. */
+.memorial-prayer-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  opacity: 0;
+  transition: opacity var(--memorial-scene-in, 700ms) cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.memorial-prayer-scene:focus {
+  outline: none;
+}
+
+.memorial-prayer-scene.is-lit {
+  opacity: 1;
+}
+
+/* Longer than the candle scene's: the last phrase is still being read as it goes. */
+.memorial-prayer-scene.is-closing {
+  opacity: 0;
+  transition: opacity 1100ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.memorial-prayer-scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memorial-prayer-scene,
+  .memorial-prayer-scene.is-closing {
+    transition-duration: 1ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memorial-candle-scene,
+  .memorial-candle-scene.is-closing {
+    transition-duration: 1ms;
+  }
+}
+
+/* Prayer lift, matching the sway/flicker treatment the other tribute icons use. */
+@keyframes tribute-uplift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+.tribute-icon-uplift {
+  animation: tribute-uplift 3.6s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tribute-icon-uplift {
+    animation: none;
+  }
+
+  .memorial-tribute-action,
+  .memorial-tribute-action__art {
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+
+  .memorial-tribute-action:active,
+  .memorial-tribute-action:active .memorial-tribute-action__art {
+    transform: none;
+  }
+
+  .memorial-tribute-action__art > * {
+    animation: none;
+  }
+}
+
+/* Hero backdrop when a memorial has no cover photo. Layered radial washes in the brand
+   tones rather than an image asset — nothing to download, and it inherits a reseller's
+   palette automatically instead of shipping one funeral home's photograph to all of them. */
+.memorial-hero-wash {
+  background-color: var(--color-gray-50, #f9fafb);
+  background-image:
+    radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--color-brand-200, #c2d6ff) 55%, transparent), transparent 45%),
+    radial-gradient(circle at 88% 78%, color-mix(in srgb, var(--color-brand-100, #dde9ff) 60%, transparent), transparent 50%),
+    linear-gradient(120deg, color-mix(in srgb, var(--color-brand-50, #ecf3ff) 70%, transparent), transparent 60%);
+}
+
+.dark .memorial-hero-wash {
+  background-color: var(--color-gray-900, #101828);
+  background-image:
+    radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--color-brand-500, #465fff) 22%, transparent), transparent 45%),
+    radial-gradient(circle at 88% 78%, color-mix(in srgb, var(--color-brand-500, #465fff) 14%, transparent), transparent 50%),
+    linear-gradient(120deg, color-mix(in srgb, var(--color-brand-500, #465fff) 10%, transparent), transparent 60%);
+}
+
+/* Profile card entrance. Seen once per visit, so a real entrance is warranted — but the
+   page is a memorial, so it stays a short settle rather than anything showy. Never from
+   scale(0): the card eases up into place from just below where it lands. */
+@keyframes memorial-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes memorial-card-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.memorial-card-enter {
+  animation: memorial-card-in 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* Reduced motion keeps the fade — it still explains that the card arrived — and drops
+   only the movement, which is the part that causes trouble. */
+@media (prefers-reduced-motion: reduce) {
+  .memorial-card-enter {
+    animation: memorial-card-fade-in 240ms ease both;
+  }
+}
+
+/* Cover banner controls: press feedback so the button confirms it heard the tap.
+   Transform and opacity only, and hover is gated so a tap on a phone doesn't stick. */
+.memorial-cover-btn {
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms ease;
+}
+.memorial-cover-btn:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .memorial-cover-btn:hover {
+    opacity: 0.92;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .memorial-cover-btn {
+    transition: opacity 160ms ease;
+  }
+  .memorial-cover-btn:active {
+    transform: none;
+  }
+}
+
 /* --- Custom Media Players --- */
 
 .memorial-video-player:fullscreen video {
