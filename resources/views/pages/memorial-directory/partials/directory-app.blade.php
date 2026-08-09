@@ -30,7 +30,10 @@
                 death_year_from: this.deathYearFrom || 0,
                 death_year_to: this.deathYearTo || 0
             });
-            fetch(`{{ route('memorial.directory') }}?${params}`, {
+            {{-- Its own address, not the platform's. This widget is served on reseller sites
+                 too, and route() there produced the platform endpoint — which answers with
+                 every memorial except the tenant's own. --}}
+            fetch(`{{ \App\Support\StandardPages::urlFor(\App\Models\Page::SLUG_FIND_MEMORIAL) }}?${params}`, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(r => {

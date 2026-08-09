@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Helpers\ThemeSetting;
 use App\Models\Page;
+use Illuminate\Support\Facades\Route;
 
 /**
  * The pages every site has, as opposed to the ones somebody builds.
@@ -136,6 +138,59 @@ class StandardPages
     public static function isEnabledFor(string $slug, ?int $resellerId): bool
     {
         return self::resolve($slug, $resellerId) !== null;
+    }
+
+    /**
+     * The route name the platform serves each standard page at.
+     *
+     * Only the ones a page-builder block is allowed to point a button at; the legal pages
+     * and the home page are never a configured destination.
+     */
+    private const PLATFORM_ROUTES = [
+        'about' => 'about',
+        'pricing' => 'pricing',
+        'contact' => 'contact',
+        Page::SLUG_FIND_MEMORIAL => 'memorial.directory',
+    ];
+
+    /**
+     * The address of a standard page on the site currently being served.
+     *
+     * See SiteUrl for why route() cannot be asked this. The platform keeps going through
+     * route() where one exists, so a future change to where /find-memorial actually lives
+     * only has to be made in the route file.
+     */
+    public static function urlFor(string $slug): string
+    {
+        if (ThemeSetting::siteTenant()) {
+            return SiteUrl::to($slug);
+        }
+
+        $route = self::PLATFORM_ROUTES[$slug] ?? null;
+
+        return $route && Route::has($route) ? route($route) : SiteUrl::to($slug);
+    }
+
+    /**
+     * The same answer for a stored route name, which is how the hero and CTA blocks record
+     * where their buttons go.
+     *
+     * A block may legitimately point anywhere, so anything outside the standard set falls
+     * through to route(); an unknown name returns null so callers can render '#' as before.
+     */
+    public static function urlForRouteName(?string $name): ?string
+    {
+        if (! $name) {
+            return null;
+        }
+
+        $slug = array_search($name, self::PLATFORM_ROUTES, true);
+
+        if ($slug !== false) {
+            return self::urlFor($slug);
+        }
+
+        return Route::has($name) ? route($name) : null;
     }
 
     /** @return list<string> */

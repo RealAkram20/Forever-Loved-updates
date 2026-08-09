@@ -2078,3 +2078,682 @@ html.dark .footer-link:hover {
     animation: none;
   }
 }
+/* --- The story composer, its markers, and the feed filters ---
+   One place to say something, and one way to say what it was. The three motifs are the
+   same drawings the one-tap cards use, at the size a chip can carry them. */
+
+.story-composer__prompt {
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .story-composer__prompt:hover {
+    background-color: color-mix(in srgb, var(--color-brand-500, #465fff) 5%, transparent);
+  }
+}
+
+.story-composer__cta {
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.story-composer__prompt:active .story-composer__cta {
+  transform: scale(0.96);
+}
+
+/* Open: the prompt row stays as a header — tapping it puts the caret back in the editor —
+   but stops advertising an action that has already been taken. */
+.story-composer[data-open='1'] .story-composer__cta {
+  display: none;
+}
+
+.story-composer__prompt:focus-visible {
+  outline: 2px solid var(--color-brand-500, #465fff);
+  outline-offset: -2px;
+}
+
+/* Gated on the open state rather than sitting on the element: the form is display:none at
+   load, and an animation declared there has already been spent by the time anyone opens it. */
+.story-composer[data-open='1'] .story-composer__form {
+  animation: story-composer-reveal 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes story-composer-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.story-marker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  border-radius: 0.625rem;
+  border: 1px solid var(--color-gray-200, #e4e7ec);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  color: var(--color-gray-700, #344054);
+  background-color: transparent;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.dark .story-marker-chip {
+  border-color: rgb(255 255 255 / 0.12);
+  color: rgb(255 255 255 / 0.85);
+}
+
+.story-marker-chip__art {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.story-marker-chip--sm {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.story-marker-chip--sm .story-marker-chip__art {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .story-marker-chip:hover {
+    border-color: color-mix(in srgb, var(--color-brand-500, #465fff) 40%, transparent);
+  }
+}
+
+.story-marker-chip:active {
+  transform: scale(0.97);
+}
+
+/* Two signals, not one: the selected chip is both tinted and outlined, so it survives a
+   screen where colour alone does not carry. */
+.story-marker-chip:has(input:checked) {
+  border-color: var(--color-brand-500, #465fff);
+  background-color: color-mix(in srgb, var(--color-brand-500, #465fff) 10%, transparent);
+  color: var(--color-brand-700, #3641f5);
+}
+
+.dark .story-marker-chip:has(input:checked) {
+  color: var(--color-brand-300, #9cb9ff);
+}
+
+.story-marker-chip:has(input:checked) .story-marker-chip__art {
+  transform: scale(1.08);
+}
+
+/* The radio is visually hidden, so its focus ring has to be drawn by the label. */
+.story-marker-chip:has(input:focus-visible) {
+  outline: 2px solid var(--color-brand-500, #465fff);
+  outline-offset: 2px;
+}
+
+.story-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.4375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-gray-600, #475467);
+  background-color: var(--color-gray-100, #f2f4f7);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.dark .story-filter {
+  color: rgb(255 255 255 / 0.7);
+  background-color: rgb(255 255 255 / 0.06);
+}
+
+.story-filter__art {
+  display: block;
+  width: 1.0625rem;
+  height: 1.0625rem;
+  flex-shrink: 0;
+}
+
+.story-filter__count {
+  color: inherit;
+  opacity: 0.6;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .story-filter:hover {
+    background-color: var(--color-gray-200, #e4e7ec);
+  }
+
+  .dark .story-filter:hover {
+    background-color: rgb(255 255 255 / 0.1);
+  }
+}
+
+.story-filter:active {
+  transform: scale(0.97);
+}
+
+.story-filter.is-active {
+  color: #fff;
+  background-color: var(--color-gray-900, #101828);
+}
+
+.dark .story-filter.is-active {
+  color: var(--color-gray-900, #101828);
+  background-color: rgb(255 255 255 / 0.9);
+}
+
+/* The offer to write something, once a tap has landed. It arrives rather than appears —
+   it was not there a moment ago, and a thing that blinks into place next to the card
+   somebody just pressed reads as a glitch. */
+.tribute-say-more {
+  animation: tribute-say-more-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  transition:
+    background-color 160ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes tribute-say-more-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tribute-say-more:hover {
+    background-color: color-mix(in srgb, var(--color-brand-500, #465fff) 8%, transparent);
+  }
+}
+
+.tribute-say-more:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-composer__form,
+  .tribute-say-more {
+    animation: none;
+  }
+
+  .story-composer__cta,
+  .story-marker-chip,
+  .story-marker-chip__art,
+  .story-filter,
+  .tribute-say-more {
+    transition-property: background-color, border-color, color;
+  }
+
+  .story-composer__prompt:active .story-composer__cta,
+  .story-marker-chip:active,
+  .story-marker-chip:has(input:checked) .story-marker-chip__art,
+  .story-filter:active,
+  .tribute-say-more:active {
+    transform: none;
+  }
+}
+
+/* --- Comment sheet ---
+   Bottom sheet on a phone, centred dialog from `sm` up. The list scrolls between a fixed
+   header carrying the total and a composer pinned to the bottom, so the thing you use most
+   never scrolls away from your thumb. */
+
+.comment-sheet {
+  --sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Anything here that JS toggles with Tailwind's `hidden` needs this. These rules are
+   appended after Tailwind's utilities, and a bare `display` beats `.hidden` at identical
+   specificity on source order alone — so the new-comment pill and the reply banner both
+   sat there permanently until this said otherwise. */
+.comment-sheet__new-pill.hidden,
+.comment-sheet__replying.hidden {
+  display: none;
+}
+
+.comment-sheet__scrim {
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+.comment-sheet.is-open .comment-sheet__scrim {
+  opacity: 1;
+}
+
+.comment-sheet__panel {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  max-height: 88vh;
+  /* Small viewport units so an open keyboard does not push the composer off screen. */
+  max-height: 88svh;
+  flex-direction: column;
+  overflow: hidden;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  background-color: #fff;
+  box-shadow: 0 -12px 40px -12px rgb(16 24 40 / 0.25);
+  /* By its own height, so it starts fully off screen whatever the content does. */
+  transform: translateY(100%);
+  transition: transform 300ms var(--sheet-ease);
+}
+
+.dark .comment-sheet__panel {
+  background-color: #101828;
+  box-shadow: 0 -12px 40px -12px rgb(0 0 0 / 0.6);
+}
+
+.comment-sheet.is-open .comment-sheet__panel {
+  transform: translateY(0);
+}
+
+@media (min-width: 640px) {
+  .comment-sheet__panel {
+    inset-inline: auto;
+    left: 50%;
+    top: 50%;
+    bottom: auto;
+    width: min(34rem, calc(100vw - 3rem));
+    max-height: min(80vh, 44rem);
+    border-radius: 1rem;
+    /* Centred, and scaled from the centre — this is a dialog, not something anchored to a
+       trigger, so it has no edge to grow out of. */
+    transform: translate(-50%, -50%) scale(0.96);
+    opacity: 0;
+    transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), opacity 200ms ease;
+  }
+
+  .comment-sheet.is-open .comment-sheet__panel {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.comment-sheet__grab {
+  display: flex;
+  justify-content: center;
+  padding: 0.625rem 0 0.25rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+/* After the base rule, not inside the block above: both are one class deep, so the later
+   one wins and a grab handle nobody can drag was sitting on top of the desktop dialog. */
+@media (min-width: 640px) {
+  .comment-sheet__grab {
+    display: none;
+  }
+}
+
+.comment-sheet__grab > span {
+  display: block;
+  height: 4px;
+  width: 2.25rem;
+  border-radius: 9999px;
+  background-color: var(--color-gray-300, #d0d5dd);
+}
+
+.dark .comment-sheet__grab > span {
+  background-color: rgb(255 255 255 / 0.2);
+}
+
+.comment-sheet__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 3rem;
+  border-bottom: 1px solid var(--color-gray-100, #f2f4f7);
+}
+
+.dark .comment-sheet__head {
+  border-color: rgb(255 255 255 / 0.08);
+}
+
+.comment-sheet__close {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--color-gray-500, #667085);
+  transition: background-color 160ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.comment-sheet__close:active {
+  transform: scale(0.94);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .comment-sheet__close:hover {
+    background-color: var(--color-gray-100, #f2f4f7);
+  }
+
+  .dark .comment-sheet__close:hover {
+    background-color: rgb(255 255 255 / 0.08);
+  }
+}
+
+.comment-sheet__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem 1rem 1rem;
+}
+
+.comment-sheet__composer {
+  border-top: 1px solid var(--color-gray-100, #f2f4f7);
+  padding: 0.75rem 1rem;
+  /* Clears the home indicator on iOS rather than tucking the send button under it. */
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  background-color: inherit;
+}
+
+.dark .comment-sheet__composer {
+  border-color: rgb(255 255 255 / 0.08);
+}
+
+.comment-sheet__replying {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-gray-100, #f2f4f7);
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  color: var(--color-gray-600, #475467);
+}
+
+.dark .comment-sheet__replying {
+  background-color: rgb(255 255 255 / 0.06);
+  color: rgb(255 255 255 / 0.7);
+}
+
+.comment-sheet__input {
+  min-height: 2.5rem;
+  max-height: 7.5rem;
+  flex: 1 1 auto;
+  resize: none;
+  border-radius: 1.25rem;
+  border: 1px solid var(--color-gray-200, #e4e7ec);
+  background-color: var(--color-gray-50, #f9fafb);
+  padding: 0.5625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+  color: var(--color-gray-900, #101828);
+}
+
+.comment-sheet__input:focus {
+  outline: none;
+  border-color: var(--color-brand-300, #b3c2ff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-500, #465fff) 18%, transparent);
+}
+
+.dark .comment-sheet__input {
+  border-color: rgb(255 255 255 / 0.12);
+  background-color: rgb(255 255 255 / 0.04);
+  color: #fff;
+}
+
+.comment-sheet__send {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--color-brand-500, #465fff);
+  color: #fff;
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms ease;
+}
+
+.comment-sheet__send:disabled {
+  opacity: 0.35;
+}
+
+.comment-sheet__send:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+/* Arrives above the list, over the scroll, so it never displaces what is being read. */
+.comment-sheet__new-pill {
+  position: absolute;
+  left: 50%;
+  top: 3.75rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  background-color: var(--color-brand-500, #465fff);
+  padding: 0.375rem 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgb(70 95 255 / 0.6);
+  transform: translateX(-50%);
+  animation: comment-pill-in 240ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes comment-pill-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+/* --- Rows --- */
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-row {
+  padding: 0.625rem 0;
+  animation: comment-row-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes comment-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.comment-row__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.comment-row__content {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.comment-row__author {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-gray-500, #667085);
+}
+
+.dark .comment-row__author {
+  color: rgb(255 255 255 / 0.55);
+}
+
+/* The comment itself is the darkest thing in the row. The name above it is metadata —
+   the reference gets this right and most comment UIs get it backwards. */
+.comment-row__text {
+  margin-top: 0.125rem;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+  color: var(--color-gray-900, #101828);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.dark .comment-row__text {
+  color: rgb(255 255 255 / 0.92);
+}
+
+.comment-row__meta {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.875rem;
+  font-size: 0.75rem;
+  color: var(--color-gray-400, #98a2b3);
+}
+
+.comment-row__action {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-gray-500, #667085);
+  transition: color 160ms ease;
+}
+
+.dark .comment-row__action {
+  color: rgb(255 255 255 / 0.6);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .comment-row__action:hover {
+    color: var(--color-brand-600, #3641f5);
+  }
+}
+
+.comment-row__failed {
+  font-weight: 600;
+  color: var(--color-error-500, #f04438);
+}
+
+.comment-row.is-pending {
+  opacity: 0.55;
+}
+
+.comment-row.is-failed .comment-row__text {
+  color: var(--color-gray-500, #667085);
+}
+
+.comment-row--reply {
+  padding-left: 2.625rem;
+}
+
+.comment-like {
+  display: flex;
+  min-width: 1.75rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding-top: 0.125rem;
+  color: var(--color-gray-400, #98a2b3);
+  transition: color 160ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.comment-like:active {
+  transform: scale(0.9);
+}
+
+.comment-like.is-on {
+  color: var(--color-error-500, #f04438);
+}
+
+.comment-like__count {
+  font-size: 0.6875rem;
+  line-height: 1;
+}
+
+/* One beat on the heart when it fills. Not on unlike: taking something back should be
+   quiet. */
+.comment-like.is-popping svg {
+  animation: comment-heart-pop 320ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes comment-heart-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.comment-replies__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0 0.375rem 2.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-gray-500, #667085);
+}
+
+.dark .comment-replies__toggle {
+  color: rgb(255 255 255 / 0.6);
+}
+
+.comment-replies__rule {
+  display: block;
+  height: 1px;
+  width: 1.5rem;
+  background-color: var(--color-gray-300, #d0d5dd);
+}
+
+.dark .comment-replies__rule {
+  background-color: rgb(255 255 255 / 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comment-sheet__panel,
+  .comment-sheet__scrim {
+    transition: opacity 120ms ease;
+  }
+
+  .comment-sheet__panel,
+  .comment-sheet.is-open .comment-sheet__panel {
+    transform: none;
+  }
+
+  .comment-row,
+  .comment-sheet__new-pill {
+    animation: none;
+  }
+
+  .comment-like.is-popping svg {
+    animation: none;
+  }
+
+  .comment-sheet__close:active,
+  .comment-sheet__send:not(:disabled):active,
+  .comment-like:active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 640px) {
+  .comment-sheet__panel,
+  .comment-sheet.is-open .comment-sheet__panel {
+    transform: translate(-50%, -50%);
+  }
+}

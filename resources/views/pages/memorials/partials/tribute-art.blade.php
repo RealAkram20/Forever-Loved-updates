@@ -6,7 +6,7 @@
     placeholder: the cards have to look finished on a fresh checkout, before anyone has
     dropped artwork in, and a missing file should never leave an empty square.
 
-    @param string $type   flower | candle | prayer
+    @param string $type   story | flower | candle | prayer
     @param string $image  filename to look for, e.g. rose.png
 --}}
 @php
@@ -59,6 +59,17 @@
             <path d="M32 4c4 6 7 9 7 13a7 7 0 01-14 0c0-4 3-7 7-13z" fill="#f59e0b"/>
             <path d="M32 9c2.4 4 4 6 4 8.6a4 4 0 01-8 0c0-2.6 1.6-4.6 4-8.6z" fill="#fcd34d"/>
             <path d="M32 13c1.2 2.2 2 3.3 2 4.7a2 2 0 01-4 0c0-1.4.8-2.5 2-4.7z" fill="#fffbeb"/>
+        </g>
+    </svg>
+@elseif ($type === 'story')
+    {{-- The unmarked case, and the common one: somebody just wrote something. A written
+         page rather than an object, so it reads as the absence of a gesture rather than as
+         a fourth gesture competing with the other three. --}}
+    <svg viewBox="0 0 64 64" fill="none" class="h-full w-full" aria-hidden="true">
+        <path d="M13 12a4 4 0 0 1 4-4h21l13 13v31a4 4 0 0 1-4 4H17a4 4 0 0 1-4-4z" fill="#eef2ff" stroke="#a5b4fc" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M38 8v9a4 4 0 0 0 4 4h9" fill="#c7d2fe" stroke="#a5b4fc" stroke-width="2.5" stroke-linejoin="round"/>
+        <g stroke="#818cf8" stroke-width="3" stroke-linecap="round" opacity="0.7">
+            <path d="M21 32h22M21 40h22M21 48h14"/>
         </g>
     </svg>
 @else

@@ -41,7 +41,8 @@
                                     <span class="text-2xl font-bold text-gray-800 dark:text-white/90">{{ \App\Helpers\PriceHelper::format($plan->price) }}</span>
                                     <span class="text-sm text-gray-500 dark:text-gray-400">/ {{ $plan->interval }}</span>
                                 </div>
-                                <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">{{ $plan->description ?? 'No description' }}</p>
+                            <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">{{ $plan->description ?? "No description" }}</p>
+                            @include("pages.settings.partials.plan-entitlement-summary", ["plan" => $plan])
                                 <div class="flex gap-2">
                                     <button @click="editing = true" class="btn btn-secondary btn-sm flex-1">Edit</button>
                                     @if (!$plan->subscriptions()->exists())
@@ -79,16 +80,6 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Memorial Limit</label>
-                                        <input type="number" name="memorial_limit" value="{{ $plan->memorial_limit }}" min="1"
-                                            class="h-9 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden" />
-                                    </div>
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Storage (MB)</label>
-                                        <input type="number" name="storage_limit_mb" value="{{ $plan->storage_limit_mb }}" min="10"
-                                            class="h-9 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden" />
-                                    </div>
                                     <div class="flex flex-col justify-end gap-1.5 pb-1">
                                         <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                                             <input type="hidden" name="is_active" value="0">
@@ -102,39 +93,7 @@
                                         </label>
                                     </div>
                                 </div>
-                                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-2 mb-1">Feature Limits <span class="font-normal">(0 = unlimited, AI 0 = disabled)</span></p>
-                                <div class="grid grid-cols-2 gap-3">
-                                    @foreach ([
-                                        ['name' => 'max_gallery_images', 'label' => 'Gallery Images'],
-                                        ['name' => 'max_gallery_videos', 'label' => 'Gallery Videos'],
-                                        ['name' => 'max_tributes', 'label' => 'Max Tributes'],
-                                        ['name' => 'max_chapters', 'label' => 'Max Chapters'],
-                                        ['name' => 'max_ai_bio_per_day', 'label' => 'AI Bio / Day'],
-                                    ] as $limit)
-                                        <div>
-                                            <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ $limit['label'] }}</label>
-                                            <input type="number" name="{{ $limit['name'] }}" value="{{ $plan->{$limit['name']} }}" min="0"
-                                                class="h-9 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:outline-hidden" />
-                                        </div>
-                                    @endforeach
-                                </div>
-                                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-3 mb-1">Features</p>
-                                <div class="grid grid-cols-2 gap-x-3 gap-y-2">
-                                    @foreach ([
-                                        ['name' => 'feature_background_music', 'label' => 'Background Music'],
-                                        ['name' => 'feature_advanced_privacy', 'label' => 'Advanced Privacy'],
-                                        ['name' => 'feature_guest_notifications', 'label' => 'Guest Notifications'],
-                                        ['name' => 'feature_never_expires', 'label' => 'Never Expires'],
-                                        ['name' => 'feature_no_ads', 'label' => 'No Ads'],
-                                        ['name' => 'feature_share_memories', 'label' => 'Share Memories'],
-                                    ] as $toggle)
-                                        <label class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
-                                            <input type="hidden" name="{{ $toggle['name'] }}" value="0">
-                                            <input type="checkbox" name="{{ $toggle['name'] }}" value="1" {{ $plan->{$toggle['name']} ? 'checked' : '' }} class="rounded border-gray-300 dark:border-gray-700 text-brand-500 focus:ring-brand-500" />
-                                            {{ $toggle['label'] }}
-                                        </label>
-                                    @endforeach
-                                </div>
+                                @include("pages.settings.partials.plan-entitlement-fields", ["plan" => $plan, "idPrefix" => "reseller-plan-edit-".$plan->id])
                                 <div class="flex gap-2 mt-4">
                                     <button type="submit" class="btn btn-primary btn-sm flex-1">Save</button>
                                     <button type="button" @click="editing = false" class="btn btn-secondary btn-sm">Cancel</button>
@@ -181,16 +140,6 @@
                             <option value="lifetime" {{ old('interval') === 'lifetime' ? 'selected' : '' }}>Lifetime</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Memorial Limit</label>
-                        <input type="number" name="memorial_limit" value="{{ old('memorial_limit', '1') }}" min="1"
-                            class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                    </div>
-                    <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Storage Limit (MB)</label>
-                        <input type="number" name="storage_limit_mb" value="{{ old('storage_limit_mb', '100') }}" min="10"
-                            class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                    </div>
                     <div class="flex flex-col justify-end gap-1.5">
                         <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                             <input type="hidden" name="is_active" value="0">
@@ -204,42 +153,7 @@
                         </label>
                     </div>
                 </div>
-                <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mt-4 mb-2">Feature Limits <span class="font-normal text-gray-400 dark:text-gray-500">(0 = unlimited, AI bio 0 = disabled)</span></p>
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    @foreach ([
-                        ['name' => 'max_gallery_images', 'label' => 'Max Gallery Images', 'default' => '10'],
-                        ['name' => 'max_gallery_videos', 'label' => 'Max Gallery Videos', 'default' => '2'],
-                        ['name' => 'max_tributes', 'label' => 'Max Tributes', 'default' => '20'],
-                        ['name' => 'max_chapters', 'label' => 'Max Chapters', 'default' => '3'],
-                        ['name' => 'max_ai_bio_per_day', 'label' => 'AI Bio Uses / Day', 'default' => '0'],
-                    ] as $limit)
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $limit['label'] }}</label>
-                            <input type="number" name="{{ $limit['name'] }}" value="{{ old($limit['name'], $limit['default']) }}" min="0" placeholder="0 = unlimited"
-                                class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                        </div>
-                    @endforeach
-                </div>
-                <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mt-4 mb-2">Features</p>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach ([
-                        ['name' => 'feature_background_music', 'label' => 'Background Music', 'desc' => 'Allow background music on memorials'],
-                        ['name' => 'feature_advanced_privacy', 'label' => 'Advanced Privacy', 'desc' => 'Invite collaborators to manage memorials'],
-                        ['name' => 'feature_guest_notifications', 'label' => 'Guest Notifications', 'desc' => 'Visitors can subscribe to updates'],
-                        ['name' => 'feature_never_expires', 'label' => 'Never Expires', 'desc' => 'Memorial stays active indefinitely'],
-                        ['name' => 'feature_no_ads', 'label' => 'No Ads', 'desc' => 'Ad-free memorial experience'],
-                        ['name' => 'feature_share_memories', 'label' => 'Share Memories', 'desc' => 'Social sharing and invite links'],
-                    ] as $toggle)
-                        <label class="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
-                            <input type="hidden" name="{{ $toggle['name'] }}" value="0">
-                            <input type="checkbox" name="{{ $toggle['name'] }}" value="1" {{ old($toggle['name']) ? 'checked' : '' }} class="mt-0.5 rounded border-gray-300 dark:border-gray-700 text-brand-500 focus:ring-brand-500" />
-                            <div>
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $toggle['label'] }}</span>
-                                <p class="text-xs text-gray-400 dark:text-gray-500">{{ $toggle['desc'] }}</p>
-                            </div>
-                        </label>
-                    @endforeach
-                </div>
+                @include("pages.settings.partials.plan-entitlement-fields", ["plan" => null, "idPrefix" => "reseller-plan-create"])
                 <div class="mt-6 flex justify-end">
                     <button type="submit" class="btn btn-primary btn-md">Create Plan</button>
                 </div>

@@ -15,6 +15,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemorialApiController;
 use App\Http\Controllers\MemorialController;
 use App\Http\Controllers\MemorialDirectoryController;
+use App\Http\Controllers\MemorialGalleryCategoryController;
 use App\Http\Controllers\MemorialMediaController;
 use App\Http\Controllers\MemorialSignupController;
 use App\Http\Controllers\NotificationController;
@@ -419,11 +420,10 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::delete('/posts/{postId}', [MemorialApiController::class, 'deletePost'])->name('posts.delete');
     Route::get('/posts/{postId}/comments', [MemorialApiController::class, 'comments'])->name('posts.comments');
     Route::post('/posts/{postId}/comments', [MemorialApiController::class, 'storeComment'])->middleware('throttle:30,1')->name('posts.comments.store');
+    Route::get('/comments/{commentId}/replies', [MemorialApiController::class, 'commentReplies'])->name('comments.replies');
     Route::delete('/comments/{commentId}', [MemorialApiController::class, 'deleteComment'])->name('comments.delete');
     Route::get('/posts/{postId}/reactions', [MemorialApiController::class, 'reactions'])->name('posts.reactions');
     Route::get('/tributes', [MemorialApiController::class, 'tributes'])->name('tributes');
-    Route::post('/tributes/{tributeId}/comments', [MemorialApiController::class, 'storeTributeComment'])->middleware('throttle:30,1')->name('tributes.comments.store');
-    Route::delete('/tribute-comments/{commentId}', [MemorialApiController::class, 'deleteTributeComment'])->name('tributes.comments.delete');
     Route::patch('/tributes/{tributeId}', [MemorialApiController::class, 'updateTribute'])->name('tributes.update');
     Route::delete('/tributes/{tributeId}', [MemorialApiController::class, 'deleteTribute'])->name('tributes.delete');
     Route::get('/chapters', [MemorialApiController::class, 'chapters'])->name('chapters');
@@ -442,6 +442,11 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::post('/gallery', [MemorialMediaController::class, 'uploadGalleryMedia'])->name('gallery');
     Route::patch('/gallery/{mediaId}', [MemorialMediaController::class, 'updateGalleryMedia'])->name('gallery.update');
     Route::delete('/gallery/{mediaId}', [MemorialMediaController::class, 'deleteGalleryMedia'])->name('gallery.delete');
+    // Gallery categories — the family's own divisions of the grid. Editors only; the guard
+    // lives in the controller, as it does for every other route in this group.
+    Route::post('/gallery-categories', [MemorialGalleryCategoryController::class, 'store'])->name('gallery-categories.store');
+    Route::patch('/gallery-categories/{categoryId}', [MemorialGalleryCategoryController::class, 'update'])->whereNumber('categoryId')->name('gallery-categories.update');
+    Route::delete('/gallery-categories/{categoryId}', [MemorialGalleryCategoryController::class, 'destroy'])->whereNumber('categoryId')->name('gallery-categories.delete');
     Route::post('/post-media', [MemorialMediaController::class, 'uploadPostMedia'])->name('post-media');
     Route::post('/tribute-post', [MemorialMediaController::class, 'storeTributePost'])->middleware('throttle:10,1')->name('tribute-post');
     Route::post('/background-music', [MemorialMediaController::class, 'uploadBackgroundMusic'])->name('background-music');
@@ -478,6 +483,24 @@ Route::prefix('r/{reseller}')
     ->where(['reseller' => '[a-z0-9\-]+'])
     ->middleware(ResolveReseller::class)
     ->group(function () {
+        // Their directory, listing their memorials.
+        //
+        // Without this the path fell through to the /r/{reseller}/{slug} memorial route
+        // below, found no memorial called "find-memorial", and served their *page* — which
+        // rendered the directory widget, whose JS then fetched the platform's endpoint on
+        // the platform's host with no tenant bound. So a reseller's own directory answered
+        // with every memorial except theirs. It needs to be a real route with the tenant
+        // resolved, not a page that happens to contain a search box.
+        Route::get('find-memorial', [MemorialDirectoryController::class, 'index'])
+            ->name('reseller.memorial.directory');
+
+        // The header search box, for the same reason. MemorialController@search is already
+        // tenant-scoped, but nothing bound a tenant to it under this fallback, so it fell
+        // back to the platform's memorials for any visitor who was not signed in.
+        Route::get('api/search/memorials', [MemorialController::class, 'search'])
+            ->middleware('throttle:60,1')
+            ->name('reseller.memorials.search');
+
         Route::middleware('guest')->group(function () {
             Route::get('login', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'create'])->name('reseller.login');
             Route::post('login', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'store'])->middleware('throttle:6,1');

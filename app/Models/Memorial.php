@@ -48,6 +48,28 @@ class Memorial extends Model
                 $memorial->original_reseller_id ??= $resellerId;
             }
         });
+
+        // Same reasoning as above: a hook rather than a call in each of the four creation
+        // paths, so a memorial cannot come into existence without its starting categories.
+        static::created(fn (self $memorial) => $memorial->seedDefaultGalleryCategories());
+    }
+
+    /**
+     * The three rooms every memorial opens with. Nothing stops a family renaming or
+     * deleting all of them — they are a starting point, not a schema.
+     */
+    public function seedDefaultGalleryCategories(): void
+    {
+        if ($this->galleryCategories()->exists()) {
+            return;
+        }
+
+        foreach (GalleryCategory::DEFAULTS as $index => $name) {
+            $this->galleryCategories()->create([
+                'name' => $name,
+                'sort_order' => $index,
+            ]);
+        }
     }
 
     // Dashboard routes (/memorials/{memorial}/...) bind by slug so URLs read
@@ -444,6 +466,35 @@ class Memorial extends Model
                 ->select(DB::raw(1))
                 ->from('post_media')
                 ->whereColumn('post_media.media_id', 'media.id'));
+    }
+
+    /**
+     * The mirror of galleryMedia(): photos and videos that a story *is* carrying.
+     *
+     * This is what the gallery's "From Stories" category is made of, and it is derived on
+     * every read rather than stored as an assignment. A stored one would have to be kept in
+     * step with every attach, detach and post deletion, and the first time it fell out of
+     * step the gallery would show a picture no story has or hide one it does. There is
+     * nothing to synchronise if there is nothing to store.
+     */
+    public function storyMedia()
+    {
+        return $this->media()
+            ->whereIn('type', ['photo', 'video'])
+            ->whereExists(fn ($q) => $q
+                ->select(DB::raw(1))
+                ->from('post_media')
+                ->whereColumn('post_media.media_id', 'media.id'));
+    }
+
+    /**
+     * The family's own divisions of the gallery, in the order they arranged them.
+     */
+    public function galleryCategories(): HasMany
+    {
+        return $this->hasMany(GalleryCategory::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     /**

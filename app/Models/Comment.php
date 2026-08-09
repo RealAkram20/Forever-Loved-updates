@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Comment extends Model
 {
@@ -45,6 +46,15 @@ class Comment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Hearts. Same polymorphic table the stories use, so one person's like is counted the
+     * same way wherever they leave it, and the tally never needs a column of its own.
+     */
+    public function reactions(): MorphMany
+    {
+        return $this->morphMany(Reaction::class, 'reactionable');
     }
 
     public function getAuthorNameAttribute(): string

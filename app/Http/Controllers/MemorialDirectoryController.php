@@ -8,45 +8,57 @@ use App\Models\Memorial;
 use App\Models\Page;
 use App\Support\StandardPages;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class MemorialDirectoryController extends Controller
 {
+    private const BLURB = 'Search public memorials by name, location, and more. Honor and discover lives remembered on our platform.';
+
     /**
      * Public directory page — grid/list view with filters.
      * Only shows public, active memorials.
      */
-    public function index(Request $request): View|JsonResponse
+    public function index(Request $request): View|JsonResponse|RedirectResponse
     {
+        $tenant = ThemeSetting::siteTenant();
+
+        // A tenant who switched their Find a Memorial page off should not still answer the
+        // path. On their own host ResolveResellerByHost already turns them away here; the
+        // /r/{slug} fallback has no such middleware, so the rule is restated where the
+        // request actually lands. Absent for the platform, whose directory is a route
+        // rather than something an admin toggles.
+        if ($tenant && ! StandardPages::isEnabledFor(Page::SLUG_FIND_MEMORIAL, $tenant->id)) {
+            return redirect()->to($tenant->publicBaseUrl());
+        }
+
         if ($request->wantsJson() || $request->ajax()) {
             return $this->directoryResults($request);
         }
 
-        $layoutPage = StandardPages::resolve(Page::SLUG_FIND_MEMORIAL, ThemeSetting::siteTenantId());
+        // Not forNamedRoute(): that resolves through route(), which on a reseller's site
+        // would stamp the platform's address into their canonical and og:url tags.
+        $shareMeta = SiteShareMetaHelper::forGenericPage(
+            'Find Memorial',
+            self::BLURB,
+            StandardPages::urlFor(Page::SLUG_FIND_MEMORIAL)
+        );
+
+        $layoutPage = StandardPages::resolve(Page::SLUG_FIND_MEMORIAL, $tenant?->id);
         if ($layoutPage && $layoutPage->hasLayout()) {
             return view('pages.memorial-directory.page-layout', [
                 'title' => $layoutPage->title ?: 'Find Memorial',
                 'page' => $layoutPage,
                 'widgets' => $layoutPage->layout['widgets'],
                 'layoutContext' => [],
-                'shareMeta' => SiteShareMetaHelper::forNamedRoute(
-                    'Find Memorial',
-                    'memorial.directory',
-                    [],
-                    'Search public memorials by name, location, and more. Honor and discover lives remembered on our platform.'
-                ),
+                'shareMeta' => $shareMeta,
             ]);
         }
 
         return view('pages.memorial-directory.index', [
             'title' => 'Find Memorial',
-            'shareMeta' => SiteShareMetaHelper::forNamedRoute(
-                'Find Memorial',
-                'memorial.directory',
-                [],
-                'Search public memorials by name, location, and more. Honor and discover lives remembered on our platform.'
-            ),
+            'shareMeta' => $shareMeta,
         ]);
     }
 

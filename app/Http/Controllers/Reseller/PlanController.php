@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Reseller;
 
 use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPlan;
+use App\Support\PlanFeatures;
 use Illuminate\Http\Request;
 
 /**
@@ -30,37 +31,20 @@ class PlanController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $request->validate(array_merge([
             'name' => 'required|string|max:50',
             'slug' => 'required|string|max:50|unique:subscription_plans,slug',
             'description' => 'nullable|string|max:500',
             'price' => 'required|numeric|min:0',
             'interval' => 'required|in:monthly,yearly,lifetime',
-            'memorial_limit' => 'required|integer|min:1',
-            'storage_limit_mb' => 'required|integer|min:10',
-            'max_gallery_images' => 'required|integer|min:0',
-            'max_gallery_videos' => 'required|integer|min:0',
-            'max_tributes' => 'required|integer|min:0',
-            'max_chapters' => 'required|integer|min:0',
-            'max_ai_bio_per_day' => 'required|integer|min:0',
-            'feature_background_music' => 'boolean',
-            'feature_advanced_privacy' => 'boolean',
-            'feature_guest_notifications' => 'boolean',
-            'feature_never_expires' => 'boolean',
-            'feature_no_ads' => 'boolean',
-            'feature_share_memories' => 'boolean',
             'is_active' => 'boolean',
             'is_popular' => 'boolean',
             'sort_order' => 'integer|min:0',
-        ]);
+        ], PlanFeatures::rules()));
 
         $plan = SubscriptionPlan::create(array_merge($request->only([
-            'name', 'slug', 'description', 'price', 'interval',
-            'memorial_limit', 'storage_limit_mb',
-            'max_gallery_images', 'max_gallery_videos', 'max_tributes', 'max_chapters', 'max_ai_bio_per_day',
-            'feature_background_music', 'feature_advanced_privacy', 'feature_guest_notifications',
-            'feature_never_expires', 'feature_no_ads', 'feature_share_memories',
-            'is_active', 'sort_order',
+            'name', 'slug', 'description', 'price', 'interval', 'is_active', 'sort_order',
+            ...PlanFeatures::columns(),
         ]), [
             'is_popular' => $request->boolean('is_popular'),
             'reseller_id' => $request->user()->reseller_id,
@@ -77,36 +61,19 @@ class PlanController extends Controller
     {
         abort_unless($plan->reseller_id === $request->user()->reseller_id, 403);
 
-        $request->validate([
+        $request->validate(array_merge([
             'name' => 'required|string|max:50',
             'description' => 'nullable|string|max:500',
             'price' => 'required|numeric|min:0',
             'interval' => 'required|in:monthly,yearly,lifetime',
-            'memorial_limit' => 'required|integer|min:1',
-            'storage_limit_mb' => 'required|integer|min:10',
-            'max_gallery_images' => 'required|integer|min:0',
-            'max_gallery_videos' => 'required|integer|min:0',
-            'max_tributes' => 'required|integer|min:0',
-            'max_chapters' => 'required|integer|min:0',
-            'max_ai_bio_per_day' => 'required|integer|min:0',
-            'feature_background_music' => 'boolean',
-            'feature_advanced_privacy' => 'boolean',
-            'feature_guest_notifications' => 'boolean',
-            'feature_never_expires' => 'boolean',
-            'feature_no_ads' => 'boolean',
-            'feature_share_memories' => 'boolean',
             'is_active' => 'boolean',
             'is_popular' => 'boolean',
             'sort_order' => 'integer|min:0',
-        ]);
+        ], PlanFeatures::rules()));
 
         $plan->update(array_merge($request->only([
-            'name', 'description', 'price', 'interval',
-            'memorial_limit', 'storage_limit_mb',
-            'max_gallery_images', 'max_gallery_videos', 'max_tributes', 'max_chapters', 'max_ai_bio_per_day',
-            'feature_background_music', 'feature_advanced_privacy', 'feature_guest_notifications',
-            'feature_never_expires', 'feature_no_ads', 'feature_share_memories',
-            'is_active', 'sort_order',
+            'name', 'description', 'price', 'interval', 'is_active', 'sort_order',
+            ...PlanFeatures::columns(),
         ]), ['is_popular' => $request->boolean('is_popular')]));
 
         if ($plan->is_popular) {

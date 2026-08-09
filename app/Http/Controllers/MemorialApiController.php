@@ -12,7 +12,6 @@ use App\Models\MemorialSubscription;
 use App\Models\Post;
 use App\Models\Reaction;
 use App\Models\Tribute;
-use App\Models\TributeComment;
 use App\Models\User;
 use App\Services\NotificationService;
 use App\Support\GuestIdentity;
@@ -62,7 +61,14 @@ class MemorialApiController extends Controller
     }
 
     /**
-     * Store a tribute (flower, candle, note). Guest or authenticated.
+     * Record a tap on one of the one-tap cards — a flower, a candle, a prayer.
+     *
+     * Taps only. This endpoint used to take a `message` as well, which is what made a
+     * tribute a second kind of written post and forced the memorial page to carry two
+     * feeds and a sub-tab to choose between them. Words now go to
+     * MemorialMediaController::storeTributePost() and become a story carrying the same
+     * marker, so there is one feed and one composer. A `message` sent here is ignored
+     * rather than rejected: an old client posting one still gets its tap counted.
      */
     public function storeTribute(Request $request, string $slug): JsonResponse
     {
@@ -79,7 +85,6 @@ class MemorialApiController extends Controller
 
         $validated = $request->validate([
             'type' => ['required', Rule::in(Tribute::TYPES)],
-            'message' => ['nullable', 'string', 'max:10000'],
             'guest_name' => ['required_without:user_id', 'nullable', 'string', 'max:255'],
             'guest_email' => ['required_without:user_id', 'nullable', 'email'],
         ]);
@@ -119,8 +124,6 @@ class MemorialApiController extends Controller
             $guestName = $user->name;
         }
 
-        $message = HtmlHelper::sanitize($validated['message'] ?? null);
-
         // One tribute of each kind per person, so a tally means "how many people lit a
         // candle" rather than "how many times anyone tapped". Tapping again is not an error
         // — the endpoint is idempotent and hands back the tribute they already left, which
@@ -136,23 +139,11 @@ class MemorialApiController extends Controller
             : null;
 
         if ($existing) {
-            // Don't silently drop words someone took the trouble to write: a message sent
-            // after a bare tap fills in the one they left empty.
-            $promoted = false;
-            if ($message && ! $existing->getRawOriginal('message')) {
-                $existing->update(['message' => $message]);
-                $promoted = true;
-            }
-
             $existing->load('user');
 
             return response()->json([
                 'success' => true,
                 'duplicate' => true,
-                // A bare tap that has just gained words stops being a reaction and becomes
-                // a post. The page has no entry for it to update — reactions are not listed
-                // — so it needs to know to add one.
-                'promoted' => $promoted,
                 'tribute' => $this->tributePayload($existing),
             ]);
         }
@@ -161,7 +152,6 @@ class MemorialApiController extends Controller
             'memorial_id' => $memorial->id,
             'user_id' => $userId,
             'type' => $validated['type'],
-            'message' => $message,
             'guest_name' => $guestName,
             'guest_email' => $guestEmail,
             'is_approved' => true,
@@ -189,7 +179,6 @@ class MemorialApiController extends Controller
             'id' => $tribute->id,
             'share_id' => $tribute->share_id,
             'type' => $tribute->type,
-            'message' => $tribute->message,
             'author' => $tribute->user?->name ?? $tribute->guest_name ?? 'Anonymous',
             'author_photo' => $tribute->user?->profile_photo_url,
             'created_at' => $tribute->created_at->diffForHumans(),
@@ -209,7 +198,7 @@ class MemorialApiController extends Controller
         }
 
         $validated = $request->validate([
-            'reactionable_type' => ['required', 'in:post,tribute'],
+            'reactionable_type' => ['required', 'in:post,tribute,comment'],
             'reactionable_id' => ['required', 'integer'],
             'type' => ['required', 'in:like,love,candle,flower'],
             'guest_name' => ['nullable', 'string', 'max:255'],
@@ -254,8 +243,21 @@ class MemorialApiController extends Controller
             $userId = $user->id;
         }
 
-        $modelClass = $validated['reactionable_type'] === 'post' ? Post::class : Tribute::class;
-        $reactionable = $modelClass::where('memorial_id', $memorial->id)->findOrFail($validated['reactionable_id']);
+        // Every branch is scoped to this memorial before anything is written. A comment has
+        // no memorial_id of its own, so it is reached through the story it hangs off —
+        // without that, this endpoint would happily like a comment on a private memorial
+        // (or another reseller's) by id, and hand back its tally as confirmation it exists.
+        $modelClass = match ($validated['reactionable_type']) {
+            'post' => Post::class,
+            'comment' => Comment::class,
+            default => Tribute::class,
+        };
+
+        $reactionable = $modelClass === Comment::class
+            ? Comment::whereHas('post', fn ($q) => $q->where('memorial_id', $memorial->id))
+                ->where('is_approved', true)
+                ->findOrFail($validated['reactionable_id'])
+            : $modelClass::where('memorial_id', $memorial->id)->findOrFail($validated['reactionable_id']);
 
         $existing = Reaction::where('reactionable_type', $modelClass)
             ->where('reactionable_id', $reactionable->id)
@@ -471,6 +473,10 @@ class MemorialApiController extends Controller
             'title' => ['nullable', 'string', 'max:255'],
             'content' => ['nullable', 'string', 'max:5000'],
             'location' => ['nullable', 'string', 'max:255'],
+            // Present and empty means "make it a plain story again", which is why this is
+            // nullable rather than filtered out: someone has to be able to take a marker
+            // off as easily as they put one on.
+            'tribute_type' => ['nullable', Rule::in(Tribute::TYPES)],
         ]);
 
         // Sanitised on the way in, like every other rich-text write. This one was passing
@@ -507,7 +513,9 @@ class MemorialApiController extends Controller
     }
 
     /**
-     * List tributes for memorial.
+     * List the taps left on a memorial — who lit a candle, who left a flower.
+     *
+     * Not the feed. The feed is stories: see posts().
      */
     public function tributes(string $slug): JsonResponse
     {
@@ -518,8 +526,6 @@ class MemorialApiController extends Controller
 
         $tributes = $memorial->tributes()
             ->where('is_approved', true)
-            // Taps are reactions, not feed items — see Tribute::scopeWithMessage().
-            ->withMessage()
             ->with(['user', 'reactions'])
             ->latest()
             ->paginate(20);
@@ -804,31 +810,163 @@ class MemorialApiController extends Controller
     /**
      * Get comments for a post.
      */
-    public function comments(string $slug, int $postId): JsonResponse
+    /** Replies shown under a comment before it offers "View all N replies". */
+    private const REPLY_PREVIEW = 3;
+
+    /**
+     * A page of a story's comments, for the comment sheet.
+     *
+     * This used to return every comment on the story in one array. That is fine for the
+     * three a memorial starts with and useless at two hundred, which is the number the
+     * sheet is built for — so it pages, keyed on id rather than an offset. Ids are stable
+     * while people are posting; an offset is not, and paging by one drops or repeats a
+     * comment every time somebody adds one mid-scroll.
+     *
+     * Three modes, one endpoint:
+     *   (none)   the first page, newest first
+     *   ?before  the next page down
+     *   ?after   everything posted since — what the open sheet polls for
+     */
+    public function comments(Request $request, string $slug, int $postId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
         if (! $this->canRead($memorial)) {
             return response()->json(['error' => 'Not found'], 404);
         }
         $post = $memorial->posts()->findOrFail($postId);
-        $comments = $post->comments()->get()->map(fn ($c) => [
+
+        $validated = $request->validate([
+            'before' => ['nullable', 'integer'],
+            'after' => ['nullable', 'integer'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+        $limit = (int) ($validated['limit'] ?? 20);
+
+        $base = fn () => Comment::where('post_id', $post->id)
+            ->whereNull('parent_id')
+            ->where('is_approved', true)
+            ->with(['user', 'replies.user'])
+            ->withCount('reactions');
+
+        // Polling: not a page but a gap. Oldest first, so they append to the top of the
+        // list in the order they were written rather than back to front.
+        if (! empty($validated['after'])) {
+            $rows = $base()->where('id', '>', $validated['after'])->orderBy('id')->limit(50)->get();
+
+            return response()->json([
+                'comments' => $this->commentPayloads($rows, $request, $memorial),
+                'total' => $this->commentTotal($post),
+                'has_more' => false,
+            ]);
+        }
+
+        $rows = $base()
+            ->when(! empty($validated['before']), fn ($q) => $q->where('id', '<', $validated['before']))
+            ->orderByDesc('id')
+            // One extra, purely to answer "is there another page" without a second count.
+            ->limit($limit + 1)
+            ->get();
+
+        $hasMore = $rows->count() > $limit;
+
+        return response()->json([
+            'comments' => $this->commentPayloads($rows->take($limit), $request, $memorial),
+            'total' => $this->commentTotal($post),
+            'has_more' => $hasMore,
+        ]);
+    }
+
+    /**
+     * Every reply under one comment, for "View all N replies".
+     */
+    public function commentReplies(Request $request, string $slug, int $commentId): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (! $this->canRead($memorial)) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
+
+        $comment = Comment::whereHas('post', fn ($q) => $q->where('memorial_id', $memorial->id))
+            ->where('is_approved', true)
+            ->findOrFail($commentId);
+
+        $replies = $comment->replies()->withCount('reactions')->get()->reverse()->values();
+
+        return response()->json([
+            'replies' => $this->commentPayloads($replies, $request, $memorial, false),
+        ]);
+    }
+
+    /**
+     * What the sheet header counts: everything anyone wrote on the story, replies included.
+     * "176 comments" that turns out to mean "176 top-level comments" is a lie the moment
+     * somebody expands a thread.
+     */
+    private function commentTotal(Post $post): int
+    {
+        return (int) Comment::where('post_id', $post->id)->where('is_approved', true)->count();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection  $comments
+     * @param  bool  $withReplies  Replies are themselves comments and have none of their own.
+     */
+    private function commentPayloads($comments, Request $request, Memorial $memorial, bool $withReplies = true): array
+    {
+        // One boolean for the whole page, not one per row: deleteComment() authorises on
+        // the memorial, so whoever may delete one comment may delete all of them.
+        $canDelete = $this->canEdit($memorial);
+
+        // Whether *you* hearted each one, resolved in a single query for the whole page
+        // rather than a relation load per row. Guests get false: a reaction is keyed to an
+        // account or an address, and an anonymous reader has offered neither yet.
+        $liked = [];
+        $userId = $request->user()?->id;
+        if ($userId && $comments->isNotEmpty()) {
+            $ids = $comments->pluck('id');
+            if ($withReplies) {
+                $ids = $ids->merge($comments->flatMap(fn ($c) => $c->replies->pluck('id')));
+            }
+            $liked = Reaction::where('reactionable_type', Comment::class)
+                ->whereIn('reactionable_id', $ids->all())
+                ->where('user_id', $userId)
+                ->pluck('reactionable_id')
+                ->flip()
+                ->all();
+        }
+
+        return $comments->map(function (Comment $c) use ($liked, $withReplies, $canDelete) {
+            $payload = $this->commentPayload($c, $liked, $canDelete);
+
+            if ($withReplies) {
+                $replies = $c->replies;
+                $payload['reply_count'] = $replies->count();
+                // Newest last under a parent: a thread reads downward, unlike the list it
+                // hangs in. The preview keeps the most recent ones, then flips them back.
+                $payload['replies'] = $replies->take(self::REPLY_PREVIEW)->reverse()
+                    ->map(fn (Comment $r) => $this->commentPayload($r, $liked, $canDelete))
+                    ->values()
+                    ->all();
+            }
+
+            return $payload;
+        })->values()->all();
+    }
+
+    private function commentPayload(Comment $c, array $liked, bool $canDelete): array
+    {
+        return [
             'id' => $c->id,
             'parent_id' => $c->parent_id,
             'content' => $c->content,
             'author' => $c->author_name,
             'author_photo' => $c->user?->profile_photo_url,
-            'created_at' => $c->created_at->diffForHumans(),
-            'replies' => $c->replies->map(fn ($r) => [
-                'id' => $r->id,
-                'parent_id' => $r->parent_id,
-                'content' => $r->content,
-                'author' => $r->author_name,
-                'author_photo' => $r->user?->profile_photo_url,
-                'created_at' => $r->created_at->diffForHumans(),
-            ])->toArray(),
-        ]);
-
-        return response()->json(['comments' => $comments]);
+            'created_at' => $c->created_at->diffForHumans(short: true),
+            'created_at_iso' => $c->created_at->toIso8601String(),
+            'reaction_count' => (int) ($c->reactions_count ?? 0),
+            'reacted' => isset($liked[$c->id]),
+            'can_delete' => $canDelete,
+        ];
     }
 
     /**
@@ -883,17 +1021,18 @@ class MemorialApiController extends Controller
         NotificationService::notifyCommentOnChapter($post, $comment, $userId);
 
         $comment->load('user');
+        $comment->reactions_count = 0;
 
+        // The same shape the list returns, so the sheet renders a comment it just posted
+        // through exactly the same path as one it fetched — there is one row renderer and
+        // no second, subtly-different version of it to drift.
         return response()->json([
             'success' => true,
-            'comment' => [
-                'id' => $comment->id,
-                'parent_id' => $comment->parent_id,
-                'content' => $comment->content,
-                'author' => $comment->author_name,
-                'author_photo' => $comment->user?->profile_photo_url,
-                'created_at' => $comment->created_at->diffForHumans(),
+            'comment' => $this->commentPayload($comment, [], $this->canEdit($memorial)) + [
+                'reply_count' => 0,
+                'replies' => [],
             ],
+            'total' => $this->commentTotal($post),
         ]);
     }
 
@@ -915,110 +1054,6 @@ class MemorialApiController extends Controller
         return response()->json([
             'reactions' => $reactions,
             'count' => $reactions->count(),
-        ]);
-    }
-
-    /**
-     * Store a comment on a tribute. Guest or authenticated.
-     */
-    public function storeTributeComment(Request $request, string $slug, int $tributeId): JsonResponse
-    {
-        $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (! $memorial->is_public) {
-            return response()->json(['error' => 'Memorial is not public'], 404);
-        }
-        $tribute = $memorial->tributes()->findOrFail($tributeId);
-
-        $validated = $request->validate([
-            'content' => ['required', 'string', 'max:2000'],
-            'parent_id' => ['nullable', 'integer', 'exists:tribute_comments,id'],
-            'guest_name' => ['nullable', 'string', 'max:255'],
-            'guest_email' => ['nullable', 'email'],
-        ]);
-
-        $userId = $request->user()?->id;
-        $guestName = $request->user()?->name ?? $validated['guest_name'] ?? null;
-        $guestEmail = $request->user()?->email ?? $validated['guest_email'] ?? null;
-
-        if (! $userId && (! $guestName || ! $guestEmail)) {
-            return response()->json(['error' => 'Name and email are required for guests'], 422);
-        }
-
-        // Same rule as chapter comments: a registered address is its owner's to use.
-        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
-            return GuestIdentity::requiresLoginResponse('comment');
-        }
-
-        $parentId = $validated['parent_id'] ?? null;
-        if ($parentId) {
-            $parent = TributeComment::where('tribute_id', $tribute->id)->find($parentId);
-            if (! $parent) {
-                return response()->json(['error' => 'Invalid parent comment'], 422);
-            }
-        }
-
-        $comment = TributeComment::create([
-            'tribute_id' => $tribute->id,
-            'parent_id' => $parentId,
-            'user_id' => $userId,
-            'guest_name' => $guestName,
-            'guest_email' => $guestEmail,
-            'content' => trim($validated['content']),
-            'is_approved' => true,
-        ]);
-
-        NotificationService::notifyCommentOnTribute($tribute, $comment, $userId);
-
-        $comment->load('user');
-
-        return response()->json([
-            'success' => true,
-            'comment' => [
-                'id' => $comment->id,
-                'parent_id' => $comment->parent_id,
-                'content' => $comment->content,
-                'author' => $comment->author_name,
-                'author_photo' => $comment->user?->profile_photo_url,
-                'created_at' => $comment->created_at->diffForHumans(),
-            ],
-        ]);
-    }
-
-    /**
-     * Delete a tribute comment (and its replies). Memorial editors only — same as chapter comments.
-     */
-    public function deleteTributeComment(string $slug, int $commentId): JsonResponse
-    {
-        $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (! $this->canEdit($memorial)) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $comment = TributeComment::query()
-            ->where('id', $commentId)
-            ->whereHas('tribute', fn ($q) => $q->where('memorial_id', $memorial->id))
-            ->first();
-
-        if (! $comment) {
-            return response()->json(['error' => 'Comment not found'], 404);
-        }
-
-        if ($comment->parent_id === null) {
-            $replyCount = TributeComment::where('parent_id', $comment->id)->count();
-            TributeComment::where('parent_id', $comment->id)->delete();
-            $comment->delete();
-
-            return response()->json([
-                'success' => true,
-                'deleted_count' => 1 + $replyCount,
-            ]);
-        }
-
-        $comment->delete();
-
-        return response()->json([
-            'success' => true,
-            'deleted_count' => 1,
         ]);
     }
 
@@ -1086,6 +1121,8 @@ class MemorialApiController extends Controller
             'id' => $post->id,
             'share_id' => $post->share_id,
             'type' => $post->type,
+            'tribute_type' => $post->tribute_type,
+            'marker_verb' => $post->markerVerb(),
             'title' => $post->title,
             'content' => $post->content,
             'location' => $post->location,

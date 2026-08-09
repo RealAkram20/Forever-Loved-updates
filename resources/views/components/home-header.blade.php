@@ -22,10 +22,20 @@
 
 <header class="sticky top-0 z-40 border-b border-gray-900/[0.06] dark:border-gray-800 bg-[var(--color-bg-page)]/90 backdrop-blur-sm" x-data="{ mobileOpen: false }">
     <div class="mx-auto flex min-h-16 lg:min-h-[4.5rem] items-center justify-between gap-4 px-4 py-1 sm:px-6 lg:px-8 max-w-7xl">
-        {{-- Logo --}}
-        <a href="{{ $homeUrl }}" class="flex shrink-0 items-center gap-2 text-gray-800 dark:text-white/90 hover:text-brand-500">
-            <img class="dark:hidden h-14 lg:h-16 w-auto object-contain" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="{{ $appName }}" />
-            <img class="hidden dark:block h-14 lg:h-16 w-auto object-contain" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="{{ $appName }}" />
+        {{-- Logo.
+
+             Both a height ramp and a max-width, and it needs both. The default mark is
+             154×32, so pinning it to h-14 makes it 270px wide — on a 360px screen that plus
+             the theme and menu buttons cannot fit, and `shrink-0` meant it pushed the page
+             wider instead of giving way. Every public page overflowed by 18px because of
+             this one element.
+
+             The cap is the part that keeps working: a reseller uploads their own logo, and
+             a wider mark would walk straight back into the same overflow with only a height
+             set. `object-left` keeps it aligned when the cap is what is limiting it. --}}
+        <a href="{{ $homeUrl }}" class="flex min-w-0 shrink items-center gap-2 text-gray-800 dark:text-white/90 hover:text-brand-500">
+            <img class="dark:hidden h-11 w-auto max-w-[190px] object-contain object-left sm:h-14 sm:max-w-[240px] lg:h-16 lg:max-w-[300px]" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="{{ $appName }}" />
+            <img class="hidden dark:block h-11 w-auto max-w-[190px] object-contain object-left sm:h-14 sm:max-w-[240px] lg:h-16 lg:max-w-[300px]" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="{{ $appName }}" />
         </a>
 
         {{-- Desktop nav --}}
@@ -66,7 +76,7 @@
                         if (this.query.length < 2) { this.results = []; this.open = false; return; }
                         this.loading = true;
                         this.debounceTimer = setTimeout(() => {
-                            fetch(`{{ route('memorials.search') }}?q=${encodeURIComponent(this.query)}`)
+                            fetch(`{{ \App\Support\SiteUrl::to('api/search/memorials') }}?q=${encodeURIComponent(this.query)}`)
                                 .then(r => r.json())
                                 .then(data => {
                                     this.results = data.results;
@@ -213,7 +223,7 @@
                     if (this.query.length < 2) { this.results = []; this.open = false; return; }
                     this.loading = true;
                     this.debounceTimer = setTimeout(() => {
-                        fetch(`{{ route('memorials.search') }}?q=${encodeURIComponent(this.query)}`)
+                        fetch(`{{ \App\Support\SiteUrl::to('api/search/memorials') }}?q=${encodeURIComponent(this.query)}`)
                             .then(r => r.json())
                             .then(data => {
                                 this.results = data.results;

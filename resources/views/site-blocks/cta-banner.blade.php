@@ -1,8 +1,8 @@
 @php
-    $pRoute = $props['primary_route'] ?? '';
-    $sRoute = $props['secondary_route'] ?? '';
-    $primaryUrl = $pRoute && \Illuminate\Support\Facades\Route::has($pRoute) ? route($pRoute) : '#';
-    $secondaryUrl = $sRoute && \Illuminate\Support\Facades\Route::has($sRoute) ? route($sRoute) : '#';
+    // Same reasoning as the hero: a standard-page destination resolves to this site's copy,
+    // anything else falls through to route().
+    $primaryUrl = \App\Support\StandardPages::urlForRouteName($props['primary_route'] ?? null) ?: '#';
+    $secondaryUrl = \App\Support\StandardPages::urlForRouteName($props['secondary_route'] ?? null) ?: '#';
 @endphp
 <section class="py-14 sm:py-16">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

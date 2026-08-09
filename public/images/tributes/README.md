@@ -6,6 +6,10 @@ The one-tap tribute cards on the public memorial page look for three files here:
 - `candle.png` — Light a Candle
 - `prayer.png` — Send a Prayer
 
+`flower-bouquet.png` is the violet bouquet `flower.png` used to be, kept because this
+folder is not in version control and replacing it would otherwise be one-way. Nothing
+reads it; only the three names above are looked for.
+
 Square transparent PNGs, rendered at 56–64px, so ~256px assets are plenty.
 
 Keep them small. The originals here arrived at ~1536px and 2.3MB each; trimming the
@@ -44,16 +48,32 @@ In every case the pixel's own distance from the middle of the source range is ca
 as the same offset around the new hue, and its lightness is kept. That is what preserves
 the shading — a flat hue rotation flattens the subject into one block of colour.
 
+## What a replacement has to be
+
+The cards sit on a white surface at 56–64px, three abreast. That sets four hard
+requirements, and source art almost never arrives meeting them:
+
+- **Transparent background.** Anything else renders as a coloured tile on a white card.
+- **Square, and cropped to the subject.** These are laid out in a square box with
+  `object-contain`, so a tall portrait letterboxes — the flower ends up visibly smaller
+  than the candle and the hands beside it. Crop to the part that reads at 64px, which for a
+  single flower means the bloom, not the stem.
+- **Nothing baked in that the page already animates.** Falling petals, glows and sparkles
+  belong to the tap effect, not the artwork; a static copy of them sitting in the card
+  fights the real ones the moment anyone taps it.
+- **Small.** ~256px. See above.
+
 ## The colour is not only in the file
 
-`flower.png` is a violet bouquet, and three other places are set to match it. If the
-artwork changes again, these change with it:
+`flower.png` is violet, and two other places are set to match it. If the artwork changes
+again, these change with it:
 
 - `PETAL_COLOURS` in `resources/js/memorial-public.js` — the petals that rain down when the
   card is tapped, sampled from this file so they are made of the same violets. The
   artwork's palest tints are deliberately left out: each petal carries a white highlight
   overlay that takes a pale tint to near-white.
-- The `violet-*` classes on the flower branches of `tribute-item.blade.php` and
-  `tributes-pane.blade.php` — the card tint and the filter pill.
 - The inline flower motif in `tribute-art.blade.php`, the fallback drawn when this file is
   missing.
+
+The marker chips in the story composer and the medallion on a marked story both read this
+same file through that partial, so they follow along on their own.

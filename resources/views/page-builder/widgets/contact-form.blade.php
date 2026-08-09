@@ -44,7 +44,7 @@
                     <ul class="space-y-2">
                         <li><a href="{{ route('pricing') }}" class="text-sm text-brand-600 dark:text-brand-400 hover:underline">View Pricing Plans</a></li>
                         <li><a href="{{ route('memorial.create.step1') }}" class="text-sm text-brand-600 dark:text-brand-400 hover:underline">Create a Memorial</a></li>
-                        <li><a href="{{ route('memorial.directory') }}" class="text-sm text-brand-600 dark:text-brand-400 hover:underline">Find a Memorial</a></li>
+                        <li><a href="{{ \App\Support\StandardPages::urlFor(\App\Models\Page::SLUG_FIND_MEMORIAL) }}" class="text-sm text-brand-600 dark:text-brand-400 hover:underline">Find a Memorial</a></li>
                     </ul>
                 </div>
             </div>

@@ -58,35 +58,25 @@ it('keeps different people counting separately', function () {
     expect($memorial->tributes()->where('type', 'candle')->count())->toBe(3);
 });
 
-it('attaches a later message to the tribute the person already left', function () {
+/**
+ * Writing is not capped this way, and must not be: a person may say as many things about
+ * someone as they have to say. Only the gesture is one-per-person — that is what makes
+ * "12 candles" mean twelve people.
+ */
+it('lets one person write as many stories as they like, marked the same way', function () {
     $visitor = User::factory()->create();
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
-    $this->actingAs($visitor)->postJson("/m/{$memorial->slug}/tribute", ['type' => 'prayer'])->assertOk();
+    foreach (['The first thing I said.', 'And another, a week later.'] as $words) {
+        $this->actingAs($visitor)
+            ->postJson("/m/{$memorial->slug}/tribute-post", [
+                'content' => $words,
+                'tribute_type' => 'prayer',
+            ])
+            ->assertOk();
+    }
 
-    $this->actingAs($visitor)
-        ->postJson("/m/{$memorial->slug}/tribute", ['type' => 'prayer', 'message' => 'Rest well, friend.'])
-        ->assertOk()
-        ->assertJson(['duplicate' => true]);
-
-    // The words survive rather than being dropped as a duplicate, and no second row appears.
-    expect($memorial->tributes()->count())->toBe(1)
-        ->and($memorial->tributes()->first()->message)->toContain('Rest well, friend.');
-});
-
-it('does not overwrite a message the person already wrote', function () {
-    $visitor = User::factory()->create();
-    $memorial = Memorial::factory()->create(['is_public' => true]);
-
-    $this->actingAs($visitor)
-        ->postJson("/m/{$memorial->slug}/tribute", ['type' => 'prayer', 'message' => 'The first thing I said.'])
-        ->assertOk();
-
-    $this->actingAs($visitor)
-        ->postJson("/m/{$memorial->slug}/tribute", ['type' => 'prayer', 'message' => 'Something else entirely.'])
-        ->assertOk();
-
-    expect($memorial->tributes()->first()->message)->toContain('The first thing I said.');
+    expect($memorial->posts()->where('tribute_type', 'prayer')->count())->toBe(2);
 });
 
 it('counts a guest once across repeat taps', function () {

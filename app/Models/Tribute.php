@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Helpers\HtmlHelper;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +19,7 @@ class Tribute extends Model
         'user_id',
         'type',
         'message',
+        'migrated_post_id',
         'guest_name',
         'guest_email',
         'is_approved',
@@ -65,19 +65,18 @@ class Tribute extends Model
     ];
 
     /**
-     * The ones somebody actually wrote something on.
+     * The story a tribute's words were moved to, once they had any.
      *
-     * A tap on one of the one-tap cards stores a tribute with no message. That is a
-     * reaction, not a post — it belongs in the tally under the card and nowhere else,
-     * the same way a like does. Only tributes carrying words belong in the feed.
+     * A tribute is now a tap and nothing else — the gesture, counted under the card that
+     * offers it, the same way a like is counted. Anything anyone writes is a story, so
+     * the words that used to live on this row were moved into `posts`; this points at
+     * where they went. Set only by the migration, never by the app.
      *
-     * The empty rich-text cases are listed out because the editor submits markup, not an
-     * empty string, when someone opens the composer and types nothing.
+     * @see database/migrations/2026_08_08_100001_move_written_tributes_into_stories.php
      */
-    public function scopeWithMessage(Builder $query): Builder
+    public function migratedPost(): BelongsTo
     {
-        return $query->whereNotNull('message')
-            ->whereNotIn('message', ['', '<p><br></p>', '<p></p>', '<p><br/></p>']);
+        return $this->belongsTo(Post::class, 'migrated_post_id');
     }
 
     public function memorial(): BelongsTo
@@ -95,6 +94,17 @@ class Tribute extends Model
         return $this->morphMany(Reaction::class, 'reactionable');
     }
 
+    /**
+     * Comments left on a tribute back when a tribute could carry words.
+     *
+     * Nothing writes here any more and nothing renders it: the words moved to stories and
+     * their comment threads went with them, into `comments`. The relation is kept because
+     * `tribute_comments` still holds the originals — the copy of record if the move ever
+     * has to be undone — and a row nobody can reach is easier to explain than a table with
+     * no way back to it.
+     *
+     * @see database/migrations/2026_08_08_100001_move_written_tributes_into_stories.php
+     */
     public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(TributeComment::class)->whereNull('parent_id')->where('is_approved', true)->with(['user', 'replies'])->latest();

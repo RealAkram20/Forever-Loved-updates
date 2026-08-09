@@ -118,7 +118,13 @@ class PublicMemorialController extends Controller
         return app(PageController::class)->home();
     }
 
-    private function renderMemorial(Memorial $memorial)
+    /**
+     * The memorial page.
+     *
+     * @param  \App\Models\Post|null  $highlight  A story reached by its own share link; the
+     *                                            page opens on the feed and scrolls to it.
+     */
+    private function renderMemorial(Memorial $memorial, $highlight = null)
     {
         // Allow owner to view their own memorial even if private
         if (! $memorial->is_public && $memorial->user_id !== auth()->id()) {
@@ -138,20 +144,12 @@ class PublicMemorialController extends Controller
             $this->recordView($memorial, request());
         }
 
-        $tributes = $memorial->tributes()
-            ->where('is_approved', true)
-            ->withMessage()
-            ->with($this->tributeRelations())
-            ->latest()
-            ->paginate(20);
-
         $this->loadMemorialRelations($memorial);
 
-        $canEdit = $memorial->canBeEditedBy(auth()->user());
-
-        $stats = MemorialStatsHelper::get($memorial);
-        $tributeCounts = $this->getTributeTypeCounts($memorial);
-        $tributeWrittenCounts = $this->getTributeTypeCounts($memorial, true);
+        // One feed. Everything anyone has written is here — a plain story, or one marked
+        // as a flower, a candle or a prayer. Sorted once, in the controller, because three
+        // places on the page read it and each was sorting its own copy.
+        $stories = $memorial->posts->where('is_published', true)->sortByDesc('created_at')->values();
 
         $pendingPaymentOrder = null;
         if (auth()->id() && auth()->id() === $memorial->user_id) {
@@ -165,81 +163,50 @@ class PublicMemorialController extends Controller
         return view('pages.memorials.public', [
             'title' => $memorial->full_name,
             'memorial' => $memorial,
-            'tributes' => $tributes,
-            'canEdit' => $canEdit,
+            'stories' => $stories,
+            'storyCounts' => $this->storyMarkerCounts($stories),
+            'canEdit' => $memorial->canBeEditedBy(auth()->user()),
             'isAuthenticated' => auth()->check(),
-            'memorialStats' => $stats,
-            'tributeCounts' => $tributeCounts,
-            'tributeWrittenCounts' => $tributeWrittenCounts,
+            'memorialStats' => MemorialStatsHelper::get($memorial),
+            'tributeCounts' => $this->getTributeTypeCounts($memorial),
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
-            'scrollToTributeId' => null,
-            'scrollToChapterId' => null,
-            'shareMeta' => MemorialShareMetaHelper::forMemorial($memorial),
+            'scrollToChapterId' => $highlight?->id,
+            'shareMeta' => $highlight
+                ? MemorialShareMetaHelper::forChapter($memorial, $highlight)
+                : MemorialShareMetaHelper::forMemorial($memorial),
             'pendingPaymentOrder' => $pendingPaymentOrder,
         ]);
     }
 
     /**
-     * Display a public memorial with a specific tribute (for share preview).
+     * A tribute share link, from back when a tribute could carry words.
+     *
+     * Those words are stories now, and they kept their share id, so the link somebody sent
+     * two years ago still lands on the same writing — it just lands on it as a story. A
+     * permanent redirect rather than a second render: there is one feed, and this address
+     * has one correct destination.
+     *
+     * @see database/migrations/2026_08_08_100001_move_written_tributes_into_stories.php
      */
     public function showTribute(string $memorial_slug, string $share_id)
     {
         $memorial = Memorial::where('slug', $memorial_slug)->firstOrFail();
 
-        if (! $memorial->is_public && $memorial->user_id !== auth()->id()) {
-            abort(404);
+        $post = $memorial->posts()->where('share_id', $share_id)->first();
+
+        // Relative, so the redirect stays on whichever host the link was opened on rather
+        // than throwing a visitor off a reseller's domain and onto ours.
+        if ($post) {
+            return redirect("/{$memorial->slug}/chapter/{$post->share_id}", 301);
         }
 
-        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && ! auth()?->user()?->hasRole(['admin', 'super-admin'])) {
-            abort(404);
-        }
-
-        if ($memorial->expires_at?->isPast()) {
-            abort(404);
-        }
-
-        $tribute = $memorial->tributes()->where('is_approved', true)->where('share_id', $share_id)->with($this->tributeRelations())->firstOrFail();
-
-        if ($memorial->is_public) {
-            $this->recordView($memorial, request());
-        }
-
-        $tributes = $memorial->tributes()
-            ->where('is_approved', true)
-            ->withMessage()
-            ->where('id', '!=', $tribute->id)
-            ->with($this->tributeRelations())
-            ->latest()
-            ->paginate(20);
-
-        $this->loadMemorialRelations($memorial);
-
-        $canEdit = $memorial->canBeEditedBy(auth()->user());
-
-        $stats = MemorialStatsHelper::get($memorial);
-
-        $tributeCounts = $this->getTributeTypeCounts($memorial);
-        $tributeWrittenCounts = $this->getTributeTypeCounts($memorial, true);
-
-        return view('pages.memorials.public', [
-            'title' => $memorial->full_name,
-            'memorial' => $memorial,
-            'tributes' => $tributes,
-            'highlightTribute' => $tribute,
-            'canEdit' => $canEdit,
-            'isAuthenticated' => auth()->check(),
-            'memorialStats' => $stats,
-            'tributeCounts' => $tributeCounts,
-            'tributeWrittenCounts' => $tributeWrittenCounts,
-            'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
-            'scrollToTributeId' => $tribute->id,
-            'scrollToChapterId' => null,
-            'shareMeta' => MemorialShareMetaHelper::forTribute($memorial, $tribute),
-        ]);
+        // A tap has a share id too and nothing to show for it — the gesture is counted on
+        // the memorial itself, so that is where the link goes.
+        return redirect("/{$memorial->slug}", 301);
     }
 
     /**
-     * Display a public memorial with a specific chapter (for share preview).
+     * Display a public memorial scrolled to one story (for share preview).
      */
     public function showChapter(string $memorial_slug, string $share_id)
     {
@@ -257,54 +224,9 @@ class PublicMemorialController extends Controller
             abort(404);
         }
 
-        $post = $memorial->posts()->where('is_published', true)->where('share_id', $share_id)->with(['user', 'media', 'storyChapter'])->firstOrFail();
+        $post = $memorial->posts()->where('is_published', true)->where('share_id', $share_id)->firstOrFail();
 
-        if ($memorial->is_public) {
-            $this->recordView($memorial, request());
-        }
-
-        $tributes = $memorial->tributes()
-            ->where('is_approved', true)
-            ->withMessage()
-            ->with($this->tributeRelations())
-            ->latest()
-            ->paginate(20);
-
-        $this->loadMemorialRelations($memorial);
-
-        $canEdit = $memorial->canBeEditedBy(auth()->user());
-
-        $stats = MemorialStatsHelper::get($memorial);
-
-        $tributeCounts = $this->getTributeTypeCounts($memorial);
-        $tributeWrittenCounts = $this->getTributeTypeCounts($memorial, true);
-
-        return view('pages.memorials.public', [
-            'title' => $memorial->full_name,
-            'memorial' => $memorial,
-            'tributes' => $tributes,
-            'canEdit' => $canEdit,
-            'isAuthenticated' => auth()->check(),
-            'memorialStats' => $stats,
-            'tributeCounts' => $tributeCounts,
-            'tributeWrittenCounts' => $tributeWrittenCounts,
-            'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
-            'scrollToTributeId' => null,
-            'scrollToChapterId' => $post->id,
-            'shareMeta' => MemorialShareMetaHelper::forChapter($memorial, $post),
-        ]);
-    }
-
-    /**
-     * Everything pages.memorials.public touches while rendering a tribute, in one go.
-     *
-     * Tribute::comments() already pulls its own author and replies, but neither the
-     * reaction tally in the card footer nor the reply authors come with it — those were
-     * a query per tribute and a query per reply on a page that shows twenty at a time.
-     */
-    private function tributeRelations(): array
-    {
-        return ['user', 'reactions', 'comments.replies.user'];
+        return $this->renderMemorial($memorial, $post);
     }
 
     /**
@@ -315,6 +237,7 @@ class PublicMemorialController extends Controller
     {
         $memorial->load([
             'media',
+            'galleryCategories',
             'storyChapters',
             'posts.media',
             'posts.user',
@@ -325,20 +248,15 @@ class PublicMemorialController extends Controller
     }
 
     /**
-     * Tallies per tribute type.
+     * How many people left each gesture — the tally under the one-tap cards.
      *
-     * Two different totals are wanted on the page and they are not the same number. The
-     * one-tap cards count every tap, written or not — that tally is what those cards are
-     * for. The filter pills sit above the feed and have to count what the feed actually
-     * shows, or tapping "Flowers 8" turns up two items.
-     *
-     * @param  bool  $writtenOnly  Count only tributes carrying a message.
+     * Counts taps, not writing. Someone who wrote a candle story also lit a candle and is
+     * counted here once, because their tribute row is still the record of the gesture.
      */
-    private function getTributeTypeCounts(Memorial $memorial, bool $writtenOnly = false): array
+    private function getTributeTypeCounts(Memorial $memorial): array
     {
         $counts = $memorial->tributes()
             ->where('is_approved', true)
-            ->when($writtenOnly, fn ($q) => $q->withMessage())
             ->selectRaw('type, COUNT(*) as cnt')
             ->groupBy('type')
             ->pluck('cnt', 'type');
@@ -347,6 +265,30 @@ class PublicMemorialController extends Controller
         foreach (Tribute::TYPES as $type) {
             $buckets[$type] = (int) ($counts[$type] ?? 0);
         }
+
+        return $buckets;
+    }
+
+    /**
+     * How the feed breaks down by marker, for the filter chips above it.
+     *
+     * Counted off the collection the page is already rendering rather than queried again:
+     * these have to agree with what the feed shows to the item, or filtering to "Candles 8"
+     * turns up seven.
+     *
+     * `story` is the unmarked remainder — the ones nobody labelled, which is most of them.
+     *
+     * @param  \Illuminate\Support\Collection  $stories
+     */
+    private function storyMarkerCounts($stories): array
+    {
+        $buckets = ['total' => $stories->count(), 'story' => 0];
+
+        foreach (Tribute::TYPES as $type) {
+            $buckets[$type] = $stories->where('tribute_type', $type)->count();
+        }
+
+        $buckets['story'] = $buckets['total'] - array_sum(array_intersect_key($buckets, array_flip(Tribute::TYPES)));
 
         return $buckets;
     }

@@ -15,101 +15,82 @@ beforeEach(function () {
 });
 
 /**
- * A tap on one of the one-tap cards is a like, not a post. It counts under the card and
- * leaves nothing in the feed; only tributes somebody wrote words on are listed.
+ * A tribute is a tap and nothing else.
+ *
+ * The memorial page carried two written things — a tribute and a chapter — in two
+ * sub-tabs, and a visitor had to decide which of the two words their sentence was before
+ * they could type it. There is one now: a story, optionally marked as a flower, a candle
+ * or a prayer. The tap endpoint records the gesture; the tally under the card is the only
+ * place it shows.
  */
-it('keeps a bare tap out of the feed while still counting it', function () {
+it('records a tap and leaves nothing in the feed', function () {
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
     $this->actingAs(User::factory()->create())
         ->postJson("/m/{$memorial->slug}/tribute", ['type' => 'flower'])
         ->assertOk();
 
-    // Stored, and counted.
-    expect($memorial->tributes()->count())->toBe(1);
-    // But not part of the feed.
-    expect($memorial->tributes()->withMessage()->count())->toBe(0);
+    expect($memorial->tributes()->count())->toBe(1)
+        ->and($memorial->posts()->count())->toBe(0);
 });
 
-it('lists a tribute somebody wrote words on', function () {
+it('ignores a message sent to the tap endpoint rather than hiding words in the tally', function () {
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
+    // An old client might still send one. It must not become a tribute nobody can see:
+    // the feed is stories, and this endpoint does not make stories.
     $this->actingAs(User::factory()->create())
-        ->postJson("/m/{$memorial->slug}/tribute", [
-            'type' => 'candle',
-            'message' => 'He taught me to sail.',
-        ])
+        ->postJson("/m/{$memorial->slug}/tribute", ['type' => 'candle', 'message' => 'He taught me to sail.'])
         ->assertOk();
 
-    expect($memorial->tributes()->withMessage()->count())->toBe(1);
+    expect($memorial->tributes()->first()->message)->toBeNull();
 });
 
-it('does not count an untouched rich text editor as words', function () {
+it('counts the tap under its card', function () {
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
-    // What Quill submits when the composer is opened and nothing is typed. Without this
-    // being treated as empty, opening the form would be enough to post.
-    Tribute::create([
-        'memorial_id' => $memorial->id,
-        'type' => 'prayer',
-        'message' => '<p><br></p>',
-        'is_approved' => true,
-    ]);
+    Tribute::create(['memorial_id' => $memorial->id, 'type' => 'flower', 'is_approved' => true]);
+    Tribute::create(['memorial_id' => $memorial->id, 'type' => 'candle', 'is_approved' => true]);
 
-    expect($memorial->tributes()->withMessage()->count())->toBe(0);
-});
-
-it('promotes a tap to a post when words are added to it afterwards', function () {
-    $visitor = User::factory()->create();
-    $memorial = Memorial::factory()->create(['is_public' => true]);
-
-    $this->actingAs($visitor)->postJson("/m/{$memorial->slug}/tribute", ['type' => 'flower'])->assertOk();
-    expect($memorial->tributes()->withMessage()->count())->toBe(0);
-
-    // The page has no entry to update — reactions are not listed — so it has to be told
-    // that this one has just become a post.
-    $this->actingAs($visitor)
-        ->postJson("/m/{$memorial->slug}/tribute", ['type' => 'flower', 'message' => 'For every summer.'])
+    $this->get("/{$memorial->slug}")
         ->assertOk()
-        ->assertJson(['duplicate' => true, 'promoted' => true]);
-
-    expect($memorial->tributes()->count())->toBe(1);
-    expect($memorial->tributes()->withMessage()->count())->toBe(1);
+        ->assertViewHas('tributeCounts', fn ($counts) => $counts['total'] === 2 && $counts['flower'] === 1);
 });
 
-it('does not report a plain repeat tap as promoted', function () {
-    $visitor = User::factory()->create();
+it('shows the memorial page its stories, marked and unmarked alike, as one feed', function () {
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
-    $this->actingAs($visitor)->postJson("/m/{$memorial->slug}/tribute", ['type' => 'candle'])->assertOk();
-
-    $this->actingAs($visitor)
-        ->postJson("/m/{$memorial->slug}/tribute", ['type' => 'candle'])
-        ->assertOk()
-        ->assertJson(['duplicate' => true, 'promoted' => false]);
-});
-
-it('shows the memorial page the written tributes only', function () {
-    $memorial = Memorial::factory()->create(['is_public' => true]);
-
-    Tribute::create([
-        'memorial_id' => $memorial->id,
-        'type' => 'flower',
-        'message' => null,
-        'is_approved' => true,
+    $memorial->posts()->create([
+        'type' => 'text',
+        'content' => 'A flame for you.',
+        'tribute_type' => 'candle',
+        'is_published' => true,
     ]);
-    Tribute::create([
-        'memorial_id' => $memorial->id,
-        'type' => 'candle',
-        'message' => 'A flame for you.',
-        'is_approved' => true,
+    $memorial->posts()->create([
+        'type' => 'text',
+        'content' => 'We met on a Tuesday.',
+        'is_published' => true,
     ]);
 
     $this->get("/{$memorial->slug}")
         ->assertOk()
         ->assertSee('A flame for you.', false)
-        // The card tally counts both; the feed lists one.
-        ->assertViewHas('tributeCounts', fn ($counts) => $counts['total'] === 2)
-        ->assertViewHas('tributeWrittenCounts', fn ($counts) => $counts['total'] === 1)
-        ->assertViewHas('tributes', fn ($tributes) => $tributes->total() === 1);
+        ->assertSee('We met on a Tuesday.', false)
+        ->assertSee('lit a candle', false)
+        ->assertViewHas('stories', fn ($stories) => $stories->count() === 2)
+        ->assertViewHas('storyCounts', fn ($counts) => $counts['total'] === 2 && $counts['candle'] === 1 && $counts['story'] === 1);
+});
+
+it('keeps an unpublished story out of the feed', function () {
+    $memorial = Memorial::factory()->create(['is_public' => true]);
+
+    $memorial->posts()->create([
+        'type' => 'text',
+        'content' => 'Not ready yet.',
+        'is_published' => false,
+    ]);
+
+    $this->get("/{$memorial->slug}")
+        ->assertOk()
+        ->assertViewHas('stories', fn ($stories) => $stories->count() === 0);
 });

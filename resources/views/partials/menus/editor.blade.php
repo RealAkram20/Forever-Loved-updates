@@ -43,19 +43,19 @@
                     <form action="{{ route($routes['update'], $item) }}" method="POST" class="flex min-w-0 flex-1 flex-wrap items-end gap-x-3 gap-y-2">
                         @csrf
                         @method('PUT')
-                        <div class="min-w-[8rem] flex-1">
+                        <div class="min-w-0 flex-1 basis-32">
                             <label class="text-theme-xs text-gray-500 dark:text-gray-400">Label</label>
                             <input type="text" name="label" value="{{ $item->label }}" required
                                 class="mt-0.5 h-9 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 text-sm" />
                         </div>
-                        <div class="min-w-[10rem] flex-1">
+                        <div class="min-w-0 flex-1 basis-40">
                             <label class="text-theme-xs text-gray-500 dark:text-gray-400">Links to</label>
                             @include('pages.settings.menus.partials.route-select', [
                                 'menuRouteGroups' => $menuRouteGroups,
                                 'selectedValue' => $item->routeSelectValue(),
                             ])
                         </div>
-                        <div class="min-w-[8rem] flex-1">
+                        <div class="min-w-0 flex-1 basis-32">
                             <label class="text-theme-xs text-gray-500 dark:text-gray-400">Custom URL</label>
                             <input type="text" name="url" value="{{ $item->url }}" placeholder="/page or https://"
                                 class="mt-0.5 h-9 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 text-sm" />
@@ -109,7 +109,10 @@
                 @include('pages.settings.menus.partials.route-select', [
                     'menuRouteGroups' => $menuRouteGroups,
                     'selectedValue' => '',
-                    'selectClass' => 'mt-0.5 h-9 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 text-sm min-w-[12rem]',
+                    // Full width and shrinkable on a phone, the 12rem floor only from `sm`.
+                    // A bare `min-w-[12rem]` let this select size to its widest route label
+                    // — around 370px — which is wider than the screen it was sitting on.
+                    'selectClass' => 'mt-0.5 h-9 w-full min-w-0 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 text-sm sm:w-auto sm:min-w-[12rem]',
                 ])
             </div>
             <div>

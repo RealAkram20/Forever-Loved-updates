@@ -54,6 +54,17 @@ class MemorialCollaboratorController extends Controller
             ], 403);
         }
 
+        // How many, as well as whether. The plan sells a number of contributors, and until
+        // now only the yes/no above existed — a plan offering five could be handed fifty.
+        // Checked before validation so a family at their limit is told why rather than being
+        // walked through the form first.
+        if (! $privileged) {
+            $contributorCheck = PlanLimitsHelper::canAddContributor($memorial);
+            if (! $contributorCheck['allowed']) {
+                return response()->json(['message' => $contributorCheck['reason']], 422);
+            }
+        }
+
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],

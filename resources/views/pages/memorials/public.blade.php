@@ -19,15 +19,67 @@
 @php
     // Resolved once for the whole page: the profile card's media count and the gallery tab
     // used to each run galleryMedia() separately, paying for the same query twice per view.
-    $galleryItems = $memorial->galleryMedia()->orderBy('sort_order')->get();
+    //
+    // The gallery is now both things people gave this memorial: what the family uploaded to
+    // it, and what visitors attached to their stories. The second used to be reachable only
+    // by scrolling the story feed, so a picture someone drove across the country to share
+    // was invisible to anyone browsing photos.
+    $uploadedMedia = $memorial->galleryMedia()->orderBy('sort_order')->get();
+    $storyMedia = $memorial->storyMedia()->orderBy('sort_order')->get();
+    $galleryItems = $uploadedMedia->concat($storyMedia);
     $galleryImages = $galleryItems->where('type', 'photo')->values();
     $galleryVideos = $galleryItems->where('type', 'video')->values();
+
+    $galleryCategories = $memorial->galleryCategories;
+    $storyMediaIds = array_flip($storyMedia->pluck('id')->all());
+
+    // Which chips an item answers to. An array rather than a single key because a story's
+    // photo the family has also filed under "Childhood" genuinely belongs in both places,
+    // and picking one would hide it from whoever went looking in the other.
+    $galleryKeysFor = function ($media) use ($storyMediaIds) {
+        $keys = [];
+        if (isset($storyMediaIds[$media->id])) {
+            $keys[] = 'stories';
+        }
+        if ($media->gallery_category_id) {
+            $keys[] = (string) $media->gallery_category_id;
+        }
+
+        return $keys ?: ['uncategorised'];
+    };
+
+    $galleryCatMap = [];
+    $galleryCounts = [];
+    foreach ($galleryItems as $media) {
+        $keys = $galleryKeysFor($media);
+        $galleryCatMap[(string) $media->id] = $keys;
+        foreach ($keys as $key) {
+            $galleryCounts[$key] = ($galleryCounts[$key] ?? 0) + 1;
+        }
+    }
+
+    // An empty category is a shelf the family has not filled yet: useful to them, noise to
+    // a visitor. Curators see all of theirs so they have somewhere to file into.
+    $visibleGalleryChips = $galleryCategories
+        ->filter(fn ($category) => $canEdit || ($galleryCounts[(string) $category->id] ?? 0) > 0)
+        ->values();
+    $showStoriesChip = ($galleryCounts['stories'] ?? 0) > 0;
+    // "Other" only means something once there is something else to be other than.
+    $showUnfiledChip = ($galleryCounts['uncategorised'] ?? 0) > 0
+        && ($visibleGalleryChips->isNotEmpty() || $showStoriesChip);
+    $galleryChipTotal = $visibleGalleryChips->count() + (int) $showStoriesChip + (int) $showUnfiledChip;
+    // Only the upload button needs to name a category, and only a curator sees that button.
+    // Sending the full list to every mourner would put the names of categories they cannot
+    // even see into the page source.
+    $galleryCatNames = $canEdit ? $galleryCategories->pluck('name', 'id')->all() : [];
+    // Two chips that both show everything are a decoration, not a filter.
+    $showGalleryFilters = $canEdit || $galleryChipTotal >= 2;
 
     // Uncaptioned photos used to all read as "Photo", so a screen reader announced the same
     // word twenty times over. The position at least tells them apart.
     $galleryAlt = fn ($media, $index) => $media->caption ?: 'Gallery photo '.($index + 1);
 @endphp
-<div class="min-h-screen bg-gradient-to-b from-gray-50 via-white/80 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 glass-bg-mesh" data-memorial-slug="{{ $memorial->slug }}" data-tribute-url="{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}" data-can-edit="{{ $canEdit ? '1' : '0' }}" data-is-authenticated="{{ $isAuthenticated ? '1' : '0' }}" data-can-upload="{{ $canEdit ? '1' : '0' }}" data-scroll-tribute="{{ $scrollToTributeId ?? '' }}" data-scroll-chapter="{{ $scrollToChapterId ?? '' }}" data-deceased-first="{{ \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them') }}" data-user-initial="{{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}">
+<div class="min-h-screen bg-gradient-to-b from-gray-50 via-white/80 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 glass-bg-mesh" data-memorial-slug="{{ $memorial->slug }}" data-tribute-url="{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}" data-can-edit="{{ $canEdit ? '1' : '0' }}" data-is-authenticated="{{ $isAuthenticated ? '1' : '0' }}" data-can-upload="{{ $canEdit ? '1' : '0' }}" data-scroll-chapter="{{ $scrollToChapterId ?? '' }}" data-deceased-first="{{ \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'them') }}" data-user-initial="{{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}" data-user-name="{{ auth()->user()?->name }}">
     <x-home-header />
 
     {{-- Owner-only: unfinished paid-plan checkout --}}
@@ -68,6 +120,20 @@
                 <div class="min-w-0 flex-1">
                     <p class="text-sm font-semibold text-amber-950 dark:text-amber-50">You’re editing this memorial</p>
                     <p class="mt-0.5 text-xs leading-snug text-amber-900/85 dark:text-amber-100/85">Tap any <span class="font-medium">pencil</span> button or a <span class="font-medium">dashed outline</span> to update content. This strip is only shown to you.</p>
+
+                    {{-- The photo and the cover can only be set from this page — the memorial
+                         edit form has neither — and both controls live in the profile card,
+                         which is not rendered below `md`. Without these two, hiding that card
+                         would quietly take away the only way to change either from a phone.
+                         Shown only where that card is absent. --}}
+                    <div class="mt-2.5 flex flex-wrap items-center gap-1.5 md:hidden">
+                        <label class="memorial-cover-btn inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-amber-300 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-900/40 dark:text-amber-100">
+                            <input type="file" data-profile-photo-input accept="image/*" class="hidden" />
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            Photo
+                        </label>
+                        @include('pages.memorials.partials.cover-controls', ['variant' => 'inline'])
+                    </div>
                 </div>
             </div>
         </div>
@@ -143,8 +209,19 @@
     {{-- Three-column layout --}}
     <main class="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
         <div class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-12">
-            {{-- Column 1: Profile card (narrow) --}}
-            <aside class="md:col-span-4 lg:col-span-3">
+            {{-- Column 1: Profile card (narrow).
+
+                 Not rendered below `md`. Beside the hero it is a summary in the margin; once
+                 the columns stack it becomes the same portrait, the same name and the same
+                 years again, a screen after you have just read them — which reads as the page
+                 repeating itself rather than as a second view of it.
+
+                 What it holds that the hero does not — the full dates, the tallies, the
+                 status badges — is either on the page already or a scroll away in the feed.
+                 The two controls it *exclusively* owns, the profile photo and the cover, move
+                 into the owner's editing strip at small sizes; see the `$canEdit` banner near
+                 the top of this file. Nothing is lost, it is only somewhere better. --}}
+            <aside class="hidden md:col-span-4 md:block lg:col-span-3">
                 <div class="md:sticky md:top-16 lg:top-[4.5rem] space-y-4">
                     <div class="memorial-card-enter overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
                         {{-- Cover banner; the profile photo below overlaps its lower edge --}}
@@ -164,18 +241,7 @@
                             <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/15 to-transparent dark:from-black/35" aria-hidden="true"></div>
 
                             @if ($canEdit)
-                                <div class="absolute right-2 top-2 flex items-center gap-1.5">
-                                    <label class="memorial-cover-btn inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-gray-900 shadow-sm backdrop-blur-sm dark:bg-gray-900/90 dark:text-white">
-                                        <input type="file" id="cover-photo-input" accept="image/*" class="hidden" />
-                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        <span id="cover-photo-label">{{ $memorial->cover_photo_path ? 'Change cover' : 'Add cover' }}</span>
-                                    </label>
-                                    <button type="button" id="cover-photo-remove"
-                                        class="memorial-cover-btn rounded-lg bg-white/90 p-1.5 text-gray-700 shadow-sm backdrop-blur-sm hover:text-red-600 dark:bg-gray-900/90 dark:text-gray-300 dark:hover:text-red-400 {{ $memorial->cover_photo_path ? '' : 'hidden' }}"
-                                        title="Remove cover photo" aria-label="Remove cover photo">
-                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                    </button>
-                                </div>
+                                @include('pages.memorials.partials.cover-controls', ['variant' => 'overlay'])
                             @endif
                         </div>
 
@@ -213,7 +279,7 @@
                                     @endif
                                     @if ($canEdit)
                                         <label class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/55">
-                                            <input type="file" id="profile-photo-input" accept="image/*" class="hidden" />
+                                            <input type="file" data-profile-photo-input accept="image/*" class="hidden" />
                                             <span class="rounded-md bg-white/95 px-2 py-0.5 text-[11px] font-semibold text-gray-900 shadow-sm dark:bg-gray-900/95 dark:text-white">Photo</span>
                                         </label>
                                     @endif
@@ -269,8 +335,8 @@
                                 </div>
                                 <div class="mt-4 flex gap-6">
                                     <div class="text-center">
-                                        <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-tribute-count>{{ $tributes->total() }}</p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">Tributes</p>
+                                        <p class="text-lg font-semibold text-gray-900 dark:text-white/90" data-story-count>{{ $stories->count() }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ Str::plural('Story', $stories->count()) }}</p>
                                     </div>
                                     <div class="text-center">
                                         <p class="text-lg font-semibold text-gray-900 dark:text-white/90">{{ $galleryItems->count() }}</p>
@@ -310,23 +376,16 @@
                     <div role="tablist" aria-label="Memorial sections" class="flex overflow-x-auto border-b border-gray-100 dark:border-gray-800">
                         <button type="button" role="tab" id="tab-btn-biography" aria-controls="tab-biography" aria-selected="true" tabindex="0" data-tab-panel="biography" class="memorial-tab-btn min-w-fit flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 border-b-2 border-brand-500 bg-brand-50/50 dark:bg-brand-500/10">Bio</button>
                         <button type="button" role="tab" id="tab-btn-gallery" aria-controls="tab-gallery" aria-selected="false" tabindex="-1" data-tab-panel="gallery" class="memorial-tab-btn min-w-fit flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Gallery</button>
-                        <button type="button" role="tab" id="tab-btn-tributes" aria-controls="tab-tributes" aria-selected="false" tabindex="-1" data-tab-panel="tributes" class="memorial-tab-btn min-w-fit flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Tributes &amp; Stories</button>
+                        <button type="button" role="tab" id="tab-btn-stories" aria-controls="tab-stories" aria-selected="false" tabindex="-1" data-tab-panel="stories" class="memorial-tab-btn min-w-fit flex-1 whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border-b-2 border-transparent">Stories/Tributes</button>
                     </div>
 
                     @php
-                        $lifePostsForPreview = $memorial->posts->where('is_published', true)->sortByDesc('created_at')->values()->take(3);
-                        $lifePostsTotal = $memorial->posts->where('is_published', true)->count();
-                        $previewTributes = collect();
-                        if (isset($highlightTribute)) {
-                            $previewTributes->push($highlightTribute);
-                        }
-                        foreach ($tributes as $t) {
-                            if ($previewTributes->count() >= 3) {
-                                break;
-                            }
-                            $previewTributes->push($t);
-                        }
-                        $tributesTotalCount = $tributes->total() + (isset($highlightTribute) ? 1 : 0);
+                        // One preview under the biography, not two. The Bio tab used to end
+                        // with a Life Stories block and a Tributes block, which was the same
+                        // split the tab below had — and it read as two half-empty walls
+                        // rather than one wall.
+                        $storiesForPreview = $stories->take(3);
+                        $storiesTotal = $stories->count();
                     @endphp
 
                     {{-- Tab: Biography (first) --}}
@@ -358,11 +417,11 @@
                             @endif
                         </div>
 
-                        @if ($lifePostsTotal > 0)
+                        @if ($storiesTotal > 0)
                             <div class="mt-8 border-t border-gray-100 pt-8 dark:border-gray-800">
-                                <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white/90">Life Stories <span class="font-normal text-gray-500 dark:text-gray-400">({{ $lifePostsTotal }})</span></h3>
+                                <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white/90">Stories <span class="font-normal text-gray-500 dark:text-gray-400">({{ $storiesTotal }})</span></h3>
                                 <div class="flex flex-col gap-4">
-                                    @foreach ($lifePostsForPreview as $post)
+                                    @foreach ($storiesForPreview as $post)
                                         <div class="min-w-0">
                                             @include('pages.memorials.partials.life-post-article', [
                                                 'post' => $post,
@@ -375,27 +434,7 @@
                                     @endforeach
                                 </div>
                                 <div class="mt-4">
-                                    <button type="button" data-switch-tab="life" class="btn btn-secondary btn-sm btn-block w-full">View all {{ $lifePostsTotal }} {{ Str::plural('item', $lifePostsTotal) }}</button>
-                                </div>
-                            </div>
-                        @endif
-
-                        @if ($tributesTotalCount > 0)
-                            <div class="mt-8 border-t border-gray-100 pt-8 dark:border-gray-800">
-                                <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white/90">Tributes <span class="font-normal text-gray-500 dark:text-gray-400">({{ $tributesTotalCount }})</span></h3>
-                                <div class="flex flex-col gap-4" x-data="{ tributeFilter: 'all' }">
-                                    @foreach ($previewTributes as $tribute)
-                                        <div class="min-w-0">
-                                            @include('pages.memorials.partials.tribute-item', [
-                                                'tribute' => $tribute,
-                                                'shareUrl' => route('memorial.tribute.public', ['memorial_slug' => $memorial->slug, 'share_id' => $tribute->share_id]),
-                                                'tributeEmbedPreview' => true,
-                                            ])
-                                        </div>
-                                    @endforeach
-                                </div>
-                                <div class="mt-4">
-                                    <button type="button" data-switch-tab="tributes" class="btn btn-secondary btn-sm btn-block w-full">View all {{ $tributesTotalCount }} {{ Str::plural('item', $tributesTotalCount) }}</button>
+                                    <button type="button" data-switch-tab="stories" class="btn btn-secondary btn-sm btn-block w-full">Read all {{ $storiesTotal }} {{ Str::plural('story', $storiesTotal) }}</button>
                                 </div>
                             </div>
                         @endif
@@ -406,7 +445,7 @@
                                 <h3 class="mb-4 text-base font-semibold text-gray-900 dark:text-white/90">Gallery <span class="font-normal text-gray-500 dark:text-gray-400">({{ $galleryImageCount }})</span></h3>
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach ($galleryImages->take(9) as $previewIdx => $media)
-                                        <button type="button" data-gallery-preview-lightbox="{{ $previewIdx }}" class="group relative aspect-square overflow-hidden rounded-lg bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-gray-700">
+                                        <button type="button" data-gallery-preview-lightbox="{{ $media->id }}" class="group relative aspect-square overflow-hidden rounded-lg bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-gray-700">
                                             <img src="{{ $media->url }}" alt="{{ $galleryAlt($media, $previewIdx) }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
                                             <span class="absolute inset-0 bg-black/0 transition group-hover:bg-black/10" aria-hidden="true"></span>
                                         </button>
@@ -424,19 +463,60 @@
                     <div id="tab-gallery" role="tabpanel" aria-labelledby="tab-btn-gallery" tabindex="0" class="memorial-tab-panel hidden p-4 sm:p-6"
                         x-data="{
                             subTab: 'images',
+                            activeCat: 'all',
                             lightboxOpen: false,
                             currentIndex: 0,
                             {{-- `caption` is the real caption and may be empty; `alt` always has a
                                  usable label. Keeping them apart stops the alt-text fallback from
                                  being rendered as though the family had written it. --}}
-                            images: {{ Js::from($galleryImages->map(fn($m, $i) => ['url' => $m->url, 'caption' => $m->caption ?: '', 'alt' => $m->caption ?: 'Gallery photo '.($i + 1)])->toArray()) }},
+                            images: {{ Js::from($galleryImages->map(fn($m, $i) => ['id' => $m->id, 'url' => $m->url, 'caption' => $m->caption ?: '', 'alt' => $m->caption ?: 'Gallery photo '.($i + 1)])->toArray()) }},
+                            {{-- Videos are rendered as Blade DOM, not from here. This carries their
+                                 ids only, so the chip counts and the Videos tab can be filtered by
+                                 the same rules as the photos without duplicating the player state. --}}
+                            videos: {{ Js::from($galleryVideos->pluck('id')->map(fn($id) => ['id' => $id])->toArray()) }},
+                            {{-- One map, media id → the chips it answers to. The grid cells ask it
+                                 rather than carrying their own copy, so filing a photo somewhere new
+                                 updates the cell, the counts and the lightbox from a single write. --}}
+                            catMap: {{ Js::from($galleryCatMap) }},
+                            catNames: {{ Js::from($galleryCatNames) }},
+                            {{-- Uploading while a category is selected files the photo there. Said
+                                 out loud on the button, because otherwise the picture you just
+                                 chose lands outside the filter and looks like it failed. --}}
+                            get uploadTargetName() { return this.catNames[this.activeCat] || '' },
                             playing: false,
                             speed: 3000,
                             interval: null,
-                            get currentImage() { return this.images[this.currentIndex] || {} },
-                            get total() { return this.images.length },
+                            matches(id) {
+                                if (this.activeCat === 'all') return true;
+                                return (this.catMap[id] || []).includes(this.activeCat);
+                            },
+                            get visibleImages() {
+                                return this.activeCat === 'all' ? this.images : this.images.filter(i => this.matches(i.id));
+                            },
+                            get visibleVideoCount() {
+                                return this.activeCat === 'all' ? this.videos.length : this.videos.filter(v => this.matches(v.id)).length;
+                            },
+                            catCount(key) {
+                                if (key === 'all') return this.images.length + this.videos.length;
+                                return Object.values(this.catMap).filter(keys => keys.includes(key)).length;
+                            },
+                            selectCat(key) {
+                                if (this.activeCat === key) return;
+                                this.activeCat = key;
+                                {{-- The slideshow was playing through a set that no longer exists;
+                                     leaving it running would advance through the wrong photos. --}}
+                                this.stopSlideshow();
+                                this.currentIndex = 0;
+                            },
+                            get currentImage() { return this.visibleImages[this.currentIndex] || {} },
+                            get total() { return this.visibleImages.length },
                             lastFocused: null,
-                            openLightbox(idx) {
+                            {{-- Addressed by media id, not grid position. Position was fragile even
+                                 before filtering — every delete had to renumber every cell after it —
+                                 and a filtered grid has no stable position to renumber. --}}
+                            openLightbox(mediaId) {
+                                const idx = this.visibleImages.findIndex(i => i.id === mediaId);
+                                if (idx === -1) return;
                                 this.currentIndex = idx;
                                 this.lightboxOpen = true;
                                 document.body.style.overflow = 'hidden';
@@ -495,12 +575,48 @@
                                     this.interval = setInterval(() => this.next(), this.speed);
                                 }
                             },
-                            addImage(url, caption) {
+                            addImage(id, url, caption, keys) {
+                                this.catMap[id] = keys;
                                 this.images.push({
+                                    id,
                                     url,
                                     caption: caption || '',
                                     alt: caption || ('Gallery photo ' + (this.images.length + 1)),
                                 });
+                            },
+                            addVideo(id, keys) {
+                                this.catMap[id] = keys;
+                                this.videos.push({ id });
+                            },
+                            removeMedia(id) {
+                                delete this.catMap[id];
+                                this.images = this.images.filter(i => i.id !== id);
+                                this.videos = this.videos.filter(v => v.id !== id);
+                                if (this.currentIndex >= this.total) this.currentIndex = 0;
+                            },
+                            setCaption(id, caption) {
+                                const image = this.images.find(i => i.id === id);
+                                if (!image) return;
+                                image.caption = caption || '';
+                                image.alt = caption || ('Gallery photo ' + (this.images.indexOf(image) + 1));
+                            },
+                            {{-- A deleted category releases its photos rather than taking them
+                                 with it, so anything filed only there becomes unfiled. --}}
+                            unfileCat(key) {
+                                Object.keys(this.catMap).forEach(id => {
+                                    const rest = this.catMap[id].filter(k => k !== key);
+                                    if (rest.length !== this.catMap[id].length) {
+                                        this.catMap[id] = rest.length ? rest : ['uncategorised'];
+                                    }
+                                });
+                                if (this.activeCat === key) this.selectCat('all');
+                            },
+                            setCats(id, keys) {
+                                this.catMap[id] = keys;
+                                {{-- Filing the photo you were looking at into somewhere else can
+                                     empty the set under you. Fall back rather than strand the
+                                     lightbox on an index past the end. --}}
+                                if (this.currentIndex >= this.total) this.currentIndex = 0;
                             }
                         }"
                         @keydown.escape.window="if (lightboxOpen) closeLightbox()"
@@ -513,10 +629,10 @@
                                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Photos and videos shared in memory.</p>
                             </div>
                             @if ($canEdit)
-                                <label class="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-white/5">
+                                <label class="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium transition-colors duration-150 hover:bg-gray-50 active:scale-[0.97] motion-reduce:active:scale-100 dark:border-gray-600 dark:hover:bg-white/5">
                                     <input type="file" id="gallery-upload" accept="image/*,video/*" class="hidden" />
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                    Upload
+                                    <span>Upload<span x-show="uploadTargetName" x-cloak x-text="' to ' + uploadTargetName"></span></span>
                                 </label>
                             @endif
                         </div>
@@ -535,17 +651,65 @@
                             </div>
                         @endif
 
+                        {{-- Category chips.
+
+                             Filtering is instant — no transition on the grid. A photo grid is
+                             the one place where animating the change actively hurts: two hundred
+                             cells reflowing at once reads as jank however it is eased, and the
+                             chip's own press feedback already confirms the tap was heard. --}}
+                        @if ($showGalleryFilters)
+                            <div class="mt-4 flex items-center gap-2">
+                                <div data-category-chips class="-mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter gallery by category">
+                                    @php
+                                        $chipClass = 'shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97] motion-reduce:active:scale-100';
+                                        $chipOn = 'border-brand-500 bg-brand-500 text-white';
+                                        $chipOff = 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-white';
+                                    @endphp
+                                    <button type="button" @click="selectCat('all')" :aria-pressed="activeCat === 'all'"
+                                        :class="activeCat === 'all' ? '{{ $chipOn }}' : '{{ $chipOff }}'"
+                                        class="{{ $chipClass }}">
+                                        All <span class="opacity-60" x-text="catCount('all')"></span>
+                                    </button>
+                                    @foreach ($visibleGalleryChips as $category)
+                                        <button type="button" data-category-chip="{{ $category->id }}" @click="selectCat('{{ $category->id }}')" :aria-pressed="activeCat === '{{ $category->id }}'"
+                                            :class="activeCat === '{{ $category->id }}' ? '{{ $chipOn }}' : '{{ $chipOff }}'"
+                                            class="{{ $chipClass }}">
+                                            <span data-category-chip-name>{{ $category->name }}</span> <span class="opacity-60" x-text="catCount('{{ $category->id }}')"></span>
+                                        </button>
+                                    @endforeach
+                                    @if ($showStoriesChip)
+                                        <button type="button" @click="selectCat('stories')" :aria-pressed="activeCat === 'stories'"
+                                            :class="activeCat === 'stories' ? '{{ $chipOn }}' : '{{ $chipOff }}'"
+                                            class="{{ $chipClass }}" title="Photos and videos people shared with their stories">
+                                            From Stories <span class="opacity-60" x-text="catCount('stories')"></span>
+                                        </button>
+                                    @endif
+                                    <button type="button" data-chip-unfiled x-show="catCount('uncategorised') > 0" x-cloak @click="selectCat('uncategorised')" :aria-pressed="activeCat === 'uncategorised'"
+                                        :class="activeCat === 'uncategorised' ? '{{ $chipOn }}' : '{{ $chipOff }}'"
+                                        class="{{ $chipClass }} {{ $showUnfiledChip ? '' : 'hidden' }}">
+                                        Other <span class="opacity-60" x-text="catCount('uncategorised')"></span>
+                                    </button>
+                                </div>
+                                @if ($canEdit)
+                                    <button type="button" data-category-manage
+                                        class="shrink-0 rounded-full border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors duration-150 hover:border-brand-400 hover:text-brand-600 active:scale-[0.97] motion-reduce:active:scale-100 dark:border-gray-600 dark:text-gray-400 dark:hover:border-brand-400 dark:hover:text-brand-400">
+                                        Categories
+                                    </button>
+                                @endif
+                            </div>
+                        @endif
+
                         {{-- Sub-tabs: Images / Videos --}}
-                        <div class="mt-4 flex gap-1 rounded-lg bg-gray-100 dark:bg-white/[0.04] p-1">
+                        <div class="mt-3 flex gap-1 rounded-lg bg-gray-100 dark:bg-white/[0.04] p-1">
                             <button type="button" @click="subTab = 'images'"
                                 :class="subTab === 'images' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'"
                                 class="flex-1 rounded-md px-4 py-2 text-sm font-medium transition">
-                                Images <span class="ml-1 text-xs opacity-60" x-text="'(' + images.length + ')'"></span>
+                                Images <span class="ml-1 text-xs opacity-60" x-text="'(' + visibleImages.length + ')'"></span>
                             </button>
                             <button type="button" @click="subTab = 'videos'"
                                 :class="subTab === 'videos' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'"
                                 class="flex-1 rounded-md px-4 py-2 text-sm font-medium transition">
-                                Videos <span class="ml-1 text-xs opacity-60">({{ $galleryVideos->count() }})</span>
+                                Videos <span class="ml-1 text-xs opacity-60" x-text="'(' + visibleVideoCount + ')'"></span>
                             </button>
                         </div>
 
@@ -553,8 +717,9 @@
                         <div x-show="subTab === 'images'" x-cloak class="mt-4">
                             <div class="grid grid-cols-2 gap-2 sm:grid-cols-3" id="gallery-grid-images">
                                 @foreach ($galleryImages as $idx => $media)
-                                    <div class="group/img relative aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700" data-gallery-item data-media-id="{{ $media->id }}" data-media-type="photo" data-gallery-index="{{ $idx }}">
-                                        <button type="button" @click="openLightbox({{ $idx }})"
+                                    @php $isStoryMedia = isset($storyMediaIds[$media->id]); @endphp
+                                    <div class="group/img relative aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700" x-show="matches({{ $media->id }})" data-gallery-item data-media-id="{{ $media->id }}" data-media-type="photo" @if ($isStoryMedia) data-from-story @endif>
+                                        <button type="button" @click="openLightbox({{ $media->id }})"
                                             class="block h-full w-full focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
                                             <img src="{{ $media->url }}" alt="{{ $galleryAlt($media, $idx) }}"
                                                 class="h-full w-full object-cover transition duration-300 group-hover/img:scale-105" loading="lazy" />
@@ -565,23 +730,36 @@
                                         </button>
                                         @if ($canEdit)
                                             <div class="absolute top-1 right-1 z-10 flex items-center gap-1">
-                                                <button type="button" data-gallery-edit-caption="{{ $media->id }}" data-current-caption="{{ e($media->caption ?? '') }}"
-                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-brand-500 transition" title="Edit caption">
+                                                {{-- The caption is not passed through e() first: Blade's echo
+                                                     already escapes it, and the two together double-encoded the
+                                                     attribute — opening the editor on "Mum's 70th" put the
+                                                     literal text "Mum&#039;s 70th" in the input, and saving
+                                                     wrote that back as the caption. --}}
+                                                <button type="button" data-gallery-edit-caption="{{ $media->id }}" data-current-caption="{{ $media->caption ?? '' }}" data-current-category="{{ $media->gallery_category_id }}"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-brand-500 active:scale-[0.97] motion-reduce:active:scale-100" title="Edit photo">
                                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                                 </button>
-                                                <button type="button" data-gallery-delete="{{ $media->id }}"
-                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500 transition" title="Delete">
-                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                </button>
+                                                {{-- No delete on a story's photo: the story is still showing it,
+                                                     and removing the file here would leave a hole in what
+                                                     someone wrote. It goes when the story goes. --}}
+                                                @unless ($isStoryMedia)
+                                                    <button type="button" data-gallery-delete="{{ $media->id }}"
+                                                        class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-red-500 active:scale-[0.97] motion-reduce:active:scale-100" title="Delete">
+                                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                @endunless
                                             </div>
                                         @endif
                                     </div>
                                 @endforeach
                             </div>
-                            <div id="gallery-images-empty" class="{{ $galleryImages->isEmpty() ? '' : 'hidden' }}">
+                            {{-- Visibility is Alpine's alone now. A Blade `hidden` class here would
+                                 outrank x-show's inline style and keep the empty state hidden when a
+                                 filter emptied the grid. --}}
+                            <div id="gallery-images-empty" x-show="visibleImages.length === 0" x-cloak>
                                 <div class="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center">
                                     <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                    <p class="mt-2 text-gray-500 dark:text-gray-400">No photos yet.</p>
+                                    <p class="mt-2 text-gray-500 dark:text-gray-400" x-text="activeCat === 'all' ? 'No photos yet.' : 'No photos in this category yet.'">No photos yet.</p>
                                 </div>
                             </div>
                         </div>
@@ -590,43 +768,96 @@
                         <div x-show="subTab === 'videos'" x-cloak class="mt-4">
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2" id="gallery-grid-videos">
                                 @foreach ($galleryVideos as $media)
-                                    <div class="group/vid relative" data-gallery-item data-media-id="{{ $media->id }}" data-media-type="video">
+                                    @php $isStoryMedia = isset($storyMediaIds[$media->id]); @endphp
+                                    <div class="group/vid relative" x-show="matches({{ $media->id }})" data-gallery-item data-media-id="{{ $media->id }}" data-media-type="video" @if ($isStoryMedia) data-from-story @endif>
                                         <x-media.video-player :src="$media->url" :caption="$media->caption" />
                                         @if ($canEdit)
                                             <div class="absolute top-2 right-2 z-20 flex items-center gap-1">
-                                                <button type="button" data-gallery-edit-caption="{{ $media->id }}" data-current-caption="{{ e($media->caption ?? '') }}"
-                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-brand-500 transition" title="Edit caption">
+                                                {{-- The caption is not passed through e() first: Blade's echo
+                                                     already escapes it, and the two together double-encoded the
+                                                     attribute — opening the editor on "Mum's 70th" put the
+                                                     literal text "Mum&#039;s 70th" in the input, and saving
+                                                     wrote that back as the caption. --}}
+                                                <button type="button" data-gallery-edit-caption="{{ $media->id }}" data-current-caption="{{ $media->caption ?? '' }}" data-current-category="{{ $media->gallery_category_id }}"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-brand-500 active:scale-[0.97] motion-reduce:active:scale-100" title="Edit video">
                                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                                 </button>
-                                                <button type="button" data-gallery-delete="{{ $media->id }}"
-                                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500 transition" title="Delete">
-                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                </button>
+                                                @unless ($isStoryMedia)
+                                                    <button type="button" data-gallery-delete="{{ $media->id }}"
+                                                        class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-red-500 active:scale-[0.97] motion-reduce:active:scale-100" title="Delete">
+                                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                @endunless
                                             </div>
                                         @endif
                                     </div>
                                 @endforeach
                             </div>
-                            <div id="gallery-videos-empty" class="{{ $galleryVideos->isEmpty() ? '' : 'hidden' }}">
+                            <div id="gallery-videos-empty" x-show="visibleVideoCount === 0" x-cloak>
                                 <div class="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center">
                                     <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                                    <p class="mt-2 text-gray-500 dark:text-gray-400">No videos yet.</p>
+                                    <p class="mt-2 text-gray-500 dark:text-gray-400" x-text="activeCat === 'all' ? 'No videos yet.' : 'No videos in this category yet.'">No videos yet.</p>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- Caption edit popover --}}
+                        {{-- Caption + category editor --}}
                         @if ($canEdit)
                             <div id="gallery-caption-editor" role="dialog" aria-modal="true" aria-labelledby="gallery-caption-title" class="hidden fixed inset-0 z-[99998] flex items-center justify-center bg-black/50 backdrop-blur-sm">
                                 <div class="mx-4 w-full max-w-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl">
                                     <div class="p-5">
-                                        <h3 id="gallery-caption-title" class="text-base font-semibold text-gray-900 dark:text-white">Edit caption</h3>
-                                        <input type="text" id="gallery-caption-input" placeholder="Enter caption..." class="mt-3 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                        <h3 id="gallery-caption-title" class="text-base font-semibold text-gray-900 dark:text-white">Edit photo</h3>
+                                        <label for="gallery-caption-input" class="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">Caption</label>
+                                        <input type="text" id="gallery-caption-input" placeholder="Enter caption..." class="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                        <label for="gallery-category-select" class="mt-4 block text-xs font-medium text-gray-500 dark:text-gray-400">Category</label>
+                                        <select id="gallery-category-select" class="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                            <option value="">Not filed</option>
+                                            @foreach ($galleryCategories as $category)
+                                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <p id="gallery-caption-story-note" class="mt-2 hidden text-xs text-gray-500 dark:text-gray-400">
+                                            This came from a story, so it stays under <span class="font-medium">From Stories</span> as well.
+                                        </p>
                                         <input type="hidden" id="gallery-caption-media-id" />
                                     </div>
                                     <div class="flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-700 px-5 py-3">
                                         <button type="button" id="gallery-caption-cancel" class="btn btn-secondary btn-md">Cancel</button>
                                         <button type="button" id="gallery-caption-save" class="btn btn-primary btn-md">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Category manager --}}
+                            <div id="gallery-category-editor" role="dialog" aria-modal="true" aria-labelledby="gallery-category-title" class="hidden fixed inset-0 z-[99998] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                                <div class="mx-4 w-full max-w-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl">
+                                    <div class="p-5">
+                                        <h3 id="gallery-category-title" class="text-base font-semibold text-gray-900 dark:text-white">Gallery categories</h3>
+                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">How visitors browse the photos. Deleting one keeps its photos — they just go back to unfiled.</p>
+
+                                        <ul id="gallery-category-list" class="mt-4 space-y-1.5">
+                                            @foreach ($galleryCategories as $category)
+                                                <li class="flex items-center gap-2" data-category-row="{{ $category->id }}">
+                                                    <input type="text" value="{{ $category->name }}" maxlength="60" aria-label="Category name" data-category-name
+                                                        class="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-600 dark:bg-gray-900" />
+                                                    <button type="button" data-category-delete="{{ $category->id }}" title="Delete category"
+                                                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors duration-150 hover:bg-red-50 hover:text-red-500 active:scale-[0.97] motion-reduce:active:scale-100 dark:hover:bg-red-500/10">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                        <p id="gallery-category-empty" class="mt-4 text-sm text-gray-500 dark:text-gray-400 {{ $galleryCategories->isEmpty() ? '' : 'hidden' }}">No categories yet.</p>
+
+                                        <div class="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4 dark:border-gray-700">
+                                            <input type="text" id="gallery-category-new" maxlength="60" placeholder="e.g. School Life" aria-label="New category name"
+                                                class="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-600 dark:bg-gray-900" />
+                                            <button type="button" data-category-add class="btn btn-secondary btn-sm shrink-0">Add</button>
+                                        </div>
+                                        <p id="gallery-category-error" class="mt-2 hidden text-xs text-red-500"></p>
+                                    </div>
+                                    <div class="flex items-center justify-end border-t border-gray-100 px-5 py-3 dark:border-gray-700">
+                                        <button type="button" id="gallery-category-done" class="btn btn-primary btn-md">Done</button>
                                     </div>
                                 </div>
                             </div>
@@ -709,7 +940,11 @@
                                 {{-- Thumbnail strip --}}
                                 <div class="border-t border-white/10 px-4 py-3" x-show="total > 1">
                                     <div class="flex justify-center gap-1.5 overflow-x-auto">
-                                        <template x-for="(img, i) in images" :key="i">
+                                        {{-- The strip has to show the same set the arrows walk, or the
+                                             highlighted thumbnail stops matching the photo on screen.
+                                             Keyed by id so filtering reuses cells instead of rebuilding
+                                             every thumbnail. --}}
+                                        <template x-for="(img, i) in visibleImages" :key="img.id">
                                             <button type="button" @click="currentIndex = i; if (playing) { stopSlideshow(); startSlideshow(); }"
                                                 :class="i === currentIndex ? 'ring-2 ring-white opacity-100' : 'opacity-50 hover:opacity-80'"
                                                 :aria-label="'Show ' + img.alt"
@@ -730,48 +965,26 @@
                         </template>
                     </div>
 
-                    {{-- Tab: Tributes & Stories --}}
+                    {{-- Tab: Stories.
+
+                         There were two sub-tabs in here — Tributes and Stories — and a
+                         visitor had to pick one before they could say anything. They were
+                         never two things: both were somebody writing something. One feed
+                         now, and what used to be the choice of tab is an optional marker
+                         on what you write. --}}
                     @php
-                        $empty = ['flower' => 0, 'candle' => 0, 'prayer' => 0, 'total' => 0];
-                        // Two tallies, deliberately different. $tc counts every tap and sits
-                        // under the one-tap cards; $tw counts only the tributes somebody wrote
-                        // something on, which is what the feed below actually lists.
-                        $tc = $tributeCounts ?? $empty;
-                        $tw = $tributeWrittenCounts ?? $empty;
+                        $tc = $tributeCounts ?? ['flower' => 0, 'candle' => 0, 'prayer' => 0, 'total' => 0];
                     @endphp
-                    <div id="tab-tributes" role="tabpanel" aria-labelledby="tab-btn-tributes" tabindex="0"
-                        class="memorial-tab-panel hidden p-4 sm:p-6"
-                        x-data="{ tributeFilter: 'all', pane: 'tributes' }">
-
-                        {{-- Two halves of the same wall: what people left, and what people wrote. Sub-tabs
-                             rather than one feed, because a one-tap flower and a written chapter are wildly
-                             different sizes and interleaving them buries the long ones. --}}
-                        <div class="mb-5 flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-white/[0.06]" role="tablist" aria-label="Tributes and stories">
-                            <button type="button" role="tab" @click="pane = 'tributes'"
-                                :aria-selected="pane === 'tributes'" :tabindex="pane === 'tributes' ? 0 : -1"
-                                :class="pane === 'tributes' ? 'bg-white text-gray-900 shadow-sm dark:bg-white/10 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'"
-                                class="flex-1 rounded-md px-4 py-2 text-sm font-medium transition">
-                                Tributes <span class="tabular-nums opacity-60" data-count-all>{{ $tw['total'] }}</span>
-                            </button>
-                            <button type="button" role="tab" @click="pane = 'stories'"
-                                :aria-selected="pane === 'stories'" :tabindex="pane === 'stories' ? 0 : -1"
-                                :class="pane === 'stories' ? 'bg-white text-gray-900 shadow-sm dark:bg-white/10 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'"
-                                class="flex-1 rounded-md px-4 py-2 text-sm font-medium transition">
-                                Stories <span class="tabular-nums opacity-60">{{ $memorial->posts->where('is_published', true)->count() }}</span>
-                            </button>
-                        </div>
-
-                        <div x-show="pane === 'tributes'" x-cloak data-pane="tributes">
-                            @include('pages.memorials.partials.tributes-pane')
-                        </div>
-                        <div x-show="pane === 'stories'" x-cloak data-pane="stories">
-                            @include('pages.memorials.partials.stories-pane')
-                        </div>
+                    <div id="tab-stories" role="tabpanel" aria-labelledby="tab-btn-stories" tabindex="0"
+                        class="memorial-tab-panel hidden p-4 sm:p-6">
+                        @include('pages.memorials.partials.stories-pane')
                     </div>
                 </div>
             </section>
 
-            {{-- Column 3: Tribute actions + Views & Shares stats --}}
+            {{-- Column 3, in the order a visitor meets it: the gesture, then the two asks
+                 that follow from it (spread it, stay with it), then the figures — which are
+                 the family's to watch and nobody else's business to act on. --}}
             <aside class="md:col-span-12 lg:col-span-3">
                 <div class="lg:sticky lg:top-[4.5rem] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6">
 
@@ -828,7 +1041,246 @@
                                     <p class="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">{{ $quotaInfo['tributes']['current'] }}/{{ $quotaInfo['tributes']['max'] }} tributes used</p>
                                 @endif
                             @endif
+
+                            {{-- Appears only after a tap lands, and only once. The gesture is
+                                 complete on its own — nobody owes the page a paragraph — so
+                                 this is an offer sitting quietly under the cards rather than
+                                 a prompt thrown in front of the person who just made it.
+                                 Taking it opens the composer with that marker already on. --}}
+                            <button type="button" id="tribute-say-more" data-marker=""
+                                class="tribute-say-more mt-3 hidden w-full rounded-lg border border-dashed border-brand-300 px-3 py-2 text-xs font-medium text-brand-600 dark:border-brand-500/60 dark:text-brand-400">
+                                <span data-say-more-label>Add a few words</span>
+                            </button>
                     </div>
+
+                    {{-- Spreading it, and staying with it.
+
+                         Both are things a visitor does once and then leaves, and both were
+                         stranded: the invite was a footer bolted onto the statistics card,
+                         and Stay Updated sat at the very bottom of the column. Views and
+                         Shares is a figure for the family to watch; these two are asks of
+                         the reader, so they belong together and directly under the gesture
+                         they follow from. --}}
+                    @if (($quotaInfo['share_memories'] ?? false) || ($quotaInfo['guest_notifications'] ?? false))
+                        <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
+                                @if ($quotaInfo['share_memories'] ?? false)
+                                    @php $deceasedFirstName = \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'their'); @endphp
+                                    <div class="p-4">
+                                        <button type="button" id="invite-share-btn" data-share-url="{{ url()->current() }}" aria-expanded="false" aria-controls="invite-share-dropdown" class="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-brand-400 bg-brand-50/30 px-3 py-2 text-xs font-medium text-brand-600 transition hover:bg-brand-100 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
+                                            <svg class="h-4 w-4 shrink-0 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                                            <span class="text-left leading-snug">Invite {{ $deceasedFirstName }}'s family and friends</span>
+                                        </button>
+                                        {{-- The same channels a story offers. Inviting the family is
+                                             the single most useful thing anyone does on this page,
+                                             and it was the one share control that could only copy a
+                                             link — leaving the person most likely to spread the
+                                             memorial to paste it somewhere themselves.
+
+                                             `data-share-dropdown` is what the shared click handlers
+                                             key on, so this now closes when another one opens and
+                                             when a channel is picked, like every other. --}}
+                                        <div id="invite-share-dropdown" data-share-dropdown class="mt-2 hidden rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                            @include('pages.memorials.partials.share-dropdown', ['shareUrl' => url()->current()])
+                                        </div>
+                                    </div>
+                                @endif
+                        @if ($quotaInfo['guest_notifications'] ?? false)
+                        <div class="{{ ($quotaInfo['share_memories'] ?? false) ? 'border-t border-gray-100 dark:border-gray-800' : '' }}"
+                             x-data="{
+                                subscribed: false,
+                                loading: true,
+                                submitting: false,
+                                showForm: false,
+                                guestName: '',
+                                guestEmail: '',
+                                subName: '',
+                                notifyLifeChapters: true,
+                                notifyTributes: true,
+                                isAuth: {{ $isAuthenticated ? 'true' : 'false' }},
+                                baseUrl: '{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}'.replace(/\/tribute$/, ''),
+                                csrf: document.querySelector('meta[name=csrf-token]')?.content,
+
+                                init() {
+                                    if (this.isAuth) {
+                                        this._check();
+                                    } else {
+                                        this.loading = false;
+                                    }
+                                },
+
+                                _fetchOpts(method, body) {
+                                    return {
+                                        method,
+                                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                                        body: body ? JSON.stringify(body) : null,
+                                    };
+                                },
+
+                                _check(email) {
+                                    const url = this.baseUrl + '/subscribe/check' + (email ? '?email=' + encodeURIComponent(email) : '');
+                                    fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            this.loading = false;
+                                            if (data.subscribed) {
+                                                this.subscribed = true;
+                                                this.subName = data.subscription.name;
+                                                this.notifyLifeChapters = data.subscription.notify_life_chapters;
+                                                this.notifyTributes = data.subscription.notify_tributes;
+                                            }
+                                        })
+                                        .catch(() => { this.loading = false; });
+                                },
+
+                                handleSubscribe() {
+                                    if (this.isAuth) {
+                                        this._doSubscribe();
+                                    } else {
+                                        this.showForm = true;
+                                        this.$nextTick(() => this.$refs.subNameInput?.focus());
+                                    }
+                                },
+
+                                submitGuestForm() {
+                                    if (!this.guestName.trim() || !this.guestEmail.trim()) return;
+                                    this._doSubscribe(this.guestName.trim(), this.guestEmail.trim());
+                                },
+
+                                _doSubscribe(name, email) {
+                                    this.submitting = true;
+                                    const body = { notify_life_chapters: this.notifyLifeChapters, notify_tributes: this.notifyTributes };
+                                    if (name) body.guest_name = name;
+                                    if (email) body.guest_email = email;
+                                    fetch(this.baseUrl + '/subscribe', this._fetchOpts('POST', body))
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            this.submitting = false;
+                                            if (data.success) {
+                                                this.subscribed = true;
+                                                this.subName = data.subscription.name;
+                                                this.notifyLifeChapters = data.subscription.notify_life_chapters;
+                                                this.notifyTributes = data.subscription.notify_tributes;
+                                                this.showForm = false;
+                                                if (email) this.guestEmail = email;
+                                            } else if (data.error) {
+                                                $toast('error', data.error);
+                                            }
+                                        })
+                                        .catch(() => { this.submitting = false; $toast('error', 'Something went wrong.'); });
+                                },
+
+                                updatePrefs() {
+                                    const body = { notify_life_chapters: this.notifyLifeChapters, notify_tributes: this.notifyTributes };
+                                    if (!this.isAuth && this.guestEmail) body.guest_email = this.guestEmail;
+                                    fetch(this.baseUrl + '/subscribe', this._fetchOpts('PUT', body));
+                                },
+
+                                unsubscribe() {
+                                    const body = {};
+                                    if (!this.isAuth && this.guestEmail) body.guest_email = this.guestEmail;
+                                    fetch(this.baseUrl + '/subscribe', this._fetchOpts('DELETE', body))
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                this.subscribed = false;
+                                                this.subName = '';
+                                                this.notifyLifeChapters = true;
+                                                this.notifyTributes = true;
+                                            }
+                                        });
+                                }
+                             }" x-cloak>
+                            <div class="p-4">
+                                {{-- Loading --}}
+                                <template x-if="loading">
+                                    <div class="flex items-center justify-center py-4">
+                                        <svg class="h-5 w-5 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+                                    </div>
+                                </template>
+
+                                {{-- Not subscribed --}}
+                                <template x-if="!loading && !subscribed && !showForm">
+                                    <div>
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/20">
+                                                <svg class="h-5 w-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <h3 class="font-semibold text-gray-900 dark:text-white/90 text-sm">Stay Updated</h3>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">Get notified about new stories &amp; tributes</p>
+                                            </div>
+                                        </div>
+                                        <button @click="handleSubscribe()" class="btn btn-primary btn-md btn-block w-full mt-4 active:scale-[0.98]">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                                            Subscribe
+                                        </button>
+                                    </div>
+                                </template>
+
+                                {{-- Guest form --}}
+                                <template x-if="!loading && !subscribed && showForm">
+                                    <div>
+                                        <div class="flex items-center gap-2 mb-3">
+                                            <button @click="showForm = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                            </button>
+                                            <h3 class="font-semibold text-gray-900 dark:text-white/90 text-sm">Subscribe</h3>
+                                        </div>
+                                        <form @submit.prevent="submitGuestForm()" class="space-y-3">
+                                            <input x-model="guestName" x-ref="subNameInput" type="text" required placeholder="Your name" class="h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3.5 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                            <input x-model="guestEmail" type="email" required placeholder="your@email.com" class="h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3.5 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                            <div class="space-y-2 rounded-lg bg-gray-50 dark:bg-white/[0.03] p-3">
+                                                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Notify me about:</p>
+                                                <label class="flex items-center gap-2.5 cursor-pointer">
+                                                    <input type="checkbox" x-model="notifyLifeChapters" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" />
+                                                    <span class="text-sm text-gray-700 dark:text-gray-300">New life chapters &amp; stories</span>
+                                                </label>
+                                                <label class="flex items-center gap-2.5 cursor-pointer">
+                                                    <input type="checkbox" x-model="notifyTributes" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" />
+                                                    <span class="text-sm text-gray-700 dark:text-gray-300">Tributes (flowers, candles, notes)</span>
+                                                </label>
+                                            </div>
+                                            <button type="submit" :disabled="submitting" class="btn btn-primary btn-md btn-block w-full active:scale-[0.98] disabled:opacity-50">
+                                                <template x-if="submitting"><svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg></template>
+                                                <span x-text="submitting ? 'Subscribing...' : 'Subscribe'"></span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </template>
+
+                                {{-- Subscribed: show preferences --}}
+                                <template x-if="!loading && subscribed">
+                                    <div>
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-500/20">
+                                                <svg class="h-5 w-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <h3 class="font-semibold text-gray-900 dark:text-white/90 text-sm">Subscribed</h3>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">Hi <span x-text="subName" class="font-medium text-gray-700 dark:text-gray-300"></span>, you'll get notified.</p>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 space-y-2 rounded-lg bg-gray-50 dark:bg-white/[0.03] p-3">
+                                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Notification preferences</p>
+                                            <label class="flex items-center gap-2.5 cursor-pointer">
+                                                <input type="checkbox" x-model="notifyLifeChapters" @change="updatePrefs()" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" />
+                                                <span class="text-sm text-gray-700 dark:text-gray-300">Life chapters &amp; stories</span>
+                                            </label>
+                                            <label class="flex items-center gap-2.5 cursor-pointer">
+                                                <input type="checkbox" x-model="notifyTributes" @change="updatePrefs()" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" />
+                                                <span class="text-sm text-gray-700 dark:text-gray-300">Tributes (flowers, candles, notes)</span>
+                                            </label>
+                                        </div>
+                                        <button @click="unsubscribe()" class="btn btn-secondary btn-md btn-block w-full mt-3">
+                                            Unsubscribe
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        @endif
+                        </div>
+                    @endif
 
                     @php $stats = $memorialStats ?? ['views_today' => 0, 'views_last_week' => 0, 'views_all_time' => 0, 'shares_today' => 0, 'shares_last_week' => 0, 'shares_all_time' => 0]; @endphp
                     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm">
@@ -871,229 +1323,73 @@
                                     </div>
                                 </div>
                             </div>
-                            @if ($quotaInfo['share_memories'] ?? false)
-                                @php $deceasedFirstName = \Illuminate\Support\Str::before($memorial->full_name ?? '', ' ') ?: ($memorial->full_name ?? 'their'); @endphp
-                                <div class="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800 sm:pt-4">
-                                    <button type="button" id="invite-share-btn" data-share-url="{{ url()->current() }}" class="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-brand-400 bg-brand-50/30 px-3 py-2 text-xs font-medium text-brand-600 transition hover:bg-brand-100 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
-                                        <svg class="h-4 w-4 shrink-0 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                                        <span class="text-left leading-snug">Invite {{ $deceasedFirstName }}'s family and friends</span>
-                                    </button>
-                                    <div id="invite-share-dropdown" class="mt-2 hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2">
-                                        <button type="button" data-share="invite" data-share-url="{{ url()->current() }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Copy link</button>
-                                    </div>
-                                </div>
-                            @endif
                         </div>
                     </div>
 
-                    {{-- Subscribe to memorial (plan-gated) --}}
-                    @if ($quotaInfo['guest_notifications'] ?? false)
-                    <div class="rounded-xl border border-gray-200 dark:border-gray-800 glass-card dark:bg-white/[0.03] shadow-theme-sm overflow-hidden"
-                         x-data="{
-                            subscribed: false,
-                            loading: true,
-                            submitting: false,
-                            showForm: false,
-                            guestName: '',
-                            guestEmail: '',
-                            subName: '',
-                            notifyLifeChapters: true,
-                            notifyTributes: true,
-                            isAuth: {{ $isAuthenticated ? 'true' : 'false' }},
-                            baseUrl: '{{ route('memorial.api.tribute', ['slug' => $memorial->slug]) }}'.replace(/\/tribute$/, ''),
-                            csrf: document.querySelector('meta[name=csrf-token]')?.content,
-
-                            init() {
-                                if (this.isAuth) {
-                                    this._check();
-                                } else {
-                                    this.loading = false;
-                                }
-                            },
-
-                            _fetchOpts(method, body) {
-                                return {
-                                    method,
-                                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                                    body: body ? JSON.stringify(body) : null,
-                                };
-                            },
-
-                            _check(email) {
-                                const url = this.baseUrl + '/subscribe/check' + (email ? '?email=' + encodeURIComponent(email) : '');
-                                fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-                                    .then(r => r.json())
-                                    .then(data => {
-                                        this.loading = false;
-                                        if (data.subscribed) {
-                                            this.subscribed = true;
-                                            this.subName = data.subscription.name;
-                                            this.notifyLifeChapters = data.subscription.notify_life_chapters;
-                                            this.notifyTributes = data.subscription.notify_tributes;
-                                        }
-                                    })
-                                    .catch(() => { this.loading = false; });
-                            },
-
-                            handleSubscribe() {
-                                if (this.isAuth) {
-                                    this._doSubscribe();
-                                } else {
-                                    this.showForm = true;
-                                    this.$nextTick(() => this.$refs.subNameInput?.focus());
-                                }
-                            },
-
-                            submitGuestForm() {
-                                if (!this.guestName.trim() || !this.guestEmail.trim()) return;
-                                this._doSubscribe(this.guestName.trim(), this.guestEmail.trim());
-                            },
-
-                            _doSubscribe(name, email) {
-                                this.submitting = true;
-                                const body = { notify_life_chapters: this.notifyLifeChapters, notify_tributes: this.notifyTributes };
-                                if (name) body.guest_name = name;
-                                if (email) body.guest_email = email;
-                                fetch(this.baseUrl + '/subscribe', this._fetchOpts('POST', body))
-                                    .then(r => r.json())
-                                    .then(data => {
-                                        this.submitting = false;
-                                        if (data.success) {
-                                            this.subscribed = true;
-                                            this.subName = data.subscription.name;
-                                            this.notifyLifeChapters = data.subscription.notify_life_chapters;
-                                            this.notifyTributes = data.subscription.notify_tributes;
-                                            this.showForm = false;
-                                            if (email) this.guestEmail = email;
-                                        } else if (data.error) {
-                                            $toast('error', data.error);
-                                        }
-                                    })
-                                    .catch(() => { this.submitting = false; $toast('error', 'Something went wrong.'); });
-                            },
-
-                            updatePrefs() {
-                                const body = { notify_life_chapters: this.notifyLifeChapters, notify_tributes: this.notifyTributes };
-                                if (!this.isAuth && this.guestEmail) body.guest_email = this.guestEmail;
-                                fetch(this.baseUrl + '/subscribe', this._fetchOpts('PUT', body));
-                            },
-
-                            unsubscribe() {
-                                const body = {};
-                                if (!this.isAuth && this.guestEmail) body.guest_email = this.guestEmail;
-                                fetch(this.baseUrl + '/subscribe', this._fetchOpts('DELETE', body))
-                                    .then(r => r.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            this.subscribed = false;
-                                            this.subName = '';
-                                            this.notifyLifeChapters = true;
-                                            this.notifyTributes = true;
-                                        }
-                                    });
-                            }
-                         }" x-cloak>
-                        <div class="p-4">
-                            {{-- Loading --}}
-                            <template x-if="loading">
-                                <div class="flex items-center justify-center py-4">
-                                    <svg class="h-5 w-5 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
-                                </div>
-                            </template>
-
-                            {{-- Not subscribed --}}
-                            <template x-if="!loading && !subscribed && !showForm">
-                                <div>
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/20">
-                                            <svg class="h-5 w-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <h3 class="font-semibold text-gray-900 dark:text-white/90 text-sm">Stay Updated</h3>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">Get notified about new stories &amp; tributes</p>
-                                        </div>
-                                    </div>
-                                    <button @click="handleSubscribe()" class="btn btn-primary btn-md btn-block w-full mt-4 active:scale-[0.98]">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                                        Subscribe
-                                    </button>
-                                </div>
-                            </template>
-
-                            {{-- Guest form --}}
-                            <template x-if="!loading && !subscribed && showForm">
-                                <div>
-                                    <div class="flex items-center gap-2 mb-3">
-                                        <button @click="showForm = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                                        </button>
-                                        <h3 class="font-semibold text-gray-900 dark:text-white/90 text-sm">Subscribe</h3>
-                                    </div>
-                                    <form @submit.prevent="submitGuestForm()" class="space-y-3">
-                                        <input x-model="guestName" x-ref="subNameInput" type="text" required placeholder="Your name" class="h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3.5 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-                                        <input x-model="guestEmail" type="email" required placeholder="your@email.com" class="h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-white/[0.03] px-3.5 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20" />
-                                        <div class="space-y-2 rounded-lg bg-gray-50 dark:bg-white/[0.03] p-3">
-                                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Notify me about:</p>
-                                            <label class="flex items-center gap-2.5 cursor-pointer">
-                                                <input type="checkbox" x-model="notifyLifeChapters" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" />
-                                                <span class="text-sm text-gray-700 dark:text-gray-300">New life chapters &amp; stories</span>
-                                            </label>
-                                            <label class="flex items-center gap-2.5 cursor-pointer">
-                                                <input type="checkbox" x-model="notifyTributes" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" />
-                                                <span class="text-sm text-gray-700 dark:text-gray-300">Tributes (flowers, candles, notes)</span>
-                                            </label>
-                                        </div>
-                                        <button type="submit" :disabled="submitting" class="btn btn-primary btn-md btn-block w-full active:scale-[0.98] disabled:opacity-50">
-                                            <template x-if="submitting"><svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg></template>
-                                            <span x-text="submitting ? 'Subscribing...' : 'Subscribe'"></span>
-                                        </button>
-                                    </form>
-                                </div>
-                            </template>
-
-                            {{-- Subscribed: show preferences --}}
-                            <template x-if="!loading && subscribed">
-                                <div>
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-500/20">
-                                            <svg class="h-5 w-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <h3 class="font-semibold text-gray-900 dark:text-white/90 text-sm">Subscribed</h3>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">Hi <span x-text="subName" class="font-medium text-gray-700 dark:text-gray-300"></span>, you'll get notified.</p>
-                                        </div>
-                                    </div>
-                                    <div class="mt-4 space-y-2 rounded-lg bg-gray-50 dark:bg-white/[0.03] p-3">
-                                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Notification preferences</p>
-                                        <label class="flex items-center gap-2.5 cursor-pointer">
-                                            <input type="checkbox" x-model="notifyLifeChapters" @change="updatePrefs()" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" />
-                                            <span class="text-sm text-gray-700 dark:text-gray-300">Life chapters &amp; stories</span>
-                                        </label>
-                                        <label class="flex items-center gap-2.5 cursor-pointer">
-                                            <input type="checkbox" x-model="notifyTributes" @change="updatePrefs()" class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/30" />
-                                            <span class="text-sm text-gray-700 dark:text-gray-300">Tributes (flowers, candles, notes)</span>
-                                        </label>
-                                    </div>
-                                    <button @click="unsubscribe()" class="btn btn-secondary btn-md btn-block w-full mt-3">
-                                        Unsubscribe
-                                    </button>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                    @endif
 
                 </div>
             </aside>
         </div>
     </main>
 
-    {{-- Background music: floating mute/unmute button (plan-gated) --}}
+    @include('pages.memorials.partials.comment-sheet')
+
+    {{-- The floating dock.
+
+         Two separately-positioned widgets, each given its own `fixed` corner, is why they
+         sat side by side and why they landed on top of the feed on a phone rather than
+         beside it. One column, bottom right, the way a chat launcher sits.
+
+         Share is here for small screens only. On a wide screen the invite panel is in the
+         sidebar a glance away; below `lg` that whole column drops to the very bottom of a
+         long page, so the thing we most want a visitor to do became the hardest to reach. --}}
     @php
+        // Read before the dock, not inside it: both the upload control and the player below
+        // need these, and the upload control is rendered first.
         $bgMusicAllowed = $quotaInfo['background_music'] ?? false;
         $bgMusicUrl = ($bgMusicAllowed && $memorial->background_music) ? \App\Helpers\StorageHelper::publicUrl($memorial->background_music) : null;
     @endphp
-    <div id="bg-music-widget"
+    <div class="memorial-dock fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2.5 sm:bottom-6 sm:right-6">
+        {{-- Background music: upload control for owner/admin (plan-gated) --}}
+        @if ($canEdit && ($quotaInfo['background_music'] ?? false))
+            <div id="bg-music-admin"
+                x-data="{ uploading: false }"
+                class="order-1">
+                <div class="flex flex-col items-center gap-1.5">
+                    <label :class="uploading ? 'opacity-50 pointer-events-none' : ''"
+                        class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 shadow-md transition hover:scale-110 hover:border-brand-300 hover:text-brand-500 active:scale-95">
+                        <input type="file" accept="audio/*" class="hidden"
+                            @change="
+                                if (!$event.target.files[0]) return;
+                                uploading = true;
+                                const fd = new FormData();
+                                fd.append('file', $event.target.files[0]);
+                                fd.append('_token', document.querySelector('meta[name=csrf-token]').content);
+                                fetch(document.querySelector('[data-memorial-slug]').dataset.tributeUrl.replace(/\/tribute$/, '/background-music'), {
+                                    method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: fd
+                                }).then(r => r.json()).then(data => {
+                                    uploading = false;
+                                    if (data.success) {
+                                        const widget = document.getElementById('bg-music-widget');
+                                        if (widget && widget.__x) widget.__x.$data.setMusic(data.url);
+                                        else if (typeof Alpine !== 'undefined') Alpine.$data(widget).setMusic(data.url);
+                                    } else { $toast('error', data.error || 'Upload failed'); }
+                                }).catch(() => { uploading = false; $toast('error', 'Upload failed'); });
+                                $event.target.value = '';
+                            ">
+                        <template x-if="!uploading">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+                        </template>
+                        <template x-if="uploading">
+                            <div class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-brand-500"></div>
+                        </template>
+                    </label>
+                    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ $bgMusicUrl ? 'Change' : 'Add' }} Music</span>
+                </div>
+            </div>
+        @endif
+        {{-- Background music: the player itself. Hidden until there is something to play. --}}
+        <div id="bg-music-widget"
         x-data="{
             hasMusic: {{ $bgMusicUrl ? 'true' : 'false' }},
             muted: false,
@@ -1161,7 +1457,7 @@
         }"
         x-show="hasMusic"
         x-cloak
-        class="fixed bottom-6 right-6 z-50">
+        class="order-2">
 
         @if ($bgMusicUrl)
             <audio x-ref="bgAudio" loop preload="auto" autoplay src="{{ $bgMusicUrl }}"></audio>
@@ -1202,44 +1498,22 @@
         </div>
     </div>
 
-    {{-- Background music: upload control for owner/admin (plan-gated) --}}
-    @if ($canEdit && ($quotaInfo['background_music'] ?? false))
-        <div id="bg-music-admin"
-            x-data="{ uploading: false }"
-            class="fixed bottom-6 right-20 z-50">
-            <div class="flex flex-col items-center gap-1.5">
-                <label :class="uploading ? 'opacity-50 pointer-events-none' : ''"
-                    class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 shadow-md transition hover:scale-110 hover:border-brand-300 hover:text-brand-500 active:scale-95">
-                    <input type="file" accept="audio/*" class="hidden"
-                        @change="
-                            if (!$event.target.files[0]) return;
-                            uploading = true;
-                            const fd = new FormData();
-                            fd.append('file', $event.target.files[0]);
-                            fd.append('_token', document.querySelector('meta[name=csrf-token]').content);
-                            fetch(document.querySelector('[data-memorial-slug]').dataset.tributeUrl.replace(/\/tribute$/, '/background-music'), {
-                                method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: fd
-                            }).then(r => r.json()).then(data => {
-                                uploading = false;
-                                if (data.success) {
-                                    const widget = document.getElementById('bg-music-widget');
-                                    if (widget && widget.__x) widget.__x.$data.setMusic(data.url);
-                                    else if (typeof Alpine !== 'undefined') Alpine.$data(widget).setMusic(data.url);
-                                } else { $toast('error', data.error || 'Upload failed'); }
-                            }).catch(() => { uploading = false; $toast('error', 'Upload failed'); });
-                            $event.target.value = '';
-                        ">
-                    <template x-if="!uploading">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
-                    </template>
-                    <template x-if="uploading">
-                        <div class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-brand-500"></div>
-                    </template>
-                </label>
-                <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ $bgMusicUrl ? 'Change' : 'Add' }} Music</span>
+    @if ($quotaInfo['share_memories'] ?? false)
+        {{-- The dropdown has to be this button's immediate next sibling: that is how the
+             shared toggle handler finds it when there is no post id. Opens upward, because
+             there is nothing below it. --}}
+        <div class="relative order-3 lg:hidden" data-share-container>
+            <button type="button" data-share-toggle data-share-url="{{ url()->current() }}" aria-label="Share this memorial"
+                class="memorial-dock__fab flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+            </button>
+            <div data-share-dropdown class="absolute bottom-full right-0 mb-2 hidden w-52 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                @include('pages.memorials.partials.share-dropdown', ['shareUrl' => url()->current()])
             </div>
         </div>
     @endif
+    </div>
+
 </div>
 
 @vite('resources/js/memorial-public.js')
