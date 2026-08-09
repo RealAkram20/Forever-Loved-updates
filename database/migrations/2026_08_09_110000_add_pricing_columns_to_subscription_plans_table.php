@@ -19,9 +19,24 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    /**
+     * Column defaults, chosen to preserve what existing plans already allowed — *not* the
+     * catalogue defaults, which describe what a new plan should offer.
+     *
+     * The two are different questions and conflating them would have broken the live site.
+     * PlanFeatures::defaultFor('max_video_storage_mb') is NONE, because a new plan should
+     * have to opt into video. Applied as a column default that would have landed on every
+     * plan already in the database, including the one people are paying for, and stopped
+     * every video upload the moment this migration ran. Contributors were never capped at
+     * all before today, so a default of 5 would have locked out a family already past it.
+     *
+     * -1 is unlimited: a column appearing must never take away something that worked
+     * yesterday. The new tiers get their real figures from the seeder, where they are
+     * visible and reviewable.
+     */
     private const LIMITS = [
-        'max_contributors',
-        'max_video_storage_mb',
+        'max_contributors' => -1,
+        'max_video_storage_mb' => -1,
     ];
 
     private const FLAGS = [
@@ -38,8 +53,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('subscription_plans', function (Blueprint $table) {
-            foreach (self::LIMITS as $column) {
-                $table->integer($column)->default((int) PlanFeatures::defaultFor($column));
+            foreach (self::LIMITS as $column => $default) {
+                $table->integer($column)->default($default);
             }
 
             foreach (self::FLAGS as $column) {
@@ -51,7 +66,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('subscription_plans', function (Blueprint $table) {
-            $table->dropColumn([...self::LIMITS, ...self::FLAGS]);
+            // array_keys: LIMITS is keyed by column name, so spreading it would hand
+            // dropColumn the default values instead.
+            $table->dropColumn([...array_keys(self::LIMITS), ...self::FLAGS]);
         });
     }
 };

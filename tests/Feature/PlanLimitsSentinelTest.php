@@ -234,6 +234,36 @@ it('keeps the seeded tiers matching the published pricing', function () {
         ->and($lifetime->feature_never_expires)->toBeTrue();
 });
 
+it('adds the new allowance columns without taking anything away from plans that already exist', function () {
+    // The catalogue default for max_video_storage_mb is NONE, because a *new* plan should
+    // have to opt into video. Used as the column default it would have landed on every plan
+    // already in the live database and stopped every video upload the moment the migration
+    // ran; contributors, never capped before, would have been cut to five.
+    //
+    // Inserted through the query builder, not the model, so no PHP default can paper over
+    // what the database itself writes — which is exactly what a plan that predates this
+    // release receives.
+    $id = DB::table('subscription_plans')->insertGetId([
+        'name' => 'Predates this release',
+        'slug' => 'legacy-'.substr(uniqid(), -8),
+        'price' => 0,
+        'interval' => 'monthly',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $legacy = DB::table('subscription_plans')->find($id);
+
+    expect((int) $legacy->max_video_storage_mb)->toBe(PlanFeatures::UNLIMITED)
+        ->and((int) $legacy->max_contributors)->toBe(PlanFeatures::UNLIMITED);
+
+    // The features are new, so off is right for them — nobody had them yesterday.
+    expect((bool) $legacy->feature_qr_code)->toBeFalse()
+        ->and((bool) $legacy->feature_albums)->toBeFalse()
+        // ...except tributes, which every memorial already had.
+        ->and((bool) $legacy->feature_tributes)->toBeTrue();
+});
+
 it('keeps unbuilt features out of what a customer is shown', function () {
     $public = array_keys(PlanFeatures::publicRows());
 

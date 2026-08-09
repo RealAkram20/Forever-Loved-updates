@@ -57,7 +57,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        foreach (self::SENTINEL_COLUMNS as $column) {
+        // storage_limit_mb is not in SENTINEL_COLUMNS — it had no sentinel to rewrite on the
+        // way up, because 0 there was always a real figure rather than a flag. It can hold
+        // -1 now though, so it still has to be cleared before the column narrows back to
+        // unsigned, or rolling back fails on any plan offering unlimited storage.
+        foreach ([...self::SENTINEL_COLUMNS, 'storage_limit_mb'] as $column) {
             DB::table('subscription_plans')->where($column, -1)->update([$column => 0]);
         }
 
