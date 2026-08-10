@@ -24,50 +24,70 @@ services:
       mariadb:
         condition: service_healthy
 
+    # List form rather than a map, because Coolify's magic variables are recognised
+    # as bare keys — a map would force an empty value onto them and they would never
+    # be substituted.
     environment:
-      APP_NAME: ${APP_NAME:-Forever Loved}
-      APP_ENV: ${APP_ENV:-production}
-      APP_DEBUG: ${APP_DEBUG:-false}
-      APP_KEY: ${APP_KEY}
-      APP_URL: ${APP_URL}
+      # Declares that this service, on this port, is what a domain routes to.
+      # Coolify fills it in and points its proxy here; nothing else needs to know
+      # the port.
+      - SERVICE_FQDN_APP_8080
+
+      - APP_NAME=${APP_NAME:-Forever Loved}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_DEBUG=${APP_DEBUG:-false}
+
+      # Deliberately not generated. APP_KEY has to match the key the live site is
+      # already using or every encrypted value in the imported database becomes
+      # unreadable, and Coolify's SERVICE_BASE64_* is — by its own source comment —
+      # "not base64, it's just a random string", which Laravel would reject anyway.
+      - APP_KEY=${APP_KEY}
+
+      # Also explicit. This one decides far more than it looks: URL generation, the
+      # canonical tags, and which base domain resellers are minted under.
+      - APP_URL=${APP_URL}
 
       # Container convention: logs belong on the process's own streams, where
       # `docker logs` and Coolify can read them, not in a file inside the container
       # that nobody will ever open.
-      LOG_CHANNEL: ${LOG_CHANNEL:-stderr}
-      LOG_LEVEL: ${LOG_LEVEL:-error}
+      - LOG_CHANNEL=${LOG_CHANNEL:-stderr}
+      - LOG_LEVEL=${LOG_LEVEL:-error}
 
-      # The service name is the hostname on the compose network.
-      DB_CONNECTION: mysql
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-forever}
-      DB_USERNAME: ${DB_USERNAME:-forever}
-      DB_PASSWORD: ${DB_PASSWORD}
+      # The service name is the hostname on the compose network. The password is
+      # generated and stored by Coolify — the same reference in both services
+      # resolves to the same secret, so they cannot drift apart.
+      - DB_CONNECTION=mysql
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-forever}
+      - DB_USERNAME=${DB_USERNAME:-forever}
+      - DB_PASSWORD=${SERVICE_PASSWORD_64_MARIADB}
 
       # All three have tables of their own in this app, so none of them need Redis
       # and none of them lose state when a container is replaced. File-based
       # sessions would sign every visitor out on each deploy.
-      SESSION_DRIVER: ${SESSION_DRIVER:-database}
-      SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
-      CACHE_STORE: ${CACHE_STORE:-database}
-      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
-      FILESYSTEM_DISK: local
+      - SESSION_DRIVER=${SESSION_DRIVER:-database}
+      - SESSION_LIFETIME=${SESSION_LIFETIME:-120}
+      - CACHE_STORE=${CACHE_STORE:-database}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
+      - FILESYSTEM_DISK=local
 
-      MAIL_MAILER: ${MAIL_MAILER:-log}
-      MAIL_HOST: ${MAIL_HOST:-}
-      MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_SCHEME: ${MAIL_SCHEME:-tls}
-      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
-      MAIL_FROM_NAME: ${APP_NAME:-Forever Loved}
+      # Defaults to the log driver, so a misconfigured mailer writes to the log
+      # rather than silently dropping a family's invitation.
+      - MAIL_MAILER=${MAIL_MAILER:-log}
+      - MAIL_HOST=${MAIL_HOST:-}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_SCHEME=${MAIL_SCHEME:-tls}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-}
+      - MAIL_FROM_NAME=${APP_NAME:-Forever Loved}
 
       # Left unset, this derives from APP_URL and the app begins minting
       # acme.alwaysforeverloved.com for resellers — addresses that resolve nowhere
       # until a wildcard record and a wildcard certificate exist. See
       # Reseller::subdomainRoutingAvailable().
-      RESELLER_APP_DOMAIN: ${RESELLER_APP_DOMAIN:-}
+      - RESELLER_APP_DOMAIN=${RESELLER_APP_DOMAIN:-}
 
     volumes:
       # Everything families upload. The single most important line in this file:
@@ -91,11 +111,15 @@ services:
     image: mariadb:11.4
     restart: unless-stopped
 
+    # Both passwords are generated and kept by Coolify, so no secret is typed into a
+    # form, pasted into a chat window, or committed here by accident. symbols: false
+    # in Coolify's generator is a quiet convenience — a password with shell
+    # metacharacters in it is a bad afternoon with a MySQL client.
     environment:
-      MARIADB_DATABASE: ${DB_DATABASE:-forever}
-      MARIADB_USER: ${DB_USERNAME:-forever}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      - MARIADB_DATABASE=${DB_DATABASE:-forever}
+      - MARIADB_USER=${DB_USERNAME:-forever}
+      - MARIADB_PASSWORD=${SERVICE_PASSWORD_64_MARIADB}
+      - MARIADB_ROOT_PASSWORD=${SERVICE_PASSWORD_64_MARIADBROOT}
 
     # utf8mb4 throughout: memorials carry names, tributes and stories in every
     # script there is, and emoji. Anything narrower silently mangles them.
