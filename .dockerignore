@@ -1,0 +1,32 @@
+# Rebuilt inside the image, or environment-specific, or simply enormous.
+.git
+.github
+.agents
+.claude
+.codex
+node_modules
+vendor
+storage/app/public/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+bootstrap/cache/*.php
+
+# Never bake secrets into an image layer. Coolify supplies these as env vars.
+.env
+.env.*
+!.env.example
+
+# Local tooling and notes that have no business in a production image.
+*.zip
+*.log
+*.md
+!README.md
+tests
+phpunit.xml
+.phpunit.result.cache
+deploy-hostinger.ps1
+build-update.ps1
+public/updates/RELEASE-*.zip
+public/storage
