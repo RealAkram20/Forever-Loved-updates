@@ -1,0 +1,122 @@
+# Forever Loved — the production stack.
+#
+# Deployed through Coolify's Docker Compose build pack. Coolify supplies the
+# environment, terminates TLS at its own proxy and routes to `app` on 8080, so
+# nothing here publishes a host port: two things binding 443 would just fight.
+#
+# The database lives here rather than as a separately-clicked Coolify resource so
+# that the stack is described in one versioned file. What is running can be read
+# from the repository instead of reconstructed from a dashboard, and a rebuild is a
+# deploy rather than an afternoon of remembering which boxes were ticked.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+    # The entrypoint runs migrations, and a migration against a database still
+    # doing its first-boot initialisation fails in a way that looks like a broken
+    # deploy. service_healthy makes the app wait for MariaDB to actually answer
+    # rather than merely to have been started.
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+    environment:
+      APP_NAME: ${APP_NAME:-Forever Loved}
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${APP_URL}
+
+      # Container convention: logs belong on the process's own streams, where
+      # `docker logs` and Coolify can read them, not in a file inside the container
+      # that nobody will ever open.
+      LOG_CHANNEL: ${LOG_CHANNEL:-stderr}
+      LOG_LEVEL: ${LOG_LEVEL:-error}
+
+      # The service name is the hostname on the compose network.
+      DB_CONNECTION: mysql
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-forever}
+      DB_USERNAME: ${DB_USERNAME:-forever}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # All three have tables of their own in this app, so none of them need Redis
+      # and none of them lose state when a container is replaced. File-based
+      # sessions would sign every visitor out on each deploy.
+      SESSION_DRIVER: ${SESSION_DRIVER:-database}
+      SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
+      CACHE_STORE: ${CACHE_STORE:-database}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
+      FILESYSTEM_DISK: local
+
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SCHEME: ${MAIL_SCHEME:-tls}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+      MAIL_FROM_NAME: ${APP_NAME:-Forever Loved}
+
+      # Left unset, this derives from APP_URL and the app begins minting
+      # acme.alwaysforeverloved.com for resellers — addresses that resolve nowhere
+      # until a wildcard record and a wildcard certificate exist. See
+      # Reseller::subdomainRoutingAvailable().
+      RESELLER_APP_DOMAIN: ${RESELLER_APP_DOMAIN:-}
+
+    volumes:
+      # Everything families upload. The single most important line in this file:
+      # without it, every photo and video is written into the container's own
+      # layer and destroyed by the next deploy.
+      - forever-storage:/var/www/html/storage
+
+    # expose, not ports. Reachable from Coolify's proxy on the shared network,
+    # not from the open internet on a host port that bypasses TLS.
+    expose:
+      - "8080"
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/up"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-forever}
+      MARIADB_USER: ${DB_USERNAME:-forever}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+
+    # utf8mb4 throughout: memorials carry names, tributes and stories in every
+    # script there is, and emoji. Anything narrower silently mangles them.
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # A story with photographs is a large row; the default 16M rejects it.
+      - --max-allowed-packet=64M
+
+    volumes:
+      - forever-db:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
+
+volumes:
+  # Named, so `docker compose down` and every redeploy leave them alone. These two
+  # hold the only things here that cannot be rebuilt from the repository.
+  forever-storage:
+  forever-db:
