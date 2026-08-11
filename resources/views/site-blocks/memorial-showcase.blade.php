@@ -22,26 +22,9 @@
             </a>
         </div>
 
-        <div class="swiper memorial-swiper" x-data x-init="
-            new Swiper($el, {
-                modules: [SwiperAutoplay, SwiperFreeMode],
-                slidesPerView: 1.2,
-                spaceBetween: 16,
-                loop: true,
-                speed: 5000,
-                freeMode: { enabled: true, momentum: false },
-                autoplay: {
-                    delay: 0,
-                    disableOnInteraction: false,
-                    pauseOnMouseEnter: true
-                },
-                breakpoints: {
-                    640: { slidesPerView: 2.2, spaceBetween: 20 },
-                    1024: { slidesPerView: 3.2, spaceBetween: 24 },
-                    1280: { slidesPerView: 4, spaceBetween: 24 }
-                }
-            })
-        ">
+        {{-- Swiper arrives with its own lazy chunk (see showcase-swiper.js); until it
+             does, the slides render as a plain row, so nothing blocks on the download. --}}
+        <div class="swiper memorial-swiper" x-data x-init="initShowcaseSwiper($el)">
             <div class="swiper-wrapper">
                 @foreach ($popularMemorials as $memorial)
                 <div class="swiper-slide">
@@ -50,7 +33,7 @@
                         <div class="flex items-center gap-4 mb-4">
                             <div class="h-16 w-16 shrink-0 rounded-xl bg-brand-50 dark:bg-brand-500/10 overflow-hidden">
                                 @if ($memorial->profile_photo_url)
-                                    <img src="{{ $memorial->profile_photo_url }}" alt="{{ $memorial->full_name }}" class="h-full w-full object-cover" />
+                                    <img src="{{ \App\Helpers\ResponsiveImage::url($memorial->profile_photo_path, 160) ?? $memorial->profile_photo_url }}" alt="{{ $memorial->full_name }}" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                                 @else
                                     <div class="flex h-full w-full items-center justify-center text-brand-500 dark:text-brand-400">
                                         <svg class="lucide h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/></svg>
