@@ -68,7 +68,12 @@ class SeoMetaResolver
      */
     public function resolve(string $routeName, array $fallbackShareMeta, string $pageHeading, ?Page $page = null): array
     {
-        $entry = SeoEntry::query()->where('route_key', $routeName)->first();
+        // Platform SEO overrides are the platform admin's marketing copy. On a tenant's
+        // site they would stamp our language (and our uploaded og-image) onto pages the
+        // reseller presents as their own — so a tenant host takes only its fallbacks.
+        $entry = \App\Helpers\ThemeSetting::siteTenant()
+            ? null
+            : SeoEntry::query()->where('route_key', $routeName)->first();
 
         $metaTitle = $entry?->meta_title;
         $metaDescription = $entry?->meta_description;
@@ -97,7 +102,10 @@ class SeoMetaResolver
         }
 
         if ($ogImage !== null && $ogImage !== '') {
-            $relative = Storage::disk('public')->url($ogImage);
+            // StorageHelper roots at the request host; the disk's own url() is absolute
+            // at APP_URL and would smuggle the platform hostname onto tenant pages.
+            // Never null here — the guard above rules out the empty path.
+            $relative = (string) \App\Helpers\StorageHelper::publicUrl($ogImage);
             $shareMeta['image'] = MemorialShareMetaHelper::absoluteAssetUrl($relative) ?? $relative;
             if (! empty($shareMeta['title'])) {
                 $shareMeta['image_alt'] = is_string($shareMeta['title']) ? $shareMeta['title'] : '';
@@ -106,7 +114,9 @@ class SeoMetaResolver
 
         $shareMeta = SiteShareMetaHelper::normalizeShareMeta($shareMeta);
 
-        $appName = config('app.name', 'Forever-Loved');
+        // The tab suffix belongs to whoever's site this is — "Privacy Policy | Kangaru
+        // Ride" on their host, ours on ours.
+        $appName = \App\Helpers\BrandingHelper::documentTitleName();
         $documentTitle = ($metaTitle !== null && $metaTitle !== '')
             ? Str::limit($metaTitle, 120, '')
             : (trim($pageHeading) !== '' ? $pageHeading.' | '.$appName : 'Home | '.$appName);

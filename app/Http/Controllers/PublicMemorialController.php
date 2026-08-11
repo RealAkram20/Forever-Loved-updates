@@ -190,7 +190,7 @@ class PublicMemorialController extends Controller
      */
     public function showTribute(string $memorial_slug, string $share_id)
     {
-        $memorial = Memorial::where('slug', $memorial_slug)->firstOrFail();
+        $memorial = $this->tenantScopedMemorial($memorial_slug);
 
         $post = $memorial->posts()->where('share_id', $share_id)->first();
 
@@ -210,7 +210,7 @@ class PublicMemorialController extends Controller
      */
     public function showChapter(string $memorial_slug, string $share_id)
     {
-        $memorial = Memorial::where('slug', $memorial_slug)->firstOrFail();
+        $memorial = $this->tenantScopedMemorial($memorial_slug);
 
         if (! $memorial->is_public && $memorial->user_id !== auth()->id()) {
             abort(404);
@@ -227,6 +227,22 @@ class PublicMemorialController extends Controller
         $post = $memorial->posts()->where('is_published', true)->where('share_id', $share_id)->firstOrFail();
 
         return $this->renderMemorial($memorial, $post);
+    }
+
+    /**
+     * A memorial by slug, scoped to whoever's site is being served. The single-slug
+     * route gets this scoping from its domain-constrained sibling; the chapter and
+     * tribute deep links carry no domain constraint, so without this a link to another
+     * tenant's memorial rendered that memorial on this tenant's host, wearing this
+     * tenant's branding.
+     */
+    private function tenantScopedMemorial(string $slug): Memorial
+    {
+        $tenantId = \App\Helpers\ThemeSetting::siteTenantId();
+
+        return Memorial::where('slug', $slug)
+            ->when($tenantId, fn ($q) => $q->where('reseller_id', $tenantId))
+            ->firstOrFail();
     }
 
     /**

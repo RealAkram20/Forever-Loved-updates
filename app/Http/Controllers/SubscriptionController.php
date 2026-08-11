@@ -20,7 +20,9 @@ class SubscriptionController extends Controller
         if ($user->hasRole(['admin', 'super-admin'])) {
             return redirect()->route('settings.payment-orders');
         }
-        $plans = SubscriptionPlan::where('is_active', true)->sellableTo($user)->orderBy('sort_order')->get();
+        // Host-first: on a reseller's site the catalogue is theirs whoever is looking;
+        // the user's own affiliation decides only on the platform's host.
+        $plans = SubscriptionPlan::where('is_active', true)->sellableOnHost(\App\Helpers\ThemeSetting::siteTenantId(), $user)->orderBy('sort_order')->get();
         $currentSubscriptions = UserSubscription::where('user_id', $user->id)
             ->whereIn('status', ['active', 'overdue'])
             ->where(function ($q) {

@@ -82,7 +82,7 @@
             <div>
                 <h4 class="text-xs font-semibold uppercase tracking-[0.14em] text-gray-900 dark:text-white/90">Support</h4>
                 <ul class="mt-5 space-y-3.5">
-                    @php $contactEmail = \App\Models\SystemSetting::get('smtp.from_address'); @endphp
+                    @php $contactEmail = \App\Helpers\BrandingHelper::contactEmail(); @endphp
                     @if ($contactEmail)
                         <li class="flex items-center gap-2.5">
                             <svg class="lucide h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>

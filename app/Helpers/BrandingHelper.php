@@ -116,6 +116,37 @@ class BrandingHelper
     }
 
     /**
+     * The display name for anything addressed to a specific reseller's person — mail
+     * subjects, from-names, sign-offs — resolvable from a queue worker, where no
+     * request or session exists. Entity-keyed counterpart of documentTitleName():
+     * the reseller's business name when there is one, else the admin-configured
+     * platform name (branding.app_name), else APP_NAME. The one fallback chain,
+     * because five hand-rolled copies had already drifted into three spellings.
+     */
+    public static function displayNameFor(?\App\Models\Reseller $reseller): string
+    {
+        return filled($reseller?->name)
+            ? (string) $reseller->name
+            : (string) \App\Models\SystemSetting::get('branding.app_name', config('app.name', 'Forever Loved'));
+    }
+
+    /**
+     * The support address shown on the site being served — footer, contact page, the
+     * contact-form widget. On a reseller's own site that must be *their* inbox: the
+     * platform's support address on a white-labeled page hands their client
+     * relationship to us, one mailto at a time. Falls back to the platform's sending
+     * address exactly as those templates always did.
+     */
+    public static function contactEmail(): ?string
+    {
+        $tenantEmail = ThemeSetting::siteTenant()?->contact_email;
+
+        return filled($tenantEmail)
+            ? (string) $tenantEmail
+            : \App\Models\SystemSetting::get('smtp.from_address');
+    }
+
+    /**
      * Default UI theme when the browser has no saved preference (localStorage `theme`).
      */
     public static function defaultTheme(): string

@@ -105,8 +105,9 @@ Route::domain('{domain}')->group(function () use ($foreignDomainPattern) {
 // claim the root on reseller hosts, and their patterns exclude this one.
 Route::get('/', [PageController::class, 'home'])->name('home');
 
-// The crawler's map of everything public — marketing pages and every public memorial.
+// The crawler's map of whichever site is being served — see SitemapController.
 Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
+Route::get('/robots.txt', [\App\Http\Controllers\SitemapController::class, 'robots'])->name('robots');
 
 // WhatsApp previews, old crawlers and stray bookmarks fetch this path directly and
 // never read <link rel="icon">. Serving it through code is what lets the admin's
@@ -587,3 +588,18 @@ Route::get('/{memorial_slug}/chapter/{share_id}', [PublicMemorialController::cla
 
 // Public memorial by profile slug (e.g. /miiro-rio-akram) - MUST be last to avoid matching /login, /dashboard, etc.
 Route::get('/{slug}', [PublicMemorialController::class, 'show'])->name('memorial.public')->where('slug', '[a-z0-9\-]+');
+
+// A URL that matches nothing must still 404 *through* the web group: with no route,
+// the exception renders before ResolveResellerByHost ever runs, and the error page
+// comes out wearing the platform's name and logo on a reseller's own domain. A real
+// fallback route is a real route, so the tenant binds and the 404 dresses correctly.
+//
+// Session machinery is excluded on purpose: bot scans (/wp-login.php, /.env, …) hit
+// this route constantly, and with database sessions each one would write a session
+// row for a page that needs none — the branded 404 needs the tenant, not a session.
+Route::fallback(fn () => abort(404))->withoutMiddleware([
+    \Illuminate\Session\Middleware\StartSession::class,
+    \Illuminate\Session\Middleware\AuthenticateSession::class,
+    \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+]);

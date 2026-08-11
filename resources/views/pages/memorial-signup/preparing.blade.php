@@ -16,7 +16,7 @@
         <h1 class="preparing-fade-in text-2xl font-light tracking-wide text-gray-700 dark:text-gray-200 sm:text-3xl">
             Creating a Space Where
             <span class="block mt-1 font-semibold text-brand-600 dark:text-brand-400">{{ $memorial->first_name }}</span>
-            <span class="block mt-1">is Forever Loved</span>
+            <span class="block mt-1">is Always Remembered</span>
         </h1>
 
         {{-- Animated ellipsis --}}

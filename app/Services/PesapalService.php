@@ -63,13 +63,18 @@ class PesapalService
     }
 
     /**
-     * Get URL for Pesapal callback/cancellation. Uses PESAPAL_CALLBACK_BASE_URL when set,
-     * otherwise uses APP_URL (e.g. your Hostinger domain).
+     * Get URL for Pesapal callback/cancellation.
+     *
+     * A reseller-credentialed checkout keeps route() — during a request on their host
+     * the URL generator is rooted at their domain, so the payer returns to the site
+     * they started on. PESAPAL_CALLBACK_BASE_URL applies only to platform checkouts:
+     * it is one global value, and prefixing it onto a reseller's return URL dumped
+     * their payer onto the platform's domain mid-purchase.
      */
     public function getCallbackUrl(string $routeName, array $params = []): string
     {
         $base = config('services.pesapal.callback_base_url');
-        if (empty($base)) {
+        if (empty($base) || $this->reseller) {
             return route($routeName, $params);
         }
         $path = route($routeName, $params, false);

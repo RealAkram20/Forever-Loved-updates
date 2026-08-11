@@ -17,7 +17,11 @@
     @stack('head')
 
     <!-- App base URL for JS fetch calls -->
-    <script>window.__appBaseUrl = @json(rtrim(config('app.url'), '/'));</script>
+    {{-- url('/') and not config('app.url'): on a reseller's host the URL root is
+         re-rooted at their domain (ResolveResellerByHost), and this value feeds
+         same-origin AJAX — the platform root here is both a branding leak and a
+         cross-origin request waiting to fail. --}}
+    <script>window.__appBaseUrl = @json(rtrim(url('/'), '/'));</script>
     <script>window.__defaultTheme = @json(\App\Helpers\BrandingHelper::defaultTheme());</script>
 
     <!-- Theme Store -->

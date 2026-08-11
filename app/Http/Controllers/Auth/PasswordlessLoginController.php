@@ -47,12 +47,22 @@ class PasswordlessLoginController extends Controller
             return back()->withErrors(['email' => 'Email login codes are not available because outgoing mail is not configured. Please use password login or contact support.']);
         }
 
+        // The name of the site this person belongs to, not the platform's: a reseller's
+        // client signing in on a white-labeled site gets a code email that reads as that
+        // site. User-keyed first (works wherever they typed their email), the served
+        // site's name as fallback for accounts that belong to nobody yet.
+        $siteName = \App\Helpers\BrandingHelper::displayNameFor($user->reseller);
+
         try {
             Mail::raw(
-                "Your Forever-Loved login code is: {$loginCode->code}\n\nThis code expires in 15 minutes.\n\nIf you didn't request this, please ignore this email.",
-                function ($message) use ($email) {
+                "Your {$siteName} login code is: {$loginCode->code}\n\nThis code expires in 15 minutes.\n\nIf you didn't request this, please ignore this email.",
+                function ($message) use ($email, $siteName, $user) {
                     $message->to($email)
-                        ->subject('Your login code - Forever-Loved');
+                        ->subject("Your login code - {$siteName}")
+                        ->from(config('mail.from.address'), $siteName);
+                    if ($user->reseller?->contact_email) {
+                        $message->replyTo($user->reseller->contact_email);
+                    }
                 }
             );
         } catch (\Exception $e) {
