@@ -129,11 +129,14 @@ services:
       - forever-storage:/var/www/html/storage
 
       # The proxy's watched config folder, nested inside the storage mount (the more
-      # specific path wins). The scheduler writes one router file here per verified
-      # reseller custom domain; Traefik routes the domain and orders its certificate
-      # the moment the file lands. The entrypoint's chown makes it writable for
-      # www-data, which is exactly what the scheduler runs as.
-      - /data/coolify/proxy/dynamic/custom-domains:/var/www/html/storage/proxy-domains
+      # specific path wins). The scheduler writes one custom-domain-*.yaml router
+      # file here per verified reseller custom domain; Traefik routes the domain and
+      # orders its certificate the moment the file lands. The whole dynamic dir, not
+      # a subfolder: Traefik's file provider does not descend into subdirectories.
+      # The sync only ever creates or deletes its own custom-domain-* files, and the
+      # entrypoint's chown makes the mount writable for www-data, which is exactly
+      # what the scheduler runs as.
+      - /data/coolify/proxy/dynamic:/var/www/html/storage/proxy-domains
 
     # expose, not ports. Reachable from Coolify's proxy on the shared network,
     # not from the open internet on a host port that bypasses TLS.
