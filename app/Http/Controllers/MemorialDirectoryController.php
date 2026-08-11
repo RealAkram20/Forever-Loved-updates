@@ -88,6 +88,14 @@ class MemorialDirectoryController extends Controller
             ->where('status', Memorial::STATUS_ACTIVE)
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
 
+        // A curated set, for the embeddable directory: only these slugs. Applied after
+        // the tenant clause, so a slug from another site's catalogue silently drops out
+        // rather than leaking in.
+        $slugs = array_values(array_filter(array_map('trim', explode(',', (string) $request->input('slugs', '')))));
+        if ($slugs !== []) {
+            $query->whereIn('slug', array_slice($slugs, 0, 60));
+        }
+
         $search = trim($request->input('q', ''));
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
