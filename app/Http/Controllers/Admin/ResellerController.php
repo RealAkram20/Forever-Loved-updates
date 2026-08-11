@@ -92,26 +92,43 @@ class ResellerController extends Controller
             'owner_email' => ['required', 'email', 'max:255', 'unique:users,email'],
         ]);
 
-        $reseller = Reseller::create([
-            'name' => $validated['name'],
-            'slug' => strtolower($validated['slug']),
-            // Falling back to the program's default tier means the common case (everyone
-            // starts on the same tier) needs no thought at creation time.
-            'reseller_tier_id' => $validated['reseller_tier_id'] ?: (SystemSetting::get('reseller.default_tier_id') ?: null),
-            'status' => Reseller::STATUS_ACTIVE,
-        ]);
+        // One transaction, because these four writes are a single act: a reseller, its
+        // owner, the role that owner is nothing without, and the link back.
+        //
+        // Unwrapped, a failure part-way leaves a reseller with no owner and an owner
+        // with no role — which is exactly what happened the first time this ran against
+        // a database whose roles table predated the reseller feature. Both rows were
+        // written, assignRole() threw on a role that did not exist, and the admin screen
+        // then reported "no owner account" for a reseller that looked created. A
+        // half-made tenant is considerably harder to diagnose than no tenant at all.
+        [$reseller, $owner] = DB::transaction(function () use ($validated) {
+            $reseller = Reseller::create([
+                'name' => $validated['name'],
+                'slug' => strtolower($validated['slug']),
+                // Falling back to the program's default tier means the common case (everyone
+                // starts on the same tier) needs no thought at creation time.
+                'reseller_tier_id' => $validated['reseller_tier_id'] ?: (SystemSetting::get('reseller.default_tier_id') ?: null),
+                'status' => Reseller::STATUS_ACTIVE,
+            ]);
 
-        $owner = User::create([
-            'name' => $validated['owner_name'],
-            'email' => $validated['owner_email'],
-            'password' => null,
-            'reseller_id' => $reseller->id,
-            'original_reseller_id' => $reseller->id,
-        ]);
-        $owner->assignRole('reseller');
+            $owner = User::create([
+                'name' => $validated['owner_name'],
+                'email' => $validated['owner_email'],
+                'password' => null,
+                'reseller_id' => $reseller->id,
+                'original_reseller_id' => $reseller->id,
+            ]);
+            $owner->assignRole('reseller');
 
-        $reseller->update(['owner_user_id' => $owner->id]);
+            $reseller->update(['owner_user_id' => $owner->id]);
 
+            return [$reseller, $owner];
+        });
+
+        // Deliberately after the commit. An email cannot be rolled back, and inviting
+        // somebody into a reseller whose creation then failed hands them a login for an
+        // account that does not exist.
+        //
         // The create form says the owner "can sign in immediately" — which is only true if
         // somebody tells them so.
         NotificationService::notifyAccountInvite($owner, $reseller->name);
