@@ -19,6 +19,13 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- The dev .env points APP_URL at a subdirectory (http://localhost/Forever).
+             The test client resolves relative paths against it, so $this->get('/reports')
+             asked for /Forever/reports and every routed request 404'd — which is also why
+             ExampleTest failed on a clean checkout. Tests run at the domain root; nothing
+             under test depends on the subdirectory, and the routes that genuinely care
+             (reseller host routing) assert on generated URLs rather than on this. -->
+        <env name="APP_URL" value="http://localhost"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>

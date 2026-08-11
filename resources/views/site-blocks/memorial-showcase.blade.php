@@ -1,6 +1,9 @@
 @if (isset($popularMemorials) && $popularMemorials->isNotEmpty())
 @php
-    $dirUrl = \Illuminate\Support\Facades\Route::has('memorial.directory') ? route('memorial.directory') : '#';
+    // The directory of the site this block is being served on. route('memorial.directory')
+    // always names the platform's, so on a reseller's front page "View all" walked their
+    // visitor off their site and onto ours, to a list their memorials are not even in.
+    $dirUrl = \App\Support\StandardPages::urlFor(\App\Models\Page::SLUG_FIND_MEMORIAL);
 @endphp
 <section class="relative isolate py-14 sm:py-16">
     <div class="showcase-wash-dark absolute inset-0 hidden pointer-events-none select-none dark:block" aria-hidden="true"></div>

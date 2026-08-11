@@ -19,11 +19,18 @@ class SendContactEmail implements ShouldQueue
 
     public int $tries = 3;
 
+    /**
+     * $toAddress and $siteName carry the tenant whose contact form was used. Nullable and
+     * last so a job already sitting on the queue when this deployed still unserialises, and
+     * so the platform's own form keeps working without passing anything.
+     */
     public function __construct(
         public string $name,
         public string $email,
         public string $subject,
         public string $body,
+        public ?string $toAddress = null,
+        public ?string $siteName = null,
     ) {
     }
 
@@ -37,10 +44,21 @@ class SendContactEmail implements ShouldQueue
     {
         SystemMailConfigurator::applyFromSettings();
 
-        $appName = SystemSetting::get('branding.app_name', config('app.name'));
-        $toAddress = SystemSetting::get('smtp.from_address');
+        // isset(), not ??: a job enqueued before these properties existed unserialises with
+        // them uninitialised, and reading a typed property in that state throws.
+        $appName = (isset($this->siteName) && $this->siteName)
+            ? $this->siteName
+            : SystemSetting::get('branding.app_name', config('app.name'));
+
+        // The reseller's own inbox when the enquiry came from their site; ours otherwise.
+        // Falling back to the platform address matters — an enquiry silently dropped because
+        // a tenant left the field blank is worse than one landing with us to forward on.
+        $toAddress = (isset($this->toAddress) && $this->toAddress)
+            ? $this->toAddress
+            : SystemSetting::get('smtp.from_address');
+
         if (! $toAddress) {
-            Log::warning('Contact email dropped: no smtp.from_address configured', ['from' => $this->email]);
+            Log::warning('Contact email dropped: no recipient configured', ['from' => $this->email]);
 
             return;
         }

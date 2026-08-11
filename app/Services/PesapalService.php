@@ -402,21 +402,37 @@ class PesapalService
         }
         $desc = strtoupper(trim($status['payment_status_description'] ?? ''));
         $code = $status['status_code'] ?? null;
+
         return $desc === 'COMPLETED' || $code === 1 || $code === '1';
     }
 
     /**
      * Check if payment status is failed.
      * Pesapal returns: FAILED, INVALID, REVERSED or status_code 0, 2, 3.
+     *
+     * The code check is guarded on the key being present and comparisons are strict. It used
+     * to be `in_array($code, [0, 2, 3, '0', '2', '3'])` on a `?? null` default — and PHP
+     * evaluates `null == 0` as true under loose comparison, so *any* response without a
+     * `status_code` was read as a failure. A still-processing payment (no code yet) was
+     * therefore written to the order as failed, and the customer told to try again for money
+     * that had already left their account.
      */
     public function isPaymentFailed(?array $status): bool
     {
         if (! $status) {
             return false;
         }
+
         $desc = strtoupper(trim($status['payment_status_description'] ?? ''));
-        $code = $status['status_code'] ?? null;
-        return in_array($desc, ['FAILED', 'INVALID', 'REVERSED'])
-            || in_array($code, [0, 2, 3, '0', '2', '3']);
+
+        if (in_array($desc, ['FAILED', 'INVALID', 'REVERSED'], true)) {
+            return true;
+        }
+
+        if (! array_key_exists('status_code', $status) || $status['status_code'] === null) {
+            return false;
+        }
+
+        return in_array((string) $status['status_code'], ['0', '2', '3'], true);
     }
 }

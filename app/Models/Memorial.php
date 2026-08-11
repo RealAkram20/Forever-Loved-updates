@@ -13,6 +13,65 @@ class Memorial extends Model
 {
     use HasFactory;
 
+    /**
+     * A memorial belongs to whatever tenant its owner belongs to.
+     *
+     * Enforced here rather than at each call site because two of the three call sites
+     * missed it: Reseller\DashboardController::storeMemorial() stamped reseller_id, while
+     * MemorialController::store() and MemorialSignupController never did. A reseller's own
+     * client creating a memorial through the normal flow therefore produced an untenanted
+     * record — absent from the reseller's list and analytics, uncounted against their tier
+     * allowance and storage cap, unreachable on their own subdomain, and handed out with a
+     * platform URL instead of their white-labeled one.
+     *
+     * A creating hook rather than a fourth explicit assignment, so the next creation path
+     * cannot reintroduce the same gap. Anything that sets reseller_id itself wins.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $memorial) {
+            // "Said nothing about it" — not "said null". A caller passing an explicit null
+            // means a platform-owned memorial and is left alone: a direct user with existing
+            // memorials can later be attached to a reseller, and those older memorials stay
+            // the platform's. Treating the two cases alike would silently reassign them.
+            if (array_key_exists('reseller_id', $memorial->getAttributes()) || $memorial->user_id === null) {
+                return;
+            }
+
+            // value() rather than loading the relation: this runs on every insert, and the
+            // owner is frequently not loaded at this point.
+            $resellerId = User::whereKey($memorial->user_id)->value('reseller_id');
+
+            if ($resellerId !== null) {
+                $memorial->reseller_id = $resellerId;
+                // Left alone once set, so a rollover can still be reversed by restore().
+                $memorial->original_reseller_id ??= $resellerId;
+            }
+        });
+
+        // Same reasoning as above: a hook rather than a call in each of the four creation
+        // paths, so a memorial cannot come into existence without its starting categories.
+        static::created(fn (self $memorial) => $memorial->seedDefaultGalleryCategories());
+    }
+
+    /**
+     * The three rooms every memorial opens with. Nothing stops a family renaming or
+     * deleting all of them — they are a starting point, not a schema.
+     */
+    public function seedDefaultGalleryCategories(): void
+    {
+        if ($this->galleryCategories()->exists()) {
+            return;
+        }
+
+        foreach (GalleryCategory::DEFAULTS as $index => $name) {
+            $this->galleryCategories()->create([
+                'name' => $name,
+                'sort_order' => $index,
+            ]);
+        }
+    }
+
     // Dashboard routes (/memorials/{memorial}/...) bind by slug so URLs read
     // as the person's name instead of a numeric id. Public /{slug} routes
     // resolve slugs explicitly and are unaffected.
@@ -65,6 +124,8 @@ class Memorial extends Model
         'background_music',
         'profile_photo_path',
         'profile_photo_size',
+        'cover_photo_path',
+        'cover_photo_size',
         'is_public',
         'status',
         'visitor_count',
@@ -151,6 +212,14 @@ class Memorial extends Model
     public function getProfilePhotoUrlAttribute(): ?string
     {
         return StorageHelper::publicUrl($this->profile_photo_path);
+    }
+
+    /**
+     * Get the public URL for the memorial's cover banner.
+     */
+    public function getCoverPhotoUrlAttribute(): ?string
+    {
+        return StorageHelper::publicUrl($this->cover_photo_path);
     }
 
     /**
@@ -254,22 +323,16 @@ class Memorial extends Model
             return route('memorial.public', ['slug' => $this->slug], true);
         }
 
-        if ($reseller->hasVerifiedCustomDomain()) {
-            return route('memorial.public.custom-domain', [
-                'domain' => $reseller->custom_domain,
-                'slug' => $this->slug,
-            ], true);
-        }
-
-        return route('memorial.public.reseller', [
-            'reseller' => $reseller->slug,
-            'slug' => $this->slug,
-        ], true);
+        // Reseller::publicUrlForSlug() picks the verified custom domain over the subdomain,
+        // and degrades to the path-based /r/{slug} route in environments that cannot serve
+        // either. route() on the host-based routes would happily generate an address for a
+        // host this deployment never answers on.
+        return $reseller->publicUrlForSlug($this->slug);
     }
 
     /**
-     * Bytes this memorial accounts for: its gallery media plus the profile photo, which
-     * has no media row of its own.
+     * Bytes this memorial accounts for: its gallery media plus the profile photo and cover
+     * banner, neither of which has a media row of its own.
      *
      * This is *referenced* size, not disk size. Replacing a profile photo currently leaves
      * the old file behind, so actual disk use can exceed this — an orphan-cleanup job would
@@ -277,7 +340,9 @@ class Memorial extends Model
      */
     public function storageBytes(): int
     {
-        return (int) $this->media()->sum('size') + (int) $this->profile_photo_size;
+        return (int) $this->media()->sum('size')
+            + (int) $this->profile_photo_size
+            + (int) $this->cover_photo_size;
     }
 
     public function storyChapters(): HasMany
@@ -366,13 +431,70 @@ class Memorial extends Model
             && $user->hasRole('reseller');
     }
 
+    /**
+     * Who may manage this memorial's *team* — invite, re-role, or remove collaborators.
+     * Deliberately narrower than canBeEditedBy(): the owner, a platform admin, and reseller
+     * staff for their own tenant can manage the team, but a plain editor collaborator cannot,
+     * so an invited contributor can help run the memorial without silently building their own
+     * roster of further editors.
+     */
+    public function canManageTeam(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $this->user_id === $user->id
+            || $user->hasRole(['admin', 'super-admin'])
+            || $this->isManagedByResellerStaff($user);
+    }
+
+    /**
+     * Photos and videos that belong to the gallery proper — this memorial's media minus
+     * anything already attached to a life post, so a picture doesn't appear twice.
+     *
+     * The exclusion is a correlated NOT EXISTS rather than a `whereNotIn` over
+     * `DB::table('post_media')->pluck('media_id')`: that older form pulled *every* media id
+     * on the platform into PHP and inlined them all into the query, so the cost grew with
+     * total site content instead of with this memorial's, on a page anyone can load.
+     */
     public function galleryMedia()
     {
-        $usedInPosts = DB::table('post_media')->pluck('media_id')->toArray();
-
         return $this->media()
             ->whereIn('type', ['photo', 'video'])
-            ->when(! empty($usedInPosts), fn ($q) => $q->whereNotIn('id', $usedInPosts));
+            ->whereNotExists(fn ($q) => $q
+                ->select(DB::raw(1))
+                ->from('post_media')
+                ->whereColumn('post_media.media_id', 'media.id'));
+    }
+
+    /**
+     * The mirror of galleryMedia(): photos and videos that a story *is* carrying.
+     *
+     * This is what the gallery's "From Stories" category is made of, and it is derived on
+     * every read rather than stored as an assignment. A stored one would have to be kept in
+     * step with every attach, detach and post deletion, and the first time it fell out of
+     * step the gallery would show a picture no story has or hide one it does. There is
+     * nothing to synchronise if there is nothing to store.
+     */
+    public function storyMedia()
+    {
+        return $this->media()
+            ->whereIn('type', ['photo', 'video'])
+            ->whereExists(fn ($q) => $q
+                ->select(DB::raw(1))
+                ->from('post_media')
+                ->whereColumn('post_media.media_id', 'media.id'));
+    }
+
+    /**
+     * The family's own divisions of the gallery, in the order they arranged them.
+     */
+    public function galleryCategories(): HasMany
+    {
+        return $this->hasMany(GalleryCategory::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     /**

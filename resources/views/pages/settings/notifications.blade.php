@@ -181,9 +181,9 @@
                         <div class="text-sm text-blue-700 dark:text-blue-300">
                             <p class="font-medium mb-1">How to generate VAPID keys (free):</p>
                             <ol class="list-decimal list-inside space-y-1 text-xs">
-                                <li>Install the <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">web-push</code> PHP package: <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">composer require minishlink/web-push</code></li>
-                                <li>Generate keys: <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">php artisan tinker</code> &rarr; <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">Minishlink\WebPush\VAPID::createVapidKeys()</code></li>
-                                <li>Or use: <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">npx web-push generate-vapid-keys</code></li>
+                                <li>Install the <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded break-all">web-push</code> PHP package: <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded break-all">composer require minishlink/web-push</code></li>
+                                <li>Generate keys: <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded break-all">php artisan tinker</code> &rarr; <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded break-all">Minishlink\WebPush\VAPID::createVapidKeys()</code></li>
+                                <li>Or use: <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded break-all">npx web-push generate-vapid-keys</code></li>
                             </ol>
                             <p class="mt-2 text-xs">Push notifications require HTTPS and a service worker. They are completely free with no third-party costs.</p>
                         </div>

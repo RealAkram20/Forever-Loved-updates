@@ -89,7 +89,12 @@ class ProfileController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        return Redirect::route('profile.edit')->with('status', 'Password updated successfully.');
+        // Changing a password is how someone responds to a suspected compromise, so it has
+        // to end the intruder's session too — otherwise the old one stays signed in and the
+        // change accomplishes nothing. Keeps this browser's session alive.
+        Auth::logoutOtherDevices($validated['password']);
+
+        return Redirect::route('profile.edit')->with('status', 'Password updated. Any other devices signed in to this account have been logged out.');
     }
 
     public function destroy(Request $request): RedirectResponse

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Memorial;
+use App\Models\Reseller;
 
 /**
  * Read-only, chrome-less memorial view for embedding on a reseller's own site via
@@ -30,6 +31,14 @@ class WidgetController extends Controller
 
         if ($memorial->reseller_id && ! $memorial->reseller?->tier?->feature_embedding) {
             abort(403, 'Embedding is not included in this reseller\'s current plan.');
+        }
+
+        // Bind the tenant so BrandingHelper/AppearanceHelper resolve *their* palette, logo and
+        // fonts rather than the platform's. This route has no reseller middleware — nothing
+        // bound it before, so the one feature explicitly sold as white-label embedding
+        // rendered in the platform's colours on the reseller's own website.
+        if ($memorial->reseller) {
+            app()->instance(Reseller::class, $memorial->reseller);
         }
 
         $memorial->load('media', 'storyChapters');

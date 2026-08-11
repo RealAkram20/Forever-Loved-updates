@@ -121,6 +121,27 @@ class NotificationService
     }
 
     /**
+     * Tell someone they've been invited to help manage a specific memorial. New accounts sign
+     * in with a code (no password to set); existing accounts land on the memorial itself.
+     */
+    public static function notifyMemorialCollaboratorInvite(User $invitee, \App\Models\Memorial $memorial, string $inviterName, bool $isNewAccount): void
+    {
+        $name = $memorial->full_name ?: 'a memorial';
+
+        static::send(
+            $invitee->id,
+            'memorial_collaborator_invite',
+            "You've been invited to help manage {$name}",
+            $isNewAccount
+                ? "{$inviterName} invited you to help manage the memorial for {$name}. Sign in with this email address — no password needed, we'll email you a code."
+                : "{$inviterName} invited you to help manage the memorial for {$name}. Open it to start editing.",
+            'user',
+            $isNewAccount ? route('login.passwordless') : $memorial->publicUrl(),
+            ['memorial' => $name, 'inviter' => $inviterName],
+        );
+    }
+
+    /**
      * Whether an invitation would actually reach anyone. Callers use this to warn the
      * person doing the inviting, rather than let them believe mail went out.
      */

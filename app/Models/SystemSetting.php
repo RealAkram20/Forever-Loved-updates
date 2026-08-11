@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 
 class SystemSetting extends Model
 {
@@ -159,7 +161,7 @@ class SystemSetting extends Model
 
         $stored = (string) $value;
         if ($resolvedType === 'encrypted' && $stored !== '') {
-            $stored = \Illuminate\Support\Facades\Crypt::encryptString($stored);
+            $stored = Crypt::encryptString($stored);
         }
 
         static::updateOrCreate(
@@ -206,7 +208,12 @@ class SystemSetting extends Model
         Cache::forget('system_settings');
     }
 
-    private static function castValue(string $value, string $type): mixed
+    /**
+     * Public so App\Helpers\ThemeSetting can cast a reseller's override with exactly the
+     * same rules as a platform value — the two stores share one key vocabulary and one set
+     * of declared types, and a second cast implementation would be free to drift from this.
+     */
+    public static function castValue(string $value, string $type): mixed
     {
         return match ($type) {
             'boolean' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
@@ -231,13 +238,13 @@ class SystemSetting extends Model
         }
 
         try {
-            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+            return Crypt::decryptString($value);
         } catch (\Throwable) {
             $decoded = json_decode(base64_decode($value, true) ?: '', true);
             $looksEncrypted = is_array($decoded) && isset($decoded['iv'], $decoded['value'], $decoded['mac']);
 
             if ($looksEncrypted) {
-                \Illuminate\Support\Facades\Log::warning('System setting secret could not be decrypted (APP_KEY changed?) — treating as unset. Re-save it in admin settings.');
+                Log::warning('System setting secret could not be decrypted (APP_KEY changed?) — treating as unset. Re-save it in admin settings.');
 
                 return '';
             }

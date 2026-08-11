@@ -17,8 +17,12 @@
     <div class="space-y-6">
         {{-- Filters & Actions --}}
         <x-common.component-card title="Manage Users" desc="View, create, edit and manage all system users.">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                <form method="GET" action="{{ route('users.index') }}" class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+            {{-- Wrapping, not just stacking. Below `sm` these are a column and fine; from
+                 `sm` up they become a row of four controls plus a button, inside a column
+                 that has already given width to the sidebar — which overflowed the page by
+                 87px at tablet size. Wrapping lets the row use a second line instead. --}}
+            <div class="flex flex-col flex-wrap sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <form method="GET" action="{{ route('users.index') }}" class="flex w-full flex-col flex-wrap sm:w-auto sm:flex-row items-start sm:items-center gap-3">
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name or email..."
                         class="h-11 w-full sm:w-64 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
                     <select name="role"

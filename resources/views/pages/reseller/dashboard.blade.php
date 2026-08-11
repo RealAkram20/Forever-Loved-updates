@@ -13,17 +13,7 @@
             <h2 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ $reseller->name }}</h2>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ $reseller->tier?->name ? $reseller->tier->name.' plan' : 'No tier assigned yet' }}</p>
         </div>
-        <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/[0.03] px-3 py-2"
-            x-data="{ copied: false }">
-            <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5m5.656-5.656l1.5-1.5a4 4 0 015.656 5.656l-3 3a4 4 0 01-5.656 0"/></svg>
-            <code class="text-sm text-gray-700 dark:text-gray-300">{{ $reseller->slug }}.{{ config('reseller.domain') }}</code>
-            <button type="button" title="Copy"
-                @click="navigator.clipboard.writeText('https://{{ $reseller->slug }}.{{ config('reseller.domain') }}'); copied = true; setTimeout(() => copied = false, 1500)"
-                class="ml-1 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors">
-                <svg x-show="!copied" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                <svg x-show="copied" x-cloak class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            </button>
-        </div>
+        <x-common.reseller-address :reseller="$reseller" class="sm:max-w-sm" />
     </div>
 
     {{-- Stat tiles — matches the platform's own dashboard convention (icon badge + number + label) --}}
@@ -95,7 +85,7 @@
     @php
         $steps = [
             ['done' => $planCount > 0, 'label' => 'Create a client plan', 'desc' => 'Set the pricing you offer your own clients.', 'route' => route('reseller.plans')],
-            ['done' => (bool) $reseller->logo_path, 'label' => 'Add your branding', 'desc' => 'Upload a logo so your subdomain looks like your business.', 'route' => route('reseller.branding')],
+            ['done' => (bool) $reseller->logo_path, 'label' => 'Add your branding', 'desc' => 'Upload a logo and set your brand colours so your pages look like your business.', 'route' => route('reseller.appearance')],
             ['done' => $clientCount > 0, 'label' => 'Add a client', 'desc' => 'Onboard the first family you\'re building a memorial for.', 'route' => route('reseller.clients')],
             ['done' => $memorialCount > 0, 'label' => 'Create their memorial', 'desc' => 'Build it yourself, or invite the client to finish it.', 'route' => route('reseller.memorials.create')],
         ];

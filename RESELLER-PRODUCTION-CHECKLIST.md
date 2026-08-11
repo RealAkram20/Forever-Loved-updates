@@ -20,6 +20,17 @@ APP_URL=https://yourdomain.com
 **cannot work** through a subdirectory, because `acme.yourdomain.com/Forever/jane-doe`
 is not a URL any reseller would ever hand to a family.
 
+The app now detects this rather than pretending otherwise. `Reseller::subdomainRoutingAvailable()`
+compares `APP_URL` against `RESELLER_APP_DOMAIN`, and when they cannot work together:
+
+- reseller addresses fall back to a path-based `/r/{slug}/{memorial}` route, so reseller pages
+  are actually reachable in development instead of only existing in production;
+- the reseller dashboard, their Settings and Appearance pages, and the admin roster all label
+  that address as temporary and name the real host it will become.
+
+Once this and §2 are correct, the fallback stops being used automatically — there is nothing
+to switch off. **After changing either value, run `php artisan config:clear`.**
+
 `routes/web.php` derives the "is this our own host?" exclusion from `APP_URL`. Get this
 wrong and the catch-all `Route::domain('{domain}')` group can shadow first-party routes
 like `/login` and `/dashboard`.
@@ -30,9 +41,9 @@ like `/login` and `/dashboard`.
 RESELLER_APP_DOMAIN=yourdomain.com
 ```
 
-Currently **unset**, so it falls back to `foreverloved.com` (see `config/reseller.php`).
-Every reseller subdomain is minted under this value, and it is baked into route
-registration at boot — so after changing it:
+Now set explicitly in `.env` rather than relying on `config/reseller.php`'s fallback, so it is
+visible what resellers are being sold. Every reseller subdomain is minted under this value, and
+it is baked into route registration at boot — so after changing it:
 
 ```bash
 php artisan config:clear && php artisan route:clear
@@ -85,12 +96,10 @@ MAIL_MAILER=smtp   # currently: log
 `MAIL_MAILER=log` writes mail to `storage/logs/` and sends nothing. Configure real SMTP
 (there is an admin UI at **Settings → SMTP / Email**) and send a test before launch.
 
-> **Known gap:** the reseller "create a memorial for a client" screen states *"We'll invite
-> the client by email"*, but no invite is currently sent, and the client account is created
-> with a null password. Until that is implemented, clients created this way **cannot log
-> in** and will not know an account exists. Either implement the invite or remove the
-> promise from the UI before launch — shipping a stated promise the software does not keep
-> is worse than shipping without the feature.
+Invites **are** sent now, from all three account-creation paths (new reseller owner, new client,
+and "create a memorial for a client"), and each success message says plainly whether the email
+actually went out. That is exactly why real SMTP matters here: with `MAIL_MAILER=log` the UI
+correctly reports that nobody was emailed, and those accounts have no way to learn they exist.
 
 ## 7. Queue worker
 
@@ -112,6 +121,14 @@ php artisan migrate --force
 # Without it, reported storage undercounts every older memorial.
 php artisan memorials:backfill-photo-sizes --dry-run   # inspect first
 php artisan memorials:backfill-photo-sizes
+
+# Attributes memorials a reseller's own clients created themselves. Until Memorial's
+# creating hook existed, only the reseller's "create for a client" screen stamped
+# reseller_id — so client-created memorials were invisible to the reseller and, more
+# importantly, uncounted against the tier allowance and storage cap they are billed on.
+# Reports any reseller the correction pushes into billable overage.
+php artisan memorials:backfill-reseller-attribution --dry-run   # inspect first
+php artisan memorials:backfill-reseller-attribution
 ```
 
 ## 9. Do NOT seed demo data

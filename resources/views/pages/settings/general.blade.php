@@ -46,7 +46,7 @@
                     <input type="file" name="logo" accept="image/*"
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 file:mr-4 file:rounded-md file:border-0 file:bg-brand-500 file:px-4 file:py-1.5 file:text-sm file:text-white hover:file:bg-brand-600" />
                     @if (!empty($settings['branding.logo_path']))
-                        <p class="mt-1 text-xs text-gray-500">Current: {{ $settings['branding.logo_path'] }}</p>
+                        <p class="mt-1 break-all text-xs text-gray-500">Current: {{ $settings['branding.logo_path'] }}</p>
                     @endif
                 </div>
 
@@ -55,7 +55,7 @@
                     <input type="file" name="logo_dark" accept="image/*"
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 file:mr-4 file:rounded-md file:border-0 file:bg-brand-500 file:px-4 file:py-1.5 file:text-sm file:text-white hover:file:bg-brand-600" />
                     @if (!empty($settings['branding.logo_dark_path']))
-                        <p class="mt-1 text-xs text-gray-500">Current: {{ $settings['branding.logo_dark_path'] }}</p>
+                        <p class="mt-1 break-all text-xs text-gray-500">Current: {{ $settings['branding.logo_dark_path'] }}</p>
                     @endif
                 </div>
 
@@ -64,7 +64,7 @@
                     <input type="file" name="favicon" accept="image/*"
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 file:mr-4 file:rounded-md file:border-0 file:bg-brand-500 file:px-4 file:py-1.5 file:text-sm file:text-white hover:file:bg-brand-600" />
                     @if (!empty($settings['branding.favicon_path']))
-                        <p class="mt-1 text-xs text-gray-500">Current: {{ $settings['branding.favicon_path'] }}</p>
+                        <p class="mt-1 break-all text-xs text-gray-500">Current: {{ $settings['branding.favicon_path'] }}</p>
                     @endif
                 </div>
 

@@ -11,6 +11,27 @@ class Reseller extends Model
 {
     use HasFactory;
 
+    /**
+     * A new reseller's site is usable the moment it exists.
+     *
+     * Standard pages and menus both defaulted to empty, so a brand-new tenant's site had no
+     * About, no Pricing, no Contact and a header reading "Home" and nothing else — every one
+     * of them a switch somebody had to find first, and some of them behind a tier flag they
+     * may not have. Provisioning here rather than in Admin\ResellerController for the reason
+     * Memorial::booted() gives about reseller_id: there is more than one way a reseller gets
+     * created (the admin form, a seeder, a factory), and a hook cannot be forgotten by the
+     * next one.
+     *
+     * ResellerSiteProvisioner is additive and idempotent, so this only ever fills in what is
+     * missing — a reseller who later switches a page off keeps it off.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (self $reseller) {
+            \App\Support\ResellerSiteProvisioner::provision($reseller);
+        });
+    }
+
     public const STATUS_ACTIVE = 'active';
 
     public const STATUS_SUSPENDED = 'suspended';
@@ -23,11 +44,15 @@ class Reseller extends Model
 
     protected $fillable = [
         'name',
+        // Where their Contact page sends enquiries. Seeded from the owner's account so it
+        // works immediately; separable because enquiries usually belong in a shared inbox.
+        'contact_email',
         'slug',
         'owner_user_id',
         'reseller_tier_id',
         'status',
         'logo_path',
+        'logo_dark_path',
         'favicon_path',
         'primary_color',
         'pesapal_enabled',
@@ -72,6 +97,111 @@ class Reseller extends Model
     public function hasVerifiedCustomDomain(): bool
     {
         return $this->custom_domain !== null && $this->custom_domain_status === self::DOMAIN_VERIFIED;
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Public addresses
+     |--------------------------------------------------------------------------
+     | Everything that shows or links to a reseller address goes through here.
+     | Nine views used to concatenate slug + config('reseller.domain') inline, which
+     | printed a confident "acme.<base domain>" on a localhost subdirectory install
+     | — an address nothing can serve, offered to the reseller as final.
+     |
+     | These answer two separate questions: where the pages are *meant* to live once
+     | deployed (publicHost), and where they can actually be reached *right now*
+     | (publicBaseUrl). Those differ in every environment that isn't production.
+     */
+
+    /**
+     * Host-header routing needs the app to own the whole document root. Route::domain()
+     * carries no path prefix, so on a subdirectory install — APP_URL ending in /Forever —
+     * there is no URL that reaches a host-routed page at all, for subdomains or for a
+     * reseller's own custom domain.
+     */
+    public static function hostRoutingAvailable(): bool
+    {
+        return trim((string) parse_url((string) config('app.url'), PHP_URL_PATH), '/') === '';
+    }
+
+    /**
+     * Subdomains additionally need the app to actually answer on the reseller base domain.
+     * Pointing RESELLER_APP_DOMAIN at a domain the app is not served from makes every
+     * minted {slug}.{base} address dead on arrival.
+     *
+     * The base domain now derives from APP_URL rather than a hardcoded one, so this is
+     * true by default on a real deployment instead of needing a matching env var — but a
+     * single-label host is still rejected below.
+     */
+    public static function subdomainRoutingAvailable(): bool
+    {
+        if (! self::hostRoutingAvailable()) {
+            return false;
+        }
+
+        $host = strtolower((string) (parse_url((string) config('app.url'), PHP_URL_HOST) ?: ''));
+        $base = strtolower((string) config('reseller.domain'));
+
+        // A base with no dot is a bare hostname — 'localhost', or a machine name on a LAN.
+        // Some browsers resolve acme.localhost and most systems do not, so we refuse to
+        // hand anyone that address and fall back to the /r/{slug} path instead.
+        if (! str_contains($base, '.')) {
+            return false;
+        }
+
+        return $host !== '' && $base !== '' && ($host === $base || str_ends_with($host, '.'.$base));
+    }
+
+    /** The host these pages are meant to be served from once deployed correctly. */
+    public function publicHost(): string
+    {
+        return $this->hasVerifiedCustomDomain()
+            ? $this->custom_domain
+            : $this->slug.'.'.config('reseller.domain');
+    }
+
+    /**
+     * True when this environment cannot serve publicHost(), so publicBaseUrl() is handing
+     * back a development stand-in. The UI must say so rather than presenting a dead
+     * address as the one to give a family.
+     */
+    public function usingFallbackAddress(): bool
+    {
+        return $this->hasVerifiedCustomDomain()
+            ? ! self::hostRoutingAvailable()
+            : ! self::subdomainRoutingAvailable();
+    }
+
+    /**
+     * The base URL that actually works right now — the real host when host routing is
+     * available, else the path-based /r/{slug} route, so reseller pages are reachable in
+     * development instead of only existing in production.
+     */
+    public function publicBaseUrl(): string
+    {
+        // Built from config, not url(): the availability checks above read config('app.url'),
+        // and url() resolves against the *current request's* root. Letting the two disagree
+        // would make this return a different address inside a queued job or console command
+        // (notifications, invites) than it does in a web request.
+        if ($this->usingFallbackAddress()) {
+            return rtrim((string) config('app.url'), '/').'/r/'.$this->slug;
+        }
+
+        $scheme = parse_url((string) config('app.url'), PHP_URL_SCHEME) ?: 'https';
+
+        return $scheme.'://'.$this->publicHost();
+    }
+
+    /** Absolute URL for one of this reseller's memorial slugs. */
+    public function publicUrlForSlug(string $slug): string
+    {
+        return $this->publicBaseUrl().'/'.$slug;
+    }
+
+    /** publicBaseUrl() without the scheme, for display in a <code> block. */
+    public function publicDisplayAddress(): string
+    {
+        return (string) preg_replace('#^https?://#', '', $this->publicBaseUrl());
     }
 
     /**
@@ -183,7 +313,8 @@ class Reseller extends Model
         $memorialIds = $this->memorials()->select('id');
 
         return (int) Media::whereIn('memorial_id', $memorialIds)->sum('size')
-            + (int) $this->memorials()->sum('profile_photo_size');
+            + (int) $this->memorials()->sum('profile_photo_size')
+            + (int) $this->memorials()->sum('cover_photo_size');
     }
 
     /** The tier's storage cap in bytes, or null when uncapped / no tier assigned. */

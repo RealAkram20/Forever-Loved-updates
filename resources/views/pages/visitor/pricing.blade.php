@@ -53,58 +53,7 @@
                     </div>
                 </div>
 
-                {{-- Feature List --}}
-                <ul class="mb-8 space-y-3 flex-1">
-                    <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                        <svg class="h-5 w-5 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                        {{ $plan->memorial_limit == 0 ? 'Unlimited' : $plan->memorial_limit }} {{ Str::plural('memorial', $plan->memorial_limit ?: 2) }}
-                    </li>
-                    <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                        <svg class="h-5 w-5 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                        {{ $plan->storage_limit_mb >= 1024 ? ($plan->storage_limit_mb / 1024) . ' GB' : $plan->storage_limit_mb . ' MB' }} storage
-                    </li>
-                    <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                        <svg class="h-5 w-5 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                        {{ $plan->max_gallery_images == 0 ? 'Unlimited' : $plan->max_gallery_images }} gallery {{ Str::plural('photo', $plan->max_gallery_images ?: 2) }}
-                    </li>
-                    <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                        <svg class="h-5 w-5 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                        {{ $plan->max_tributes == 0 ? 'Unlimited' : $plan->max_tributes }} tributes
-                    </li>
-                    <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                        <svg class="h-5 w-5 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                        {{ $plan->max_chapters == 0 ? 'Unlimited' : $plan->max_chapters }} story {{ Str::plural('chapter', $plan->max_chapters ?: 2) }}
-                    </li>
-                    @if ($plan->max_ai_bio_per_day > 0)
-                    <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                        <svg class="h-5 w-5 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                        AI biography ({{ $plan->max_ai_bio_per_day }}/day)
-                    </li>
-                    @else
-                    <li class="flex items-start gap-2.5 text-sm text-gray-400 dark:text-gray-500">
-                        <svg class="h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                        AI biography
-                    </li>
-                    @endif
-                    @foreach ([
-                        ['flag' => 'feature_background_music', 'label' => 'Background music'],
-                        ['flag' => 'feature_no_ads', 'label' => 'Ad-free experience'],
-                        ['flag' => 'feature_never_expires', 'label' => 'Never expires'],
-                        ['flag' => 'feature_share_memories', 'label' => 'Share memories'],
-                    ] as $feature)
-                        @if ($plan->{$feature['flag']})
-                        <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                            <svg class="h-5 w-5 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                            {{ $feature['label'] }}
-                        </li>
-                        @else
-                        <li class="flex items-start gap-2.5 text-sm text-gray-400 dark:text-gray-500">
-                            <svg class="h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                            {{ $feature['label'] }}
-                        </li>
-                        @endif
-                    @endforeach
-                </ul>
+                @include("partials.pricing.plan-bullets", ["plan" => $plan])
 
                 <a href="{{ route('memorial.create.step1') }}"
                    class="btn {{ $isPopular ? 'btn-primary' : 'btn-secondary' }} btn-md btn-block w-full">
@@ -132,49 +81,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                    @php
-                        $features = [
-                            ['label' => 'Memorials', 'key' => 'memorial_limit', 'type' => 'limit'],
-                            ['label' => 'Storage', 'key' => 'storage_limit_mb', 'type' => 'storage'],
-                            ['label' => 'Gallery Photos', 'key' => 'max_gallery_images', 'type' => 'limit'],
-                            ['label' => 'Gallery Videos', 'key' => 'max_gallery_videos', 'type' => 'limit'],
-                            ['label' => 'Tributes', 'key' => 'max_tributes', 'type' => 'limit'],
-                            ['label' => 'Story Chapters', 'key' => 'max_chapters', 'type' => 'limit'],
-                            ['label' => 'AI Biography', 'key' => 'max_ai_bio_per_day', 'type' => 'daily'],
-                            ['label' => 'Background Music', 'key' => 'feature_background_music', 'type' => 'bool'],
-                            ['label' => 'Advanced Privacy', 'key' => 'feature_advanced_privacy', 'type' => 'bool'],
-                            ['label' => 'Guest Notifications', 'key' => 'feature_guest_notifications', 'type' => 'bool'],
-                            ['label' => 'Never Expires', 'key' => 'feature_never_expires', 'type' => 'bool'],
-                            ['label' => 'Ad-Free', 'key' => 'feature_no_ads', 'type' => 'bool'],
-                            ['label' => 'Share Memories', 'key' => 'feature_share_memories', 'type' => 'bool'],
-                        ];
-                    @endphp
-                    @foreach ($features as $feature)
-                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition">
-                        <td class="px-6 py-3.5 text-sm text-gray-700 dark:text-gray-300">{{ $feature['label'] }}</td>
-                        @foreach ($plans as $plan)
-                            <td class="px-6 py-3.5 text-center text-sm">
-                                @if ($feature['type'] === 'bool')
-                                    @if ($plan->{$feature['key']})
-                                        <svg class="inline h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                    @else
-                                        <svg class="inline h-5 w-5 text-gray-300 dark:text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                                    @endif
-                                @elseif ($feature['type'] === 'storage')
-                                    <span class="font-medium text-gray-900 dark:text-white">{{ $plan->{$feature['key']} >= 1024 ? ($plan->{$feature['key']} / 1024) . ' GB' : $plan->{$feature['key']} . ' MB' }}</span>
-                                @elseif ($feature['type'] === 'daily')
-                                    @if ($plan->{$feature['key']} > 0)
-                                        <span class="font-medium text-gray-900 dark:text-white">{{ $plan->{$feature['key']} }}/day</span>
-                                    @else
-                                        <svg class="inline h-5 w-5 text-gray-300 dark:text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                                    @endif
-                                @else
-                                    <span class="font-medium text-gray-900 dark:text-white">{{ $plan->{$feature['key']} == 0 ? 'Unlimited' : $plan->{$feature['key']} }}</span>
-                                @endif
-                            </td>
-                        @endforeach
-                    </tr>
-                    @endforeach
+                    @include("partials.pricing.comparison-rows", ["plans" => $plans])
                 </tbody>
             </table>
         </div>

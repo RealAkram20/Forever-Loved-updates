@@ -37,6 +37,9 @@ class SettingsController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            // Nullable: blank falls back to the platform's address rather than dropping the
+            // enquiry, so an unset field is a routing choice and not a silent hole.
+            'contact_email' => ['nullable', 'email', 'max:255'],
         ]);
 
         $request->user()->reseller->update($validated);

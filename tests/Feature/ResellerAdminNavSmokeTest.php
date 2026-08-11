@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\Memorial;
 use App\Models\Reseller;
 use App\Models\ResellerTier;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -45,12 +47,28 @@ beforeEach(function () {
 });
 
 it('renders the reseller roster', function () {
+    // APP_URL is a bare localhost here, so no {slug}.{base} address can be served. The
+    // roster must show the address that works and say the rest is temporary — printing
+    // acme.<base> would be handing an admin a dead URL to pass on.
     $this->actingAs($this->admin)
         ->get('http://localhost/settings/resellers')
         ->assertOk()
         ->assertSee('Acme Funeral Home')
-        ->assertSee('acme.'.config('reseller.domain'))
+        ->assertSee('r/acme')
+        ->assertSee('Subdomain routing is not available in this environment')
         ->assertSee('New Reseller');
+});
+
+it('shows real subdomain addresses on the roster once deployed correctly', function () {
+    // Both pinned: reseller.domain derives from APP_URL now, so building APP_URL from it
+    // was circular and resolved to the bare 'localhost' the test environment runs on.
+    config(['reseller.domain' => 'example.test', 'app.url' => 'https://example.test']);
+
+    $this->actingAs($this->admin)
+        ->get('http://localhost/settings/resellers')
+        ->assertOk()
+        ->assertSee('acme.'.config('reseller.domain'))
+        ->assertDontSee('Subdomain routing is not available in this environment');
 });
 
 it('renders the per-reseller detail page', function () {
@@ -131,11 +149,11 @@ it('scopes the users list to one reseller', function () {
 });
 
 it('defaults the plans list to platform-owned plans', function () {
-    $platformPlan = \App\Models\SubscriptionPlan::create([
+    $platformPlan = SubscriptionPlan::create([
         'name' => 'Platform Premium', 'slug' => 'platform-premium', 'price' => 20, 'interval' => 'monthly',
         'memorial_limit' => 5, 'storage_limit_mb' => 500, 'sort_order' => 1, 'is_active' => true,
     ]);
-    \App\Models\SubscriptionPlan::create([
+    SubscriptionPlan::create([
         'name' => 'Acme Package', 'slug' => 'acme-package', 'price' => 30, 'interval' => 'monthly',
         'memorial_limit' => 5, 'storage_limit_mb' => 500, 'sort_order' => 2, 'is_active' => true,
         'reseller_id' => $this->reseller->id,
@@ -157,7 +175,7 @@ it('defaults the plans list to platform-owned plans', function () {
 });
 
 it('tags memorials and payment orders with their owning reseller', function () {
-    \App\Models\Memorial::factory()->create([
+    Memorial::factory()->create([
         'full_name' => 'Jane Doe',
         'reseller_id' => $this->reseller->id,
     ]);

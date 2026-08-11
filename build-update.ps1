@@ -1,6 +1,7 @@
 # Build LaraUpdater release package (full application code + built assets)
 # Run from project root: .\build-update.ps1
-# Creates: public/updates/RELEASE-X.X.X.zip and public/updates/laraupdater.json
+# Creates: storage/app/updates/RELEASE-X.X.X.zip and storage/app/updates/laraupdater.json
+# (not public/ — a release archive is the whole application source, and that folder is served)
 #
 # Usage:
 #   .\build-update.ps1                         # Git diff (only changed paths under allowed roots)
@@ -24,7 +25,9 @@ if (-not (Test-Path $versionFile)) {
 }
 $version = (Get-Content $versionFile -Raw).Trim()
 $zipName = "RELEASE-$version.zip"
-$updatesDir = Join-Path $projectRoot "public\updates"
+# storage/, not public/. Serving release archives over the web made the complete application
+# source downloadable by anyone who guessed the filename; the updater reads them off disk.
+$updatesDir = Join-Path $projectRoot "storage\app\updates"
 $zipPath = Join-Path $updatesDir $zipName
 
 # Core directories (always eligible for git-diff matching and for -All)
@@ -225,13 +228,21 @@ $json = @{
     description = $Description
 } | ConvertTo-Json
 
+# Written without a byte-order mark. Set-Content -Encoding UTF8 emits one on Windows
+# PowerShell 5.1, and json_decode() rejects a leading BOM as a syntax error — which is why
+# the shipped manifest never parsed and every update check silently fell back to HTTP.
+function Write-JsonNoBom {
+    param([string]$Path, [string]$Content)
+    [System.IO.File]::WriteAllText($Path, $Content, (New-Object System.Text.UTF8Encoding($false)))
+}
+
 # Same manifest inside the zip (tree copy can be stale vs this release)
-$manifestInTemp = Join-Path $tempDir "public\updates\laraupdater.json"
+$manifestInTemp = Join-Path $tempDir "storage\app\updates\laraupdater.json"
 $manifestParent = Split-Path $manifestInTemp -Parent
 if (-not (Test-Path $manifestParent)) {
     New-Item -ItemType Directory -Path $manifestParent -Force | Out-Null
 }
-$json | Set-Content -Path $manifestInTemp -Encoding UTF8
+Write-JsonNoBom -Path $manifestInTemp -Content $json
 
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -262,11 +273,12 @@ try {
 Remove-Item $tempDir -Recurse -Force
 
 $jsonPath = Join-Path $updatesDir "laraupdater.json"
-$json | Set-Content -Path $jsonPath -Encoding UTF8
+Write-JsonNoBom -Path $jsonPath -Content $json
 
 Write-Host "`n=== Done ===" -ForegroundColor Green
 Write-Host "Output: $updatesDir" -ForegroundColor Green
 Write-Host "  - $zipName ($($filesToInclude.Count) files)" -ForegroundColor Green
 Write-Host "  - laraupdater.json" -ForegroundColor Green
-Write-Host "`nExcluded from zip: vendor/, node_modules/, storage/*, public/storage/, public/updates/RELEASE-*.zip, .env" -ForegroundColor DarkGray
+Write-Host "`nExcluded from zip: vendor/, node_modules/, storage/*, public/storage/, RELEASE-*.zip, .env" -ForegroundColor DarkGray
+Write-Host "Upload the zip to storage/app/updates/ on the server (never public/)." -ForegroundColor DarkGray
 Write-Host "After install on server: if composer.json changed, run  composer install --no-dev --optimize-autoloader" -ForegroundColor DarkYellow

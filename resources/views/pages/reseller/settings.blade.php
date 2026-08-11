@@ -11,7 +11,7 @@
     @endif
 
     <div class="space-y-6">
-        <x-common.component-card title="Business Name">
+        <x-common.component-card title="Business details">
             <form action="{{ route('reseller.settings.update') }}" method="POST" class="space-y-4">
                 @csrf @method('PUT')
                 <div class="max-w-md">
@@ -20,6 +20,16 @@
                         class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
                     @error('name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                 </div>
+                <div class="max-w-md">
+                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Contact email</label>
+                    <input type="email" name="contact_email" value="{{ old('contact_email', $reseller->contact_email) }}"
+                        placeholder="enquiries@yourbusiness.com"
+                        class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Where messages from your Contact page are sent. Leave blank and they come to us to forward on.
+                    </p>
+                    @error('contact_email') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                </div>
                 <button type="submit" class="btn btn-primary btn-md">Save</button>
             </form>
         </x-common.component-card>
@@ -27,8 +37,8 @@
         <x-common.component-card title="Account Details" desc="Your subdomain and plan tier are managed by the platform admin.">
             <dl class="grid grid-cols-1 gap-4 sm:grid-cols-3 text-sm">
                 <div>
-                    <dt class="text-gray-500 dark:text-gray-400">Subdomain</dt>
-                    <dd class="mt-1 font-medium text-gray-800 dark:text-white/90">{{ $reseller->slug }}.{{ config('reseller.domain') }}</dd>
+                    <dt class="text-gray-500 dark:text-gray-400">Your address</dt>
+                    <dd class="mt-1"><x-common.reseller-address :reseller="$reseller" :copy="false" /></dd>
                 </div>
                 <div>
                     <dt class="text-gray-500 dark:text-gray-400">Tier</dt>
@@ -41,7 +51,7 @@
             </dl>
         </x-common.component-card>
 
-        <x-common.component-card title="Custom Domain" desc="Use your own domain for your memorial pages instead of your {{ $reseller->slug }}.{{ config('reseller.domain') }} subdomain.">
+        <x-common.component-card title="Custom Domain" desc="Use your own domain for your memorial pages instead of your {{ $reseller->publicHost() }} subdomain.">
             @if (! $domainsEnabled)
                 <p class="text-sm text-gray-500 dark:text-gray-400">This isn't turned on yet — ask your platform admin to enable custom domains.</p>
             @elseif (! $domainRoutingInTier)
@@ -53,7 +63,7 @@
                         <p class="text-sm font-medium text-gray-800 dark:text-white/90">Not included in your {{ $reseller->tier?->name ?? 'current' }} tier</p>
                         <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                             Your memorials stay available at
-                            <span class="font-mono">{{ $reseller->slug }}.{{ config('reseller.domain') }}</span>.
+                            <span class="font-mono">{{ $reseller->publicDisplayAddress() }}</span>.
                             Get in touch if you'd like to use your own domain.
                         </p>
                     </div>
@@ -98,7 +108,7 @@
                         </ol>
                         <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
                             DNS changes usually appear within minutes, but can take up to 48 hours. Your
-                            <span class="font-mono">{{ $reseller->slug }}.{{ config('reseller.domain') }}</span>
+                            <span class="font-mono">{{ $reseller->publicDisplayAddress() }}</span>
                             address keeps working throughout, so nothing goes offline while you set this up.
                         </p>
                     </div>
@@ -122,8 +132,11 @@
                             <div>
                                 <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Step 1 — prove you own this domain</p>
                                 <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">Add this TXT record at your domain registrar or DNS provider, then verify:</p>
+                                {{-- Asked for from the service that will do the lookup, so the
+                                     record we tell them to add is by construction the one we
+                                     check for. --}}
                                 <x-common.dns-record type="TXT"
-                                    host="_foreverloved-verify.{{ $reseller->custom_domain }}"
+                                    :host="app(\App\Services\DomainVerificationService::class)->txtHost($reseller->custom_domain)"
                                     :value="$reseller->custom_domain_token" />
                                 <form action="{{ route('reseller.settings.domain.verify') }}" method="POST" class="mt-3">
                                     @csrf
@@ -153,9 +166,9 @@
 
         <x-common.component-card title="More Settings">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <a href="{{ route('reseller.branding') }}" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition">
-                    <p class="font-medium text-gray-800 dark:text-white/90">Branding</p>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Logo, favicon, and primary color</p>
+                <a href="{{ route('reseller.appearance') }}" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition">
+                    <p class="font-medium text-gray-800 dark:text-white/90">Appearance</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Logo, favicon, colours and fonts</p>
                 </a>
                 <a href="{{ route('reseller.payments') }}" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition">
                     <p class="font-medium text-gray-800 dark:text-white/90">Payment Settings</p>

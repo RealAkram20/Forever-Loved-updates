@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $seoDocumentTitle ?? (($title ?? 'Dashboard').' | '.config('app.name', 'Forever-Loved')) }}</title>
+    <title>{{ $seoDocumentTitle ?? (($title ?? 'Dashboard').' | '.\App\Helpers\BrandingHelper::documentTitleName()) }}</title>
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])

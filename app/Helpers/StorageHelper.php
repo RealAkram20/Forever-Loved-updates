@@ -35,6 +35,7 @@ class StorageHelper
      * Storage paths for organized structure:
      * - users/{user_id}/profile/     - user profile images
      * - memorials/{memorial_id}/profile/   - memorial profile photo
+     * - memorials/{memorial_id}/cover/     - memorial cover banner
      * - memorials/{memorial_id}/gallery/   - gallery photos & videos
      * - memorials/{memorial_id}/posts/     - post media (images, videos, audio)
      */
@@ -46,6 +47,11 @@ class StorageHelper
     public static function memorialProfilePath(int $memorialId): string
     {
         return "memorials/{$memorialId}/profile";
+    }
+
+    public static function memorialCoverPath(int $memorialId): string
+    {
+        return "memorials/{$memorialId}/cover";
     }
 
     public static function memorialGalleryPath(int $memorialId): string

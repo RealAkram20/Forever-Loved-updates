@@ -6,8 +6,8 @@ use App\Models\Memorial;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
 use App\Models\UserSubscription;
+use App\Support\PlanFeatures;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 class PlanLimitsHelper
 {
@@ -89,25 +89,60 @@ class PlanLimitsHelper
     }
 
     /**
-     * Check if a gallery image can be uploaded.
-     * Returns ['allowed' => bool, 'current' => int, 'max' => int].
+     * Apply one integer allowance, in the shape every caller of this class expects.
+     *
+     * The four checks below used to each carry their own copy of this, their own fallback
+     * default, and the same inversion: `if ($max === 0) return allowed`. Zero meant
+     * unlimited, so an admin withholding a feature by typing 0 granted it without limit.
+     * -1 now says unlimited and 0 says none, and the two are decided here once.
+     *
+     * $count is a closure so that a plan of 0 or -1 never pays for the query — the count is
+     * only wanted when there is a real ceiling to compare it against.
      */
-    public static function canUploadGalleryImage(Memorial $memorial): array
+    private static function applyLimit(int $max, callable $count, string $label): array
     {
-        $plan = static::getEffectivePlan($memorial);
-        $max = $plan?->max_gallery_images ?? 10;
-
-        if ($max === 0) {
-            return ['allowed' => true, 'current' => 0, 'max' => 0];
+        if (PlanFeatures::isUnlimited($max)) {
+            return ['allowed' => true, 'current' => 0, 'max' => $max, 'reason' => null];
         }
 
-        $current = static::galleryImageCount($memorial);
+        if ($max === PlanFeatures::NONE) {
+            return [
+                'allowed' => false,
+                'current' => 0,
+                'max' => 0,
+                'reason' => ucfirst($label).' is not included in your current plan.',
+            ];
+        }
+
+        $current = $count();
 
         return [
             'allowed' => $current < $max,
             'current' => $current,
             'max' => $max,
+            'reason' => $current < $max ? null : "You have reached your plan's limit of {$max} {$label} ({$current}/{$max}).",
         ];
+    }
+
+    /** The plan's value for one allowance, or the catalogue default when there is no plan. */
+    private static function limitFor(Memorial $memorial, string $key): int
+    {
+        $plan = static::getEffectivePlan($memorial);
+
+        return (int) ($plan?->{$key} ?? PlanFeatures::defaultFor($key));
+    }
+
+    /**
+     * Check if a gallery image can be uploaded.
+     * Returns ['allowed' => bool, 'current' => int, 'max' => int, 'reason' => ?string].
+     */
+    public static function canUploadGalleryImage(Memorial $memorial): array
+    {
+        return static::applyLimit(
+            static::limitFor($memorial, 'max_gallery_images'),
+            fn () => static::galleryImageCount($memorial),
+            'photos'
+        );
     }
 
     /**
@@ -115,41 +150,36 @@ class PlanLimitsHelper
      */
     public static function canUploadGalleryVideo(Memorial $memorial): array
     {
-        $plan = static::getEffectivePlan($memorial);
-        $max = $plan?->max_gallery_videos ?? 2;
-
-        if ($max === 0) {
-            return ['allowed' => true, 'current' => 0, 'max' => 0];
-        }
-
-        $current = static::galleryVideoCount($memorial);
-
-        return [
-            'allowed' => $current < $max,
-            'current' => $current,
-            'max' => $max,
-        ];
+        return static::applyLimit(
+            static::limitFor($memorial, 'max_gallery_videos'),
+            fn () => static::galleryVideoCount($memorial),
+            'videos'
+        );
     }
 
     /**
      * Check if a tribute can be added.
+     *
+     * The feature flag is asked first. Without it a plan could only withhold tributes by
+     * setting the count to zero, which also stopped visitors writing stories — the two
+     * share this quota.
      */
     public static function canAddTribute(Memorial $memorial): array
     {
-        $plan = static::getEffectivePlan($memorial);
-        $max = $plan?->max_tributes ?? 20;
-
-        if ($max === 0) {
-            return ['allowed' => true, 'current' => 0, 'max' => 0];
+        if (! static::canUseTributes($memorial)) {
+            return [
+                'allowed' => false,
+                'current' => 0,
+                'max' => 0,
+                'reason' => 'Candle and flower tributes are not included in your current plan.',
+            ];
         }
 
-        $current = $memorial->tributes()->count();
-
-        return [
-            'allowed' => $current < $max,
-            'current' => $current,
-            'max' => $max,
-        ];
+        return static::applyLimit(
+            static::limitFor($memorial, 'max_tributes'),
+            fn () => $memorial->tributes()->count(),
+            'tributes'
+        );
     }
 
     /**
@@ -157,20 +187,26 @@ class PlanLimitsHelper
      */
     public static function canAddChapter(Memorial $memorial): array
     {
-        $plan = static::getEffectivePlan($memorial);
-        $max = $plan?->max_chapters ?? 3;
+        return static::applyLimit(
+            static::limitFor($memorial, 'max_chapters'),
+            fn () => $memorial->storyChapters()->count(),
+            'chapters'
+        );
+    }
 
-        if ($max === 0) {
-            return ['allowed' => true, 'current' => 0, 'max' => 0];
-        }
-
-        $current = $memorial->storyChapters()->count();
-
-        return [
-            'allowed' => $current < $max,
-            'current' => $current,
-            'max' => $max,
-        ];
+    /**
+     * Check if another person can be invited to help build the memorial.
+     *
+     * Only accepted collaborators count. An invitation nobody has taken up is not somebody
+     * contributing, and charging for it would let a plan be exhausted by typos.
+     */
+    public static function canAddContributor(Memorial $memorial): array
+    {
+        return static::applyLimit(
+            static::limitFor($memorial, 'max_contributors'),
+            fn () => $memorial->collaborators()->whereNotNull('accepted_at')->count(),
+            'contributors'
+        );
     }
 
     /**
@@ -320,6 +356,103 @@ class PlanLimitsHelper
     }
 
     /**
+     * Whether a file of this size can be stored.
+     *
+     * Both budgets were validated on the admin form and written to the database, and then
+     * nothing in the codebase ever read them — a plan could say 100 MB and hold ten
+     * gigabytes. Video carries its own budget on top of the overall one, because the
+     * pricing sells video by how much of it you get rather than by file count, and it is
+     * the only quantity here that can be measured exactly. Duration cannot: reading it needs
+     * ffprobe on the host, and the browser's own figure is set by the person uploading.
+     *
+     * $type is the media type being added ('photo', 'video', 'music'), so the video budget
+     * is only asked about video.
+     */
+    public static function canStore(Memorial $memorial, int $incomingBytes, string $type): array
+    {
+        if ($type === 'video') {
+            $videoCheck = static::checkBudget(
+                static::limitFor($memorial, 'max_video_storage_mb'),
+                static::videoBytes($memorial),
+                $incomingBytes,
+                'video'
+            );
+
+            if (! $videoCheck['allowed']) {
+                return $videoCheck;
+            }
+        }
+
+        return static::checkBudget(
+            static::limitFor($memorial, 'storage_limit_mb'),
+            $memorial->storageBytes(),
+            $incomingBytes,
+            'storage'
+        );
+    }
+
+    private static function checkBudget(int $maxMb, int $usedBytes, int $incomingBytes, string $label): array
+    {
+        if (PlanFeatures::isUnlimited($maxMb)) {
+            return ['allowed' => true, 'reason' => null];
+        }
+
+        if ($maxMb === PlanFeatures::NONE) {
+            return [
+                'allowed' => false,
+                'reason' => $label === 'video'
+                    ? 'Video uploads are not included in your current plan.'
+                    : 'Your current plan has no storage allowance.',
+            ];
+        }
+
+        $maxBytes = $maxMb * 1024 * 1024;
+
+        if ($usedBytes + $incomingBytes <= $maxBytes) {
+            return ['allowed' => true, 'reason' => null];
+        }
+
+        return [
+            'allowed' => false,
+            'reason' => 'This would take you past your plan\'s '.$label.' allowance of '
+                .static::formatMb($maxMb).'.',
+        ];
+    }
+
+    private static function formatMb(int $mb): string
+    {
+        return $mb >= 1024
+            ? rtrim(rtrim(number_format($mb / 1024, 1), '0'), '.').' GB'
+            : $mb.' MB';
+    }
+
+    /** Bytes held by this memorial's videos, gallery and story alike. */
+    private static function videoBytes(Memorial $memorial): int
+    {
+        return (int) $memorial->media()->where('type', 'video')->sum('size');
+    }
+
+    /**
+     * Check if candle and flower tributes are offered at all.
+     */
+    public static function canUseTributes(Memorial $memorial): bool
+    {
+        $plan = static::getEffectivePlan($memorial);
+
+        return (bool) ($plan?->feature_tributes ?? PlanFeatures::defaultFor('feature_tributes'));
+    }
+
+    /**
+     * Check if the gallery may be sorted into browsable albums.
+     */
+    public static function canUseAlbums(Memorial $memorial): bool
+    {
+        $plan = static::getEffectivePlan($memorial);
+
+        return (bool) ($plan?->feature_albums ?? PlanFeatures::defaultFor('feature_albums'));
+    }
+
+    /**
      * Check if background music is allowed by the plan.
      */
     public static function canUseBackgroundMusic(Memorial $memorial): bool
@@ -378,19 +511,11 @@ class PlanLimitsHelper
      */
     public static function getLimitsForPlan(SubscriptionPlan $plan): array
     {
-        return [
-            'max_gallery_images' => $plan->max_gallery_images,
-            'max_gallery_videos' => $plan->max_gallery_videos,
-            'max_tributes' => $plan->max_tributes,
-            'max_chapters' => $plan->max_chapters,
-            'max_ai_bio_per_day' => $plan->max_ai_bio_per_day,
-            'feature_background_music' => $plan->feature_background_music,
-            'feature_advanced_privacy' => $plan->feature_advanced_privacy,
-            'feature_guest_notifications' => $plan->feature_guest_notifications,
-            'feature_never_expires' => $plan->feature_never_expires,
-            'feature_no_ads' => $plan->feature_no_ads,
-            'feature_share_memories' => $plan->feature_share_memories,
-        ];
+        // Read off the catalogue rather than listed by hand, so a column added there is not
+        // silently missing from everything that displays a plan.
+        return collect(PlanFeatures::columns())
+            ->mapWithKeys(fn (string $column) => [$column => $plan->{$column}])
+            ->all();
     }
 
     /**
@@ -403,7 +528,10 @@ class PlanLimitsHelper
             'gallery_videos' => static::canUploadGalleryVideo($memorial),
             'tributes' => static::canAddTribute($memorial),
             'chapters' => static::canAddChapter($memorial),
+            'contributors' => static::canAddContributor($memorial),
             'ai_bio' => static::canUseAiBio($memorial),
+            'albums' => static::canUseAlbums($memorial),
+            'can_use_tributes' => static::canUseTributes($memorial),
             'background_music' => static::canUseBackgroundMusic($memorial),
             'advanced_privacy' => static::canUseAdvancedPrivacy($memorial),
             'guest_notifications' => static::canUseGuestNotifications($memorial),
@@ -417,15 +545,22 @@ class PlanLimitsHelper
 
     /**
      * Count gallery images (excluding those used in posts).
+     *
+     * Deferred to Memorial::galleryMedia() rather than restating the exclusion here. Two
+     * reasons, and the second is the one that matters:
+     *
+     * The old form pulled every media id on the platform out of post_media with a pluck()
+     * and inlined them into a NOT IN — so the cost of rendering a memorial grew with the
+     * total content of the site, and this runs on every public page view via quotaInfo().
+     * galleryMedia() does the same exclusion as a correlated NOT EXISTS the database can
+     * index.
+     *
+     * And what a plan allows is now the same query as what the gallery shows, so a family
+     * cannot be told they are at their limit while looking at fewer photos than that.
      */
     private static function galleryImageCount(Memorial $memorial): int
     {
-        $usedInPosts = DB::table('post_media')->pluck('media_id')->toArray();
-
-        return $memorial->media()
-            ->where('type', 'photo')
-            ->when(!empty($usedInPosts), fn ($q) => $q->whereNotIn('id', $usedInPosts))
-            ->count();
+        return $memorial->galleryMedia()->where('type', 'photo')->count();
     }
 
     /**
@@ -433,11 +568,6 @@ class PlanLimitsHelper
      */
     private static function galleryVideoCount(Memorial $memorial): int
     {
-        $usedInPosts = DB::table('post_media')->pluck('media_id')->toArray();
-
-        return $memorial->media()
-            ->where('type', 'video')
-            ->when(!empty($usedInPosts), fn ($q) => $q->whereNotIn('id', $usedInPosts))
-            ->count();
+        return $memorial->galleryMedia()->where('type', 'video')->count();
     }
 }

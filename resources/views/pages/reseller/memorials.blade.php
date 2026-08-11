@@ -52,6 +52,13 @@
                                 </td>
                                 <td class="px-3 py-4 text-gray-500 dark:text-gray-400">{{ $memorial->created_at?->format('M j, Y') }}</td>
                                 <td class="px-6 py-4 text-right">
+                                    {{-- The report this reseller hands to the family. Placed
+                                         next to View because it is about this one memorial,
+                                         not the tenant-wide tables under Reports. --}}
+                                    <a href="{{ route('memorials.report', $memorial->slug) }}"
+                                        class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 transition-[transform,background-color,color] duration-150 ease-out hover:bg-gray-100 hover:text-gray-700 active:scale-[0.97] dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-200">
+                                        Report
+                                    </a>
                                     <a href="{{ $memorial->publicUrl() }}" target="_blank" rel="noopener"
                                         class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-600 transition-colors duration-150 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10">
                                         View

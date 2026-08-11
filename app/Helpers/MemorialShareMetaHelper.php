@@ -5,7 +5,6 @@ namespace App\Helpers;
 use App\Models\Media;
 use App\Models\Memorial;
 use App\Models\Post;
-use App\Models\Tribute;
 use Illuminate\Support\Str;
 
 /**
@@ -72,38 +71,6 @@ class MemorialShareMetaHelper
             'site_name' => (string) config('app.name', 'Forever-Loved'),
             'image' => $image,
             'image_alt' => Str::limit($postTitle.' — '.$deceasedName, 200, '…'),
-        ];
-    }
-
-    /**
-     * @return array{title: string, description: string, url: string, site_name: string, image?: string|null, image_alt?: string|null}
-     */
-    public static function forTribute(Memorial $memorial, Tribute $tribute): array
-    {
-        $authorName = $tribute->user?->name ?? $tribute->guest_name ?? 'Someone';
-        $deceasedName = trim((string) ($memorial->full_name ?? '')) ?: 'Loved one';
-
-        $years = $memorial->birth_death_years;
-        $ageSuffix = $years ? ' ('.$years.')' : '';
-
-        $title = Str::limit($authorName.' · Tribute to '.$deceasedName.$ageSuffix, self::TITLE_LIMIT, '…');
-
-        $contentPreview = $tribute->message
-            ? Str::limit(self::plainTextFromHtml($tribute->message), 200, '…')
-            : 'Left a '.$tribute->type.' in memory of '.$deceasedName;
-
-        $shareUrl = route('memorial.tribute.public', [
-            'memorial_slug' => $memorial->slug,
-            'share_id' => $tribute->share_id,
-        ], true);
-
-        return [
-            'title' => $title,
-            'description' => $contentPreview,
-            'url' => $shareUrl,
-            'site_name' => (string) config('app.name', 'Forever-Loved'),
-            'image' => self::absoluteAssetUrl($memorial->profile_photo_url),
-            'image_alt' => $deceasedName,
         ];
     }
 

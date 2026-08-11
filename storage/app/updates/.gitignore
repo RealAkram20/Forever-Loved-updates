@@ -1,0 +1,11 @@
+# Self-hosted update source, read off disk by Admin\LaraUpdaterController.
+#
+# Moved here from public/updates/ because serving it over the web meant the complete
+# application source was downloadable by anyone who guessed the archive filename.
+#
+# laraupdater.json is tracked — it is what "Check for updates" compares against, so it has
+# to ship. The RELEASE-*.zip archives are build artifacts (tens of MB each); build them with
+# build-update.ps1 and copy them onto the server beside this file.
+*.zip
+!laraupdater.json
+!.gitignore

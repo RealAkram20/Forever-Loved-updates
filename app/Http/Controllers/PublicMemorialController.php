@@ -7,11 +7,13 @@ use App\Helpers\MemorialStatsHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Models\Memorial;
 use App\Models\MemorialView;
-use App\Models\Post;
+use App\Models\Page;
+use App\Models\PaymentOrder;
+use App\Models\Reseller;
 use App\Models\Tribute;
-use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PublicMemorialController extends Controller
 {
@@ -21,9 +23,9 @@ class PublicMemorialController extends Controller
      */
     public function show(string $slug)
     {
-        $cmsPage = \App\Models\Page::getBySlug($slug);
+        $cmsPage = Page::getBySlug($slug);
         if ($cmsPage && $cmsPage->is_published && ! $cmsPage->isSystemLayoutPage()) {
-            return app(\App\Http\Controllers\PageController::class)->showPage($slug);
+            return app(PageController::class)->showPage($slug);
         }
 
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
@@ -45,25 +47,92 @@ class PublicMemorialController extends Controller
      * so this needs to occupy the same slot the domain-level placeholder always fills for
      * both routes that call this action ({reseller} on the subdomain route, {domain} on
      * the custom-domain route), whatever that value happens to be, with $slug second.
+     *
+     * A memorial wins a slug over a CMS page of the same name: memorials are the product,
+     * they far outnumber pages, and the reseller page builder already refuses to save a
+     * slug that clashes with one of their memorials. If no memorial matches, a published
+     * page of theirs with that slug is served (their About page, a landing page, …).
      */
     public function showForReseller(string $reseller, string $slug)
     {
-        $resolvedReseller = app(\App\Models\Reseller::class);
+        $resolvedReseller = app(Reseller::class);
 
-        $memorial = Memorial::where('slug', $slug)->where('reseller_id', $resolvedReseller->id)->firstOrFail();
+        $memorial = Memorial::where('slug', $slug)->where('reseller_id', $resolvedReseller->id)->first();
+        if ($memorial) {
+            return $this->renderMemorial($memorial);
+        }
 
-        return $this->renderMemorial($memorial);
+        $page = Page::getBySlugForReseller($slug, $resolvedReseller->id);
+        if ($page && $page->is_published) {
+            return $this->renderResellerPage($resolvedReseller, $page);
+        }
+
+        abort(404);
     }
 
-    private function renderMemorial(Memorial $memorial)
+    /**
+     * A reseller's own CMS page, on their host — the tenant-scoped equivalent of
+     * PageController::showPage(). Rendered through the same widget pipeline the platform
+     * pages use, with this reseller's plans and memorials as context so a Pricing or
+     * Showcase widget shows their data, never ours.
+     */
+    private function renderResellerPage(Reseller $reseller, Page $page)
+    {
+        $widgets = is_array($page->layout['widgets'] ?? null) ? $page->layout['widgets'] : [];
+
+        return view('pages.visitor.page-layout', [
+            'title' => $page->title,
+            'widgets' => $widgets,
+            'layoutContext' => \App\Support\ResellerPageContext::forWidgets(
+                $reseller,
+                array_column($widgets, 'type')
+            ),
+            'shareMeta' => \App\Helpers\SiteShareMetaHelper::forCmsPageDirect(
+                $page,
+                $reseller->publicUrlForSlug($page->slug)
+            ),
+        ]);
+    }
+
+    /**
+     * The reseller's own front page — the destination for the base address every reseller
+     * screen shows and offers to copy. Until this existed that address had no route at all: it
+     * 404'd on the path fallback, and on a real subdomain fell through to the *platform's*
+     * homepage, complete with our logo, our copy and our pricing.
+     *
+     * Deliberately the same page as the platform home rather than a reduced listing of its own.
+     * A reseller's front page should be the full designed home page wearing their brand, and
+     * PageController::home() already resolves logo, palette, fonts, name and memorials through
+     * the active tenant — so there is nothing here to duplicate, and no second design to keep
+     * in step with the first.
+     *
+     * $reseller is unused for the same positional-argument reason as showForReseller() above;
+     * the tenant comes from the container binding, which the route middleware has already set.
+     */
+    public function indexForReseller(?string $reseller = null)
+    {
+        // Fail loudly rather than silently rendering the platform home page if the middleware
+        // ever stops binding — that regression is the whole bug this route exists to fix.
+        app(Reseller::class);
+
+        return app(PageController::class)->home();
+    }
+
+    /**
+     * The memorial page.
+     *
+     * @param  \App\Models\Post|null  $highlight  A story reached by its own share link; the
+     *                                            page opens on the feed and scrolls to it.
+     */
+    private function renderMemorial(Memorial $memorial, $highlight = null)
     {
         // Allow owner to view their own memorial even if private
-        if (!$memorial->is_public && $memorial->user_id !== auth()->id()) {
+        if (! $memorial->is_public && $memorial->user_id !== auth()->id()) {
             abort(404);
         }
 
         // Deactivated/suspended memorials are hidden from public (admin can still view via dashboard)
-        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && !auth()?->user()?->hasRole(['admin', 'super-admin'])) {
+        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && ! auth()?->user()?->hasRole(['admin', 'super-admin'])) {
             abort(404);
         }
 
@@ -75,22 +144,16 @@ class PublicMemorialController extends Controller
             $this->recordView($memorial, request());
         }
 
-        $tributes = $memorial->tributes()
-            ->where('is_approved', true)
-            ->with(['user', 'comments'])
-            ->latest()
-            ->paginate(20);
+        $this->loadMemorialRelations($memorial);
 
-        $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
-
-        $canEdit = $memorial->canBeEditedBy(auth()->user());
-
-        $stats = MemorialStatsHelper::get($memorial);
-        $tributeCounts = $this->getTributeTypeCounts($memorial);
+        // One feed. Everything anyone has written is here — a plain story, or one marked
+        // as a flower, a candle or a prayer. Sorted once, in the controller, because three
+        // places on the page read it and each was sorting its own copy.
+        $stories = $memorial->posts->where('is_published', true)->sortByDesc('created_at')->values();
 
         $pendingPaymentOrder = null;
         if (auth()->id() && auth()->id() === $memorial->user_id) {
-            $pendingPaymentOrder = \App\Models\PaymentOrder::where('memorial_id', $memorial->id)
+            $pendingPaymentOrder = PaymentOrder::where('memorial_id', $memorial->id)
                 ->where('user_id', auth()->id())
                 ->where('status', 'pending')
                 ->latest()
@@ -100,87 +163,60 @@ class PublicMemorialController extends Controller
         return view('pages.memorials.public', [
             'title' => $memorial->full_name,
             'memorial' => $memorial,
-            'tributes' => $tributes,
-            'canEdit' => $canEdit,
+            'stories' => $stories,
+            'storyCounts' => $this->storyMarkerCounts($stories),
+            'canEdit' => $memorial->canBeEditedBy(auth()->user()),
             'isAuthenticated' => auth()->check(),
-            'memorialStats' => $stats,
-            'tributeCounts' => $tributeCounts,
+            'memorialStats' => MemorialStatsHelper::get($memorial),
+            'tributeCounts' => $this->getTributeTypeCounts($memorial),
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
-            'scrollToTributeId' => null,
-            'scrollToChapterId' => null,
-            'shareMeta' => MemorialShareMetaHelper::forMemorial($memorial),
+            'scrollToChapterId' => $highlight?->id,
+            'shareMeta' => $highlight
+                ? MemorialShareMetaHelper::forChapter($memorial, $highlight)
+                : MemorialShareMetaHelper::forMemorial($memorial),
             'pendingPaymentOrder' => $pendingPaymentOrder,
         ]);
     }
 
     /**
-     * Display a public memorial with a specific tribute (for share preview).
+     * A tribute share link, from back when a tribute could carry words.
+     *
+     * Those words are stories now, and they kept their share id, so the link somebody sent
+     * two years ago still lands on the same writing — it just lands on it as a story. A
+     * permanent redirect rather than a second render: there is one feed, and this address
+     * has one correct destination.
+     *
+     * @see database/migrations/2026_08_08_100001_move_written_tributes_into_stories.php
      */
     public function showTribute(string $memorial_slug, string $share_id)
     {
         $memorial = Memorial::where('slug', $memorial_slug)->firstOrFail();
 
-        if (!$memorial->is_public && $memorial->user_id !== auth()->id()) {
-            abort(404);
+        $post = $memorial->posts()->where('share_id', $share_id)->first();
+
+        // Relative, so the redirect stays on whichever host the link was opened on rather
+        // than throwing a visitor off a reseller's domain and onto ours.
+        if ($post) {
+            return redirect("/{$memorial->slug}/chapter/{$post->share_id}", 301);
         }
 
-        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && !auth()?->user()?->hasRole(['admin', 'super-admin'])) {
-            abort(404);
-        }
-
-        if ($memorial->expires_at?->isPast()) {
-            abort(404);
-        }
-
-        $tribute = $memorial->tributes()->where('is_approved', true)->where('share_id', $share_id)->with(['user', 'comments'])->firstOrFail();
-
-        if ($memorial->is_public) {
-            $this->recordView($memorial, request());
-        }
-
-        $tributes = $memorial->tributes()
-            ->where('is_approved', true)
-            ->where('id', '!=', $tribute->id)
-            ->with(['user', 'comments'])
-            ->latest()
-            ->paginate(20);
-
-        $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
-
-        $canEdit = $memorial->canBeEditedBy(auth()->user());
-
-        $stats = MemorialStatsHelper::get($memorial);
-
-        $tributeCounts = $this->getTributeTypeCounts($memorial);
-
-        return view('pages.memorials.public', [
-            'title' => $memorial->full_name,
-            'memorial' => $memorial,
-            'tributes' => $tributes,
-            'highlightTribute' => $tribute,
-            'canEdit' => $canEdit,
-            'isAuthenticated' => auth()->check(),
-            'memorialStats' => $stats,
-            'tributeCounts' => $tributeCounts,
-            'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
-            'scrollToTributeId' => $tribute->id,
-            'scrollToChapterId' => null,
-            'shareMeta' => MemorialShareMetaHelper::forTribute($memorial, $tribute),
-        ]);
+        // A tap has a share id too and nothing to show for it — the gesture is counted on
+        // the memorial itself, so that is where the link goes.
+        return redirect("/{$memorial->slug}", 301);
     }
 
     /**
-     * Display a public memorial with a specific chapter (for share preview).
+     * Display a public memorial scrolled to one story (for share preview).
      */
     public function showChapter(string $memorial_slug, string $share_id)
     {
         $memorial = Memorial::where('slug', $memorial_slug)->firstOrFail();
 
-        if (!$memorial->is_public && $memorial->user_id !== auth()->id()) {
+        if (! $memorial->is_public && $memorial->user_id !== auth()->id()) {
             abort(404);
         }
 
-        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && !auth()?->user()?->hasRole(['admin', 'super-admin'])) {
+        if (in_array($memorial->status ?? 'active', ['deactivated', 'suspended']) && $memorial->user_id !== auth()->id() && ! auth()?->user()?->hasRole(['admin', 'super-admin'])) {
             abort(404);
         }
 
@@ -188,62 +224,81 @@ class PublicMemorialController extends Controller
             abort(404);
         }
 
-        $post = $memorial->posts()->where('is_published', true)->where('share_id', $share_id)->with(['user', 'media', 'storyChapter'])->firstOrFail();
+        $post = $memorial->posts()->where('is_published', true)->where('share_id', $share_id)->firstOrFail();
 
-        if ($memorial->is_public) {
-            $this->recordView($memorial, request());
-        }
+        return $this->renderMemorial($memorial, $post);
+    }
 
-        $tributes = $memorial->tributes()
-            ->where('is_approved', true)
-            ->with(['user', 'comments'])
-            ->latest()
-            ->paginate(20);
-
-        $memorial->load('media', 'posts.media', 'posts.comments', 'storyChapters');
-
-        $canEdit = $memorial->canBeEditedBy(auth()->user());
-
-        $stats = MemorialStatsHelper::get($memorial);
-
-        $tributeCounts = $this->getTributeTypeCounts($memorial);
-
-        return view('pages.memorials.public', [
-            'title' => $memorial->full_name,
-            'memorial' => $memorial,
-            'tributes' => $tributes,
-            'canEdit' => $canEdit,
-            'isAuthenticated' => auth()->check(),
-            'memorialStats' => $stats,
-            'tributeCounts' => $tributeCounts,
-            'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
-            'scrollToTributeId' => null,
-            'scrollToChapterId' => $post->id,
-            'shareMeta' => MemorialShareMetaHelper::forChapter($memorial, $post),
+    /**
+     * The memorial's own relations, same reasoning: the life-post partial reads the post's
+     * author, its chapter and its reaction count for every post in the feed.
+     */
+    private function loadMemorialRelations(Memorial $memorial): void
+    {
+        $memorial->load([
+            'media',
+            'galleryCategories',
+            'storyChapters',
+            'posts.media',
+            'posts.user',
+            'posts.storyChapter',
+            'posts.reactions',
+            'posts.comments.replies.user',
         ]);
     }
 
+    /**
+     * How many people left each gesture — the tally under the one-tap cards.
+     *
+     * Counts taps, not writing. Someone who wrote a candle story also lit a candle and is
+     * counted here once, because their tribute row is still the record of the gesture.
+     */
     private function getTributeTypeCounts(Memorial $memorial): array
     {
         $counts = $memorial->tributes()
             ->where('is_approved', true)
-            ->selectRaw("type, COUNT(*) as cnt")
+            ->selectRaw('type, COUNT(*) as cnt')
             ->groupBy('type')
             ->pluck('cnt', 'type');
 
-        return [
-            'flower' => (int) ($counts['flower'] ?? 0),
-            'candle' => (int) ($counts['candle'] ?? 0),
-            'note' => (int) ($counts['note'] ?? 0),
-            'total' => (int) $counts->sum(),
-        ];
+        $buckets = ['total' => (int) $counts->sum()];
+        foreach (Tribute::TYPES as $type) {
+            $buckets[$type] = (int) ($counts[$type] ?? 0);
+        }
+
+        return $buckets;
+    }
+
+    /**
+     * How the feed breaks down by marker, for the filter chips above it.
+     *
+     * Counted off the collection the page is already rendering rather than queried again:
+     * these have to agree with what the feed shows to the item, or filtering to "Candles 8"
+     * turns up seven.
+     *
+     * `story` is the unmarked remainder — the ones nobody labelled, which is most of them.
+     *
+     * @param  \Illuminate\Support\Collection  $stories
+     */
+    private function storyMarkerCounts($stories): array
+    {
+        $buckets = ['total' => $stories->count(), 'story' => 0];
+
+        foreach (Tribute::TYPES as $type) {
+            $buckets[$type] = $stories->where('tribute_type', $type)->count();
+        }
+
+        $buckets['story'] = $buckets['total'] - array_sum(array_intersect_key($buckets, array_flip(Tribute::TYPES)));
+
+        return $buckets;
     }
 
     private function visitorHash(Request $request): string
     {
         $ip = $request->ip() ?? '';
         $ua = $request->userAgent() ?? '';
-        return hash('sha256', $ip . '|' . $ua);
+
+        return hash('sha256', $ip.'|'.$ua);
     }
 
     private function recordView(Memorial $memorial, Request $request): void
@@ -256,7 +311,7 @@ class PublicMemorialController extends Controller
                 ->where('visitor_hash', $hash)
                 ->where('viewed_at', '>=', $today)
                 ->exists();
-            if (!$existing) {
+            if (! $existing) {
                 MemorialView::create([
                     'memorial_id' => $memorial->id,
                     'visitor_hash' => $hash,
@@ -264,11 +319,10 @@ class PublicMemorialController extends Controller
                 ]);
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Memorial view count skipped', [
+            Log::warning('Memorial view count skipped', [
                 'memorial_id' => $memorial->id,
                 'error' => $e->getMessage(),
             ]);
         }
     }
-
 }

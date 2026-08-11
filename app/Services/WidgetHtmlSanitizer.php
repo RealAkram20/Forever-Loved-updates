@@ -2,16 +2,27 @@
 
 namespace App\Services;
 
+use App\Helpers\HtmlHelper;
+
 class WidgetHtmlSanitizer
 {
-    private const PARAGRAPH_ALLOWED = '<p><br><br/><strong><b><em><i><u><a><ul><ol><li><h1><h2><h3><h4><blockquote><span><pre><code>';
+    private const PARAGRAPH_ALLOWED = [
+        'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li',
+        'h1', 'h2', 'h3', 'h4', 'blockquote', 'span', 'pre', 'code',
+    ];
 
+    /**
+     * Delegates to the shared DOM sanitiser rather than keeping its own pass.
+     *
+     * The previous implementation was strip_tags plus a regex that deleted `\son\w+=`.
+     * Both halves leaked: strip_tags kept every attribute on the tags it allowed, and the
+     * regex required whitespace before the handler — but HTML needs none after a quoted
+     * value, so `<a href="x"onmouseover="...">` sailed through. It also had no opinion at
+     * all about `href="javascript:..."`. One engine, one place to get this right.
+     */
     public static function paragraph(string $html): string
     {
-        $clean = strip_tags($html, self::PARAGRAPH_ALLOWED);
-        $clean = preg_replace('/\son\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $clean) ?? $clean;
-
-        return $clean;
+        return HtmlHelper::clean($html, self::PARAGRAPH_ALLOWED);
     }
 
     /**

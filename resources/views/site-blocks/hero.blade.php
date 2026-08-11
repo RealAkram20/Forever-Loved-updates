@@ -1,8 +1,10 @@
 @php
     $eyebrow = $props['eyebrow'] ?? '';
-    $primaryUrl = \Illuminate\Support\Facades\Route::has($props['primary_route'] ?? '') ? route($props['primary_route']) : '#';
-    $secondaryRoute = $props['secondary_route'] ?? '';
-    $secondaryUrl = $secondaryRoute && \Illuminate\Support\Facades\Route::has($secondaryRoute) ? route($secondaryRoute) : '#';
+    // Resolved through StandardPages so a button pointing at About, Pricing, Contact or the
+    // directory lands on *this* site's copy. route() names the platform's in every case, so
+    // on a reseller's front page the hero's own buttons led off their site.
+    $primaryUrl = \App\Support\StandardPages::urlForRouteName($props['primary_route'] ?? null) ?: '#';
+    $secondaryUrl = \App\Support\StandardPages::urlForRouteName($props['secondary_route'] ?? null) ?: '#';
     $trustPoints = is_array($props['trust_points'] ?? null) ? $props['trust_points'] : [];
     $taglineText = trim($props['tagline'] ?? ($tagline ?? ''));
 @endphp

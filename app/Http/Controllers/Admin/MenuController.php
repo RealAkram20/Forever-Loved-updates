@@ -13,9 +13,25 @@ use Illuminate\View\View;
 
 class MenuController extends Controller
 {
+    /**
+     * This screen is the *platform's* navigation. Since menus became per-tenant, every
+     * lookup here is pinned to reseller_id IS NULL — without it `where('location', …)` is
+     * ambiguous across tenants and `firstOrFail()` could just as easily return a reseller's
+     * header menu, which an admin would then be editing while believing it was ours.
+     * Resellers manage their own in Reseller\MenuController.
+     */
+    private function platformMenu(string $location): Menu
+    {
+        return Menu::query()->forTenant(null)->where('location', $location)->firstOrFail();
+    }
+
     public function edit(): View
     {
-        $menus = Menu::query()->with(['allItems' => fn ($q) => $q->whereNull('parent_id')->orderBy('sort_order')])->get()->keyBy('location');
+        $menus = Menu::query()
+            ->forTenant(null)
+            ->with(['allItems' => fn ($q) => $q->whereNull('parent_id')->orderBy('sort_order')])
+            ->get()
+            ->keyBy('location');
 
         return view('pages.settings.menus.edit', [
             'title' => 'Navigation menus',
@@ -161,7 +177,7 @@ class MenuController extends Controller
             return back()->withErrors(['route_name' => 'Choose a route or enter a custom URL.'])->withInput();
         }
 
-        $menu = Menu::query()->where('location', $request->input('menu_location'))->firstOrFail();
+        $menu = $this->platformMenu($request->input('menu_location'));
         $max = (int) $menu->allItems()->whereNull('parent_id')->max('sort_order');
 
         MenuItem::query()->create([
@@ -178,8 +194,18 @@ class MenuController extends Controller
         return back()->with('success', 'Menu item added.');
     }
 
+    /** 404 on anything that is not a platform menu item — see platformMenu(). */
+    private function platformItem(MenuItem $item): MenuItem
+    {
+        abort_unless($item->menu?->reseller_id === null, 404);
+
+        return $item;
+    }
+
     public function updateItem(Request $request, MenuItem $item): RedirectResponse
     {
+        $this->platformItem($item);
+
         $request->validate([
             'label' => 'required|string|max:120',
             'route_name' => ['nullable', 'string', 'max:200', $this->routeSelectionRule()],
@@ -204,7 +230,7 @@ class MenuController extends Controller
 
     public function destroyItem(MenuItem $item): RedirectResponse
     {
-        $item->delete();
+        $this->platformItem($item)->delete();
 
         return back()->with('success', 'Menu item removed.');
     }
@@ -217,7 +243,7 @@ class MenuController extends Controller
             'item_ids.*' => 'integer|exists:menu_items,id',
         ]);
 
-        $menu = Menu::query()->where('location', $request->input('menu_location'))->firstOrFail();
+        $menu = $this->platformMenu($request->input('menu_location'));
 
         foreach ($request->input('item_ids', []) as $order => $id) {
             MenuItem::query()

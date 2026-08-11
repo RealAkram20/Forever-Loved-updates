@@ -37,7 +37,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // A reseller's staff or client is sent to their own reseller's space, not the platform
+        // dashboard — even when they signed in from the platform login. See PostAuthRedirect.
+        return redirect()->intended(\App\Support\PostAuthRedirect::url($request->user()));
     }
 
     /**

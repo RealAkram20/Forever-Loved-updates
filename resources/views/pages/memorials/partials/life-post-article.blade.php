@@ -1,8 +1,10 @@
 @php
     $embedInBiography = $embedInBiography ?? false;
     $chapterShareUrl = route('memorial.chapter.public', ['memorial_slug' => $memorial->slug, 'share_id' => $post->share_id]);
+    $marker = $post->tribute_type;
+    $markerVerb = $post->markerVerb();
 @endphp
-<article id="{{ $embedInBiography ? 'chapter-preview-' : 'chapter-' }}{{ $post->id }}" class="group/post relative overflow-visible rounded-xl border border-gray-300 dark:border-gray-800 bg-white dark:bg-white/[0.03] life-feed-post" data-post-id="{{ $post->id }}" data-chapter-id="{{ $post->story_chapter_id ?? '' }}">
+<article id="{{ $embedInBiography ? 'chapter-preview-' : 'chapter-' }}{{ $post->id }}" class="group/post relative overflow-visible rounded-xl border border-gray-300 dark:border-gray-800 bg-white dark:bg-white/[0.03] life-feed-post" data-post-id="{{ $post->id }}" data-chapter-id="{{ $post->story_chapter_id ?? '' }}" data-marker="{{ $marker ?: 'story' }}">
     <div class="p-4">
         <div class="flex items-center gap-3">
             @if ($post->user?->profile_photo_url)
@@ -12,15 +14,31 @@
                     {{ strtoupper(substr($post->user?->name ?? $memorial->full_name ?? '?', 0, 1)) }}
                 </div>
             @endif
-            <div class="flex-1">
-                <p class="font-medium text-gray-900 dark:text-white/90">{{ $post->user?->name ?? $memorial->full_name ?? 'Anonymous' }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400"><span class="time-ago" data-created-at="{{ $post->created_at->toIso8601String() }}">{{ $post->created_at->diffForHumans() }}</span> · {{ $post->storyChapter?->title ?? 'Life' }}</p>
+            <div class="min-w-0 flex-1">
+                <p class="truncate font-medium text-gray-900 dark:text-white/90">{{ $post->user?->name ?? $memorial->full_name ?? 'Anonymous' }}</p>
+                {{-- The marker reads as something the author did, next to their name, rather
+                     than as a label filed against their writing. --}}
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    <span class="time-ago" data-created-at="{{ $post->created_at->toIso8601String() }}">{{ $post->created_at->diffForHumans() }}</span>
+                    <span data-post-marker-verb>@if ($markerVerb) · {{ $markerVerb }} @endif</span>
+                    @if ($post->storyChapter?->title) · {{ $post->storyChapter->title }} @endif
+                </p>
             </div>
             @if ($canEdit && ! $embedInBiography)
-                <button type="button" data-post-edit-trigger="{{ $post->id }}" class="memorial-edit-fab rounded-lg border border-brand-300/90 bg-white p-1.5 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit post">
+                <button type="button" data-post-edit-trigger="{{ $post->id }}" class="memorial-edit-fab rounded-lg border border-brand-300/90 bg-white p-1.5 text-brand-700 shadow-sm dark:border-brand-500/50 dark:bg-gray-900/95 dark:text-brand-300" title="Edit story">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
             @endif
+            {{-- The artwork itself, at the size it is legible and no larger. It is the same
+                 drawing as the card somebody taps to light a candle, so the gesture and the
+                 writing that carries it are recognisably one thing. An unmarked story shows
+                 nothing here — most stories are unmarked, and a row of placeholders would
+                 make the plain ones look unfinished. --}}
+            <span data-post-marker-art class="pointer-events-none block h-9 w-9 shrink-0 {{ $marker ? '' : 'hidden' }}" aria-hidden="true">
+                @if ($marker)
+                    @include('pages.memorials.partials.tribute-art', ['type' => $marker, 'image' => $marker.'.png'])
+                @endif
+            </span>
         </div>
         <div data-post-display="{{ $post->id }}">
             @if ($embedInBiography && ($post->title || $post->content))
@@ -79,6 +97,22 @@
                     <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Content</label>
                     <div id="post-editor-{{ $post->id }}" class="min-h-[120px] rounded-lg border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"></div>
                 </div>
+                <fieldset>
+                    <legend class="mb-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+                        Mark it as <span class="font-normal text-gray-400 dark:text-gray-500">— tap again to clear</span>
+                    </legend>
+                    <div class="story-marker-row flex flex-wrap gap-2" data-marker-group>
+                        @foreach ([['flower', 'Flower'], ['candle', 'Candle'], ['prayer', 'Prayer']] as [$value, $label])
+                            <label class="story-marker-chip story-marker-chip--sm">
+                                <input type="radio" name="post-marker-{{ $post->id }}" value="{{ $value }}" class="sr-only" @checked(($marker ?? '') === $value) />
+                                <span class="story-marker-chip__art" aria-hidden="true">
+                                    @include('pages.memorials.partials.tribute-art', ['type' => $value, 'image' => $value.'.png'])
+                                </span>
+                                <span class="story-marker-chip__label">{{ $label }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
                 <div class="flex flex-wrap items-center gap-3">
                     <button type="button" data-post-save="{{ $post->id }}" class="btn btn-primary btn-md">Save</button>
                     <button type="button" data-post-cancel="{{ $post->id }}" class="btn btn-secondary btn-md">Cancel</button>
@@ -97,21 +131,14 @@
                 <span data-post-id="{{ $post->id }}" data-reaction-count class="text-sm text-gray-600 dark:text-gray-400">{{ $post->reactions->count() }}</span>
             </button>
         </div>
-        @if ($embedInBiography)
-            <div class="flex items-center gap-1" data-comment-container="{{ $post->id }}">
-                <button type="button" data-open-life-comments="{{ $post->id }}" class="inline-flex items-center gap-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                    <span data-post-id="{{ $post->id }}" data-comment-count class="text-sm text-gray-600 dark:text-gray-400">{{ $post->comments->count() + $post->comments->sum(fn ($c) => $c->replies->count()) }}</span>
-                </button>
-            </div>
-        @else
-            <div class="flex items-center gap-1" data-comment-container="{{ $post->id }}">
-                <button type="button" data-comment-toggle data-post-id="{{ $post->id }}" class="inline-flex items-center gap-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                    <span data-post-id="{{ $post->id }}" data-comment-count class="text-sm text-gray-600 dark:text-gray-400">{{ $post->comments->count() + $post->comments->sum(fn ($c) => $c->replies->count()) }}</span>
-                </button>
-            </div>
-        @endif
+        {{-- One button, one destination. The preview strip in the Biography tab and the
+             card in the feed used to open two different things; both open the sheet. --}}
+        <div class="flex items-center gap-1" data-comment-container="{{ $post->id }}">
+            <button type="button" data-open-comments="{{ $post->id }}" class="inline-flex items-center gap-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                <span data-post-id="{{ $post->id }}" data-comment-count class="text-sm tabular-nums text-gray-600 dark:text-gray-400">{{ $post->comments->count() + $post->comments->sum(fn ($c) => $c->replies->count()) }}</span>
+            </button>
+        </div>
         @if ($quotaInfo['share_memories'] ?? false)
             @if ($embedInBiography)
                 <div class="relative ml-auto" data-share-container>
@@ -136,21 +163,4 @@
             @endif
         @endif
     </div>
-    @if (! $embedInBiography)
-        <div data-comment-section="{{ $post->id }}" class="hidden overflow-hidden border-t border-gray-100 dark:border-gray-800">
-            <div class="flex flex-wrap items-center gap-2 px-3 py-3 sm:px-4">
-                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[11px] font-semibold text-brand-600 dark:bg-brand-500/25 dark:text-brand-400 sm:h-8 sm:w-8 sm:text-xs">
-                    {{ strtoupper(substr(auth()->user()?->name ?? 'G', 0, 1)) }}
-                </div>
-                <input type="text" data-comment-input="{{ $post->id }}" placeholder="Add a comment..." class="h-9 min-w-0 flex-1 basis-36 rounded-full border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-white/[0.03]" />
-                <button type="button" data-comment-submit data-post-id="{{ $post->id }}" class="btn btn-primary btn-sm rounded-full shrink-0 active:scale-95">Post</button>
-            </div>
-            <div class="space-y-0 px-3 pb-3 sm:px-4" data-comments-list="{{ $post->id }}">
-                @foreach ($post->comments as $comment)
-                    @include('pages.memorials.partials.comment-item', ['comment' => $comment, 'postId' => $post->id, 'canDelete' => $canEdit])
-                @endforeach
-            </div>
-            <p data-comments-empty="{{ $post->id }}" class="px-3 pb-4 text-center text-xs text-gray-400 dark:text-gray-500 sm:px-4 {{ $post->comments->isEmpty() ? '' : 'hidden' }}">No comments yet. Be the first to comment.</p>
-        </div>
-    @endif
 </article>

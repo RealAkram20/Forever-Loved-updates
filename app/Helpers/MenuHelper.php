@@ -34,14 +34,16 @@ class MenuHelper
      */
     public static function getResellerMenuGroups(): array
     {
-        return [
+        $reseller = auth()->user()?->reseller;
+
+        return array_values(array_filter([
             [
                 // Analytics only appears when the tier includes it, so the nav never offers
                 // a page whose whole content is "this isn't in your plan".
                 'title' => 'Overview',
                 'items' => array_values(array_filter([
                     ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
-                    auth()->user()?->reseller?->tierAllows('business_analytics')
+                    $reseller?->tierAllows('business_analytics')
                         ? ['icon' => 'charts', 'name' => 'Analytics', 'path' => url('/reseller/analytics')]
                         : null,
                 ])),
@@ -53,18 +55,44 @@ class MenuHelper
                 'items' => [
                     ['icon' => 'memorial', 'name' => 'Memorials', 'path' => url('/reseller/memorials'), 'match' => 'reseller/memorials'],
                     ['icon' => 'users', 'name' => 'Clients', 'path' => url('/reseller/clients')],
+                    // Unlike Analytics, Reports is never hidden by tier — most of the
+                    // catalogue is the reseller's own operational and billing records.
+                    // Only the engagement report inside it is gated, and it shows the
+                    // pitch rather than disappearing.
+                    ['icon' => 'charts', 'name' => 'Reports', 'path' => url('/reseller/reports'), 'match' => 'reseller/reports'],
                 ],
             ],
+            // The reseller's own site. Gated on the same rule as the page-builder area itself
+            // (tier flag, or a super-admin logged in as them) so the nav never links a page
+            // that would 403 — the pattern Analytics already follows above.
+            \App\Support\PageBuilderAccess::allows($reseller) ? [
+                'title' => 'Website',
+                'items' => [
+                    ['icon' => 'pages', 'name' => 'Pages', 'path' => url('/reseller/pages'), 'match' => 'reseller/pages'],
+                    // Their site's header and footer navigation. Sits beside Pages because it
+                    // is what makes those pages reachable — without it a white-labeled site
+                    // has a one-item nav and no way to link anything the reseller builds.
+                    ['icon' => 'menus', 'name' => 'Menus', 'path' => url('/reseller/menus'), 'match' => 'reseller/menus'],
+                ],
+            ] : null,
             [
                 'title' => 'Your business',
-                'items' => [
+                'items' => array_values(array_filter([
                     ['icon' => 'pricing', 'name' => 'Plans', 'path' => url('/reseller/plans')],
-                    ['icon' => 'appearance', 'name' => 'Branding', 'path' => url('/reseller/branding')],
+                    // Named to match the admin's own entry, and pointing at the merged page —
+                    // logo, favicon and the full colour/font set now live in one place rather
+                    // than a "Branding" page that only controlled a single colour.
+                    ['icon' => 'appearance', 'name' => 'Appearance', 'path' => url('/reseller/appearance')],
+                    // Staff administer the whole reseller account, so only the owner may manage
+                    // them — the nav entry is hidden for everyone else, matching the route guard.
+                    ($reseller && auth()->id() === $reseller->owner_user_id)
+                        ? ['icon' => 'users', 'name' => 'Staff', 'path' => url('/reseller/staff'), 'match' => 'reseller/staff']
+                        : null,
                     ['icon' => 'billing', 'name' => 'Payments', 'path' => url('/reseller/payments')],
                     ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/reseller/settings'), 'match' => 'reseller/settings'],
-                ],
+                ])),
             ],
-        ];
+        ]));
     }
 
     /**
@@ -104,6 +132,9 @@ class MenuHelper
                 'title' => 'Overview',
                 'items' => [
                     ['icon' => 'dashboard', 'name' => 'Dashboard', 'path' => url('/dashboard')],
+                    // 'match' keeps Reports lit on an individual report page, which is
+                    // reached from the catalogue rather than from its own nav entry.
+                    ['icon' => 'charts', 'name' => 'Reports', 'path' => url('/reports'), 'match' => 'reports'],
                     ['icon' => 'notification', 'name' => 'Notifications', 'path' => url('/notifications')],
                     ['icon' => 'calendar', 'name' => 'Calendar', 'path' => url('/calendar')],
                 ],

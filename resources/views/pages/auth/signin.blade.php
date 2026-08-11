@@ -54,7 +54,7 @@
                                     </div>
                                 </div>
                             @endif
-                            <form method="POST" action="{{ route('login') }}">
+                            <form method="POST" action="{{ \App\Support\ResellerAuthUrls::login() }}">
                                 @csrf
                                 <div class="space-y-5">
                                     <!-- Email -->
@@ -131,7 +131,7 @@
                             <div class="mt-5">
                                 <p class="text-center text-sm font-normal text-gray-700 dark:text-gray-400 sm:text-start">
                                     Don't have an account?
-                                    <a href="{{ route('register') }}" class="text-brand-500 hover:text-brand-600 dark:text-brand-400">Sign Up</a>
+                                    <a href="{{ \App\Support\ResellerAuthUrls::register() }}" class="text-brand-500 hover:text-brand-600 dark:text-brand-400">Sign Up</a>
                                 </p>
                             </div>
                         </div>

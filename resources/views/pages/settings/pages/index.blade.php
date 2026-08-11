@@ -24,7 +24,11 @@
                 Add page
             </a>
         </div>
-        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+        {{-- `overflow-x-auto`, not `overflow-hidden`. This is a four-column table with px-6
+             cells: on a phone it is around 670px wide, and hidden simply cut Status, Last
+             updated and Actions off with no way to reach them. Auto lets the table scroll
+             inside its own border, which is what the pricing tables already do. --}}
+        <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-800">
                     <tr>

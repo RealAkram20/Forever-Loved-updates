@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Helpers\ThemeSetting;
 use App\Models\Reseller;
 use Closure;
 use Illuminate\Http\Request;
@@ -27,6 +28,9 @@ class ResolveReseller
         }
 
         app()->instance(Reseller::class, $reseller);
+        // Resolved from the URL, so this is their own public site — the nav drops the platform's
+        // marketing links here. See ThemeSetting::isResellerSite().
+        ThemeSetting::markResolvedFromRequest();
 
         return $next($request);
     }

@@ -1,16 +1,41 @@
 @php
     $isAdmin = auth()->user()?->hasRole(['admin', 'super-admin']);
-    $appName = \App\Models\SystemSetting::get('branding.app_name', 'Forever-Loved');
+    // Tenant-aware — see visitor-footer. This is the logo alt text and header wordmark.
+    $appName = \App\Helpers\SiteShareMetaHelper::appDisplayName();
     $currentRoute = request()->route()?->getName();
+
+    // On a reseller's own site, the platform's marketing nav is dropped: links to our About,
+    // Pricing and Contact walk their visitor onto our site, and our Find Memorial directory
+    // deliberately excludes the very memorials that visitor came looking for. Note this is
+    // isResellerSite(), not "has a tenant" — a reseller browsing the *platform* still sees the
+    // platform's nav, because there those links are simply correct.
+    $tenantSite = \App\Helpers\ThemeSetting::isResellerSite() ? \App\Helpers\ThemeSetting::tenant() : null;
+
+    // route('home') resolves against APP_URL, i.e. the platform apex — following it from a
+    // reseller's domain would leave their site.
+    $homeUrl = $tenantSite ? $tenantSite->publicBaseUrl() : route('home');
+
+    // Admin-defined header menu items are the platform's own; AppServiceProvider's composer
+    // already withholds them on a reseller site.
     $headerNavItems = $headerNavItems ?? collect();
 @endphp
 
 <header class="sticky top-0 z-40 border-b border-gray-900/[0.06] dark:border-gray-800 bg-[var(--color-bg-page)]/90 backdrop-blur-sm" x-data="{ mobileOpen: false }">
     <div class="mx-auto flex min-h-16 lg:min-h-[4.5rem] items-center justify-between gap-4 px-4 py-1 sm:px-6 lg:px-8 max-w-7xl">
-        {{-- Logo --}}
-        <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-2 text-gray-800 dark:text-white/90 hover:text-brand-500">
-            <img class="dark:hidden h-14 lg:h-16 w-auto object-contain" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="{{ $appName }}" />
-            <img class="hidden dark:block h-14 lg:h-16 w-auto object-contain" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="{{ $appName }}" />
+        {{-- Logo.
+
+             Both a height ramp and a max-width, and it needs both. The default mark is
+             154×32, so pinning it to h-14 makes it 270px wide — on a 360px screen that plus
+             the theme and menu buttons cannot fit, and `shrink-0` meant it pushed the page
+             wider instead of giving way. Every public page overflowed by 18px because of
+             this one element.
+
+             The cap is the part that keeps working: a reseller uploads their own logo, and
+             a wider mark would walk straight back into the same overflow with only a height
+             set. `object-left` keeps it aligned when the cap is what is limiting it. --}}
+        <a href="{{ $homeUrl }}" class="flex min-w-0 shrink items-center gap-2 text-gray-800 dark:text-white/90 hover:text-brand-500">
+            <img class="dark:hidden h-11 w-auto max-w-[190px] object-contain object-left sm:h-14 sm:max-w-[240px] lg:h-16 lg:max-w-[300px]" src="{{ \App\Helpers\BrandingHelper::logoUrl() }}" alt="{{ $appName }}" />
+            <img class="hidden dark:block h-11 w-auto max-w-[190px] object-contain object-left sm:h-14 sm:max-w-[240px] lg:h-16 lg:max-w-[300px]" src="{{ \App\Helpers\BrandingHelper::logoDarkUrl() }}" alt="{{ $appName }}" />
         </a>
 
         {{-- Desktop nav --}}
@@ -20,8 +45,9 @@
                    @if($navItem->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $navItem->isActive($currentRoute) ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">{{ $navItem->label }}</a>
             @empty
-                <a href="{{ route('home') }}"
+                <a href="{{ $homeUrl }}"
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Home</a>
+                @unless ($tenantSite)
                 <a href="{{ route('about') }}"
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'about' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">About</a>
                 <a href="{{ route('pricing') }}"
@@ -30,6 +56,7 @@
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'memorial.directory' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Find Memorial</a>
                 <a href="{{ route('contact') }}"
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'contact' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Contact</a>
+                @endunless
             @endforelse
         </nav>
 
@@ -49,7 +76,7 @@
                         if (this.query.length < 2) { this.results = []; this.open = false; return; }
                         this.loading = true;
                         this.debounceTimer = setTimeout(() => {
-                            fetch(`{{ route('memorials.search') }}?q=${encodeURIComponent(this.query)}`)
+                            fetch(`{{ \App\Support\SiteUrl::to('api/search/memorials') }}?q=${encodeURIComponent(this.query)}`)
                                 .then(r => r.json())
                                 .then(data => {
                                     this.results = data.results;
@@ -155,8 +182,8 @@
                     </div>
                 </div>
             @else
-                <a href="{{ route('login') }}" class="btn btn-secondary btn-md">Sign in</a>
-                <a href="{{ route('register') }}" class="btn btn-primary btn-md">Sign up</a>
+                <a href="{{ \App\Support\ResellerAuthUrls::login() }}" class="btn btn-secondary btn-md">Sign in</a>
+                <a href="{{ \App\Support\ResellerAuthUrls::register() }}" class="btn btn-primary btn-md">Sign up</a>
             @endif
         </div>
 
@@ -196,7 +223,7 @@
                     if (this.query.length < 2) { this.results = []; this.open = false; return; }
                     this.loading = true;
                     this.debounceTimer = setTimeout(() => {
-                        fetch(`{{ route('memorials.search') }}?q=${encodeURIComponent(this.query)}`)
+                        fetch(`{{ \App\Support\SiteUrl::to('api/search/memorials') }}?q=${encodeURIComponent(this.query)}`)
                             .then(r => r.json())
                             .then(data => {
                                 this.results = data.results;
@@ -238,11 +265,13 @@
                    @if($navItem->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif
                    class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $navItem->isActive($currentRoute) ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">{{ $navItem->label }}</a>
             @empty
-                <a href="{{ route('home') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Home</a>
+                <a href="{{ $homeUrl }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Home</a>
+                @unless ($tenantSite)
                 <a href="{{ route('about') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'about' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">About</a>
                 <a href="{{ route('pricing') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'pricing' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Pricing</a>
                 <a href="{{ route('memorial.directory') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'memorial.directory' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Find Memorial</a>
                 <a href="{{ route('contact') }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'contact' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Contact</a>
+                @endunless
             @endforelse
 
             @if (auth()->check())
@@ -254,8 +283,8 @@
                 </form>
             @else
                 <div class="pt-2 flex gap-2">
-                    <a href="{{ route('login') }}" class="btn btn-secondary btn-md flex-1">Sign in</a>
-                    <a href="{{ route('register') }}" class="btn btn-primary btn-md flex-1">Sign up</a>
+                    <a href="{{ \App\Support\ResellerAuthUrls::login() }}" class="btn btn-secondary btn-md flex-1">Sign in</a>
+                    <a href="{{ \App\Support\ResellerAuthUrls::register() }}" class="btn btn-primary btn-md flex-1">Sign up</a>
                 </div>
             @endif
         </nav>
