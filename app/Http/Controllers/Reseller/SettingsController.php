@@ -30,6 +30,7 @@ class SettingsController extends Controller
             'domainsEnabled' => SystemSetting::get('domains.custom_domains_enabled', false),
             'domainRoutingInTier' => $reseller->tierAllows('domain_routing'),
             'domainTargetHost' => SystemSetting::get('domains.target_host', ''),
+            'domainTargetIp' => SystemSetting::get('domains.target_ip', ''),
         ]);
     }
 

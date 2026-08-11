@@ -353,6 +353,36 @@
                         </form>
                     @endif
 
+                    {{-- The half of the job the TXT record doesn't do: where their DNS
+                         actually has to point. Root domains can't CNAME, so they get the
+                         A record; routing and SSL follow automatically once both this and
+                         verification are in place. --}}
+                    @php
+                        $domainIsApex = substr_count($reseller->custom_domain, '.') === 1;
+                        $domainPointTarget = $domainIsApex
+                            ? \App\Models\SystemSetting::get('domains.target_ip', '')
+                            : \App\Models\SystemSetting::get('domains.target_host', '');
+                    @endphp
+                    <div class="border-t border-gray-100 dark:border-gray-800 pt-5">
+                        <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                            Their DNS also has to point here{{ $domainIsApex ? ' — an A record, since root domains can\'t take a CNAME' : '' }}:
+                        </p>
+                        @if ($domainPointTarget)
+                            <x-common.dns-record :type="$domainIsApex ? 'A' : 'CNAME'"
+                                :host="$reseller->custom_domain"
+                                :value="$domainPointTarget" />
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                Once verified and pointed, the proxy picks the domain up and issues its SSL certificate automatically — nothing to click here.
+                            </p>
+                        @else
+                            <p class="text-sm text-amber-600 dark:text-amber-400">
+                                The {{ $domainIsApex ? 'A-record IP' : 'CNAME target' }} isn't set in
+                                <a href="{{ route('settings.reseller-settings') }}" class="underline">Reseller settings</a>
+                                yet — until it is, there's nothing to tell them to point at.
+                            </p>
+                        @endif
+                    </div>
+
                     <form action="{{ route('settings.resellers.custom-domain.clear', $reseller) }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-5"
                         onsubmit="return confirm('Remove this custom domain? Their {{ $reseller->slug }}.{{ config('reseller.domain') }} address keeps working — visitors on the removed domain will stop reaching their site.')">
                         @csrf

@@ -89,6 +89,11 @@ services:
       # Reseller::subdomainRoutingAvailable().
       - RESELLER_APP_DOMAIN=${RESELLER_APP_DOMAIN:-}
 
+      # Where the scheduler writes Traefik router files for verified reseller custom
+      # domains — the container path of the bind mount below. The proxy's file
+      # provider watches the host side and picks changes up without a restart.
+      - PROXY_CUSTOM_DOMAINS_DIR=/var/www/html/storage/proxy-domains
+
     # Reseller subdomains: one router per direction, matching every {slug} under the
     # base domain. Coolify's own generated labels handle the apex; these add the
     # wildcard alongside them. No traefik.http.services.* is declared on purpose —
@@ -122,6 +127,13 @@ services:
       # without it, every photo and video is written into the container's own
       # layer and destroyed by the next deploy.
       - forever-storage:/var/www/html/storage
+
+      # The proxy's watched config folder, nested inside the storage mount (the more
+      # specific path wins). The scheduler writes one router file here per verified
+      # reseller custom domain; Traefik routes the domain and orders its certificate
+      # the moment the file lands. The entrypoint's chown makes it writable for
+      # www-data, which is exactly what the scheduler runs as.
+      - /data/coolify/proxy/dynamic/custom-domains:/var/www/html/storage/proxy-domains
 
     # expose, not ports. Reachable from Coolify's proxy on the shared network,
     # not from the open internet on a host port that bypasses TLS.

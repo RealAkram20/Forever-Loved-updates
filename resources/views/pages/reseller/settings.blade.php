@@ -146,19 +146,36 @@
                                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">DNS changes can take a while to propagate — if you just added the record, try again shortly.</p>
                                 @endif
                             </div>
-                        @else
-                            <div>
-                                <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Step 2 — point your domain here</p>
-                                @if ($domainTargetHost)
+                        @endunless
+
+                        {{-- Shown from the moment a domain is saved, not only after verification:
+                             the TXT proves ownership, this record actually brings visitors, and
+                             people set all their DNS in one sitting. A root domain can't take a
+                             CNAME at most providers, so it gets an A record instead. --}}
+                        @php $isApex = substr_count($reseller->custom_domain, '.') === 1; @endphp
+                        <div>
+                            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Step 2 — point your domain here</p>
+                            @if ($isApex ? $domainTargetIp : $domainTargetHost)
+                                @if ($isApex)
+                                    <x-common.dns-record type="A"
+                                        :host="$reseller->custom_domain"
+                                        :value="$domainTargetIp" />
+                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                        At most providers the host field for this record is <span class="font-mono">@</span>.
+                                        Optionally add a CNAME for <span class="font-mono">www</span> pointing at <span class="font-mono">{{ $reseller->custom_domain }}</span> — visitors who type www will be brought to the right place.
+                                    </p>
+                                @else
                                     <x-common.dns-record type="CNAME"
                                         :host="$reseller->custom_domain"
                                         :value="$domainTargetHost" />
-                                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">SSL for your domain is set up separately once this is pointed correctly — your platform admin will confirm once it's live.</p>
-                                @else
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">Ownership verified — waiting on your platform admin to finish setting up where domains should point. Check back soon.</p>
                                 @endif
-                            </div>
-                        @endunless
+                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                    Once the domain is verified and this record is in place, your site goes live on it automatically — SSL certificate included — usually within a few minutes.
+                                </p>
+                            @else
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Where to point the domain is still being set up by your platform admin — you can verify ownership now and check back soon for this step.</p>
+                            @endif
+                        </div>
                     </div>
                 @endif
             @endif

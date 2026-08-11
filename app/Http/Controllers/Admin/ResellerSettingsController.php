@@ -35,12 +35,14 @@ class ResellerSettingsController extends Controller
         $request->validate([
             'custom_domains_enabled' => ['required', 'in:0,1'],
             'target_host' => ['nullable', 'string', 'max:255'],
+            'target_ip' => ['nullable', 'ipv4'],
             'default_tier_id' => ['nullable', 'exists:reseller_tiers,id'],
             'reserved_slugs' => ['nullable', 'string', 'max:2000'],
         ]);
 
         SystemSetting::set('domains.custom_domains_enabled', $request->boolean('custom_domains_enabled') ? '1' : '0');
         SystemSetting::set('domains.target_host', trim((string) $request->input('target_host', '')));
+        SystemSetting::set('domains.target_ip', trim((string) $request->input('target_ip', '')));
         SystemSetting::set('reseller.default_tier_id', (string) $request->input('default_tier_id', ''));
 
         // Store normalized (lowercase, comma-separated) so the value round-trips into the

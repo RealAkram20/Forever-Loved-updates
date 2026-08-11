@@ -75,11 +75,20 @@
                 </p>
             </div>
 
+            <div class="border-t border-gray-100 dark:border-gray-800 pt-6">
+                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">A-record IP</label>
+                <input type="text" name="target_ip" value="{{ old('target_ip', $settings['domains.target_ip'] ?? '') }}" placeholder="e.g. 203.0.113.10"
+                    class="h-11 w-full max-w-md rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 font-mono text-sm text-gray-800 dark:text-white/90 placeholder:font-sans placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
+                @error('target_ip') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    For root domains like <span class="font-mono">example.com</span>, which most DNS providers won't let point at a CNAME — the instructions show an A record to this IP instead. Usually this server's public address.
+                </p>
+            </div>
+
             <div class="rounded-xl bg-gray-50 dark:bg-white/[0.03] p-4">
-                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">How verification works</p>
+                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">How a domain goes live</p>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Resellers prove control of a domain with a TXT-record challenge, which works regardless of where this app is hosted — nothing to configure here for that part.
-                    SSL for a verified custom domain still has to be provisioned at the server level: Caddy or Cloudflare handles it automatically, while a plain Nginx or Apache box needs a Let's Encrypt client wired in separately.
+                    Resellers prove control of a domain with a TXT-record challenge, then point it here with the record shown above. Once verified, the scheduler tells the proxy about the domain automatically — routing and its SSL certificate are provisioned within about a minute of the DNS pointing at this server, with nothing to click.
                 </p>
             </div>
         </x-common.component-card>
