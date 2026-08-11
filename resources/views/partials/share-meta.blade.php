@@ -2,7 +2,7 @@
 @if (!empty($shareMeta['title']) && !empty($shareMeta['description']) && !empty($shareMeta['url']))
 <link rel="canonical" href="{{ $shareMeta['url'] }}">
 <meta name="description" content="{{ $shareMeta['description'] }}">
-<meta property="og:type" content="website">
+<meta property="og:type" content="{{ $shareMeta['type'] ?? 'website' }}">
 <meta property="og:site_name" content="{{ $shareMeta['site_name'] ?? config('app.name') }}">
 <meta property="og:title" content="{{ $shareMeta['title'] }}">
 <meta property="og:description" content="{{ $shareMeta['description'] }}">
@@ -10,6 +10,19 @@
 <meta property="og:locale" content="{{ str_replace('_', '-', app()->getLocale()) }}">
 @if($shareMeta['image'] ?? null)
 <meta property="og:image" content="{{ $shareMeta['image'] }}">
+@if (str_starts_with($shareMeta['image'], 'https://'))
+<meta property="og:image:secure_url" content="{{ $shareMeta['image'] }}">
+@endif
+{{-- Declared dimensions let WhatsApp and Facebook draw the card before they have
+     downloaded the image; present only when the image is our own derivative and the
+     numbers are therefore facts rather than hopes. --}}
+@if(($shareMeta['image_width'] ?? null) && ($shareMeta['image_height'] ?? null))
+<meta property="og:image:width" content="{{ $shareMeta['image_width'] }}">
+<meta property="og:image:height" content="{{ $shareMeta['image_height'] }}">
+@endif
+@if($shareMeta['image_type'] ?? null)
+<meta property="og:image:type" content="{{ $shareMeta['image_type'] }}">
+@endif
 @if($shareMeta['image_alt'] ?? null)
 <meta property="og:image:alt" content="{{ $shareMeta['image_alt'] }}">
 @endif

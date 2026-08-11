@@ -36,8 +36,11 @@ class MemorialShareMetaHelper
             'description' => self::memorialDescription($memorial, $deceasedName),
             'url' => $canonical,
             'site_name' => (string) config('app.name', 'Forever-Loved'),
-            'image' => self::absoluteAssetUrl($memorial->profile_photo_url),
+            // A memorial page is a page about a person, and crawlers treat 'profile'
+            // exactly like 'website' when they don't care about the difference.
+            'type' => 'profile',
             'image_alt' => $deceasedName,
+            ...self::shareImage($memorial->profile_photo_path, $memorial->profile_photo_url),
         ];
     }
 
@@ -62,15 +65,41 @@ class MemorialShareMetaHelper
             'share_id' => $post->share_id,
         ], true);
 
-        $image = self::firstPostShareImageUrl($post) ?? self::absoluteAssetUrl($memorial->profile_photo_url);
+        [$imagePath, $imageUrl] = self::firstPostShareImage($post)
+            ?? [$memorial->profile_photo_path, $memorial->profile_photo_url];
 
         return [
             'title' => $title,
             'description' => $description,
             'url' => $shareUrl,
             'site_name' => (string) config('app.name', 'Forever-Loved'),
-            'image' => $image,
+            'type' => 'article',
             'image_alt' => Str::limit($postTitle.' — '.$deceasedName, 200, '…'),
+            ...self::shareImage($imagePath, $imageUrl),
+        ];
+    }
+
+    /**
+     * The og:image entry: the crawler-sized derivative with its dimensions declared,
+     * or the original as a fallback when one can't be made. Declared dimensions matter
+     * on their own — WhatsApp and Facebook render the card immediately instead of
+     * first downloading the image to measure it.
+     *
+     * @return array{image: string|null, image_width?: int, image_height?: int, image_type?: string}
+     */
+    private static function shareImage(?string $sourcePath, ?string $fallbackUrl): array
+    {
+        $derived = app(\App\Services\ShareImageService::class)->derive($sourcePath);
+
+        if ($derived === null) {
+            return ['image' => self::absoluteAssetUrl($fallbackUrl)];
+        }
+
+        return [
+            'image' => $derived['url'],
+            'image_width' => $derived['width'],
+            'image_height' => $derived['height'],
+            'image_type' => $derived['type'],
         ];
     }
 
@@ -87,15 +116,13 @@ class MemorialShareMetaHelper
         return url($url);
     }
 
-    private static function firstPostShareImageUrl(Post $post): ?string
+    /** @return array{0: string|null, 1: string|null}|null [disk path, public URL] of the post's first photo. */
+    private static function firstPostShareImage(Post $post): ?array
     {
         foreach ($post->media as $medium) {
-            if ($medium->type === Media::TYPE_PHOTO) {
-                return self::absoluteAssetUrl($medium->url);
-            }
             $mime = (string) ($medium->mime_type ?? '');
-            if ($mime !== '' && str_starts_with($mime, 'image/')) {
-                return self::absoluteAssetUrl($medium->url);
+            if ($medium->type === Media::TYPE_PHOTO || ($mime !== '' && str_starts_with($mime, 'image/'))) {
+                return [$medium->path, $medium->url];
             }
         }
 
@@ -138,7 +165,11 @@ class MemorialShareMetaHelper
         if ($html === null || $html === '') {
             return '';
         }
-        $text = strip_tags($html);
+        // A space before every tag, so text in adjacent elements keeps a boundary when
+        // the tags go. Without it a biography with a facts table stripped down to
+        // "…victim of crime.BornMarch 24" — words fused across cells, in the one string
+        // Google shows under the page title.
+        $text = strip_tags(str_replace('<', ' <', $html));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/\s+/u', ' ', trim($text)) ?? '';
 
