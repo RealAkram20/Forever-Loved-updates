@@ -32,6 +32,14 @@ class PostAuthRedirect
             return rtrim($reseller->publicBaseUrl(), '/').'/dashboard';
         }
 
+        // A user who belongs to no reseller belongs on the platform — absolutely, not
+        // relatively. The relative form kept an admin (or any platform-direct user) who
+        // signed in on a reseller's domain sitting on that domain, running the platform
+        // dashboard dressed in someone else's brand. Their designated place is ours.
+        if (\App\Helpers\ThemeSetting::siteTenant()) {
+            return rtrim((string) config('app.url'), '/').'/dashboard';
+        }
+
         return route('dashboard', absolute: false);
     }
 }

@@ -423,3 +423,63 @@ it('keeps the platform root on the platform own host', function () {
     expect($body)->toContain('localhost/login')
         ->and(str_contains($body, 'kangaruride.com'))->toBeFalse();
 });
+
+it('sends an admin who signs in on a reseller domain to the platform, not their dashboard in disguise', function () {
+    Role::findOrCreate('super-admin', 'web');
+    $admin = User::factory()->create();
+    $admin->assignRole('super-admin');
+
+    whiteLabelTenant('acme', 'kangaruride.com');
+
+    // Already signed in and browsing the reseller's host: the dashboard must move them off.
+    $this->actingAs($admin)
+        ->get('http://kangaruride.com/dashboard')
+        ->assertRedirect('http://localhost/dashboard');
+});
+
+it('sends another reseller client from a foreign reseller dashboard to their own site', function () {
+    $acme = whiteLabelTenant('acme', 'kangaruride.com');
+    $beta = whiteLabelTenant('beta', 'betamemorials.com');
+
+    $betaClient = User::factory()->create(['reseller_id' => $beta->id]);
+    $betaClient->assignRole('user');
+
+    $this->actingAs($betaClient)
+        ->get('http://kangaruride.com/dashboard')
+        ->assertRedirect('http://betamemorials.com/dashboard');
+});
+
+it('keeps a reseller own client on their reseller dashboard', function () {
+    $acme = whiteLabelTenant('acme', 'kangaruride.com');
+    $client = User::factory()->create(['reseller_id' => $acme->id]);
+    $client->assignRole('user');
+
+    $this->actingAs($client)
+        ->get('http://kangaruride.com/dashboard')
+        ->assertSuccessful();
+});
+
+it('shows a platform admin the back-to-admin banner on a reseller site', function () {
+    Role::findOrCreate('super-admin', 'web');
+    $admin = User::factory()->create();
+    $admin->assignRole('super-admin');
+
+    $acme = whiteLabelTenant('acme', 'kangaruride.com');
+
+    $body = $this->actingAs($admin)->get('http://kangaruride.com/')->assertOk()->getContent();
+
+    expect($body)->toContain('Back to Admin')
+        ->and($body)->toContain("Viewing <strong>{$acme->name}</strong>");
+});
+
+it('never shows the admin banner to the reseller own visitors', function () {
+    $acme = whiteLabelTenant('acme', 'kangaruride.com');
+    $client = User::factory()->create(['reseller_id' => $acme->id]);
+    $client->assignRole('user');
+
+    expect($this->actingAs($client)->get('http://kangaruride.com/')->assertOk()->getContent())
+        ->not->toContain('Back to Admin');
+
+    expect($this->get('http://kangaruride.com/')->assertOk()->getContent())
+        ->not->toContain('Back to Admin');
+});
