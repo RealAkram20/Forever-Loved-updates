@@ -341,3 +341,30 @@ it('leaves platform page titles unchanged', function () {
         ->assertOk()
         ->assertSee(config('app.name'), false);
 });
+
+it('returns a signing-out impersonator to their own admin session instead of logging them out', function () {
+    Role::findOrCreate('super-admin', 'web');
+    $admin = User::factory()->create();
+    $admin->assignRole('super-admin');
+
+    $acme = whiteLabelTenant('acme');
+
+    // Impersonate, then press the ordinary Sign out.
+    $this->actingAs($admin)->post('http://localhost/settings/resellers/'.$acme->id.'/login-as');
+    expect(auth()->id())->toBe($acme->owner->id);
+
+    $this->post('http://localhost/logout')->assertRedirect();
+
+    // The person at the keyboard is the admin; they must still be signed in as themselves.
+    expect(auth()->check())->toBeTrue()
+        ->and(auth()->id())->toBe($admin->id)
+        ->and(session()->has('impersonator_id'))->toBeFalse();
+});
+
+it('still fully signs out a user who is not impersonating anyone', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post('http://localhost/logout')->assertRedirect('/');
+
+    expect(auth()->check())->toBeFalse();
+});

@@ -47,6 +47,19 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        // Signing out while impersonating a reseller means "stop being them", not "log
+        // me out of everything" — the admin pressing it still has their own session
+        // underneath, and destroying it would sign out the person who is actually at
+        // the keyboard. Restore the admin instead, exactly as Return to Admin does.
+        $impersonatorId = $request->session()->pull('impersonator_id');
+        if ($impersonatorId && ($admin = \App\Models\User::find($impersonatorId))) {
+            Auth::login($admin);
+            $request->session()->regenerate();
+
+            return redirect()->route('settings.resellers')
+                ->with('success', 'Signed out of the reseller account — you are back on your own.');
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
