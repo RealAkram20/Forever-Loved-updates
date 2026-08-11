@@ -114,6 +114,12 @@ class SettingsController extends Controller
             'custom_domain_verified_at' => $verified ? now() : null,
         ]);
 
+        if ($verified) {
+            // Routed the moment the check passes — "verified" should mean live, not
+            // live within a minute.
+            app(\App\Services\CustomDomainProxySync::class)->sync();
+        }
+
         return back()->with(
             $verified ? 'success' : 'error',
             $verified
