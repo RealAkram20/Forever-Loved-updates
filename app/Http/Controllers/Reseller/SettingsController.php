@@ -66,8 +66,18 @@ class SettingsController extends Controller
             ],
         ]);
 
+        $domain = strtolower($validated['custom_domain']);
+
+        // Re-saving the same domain must change nothing. Minting a fresh token here
+        // invalidated the TXT record already sitting in their DNS, reset a verified
+        // domain to unverified — which un-routes a live site — and restarted the DNS
+        // cache clock, all from pressing Update without editing anything.
+        if ($domain === $reseller->custom_domain) {
+            return back()->with('success', 'That is already your domain — nothing changed.');
+        }
+
         $reseller->update([
-            'custom_domain' => strtolower($validated['custom_domain']),
+            'custom_domain' => $domain,
             'custom_domain_token' => $domains->generateToken(),
             'custom_domain_status' => Reseller::DOMAIN_UNVERIFIED,
             'custom_domain_verified_at' => null,
@@ -92,6 +102,13 @@ class SettingsController extends Controller
 
         $verified = $domains->verifyTxt($reseller->custom_domain, $reseller->custom_domain_token);
 
+        // A failed lookup must never demote a domain that already proved itself: DNS
+        // caches lie for as long as their TTL, and demoting un-routes a live site —
+        // pressing Verify twice took a family's memorial pages offline.
+        if (! $verified && $reseller->hasVerifiedCustomDomain()) {
+            return back()->with('success', 'Already verified — nothing to redo. The TXT record can even be removed now.');
+        }
+
         $reseller->update([
             'custom_domain_status' => $verified ? Reseller::DOMAIN_VERIFIED : Reseller::DOMAIN_FAILED,
             'custom_domain_verified_at' => $verified ? now() : null,
@@ -100,7 +117,7 @@ class SettingsController extends Controller
         return back()->with(
             $verified ? 'success' : 'error',
             $verified
-                ? 'Domain verified! Point a CNAME at the target host shown below to go live.'
+                ? 'Domain verified! Add the records shown below to go live.'
                 : "Couldn't find the TXT record yet. DNS changes can take a while to propagate — try again shortly."
         );
     }

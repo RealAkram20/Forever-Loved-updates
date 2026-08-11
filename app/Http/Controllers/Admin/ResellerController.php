@@ -204,6 +204,13 @@ class ResellerController extends Controller
             ],
         ]);
 
+        // Same rule as the reseller's own form: an unchanged domain is a no-op, not a
+        // token rotation that invalidates their existing TXT record and un-routes a
+        // verified site.
+        if ($validated['custom_domain'] === $reseller->custom_domain) {
+            return back()->with('success', 'That is already their domain — nothing changed.');
+        }
+
         $reseller->update([
             'custom_domain' => $validated['custom_domain'],
             'custom_domain_token' => $domains->generateToken(),
@@ -225,6 +232,12 @@ class ResellerController extends Controller
         }
 
         $verified = $domains->verifyTxt($reseller->custom_domain, $reseller->custom_domain_token);
+
+        // Same guard as the reseller's own Verify button: a failed lookup (stale DNS
+        // cache included) must never demote — and thereby un-route — a live domain.
+        if (! $verified && $reseller->hasVerifiedCustomDomain()) {
+            return back()->with('success', "\"{$reseller->custom_domain}\" is already verified — a failed re-check doesn't undo that.");
+        }
 
         $reseller->update([
             'custom_domain_status' => $verified ? Reseller::DOMAIN_VERIFIED : Reseller::DOMAIN_FAILED,
