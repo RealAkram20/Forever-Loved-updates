@@ -69,6 +69,24 @@ $foreignDomainPattern = '^'
     .'(?!'.preg_quote($resellerBaseDomain, '#').'$)'
     .'(?!.*\.'.preg_quote($resellerBaseDomain, '#').'$).+$';
 
+// www.<base> is the platform, not a reseller — but once wildcard DNS routes it here, the
+// {reseller} group below would claim its root and 404 it as an unknown slug ('www' is a
+// reserved slug, so no reseller can legitimately be there either). Registered first so it
+// wins, and only when APP_URL's host is the bare apex — a www-canonical install has
+// nothing to redirect. 301 to the same path on the apex, query string included.
+if ($appHost === $resellerBaseDomain) {
+    Route::domain('www.'.$resellerBaseDomain)->group(function () {
+        Route::get('/{any?}', function (?string $any = null) {
+            $query = request()->getQueryString();
+
+            return redirect()->to(
+                rtrim((string) config('app.url'), '/').($any !== null && $any !== '' ? '/'.ltrim($any, '/') : '').($query ? '?'.$query : ''),
+                301
+            );
+        })->where('any', '.*');
+    });
+}
+
 Route::domain('{reseller}.'.$resellerBaseDomain)->group(function () {
     Route::get('/', [PublicMemorialController::class, 'indexForReseller'])
         ->name('reseller.public.index')
@@ -291,6 +309,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/resellers/{reseller}/activate', [ResellerController::class, 'activate'])->name('resellers.activate');
             Route::post('/resellers/{reseller}/rollover', [ResellerController::class, 'rollover'])->name('resellers.rollover');
             Route::post('/resellers/{reseller}/verify-domain', [ResellerController::class, 'verifyDomain'])->name('resellers.verify-domain');
+            Route::put('/resellers/{reseller}/custom-domain', [ResellerController::class, 'setCustomDomain'])->name('resellers.custom-domain.set');
+            Route::post('/resellers/{reseller}/custom-domain/check', [ResellerController::class, 'checkCustomDomain'])->name('resellers.custom-domain.check');
+            Route::delete('/resellers/{reseller}/custom-domain', [ResellerController::class, 'clearCustomDomain'])->name('resellers.custom-domain.clear');
             Route::post('/resellers/{reseller}/restore', [ResellerController::class, 'restore'])->name('resellers.restore');
             Route::post('/resellers/{reseller}/login-as', [ResellerController::class, 'loginAs'])->name('resellers.login-as');
             Route::post('/resellers/{reseller}/payments', [ResellerController::class, 'recordPayment'])->name('resellers.payments.store');

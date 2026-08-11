@@ -9,6 +9,7 @@ use App\Models\ResellerPayment;
 use App\Models\ResellerTier;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\DomainVerificationService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -181,6 +182,83 @@ class ResellerController extends Controller
         ]);
 
         return back()->with('success', "\"{$reseller->custom_domain}\" marked as verified.");
+    }
+
+    /**
+     * Set or change a reseller's custom domain on their behalf — same rules as the
+     * reseller's own form (Reseller\SettingsController::updateCustomDomain), minus the
+     * tier and feature gates: an admin doing this is the platform deciding it happens.
+     *
+     * A fresh token is minted even on a change, so the TXT challenge always proves the
+     * domain as it stands now rather than one it used to be.
+     */
+    public function setCustomDomain(Request $request, Reseller $reseller, DomainVerificationService $domains)
+    {
+        $request->merge(['custom_domain' => strtolower(trim((string) $request->input('custom_domain')))]);
+
+        $validated = $request->validate([
+            'custom_domain' => [
+                'required', 'string', 'max:255',
+                'regex:/^[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?)+$/i',
+                Rule::unique('resellers', 'custom_domain')->ignore($reseller->id),
+            ],
+        ]);
+
+        $reseller->update([
+            'custom_domain' => $validated['custom_domain'],
+            'custom_domain_token' => $domains->generateToken(),
+            'custom_domain_status' => Reseller::DOMAIN_UNVERIFIED,
+            'custom_domain_verified_at' => null,
+        ]);
+
+        return back()->with('success', 'Custom domain saved. Add the TXT record below at their DNS provider (or have the reseller do it), then check it.');
+    }
+
+    /**
+     * Run the real TXT-record check, exactly as the reseller's own Verify button does.
+     * Distinct from verifyDomain() above, which is the eyes-closed support override.
+     */
+    public function checkCustomDomain(Reseller $reseller, DomainVerificationService $domains)
+    {
+        if (! $reseller->custom_domain) {
+            return back()->with('error', 'This reseller has not set a custom domain yet.');
+        }
+
+        $verified = $domains->verifyTxt($reseller->custom_domain, $reseller->custom_domain_token);
+
+        $reseller->update([
+            'custom_domain_status' => $verified ? Reseller::DOMAIN_VERIFIED : Reseller::DOMAIN_FAILED,
+            'custom_domain_verified_at' => $verified ? now() : null,
+        ]);
+
+        return back()->with(
+            $verified ? 'success' : 'error',
+            $verified
+                ? "\"{$reseller->custom_domain}\" verified."
+                : "Couldn't find the TXT record yet. DNS changes can take a while to propagate — try again shortly."
+        );
+    }
+
+    /**
+     * Remove the custom domain entirely. Their subdomain address keeps working — publicHost()
+     * falls straight back to it — so this takes nothing offline.
+     */
+    public function clearCustomDomain(Reseller $reseller)
+    {
+        if (! $reseller->custom_domain) {
+            return back()->with('error', 'This reseller has no custom domain to remove.');
+        }
+
+        $domain = $reseller->custom_domain;
+
+        $reseller->update([
+            'custom_domain' => null,
+            'custom_domain_token' => null,
+            'custom_domain_status' => Reseller::DOMAIN_UNVERIFIED,
+            'custom_domain_verified_at' => null,
+        ]);
+
+        return back()->with('success', "\"{$domain}\" removed. Their {$reseller->slug}.".config('reseller.domain').' address still works.');
     }
 
     /**

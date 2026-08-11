@@ -330,6 +330,19 @@
                     </div>
 
                     @if ($reseller->custom_domain_status !== \App\Models\Reseller::DOMAIN_VERIFIED)
+                        <div class="border-t border-gray-100 dark:border-gray-800 pt-5">
+                            <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">The TXT record that proves they own it — add it at their DNS provider, or send it to them:</p>
+                            {{-- Asked for from the service that will do the lookup, so the record
+                                 shown is by construction the one that gets checked. --}}
+                            <x-common.dns-record type="TXT"
+                                :host="app(\App\Services\DomainVerificationService::class)->txtHost($reseller->custom_domain)"
+                                :value="$reseller->custom_domain_token" />
+                            <form action="{{ route('settings.resellers.custom-domain.check', $reseller) }}" method="POST" class="mt-3">
+                                @csrf
+                                <button type="submit" class="btn btn-secondary btn-sm">Check the TXT record</button>
+                            </form>
+                        </div>
+
                         <form action="{{ route('settings.resellers.verify-domain', $reseller) }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-5"
                             onsubmit="return confirm('Mark this domain verified? Only do this once you have confirmed the DNS is correct yourself — it skips the TXT-record check entirely.')">
                             @csrf
@@ -339,10 +352,26 @@
                             </p>
                         </form>
                     @endif
+
+                    <form action="{{ route('settings.resellers.custom-domain.clear', $reseller) }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-5"
+                        onsubmit="return confirm('Remove this custom domain? Their {{ $reseller->slug }}.{{ config('reseller.domain') }} address keeps working — visitors on the removed domain will stop reaching their site.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger-soft btn-sm">Remove domain</button>
+                    </form>
                 @else
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                        They're using their {{ config('reseller.domain') }} subdomain. A custom domain is set up by the reseller from their own settings.
-                    </p>
+                    <form action="{{ route('settings.resellers.custom-domain.set', $reseller) }}" method="POST">
+                        @csrf
+                        @method('PUT')
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" for="custom_domain">Domain</label>
+                        <input type="text" name="custom_domain" id="custom_domain" value="{{ old('custom_domain') }}" placeholder="memorials.their-brand.com"
+                            class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+                        @error('custom_domain') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                        <button type="submit" class="btn btn-primary btn-sm mt-3">Set custom domain</button>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            Setting it here does what the reseller's own settings page does: it stores the domain and mints the TXT challenge, ready to verify. Until one is set they're on {{ $reseller->slug }}.{{ config('reseller.domain') }}.
+                        </p>
+                    </form>
                 @endif
             </x-common.component-card>
 
