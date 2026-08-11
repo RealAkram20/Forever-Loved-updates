@@ -45,6 +45,7 @@ class MemorialMediaController extends Controller
 
         $photo = $request->file('photo');
         $path = $photo->store(StorageHelper::memorialProfilePath($memorial->id), 'public');
+        \App\Jobs\GenerateImageDerivatives::dispatch($path);
 
         // Recorded because a profile photo never gets a media row, so it is invisible to
         // any usage sum that only looks at the media table.
@@ -84,6 +85,7 @@ class MemorialMediaController extends Controller
 
         $photo = $request->file('photo');
         $path = $photo->store(StorageHelper::memorialCoverPath($memorial->id), 'public');
+        \App\Jobs\GenerateImageDerivatives::dispatch($path);
 
         $previous = $memorial->cover_photo_path;
 
@@ -96,6 +98,7 @@ class MemorialMediaController extends Controller
         // nothing and reachable by anyone who kept the URL.
         if ($previous && $previous !== $path) {
             Storage::disk('public')->delete($previous);
+            app(\App\Services\ImageDerivativeService::class)->delete($previous);
         }
 
         return response()->json([
@@ -120,6 +123,7 @@ class MemorialMediaController extends Controller
 
         if ($memorial->cover_photo_path) {
             Storage::disk('public')->delete($memorial->cover_photo_path);
+            app(\App\Services\ImageDerivativeService::class)->delete($memorial->cover_photo_path);
             $memorial->update([
                 'cover_photo_path' => null,
                 'cover_photo_size' => null,
@@ -189,6 +193,9 @@ class MemorialMediaController extends Controller
         }
 
         $path = $file->store(StorageHelper::memorialGalleryPath($memorial->id), 'public');
+        if ($type === Media::TYPE_PHOTO) {
+            \App\Jobs\GenerateImageDerivatives::dispatch($path);
+        }
 
         $media = Media::create([
             'memorial_id' => $memorial->id,
@@ -254,6 +261,9 @@ class MemorialMediaController extends Controller
         }
 
         $path = $file->store(StorageHelper::memorialPostsPath($memorial->id), 'public');
+        if ($type === Media::TYPE_PHOTO) {
+            \App\Jobs\GenerateImageDerivatives::dispatch($path);
+        }
 
         $media = Media::create([
             'memorial_id' => $memorial->id,
@@ -400,6 +410,9 @@ class MemorialMediaController extends Controller
 
                 if ($withinAllowance && $file->getSize() <= self::MAX_VIDEO_SIZE) {
                     $path = $file->store(StorageHelper::memorialPostsPath($memorial->id), 'public');
+                    if ($type === Media::TYPE_PHOTO) {
+                        \App\Jobs\GenerateImageDerivatives::dispatch($path);
+                    }
                     $media = Media::create([
                         'memorial_id' => $memorial->id,
                         'user_id' => $userId,
@@ -592,6 +605,7 @@ class MemorialMediaController extends Controller
         $type = $media->type;
 
         Storage::disk('public')->delete($media->path);
+        app(\App\Services\ImageDerivativeService::class)->delete($media->path);
         $media->delete();
 
         return response()->json(['success' => true, 'type' => $type]);

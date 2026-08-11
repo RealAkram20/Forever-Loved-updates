@@ -171,8 +171,10 @@
     <section id="memorial-hero" class="relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
         {{-- Backdrop shares the cover photo, so one upload dresses both the hero and the card --}}
         <div class="absolute inset-0" aria-hidden="true">
+            {{-- srcset from the derivative ladder; the upload JS clears it when it swaps
+                 src, or the browser would keep showing the old photo from the old srcset. --}}
             <img id="memorial-hero-image"
-                @if ($memorial->cover_photo_path) src="{{ $memorial->cover_photo_url }}" @endif
+                @if ($memorial->cover_photo_path) {!! \App\Helpers\ResponsiveImage::attrs($memorial->cover_photo_path, '100vw') !!} @endif
                 alt=""
                 class="h-full w-full object-cover {{ $memorial->cover_photo_path ? '' : 'hidden' }}" />
             <div id="memorial-hero-fallback" class="memorial-hero-wash h-full w-full {{ $memorial->cover_photo_path ? 'hidden' : '' }}"></div>
@@ -199,7 +201,7 @@
             <div id="memorial-hero-portrait"
                 class="shrink-0 rounded-2xl bg-white p-2.5 shadow-xl shadow-gray-900/10 dark:bg-gray-800 dark:shadow-black/40 {{ $memorial->profile_photo_path ? '' : 'hidden' }}">
                 <img id="memorial-hero-portrait-image"
-                    @if ($memorial->profile_photo_path) src="{{ $memorial->profile_photo_url }}" @endif
+                    @if ($memorial->profile_photo_path) {!! \App\Helpers\ResponsiveImage::attrs($memorial->profile_photo_path, '(min-width: 640px) 12rem, 10rem') !!} fetchpriority="high" @endif
                     alt="{{ $memorial->full_name }}"
                     class="h-40 w-40 rounded-xl object-cover sm:h-48 sm:w-48" />
             </div>
@@ -229,7 +231,7 @@
                             {{-- src is omitted entirely when there is no cover: an empty src
                                  makes the browser re-request the current page. --}}
                             <img id="memorial-cover-image"
-                                @if ($memorial->cover_photo_path) src="{{ $memorial->cover_photo_url }}" @endif
+                                @if ($memorial->cover_photo_path) {!! \App\Helpers\ResponsiveImage::attrs($memorial->cover_photo_path, '(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw') !!} @endif
                                 alt="Cover photo for {{ $memorial->full_name }}"
                                 class="h-full w-full object-cover {{ $memorial->cover_photo_path ? '' : 'hidden' }}" />
                             {{-- Fallback: a quiet wash rather than an empty grey slab, so a memorial
@@ -269,7 +271,7 @@
                                 <div class="relative group -mt-12 mb-4">
                                     <div id="memorial-profile-photo" class="h-24 w-24 overflow-hidden rounded-full bg-gray-200 ring-4 ring-white dark:bg-gray-700 dark:ring-gray-900">
                                         @if ($memorial->profile_photo_path)
-                                            <img src="{{ $memorial->profile_photo_url ?? '' }}" alt="{{ $memorial->full_name }}" class="h-full w-full object-cover" />
+                                            <img {!! \App\Helpers\ResponsiveImage::attrs($memorial->profile_photo_path, '6rem') !!} alt="{{ $memorial->full_name }}" class="h-full w-full object-cover" />
                                         @else
                                             <div class="flex h-full w-full items-center justify-center text-3xl text-gray-400 dark:text-gray-500">?</div>
                                         @endif
@@ -446,7 +448,7 @@
                                 <div class="grid grid-cols-3 gap-2">
                                     @foreach ($galleryImages->take(9) as $previewIdx => $media)
                                         <button type="button" data-gallery-preview-lightbox="{{ $media->id }}" class="group relative aspect-square overflow-hidden rounded-lg bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:bg-gray-700">
-                                            <img src="{{ $media->url }}" alt="{{ $galleryAlt($media, $previewIdx) }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" />
+                                            <img {!! \App\Helpers\ResponsiveImage::attrs($media->path, '(min-width: 1024px) 20vw, 33vw') !!} alt="{{ $galleryAlt($media, $previewIdx) }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" decoding="async" />
                                             <span class="absolute inset-0 bg-black/0 transition group-hover:bg-black/10" aria-hidden="true"></span>
                                         </button>
                                     @endforeach
@@ -469,7 +471,10 @@
                             {{-- `caption` is the real caption and may be empty; `alt` always has a
                                  usable label. Keeping them apart stops the alt-text fallback from
                                  being rendered as though the family had written it. --}}
-                            images: {{ Js::from($galleryImages->map(fn($m, $i) => ['id' => $m->id, 'url' => $m->url, 'caption' => $m->caption ?: '', 'alt' => $m->caption ?: 'Gallery photo '.($i + 1)])->toArray()) }},
+                            {{-- `url` is the lightbox rendition (display-sized derivative, or the
+                                 original while derivatives are still queued); `thumb` feeds the
+                                 filmstrip so it stops paying full-photo prices for 56px tiles. --}}
+                            images: {{ Js::from($galleryImages->map(fn($m, $i) => ['id' => $m->id, 'url' => \App\Helpers\ResponsiveImage::url($m->path, 1600), 'thumb' => \App\Helpers\ResponsiveImage::url($m->path, 160), 'caption' => $m->caption ?: '', 'alt' => $m->caption ?: 'Gallery photo '.($i + 1)])->toArray()) }},
                             {{-- Videos are rendered as Blade DOM, not from here. This carries their
                                  ids only, so the chip counts and the Videos tab can be filtered by
                                  the same rules as the photos without duplicating the player state. --}}
@@ -721,8 +726,8 @@
                                     <div class="group/img relative aspect-square overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700" x-show="matches({{ $media->id }})" data-gallery-item data-media-id="{{ $media->id }}" data-media-type="photo" @if ($isStoryMedia) data-from-story @endif>
                                         <button type="button" @click="openLightbox({{ $media->id }})"
                                             class="block h-full w-full focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
-                                            <img src="{{ $media->url }}" alt="{{ $galleryAlt($media, $idx) }}"
-                                                class="h-full w-full object-cover transition duration-300 group-hover/img:scale-105" loading="lazy" />
+                                            <img {!! \App\Helpers\ResponsiveImage::attrs($media->path, '(min-width: 640px) 33vw, 50vw') !!} alt="{{ $galleryAlt($media, $idx) }}"
+                                                class="h-full w-full object-cover transition duration-300 group-hover/img:scale-105" loading="lazy" decoding="async" />
                                             <div class="absolute inset-0 bg-black/0 transition group-hover/img:bg-black/10"></div>
                                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent p-2 opacity-0 transition group-hover/img:opacity-100">
                                                 <svg class="mx-auto h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
@@ -950,7 +955,7 @@
                                                 :aria-label="'Show ' + img.alt"
                                                 :aria-current="i === currentIndex"
                                                 class="h-12 w-12 shrink-0 overflow-hidden rounded-md transition">
-                                                <img :src="img.url" alt="" class="h-full w-full object-cover" />
+                                                <img :src="img.thumb || img.url" alt="" class="h-full w-full object-cover" loading="lazy" />
                                             </button>
                                         </template>
                                     </div>

@@ -2,16 +2,15 @@ import './bootstrap';
 import './page-builder-alpine';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
-import ApexCharts from 'apexcharts';
-import Swiper from 'swiper';
-import { Autoplay, FreeMode } from 'swiper/modules';
-import 'swiper/css';
 
-// flatpickr
+// flatpickr stays a static import: dashboard Alpine components call it during
+// Alpine.start(), synchronously, and it is small. The heavyweights — ApexCharts,
+// FullCalendar, Swiper — are gone from this bundle on purpose: each is imported by
+// the dynamic chunk that actually uses it, so a memorial visitor downloads none of
+// them. Do not reintroduce a static import here without checking what it costs
+// every public page.
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
-// FullCalendar
-import { Calendar } from '@fullcalendar/core';
 
 // Color picker
 import { registerColorPicker } from './components/color-picker';
@@ -20,12 +19,12 @@ import { registerInputGuards } from './components/input-guards';
 Alpine.plugin(collapse);
 registerColorPicker(Alpine);
 window.Alpine = Alpine;
-window.ApexCharts = ApexCharts;
-window.Swiper = Swiper;
-window.SwiperAutoplay = Autoplay;
-window.SwiperFreeMode = FreeMode;
 window.flatpickr = flatpickr;
-window.FullCalendar = Calendar;
+
+// The showcase block's x-init calls this; the import cost lands only on pages
+// that render the carousel.
+window.initShowcaseSwiper = (el) =>
+    import('./components/showcase-swiper').then((m) => m.initShowcaseSwiper(el));
 
 Alpine.start();
 
@@ -37,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         import('./components/map').then(module => module.initMap());
     }
 
-    // Chart imports
+    // Chart imports — each chunk brings its own ApexCharts.
     if (document.querySelector('#chartOne')) {
         import('./components/chart/chart-1').then(module => module.initChartOne());
     }
@@ -57,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         import('./components/chart/chart-13').then(module => module.initChartThirteen());
     }
 
-    // Calendar init
+    // Calendar init — calendar-init.js imports FullCalendar itself.
     if (document.querySelector('#calendar')) {
         import('./components/calendar-init').then(module => module.calendarInit());
     }

@@ -700,7 +700,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         // The hero shows the same portrait, and is hidden until one exists.
                         const heroPortrait = document.getElementById('memorial-hero-portrait');
                         const heroPortraitImage = document.getElementById('memorial-hero-portrait-image');
-                        if (heroPortraitImage) heroPortraitImage.src = data.url;
+                        if (heroPortraitImage) {
+                            // The server-rendered srcset still lists the old photo's
+                            // derivatives, and srcset outranks src — drop it or the swap
+                            // is invisible.
+                            heroPortraitImage.removeAttribute('srcset');
+                            heroPortraitImage.src = data.url;
+                        }
                         heroPortrait?.classList.remove('hidden');
                     } else if (data.error) {
                         $toast('error', data.error);
@@ -730,6 +736,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const showCover = (url) => {
             coverSurfaces.forEach(({ image, fallback }) => {
                 if (image) {
+                    // srcset outranks src; without this the freshly uploaded cover
+                    // would lose to the old photo's derivative ladder.
+                    image.removeAttribute('srcset');
                     image.src = url;
                     image.classList.remove('hidden');
                 }
@@ -1580,78 +1589,8 @@ document.addEventListener('DOMContentLoaded', () => {
             postFormDataWithUploadProgress(`${baseUrl}/tribute-post`, fd, { label: uploadLabel })
                 .then(data => {
                     if (data.success && data.post) {
-                        const feed = document.getElementById('life-feed');
-                        if (feed) {
-                            const p = data.post;
-                            const mediaHtml = (p.media || []).map(m => {
-                                if (m.type === 'photo') return `<img src="${m.url}" alt="" class="max-w-full rounded-lg mt-2" />`;
-                                if (m.type === 'video') return buildVideoPlayerHtml(m.url, m.caption);
-                                if (m.type === 'music') return buildAudioPlayerHtml(m.url, m.caption, m.filename);
-                                return '';
-                            }).join('');
-                            const article = document.createElement('article');
-                            article.id = 'chapter-' + p.id;
-                            article.className = 'life-feed-post relative overflow-visible rounded-xl border border-gray-300 dark:border-gray-800 bg-white dark:bg-white/[0.03]';
-                            article.dataset.postId = p.id;
-                            article.dataset.chapterId = '';
-                            article.dataset.marker = p.tribute_type || 'story';
-                            article.innerHTML = `
-                                <div class="p-4">
-                                    <div class="flex items-center gap-3">
-                                        ${avatarHtml(p.author_photo, p.author)}
-                                        <div class="min-w-0 flex-1">
-                                            <p class="truncate font-medium text-gray-900 dark:text-white/90">${escapeHtml(p.author)}</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">${p.created_at_iso ? `<span class="time-ago" data-created-at="${p.created_at_iso}">${p.created_at}</span>` : p.created_at}<span data-post-marker-verb>${p.marker_verb ? ` · ${escapeHtml(p.marker_verb)}` : ''}</span></p>
-                                        </div>
-                                        ${markerArtHtml(p.tribute_type)}
-                                    </div>
-                                    ${p.title ? `<h3 class="mt-2 font-medium text-gray-900 dark:text-white/90">${escapeHtml(p.title)}</h3>` : ''}
-                                    ${p.content ? `<div class="mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm max-w-none">${p.content}</div>` : ''}
-                                    ${mediaHtml ? `<div class="mt-3 space-y-2">${mediaHtml}</div>` : ''}
-                                </div>
-                                <div class="relative z-10 flex items-center gap-4 border-t border-gray-100 dark:border-gray-800 px-4 py-2">
-                                    <div class="relative flex items-center gap-1" data-reaction-container="${p.id}">
-                                        <button type="button" data-reaction-btn data-reactionable-type="post" data-reactionable-id="${p.id}" data-reaction-type="like" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-rose-500 dark:hover:text-rose-400">
-                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                                            <span data-post-id="${p.id}" data-reaction-count class="text-sm text-gray-600 dark:text-gray-400">0</span>
-                                        </button>
-                                    </div>
-                                    <div class="flex items-center gap-1" data-comment-container="${p.id}">
-                                        <button type="button" data-open-comments="${p.id}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                                            <span data-post-id="${p.id}" data-comment-count class="text-sm tabular-nums text-gray-600 dark:text-gray-400">0</span>
-                                        </button>
-                                    </div>
-                                    <div class="relative ml-auto" data-share-container="${p.id}">
-                                        <button type="button" data-share-toggle data-share-url="${(p.share_id ? `${window.location.origin}/${memorialSlug}/chapter/${p.share_id}` : `${window.location.origin}/${memorialSlug}/chapter/${p.id}`)}" data-post-id="${p.id}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                                            Share
-                                        </button>
-                                        <div data-share-dropdown="${p.id}" class="absolute right-0 top-full z-[9999] mt-1 hidden w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-1.5">
-                                            ${shareDropdownHtml(p.share_id ? `${window.location.origin}/${memorialSlug}/chapter/${p.share_id}` : `${window.location.origin}/${memorialSlug}/chapter/${p.id}`)}
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                            feed.prepend(article);
-                            if (typeof Alpine !== 'undefined') Alpine.initTree(article);
-                            article.querySelector('[data-reaction-btn]')?.addEventListener('click', function() {
-                                const payload = { reactionable_type: 'post', reactionable_id: p.id, type: 'like' };
-                                const doR = (name, email) => {
-                                    fetch(`${baseUrl}/reaction`, fetchOpts('POST', { ...payload, guest_name: name, guest_email: email }))
-                                        .then(r => r.json())
-                                        .then(d => {
-                                            if (d.success) {
-                                                document.querySelectorAll(`[data-reaction-container="${p.id}"] [data-reaction-count]`).forEach(el => {
-                                                    el.textContent = d.count;
-                                                });
-                                            }
-                                        });
-                                };
-                                isAuthenticated ? doR() : showGuestModal({ type: 'reaction', payload, callback: doR });
-                            });
-                            // comment toggle + submit are handled by delegated listeners
-                        }
+                        prependPostArticle(data.post);
+                        latestKnownPostId = Math.max(latestKnownPostId, data.post.id || 0);
                         if (chapterQuill) chapterQuill.setText('');
                         form.reset();
                         closeStoryComposer();
@@ -2347,6 +2286,85 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<div class="flex ${size} shrink-0 items-center justify-center rounded-full ${fallbackClasses}">${escapeHtml(initial)}</div>`;
     }
 
+    // Renders one story into the feed — the same markup the page ships server-side,
+    // rebuilt client-side. The composer uses it for your own story and the live poll
+    // uses it for everyone else's, so both arrive looking identical.
+    function prependPostArticle(p) {
+        const feed = document.getElementById('life-feed');
+        if (!feed) return;
+        const mediaHtml = (p.media || []).map(m => {
+            if (m.type === 'photo') return `<img src="${m.url}" alt="" class="max-w-full rounded-lg mt-2" />`;
+            if (m.type === 'video') return buildVideoPlayerHtml(m.url, m.caption);
+            if (m.type === 'music') return buildAudioPlayerHtml(m.url, m.caption, m.filename);
+            return '';
+        }).join('');
+        const article = document.createElement('article');
+        article.id = 'chapter-' + p.id;
+        article.className = 'life-feed-post relative overflow-visible rounded-xl border border-gray-300 dark:border-gray-800 bg-white dark:bg-white/[0.03]';
+        article.dataset.postId = p.id;
+        article.dataset.chapterId = '';
+        article.dataset.marker = p.tribute_type || 'story';
+        article.innerHTML = `
+            <div class="p-4">
+                <div class="flex items-center gap-3">
+                    ${avatarHtml(p.author_photo, p.author)}
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate font-medium text-gray-900 dark:text-white/90">${escapeHtml(p.author)}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">${p.created_at_iso ? `<span class="time-ago" data-created-at="${p.created_at_iso}">${p.created_at}</span>` : p.created_at}<span data-post-marker-verb>${p.marker_verb ? ` · ${escapeHtml(p.marker_verb)}` : ''}</span></p>
+                    </div>
+                    ${markerArtHtml(p.tribute_type)}
+                </div>
+                ${p.title ? `<h3 class="mt-2 font-medium text-gray-900 dark:text-white/90">${escapeHtml(p.title)}</h3>` : ''}
+                ${p.content ? `<div class="mt-2 text-sm text-gray-700 dark:text-gray-300 prose prose-sm max-w-none">${p.content}</div>` : ''}
+                ${mediaHtml ? `<div class="mt-3 space-y-2">${mediaHtml}</div>` : ''}
+            </div>
+            <div class="relative z-10 flex items-center gap-4 border-t border-gray-100 dark:border-gray-800 px-4 py-2">
+                <div class="relative flex items-center gap-1" data-reaction-container="${p.id}">
+                    <button type="button" data-reaction-btn data-reactionable-type="post" data-reactionable-id="${p.id}" data-reaction-type="like" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-rose-500 dark:hover:text-rose-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                        <span data-post-id="${p.id}" data-reaction-count class="text-sm text-gray-600 dark:text-gray-400">0</span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-1" data-comment-container="${p.id}">
+                    <button type="button" data-open-comments="${p.id}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        <span data-post-id="${p.id}" data-comment-count class="text-sm tabular-nums text-gray-600 dark:text-gray-400">0</span>
+                    </button>
+                </div>
+                <div class="relative ml-auto" data-share-container="${p.id}">
+                    <button type="button" data-share-toggle data-share-url="${(p.share_id ? `${window.location.origin}/${memorialSlug}/chapter/${p.share_id}` : `${window.location.origin}/${memorialSlug}/chapter/${p.id}`)}" data-post-id="${p.id}" class="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                        Share
+                    </button>
+                    <div data-share-dropdown="${p.id}" class="absolute right-0 top-full z-[9999] mt-1 hidden w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-1.5">
+                        ${shareDropdownHtml(p.share_id ? `${window.location.origin}/${memorialSlug}/chapter/${p.share_id}` : `${window.location.origin}/${memorialSlug}/chapter/${p.id}`)}
+                    </div>
+                </div>
+            </div>
+        `;
+        feed.prepend(article);
+        if (typeof Alpine !== 'undefined') Alpine.initTree(article);
+        const rbtn = article.querySelector('[data-reaction-btn]');
+        if (rbtn) attachReactionHandler(rbtn);
+        // comment + share are handled by delegated listeners
+
+        // A soft landing rather than a pop into place — appearing with no transition at
+        // all reads as a glitch. Transform and opacity only, and cleaned up after, so
+        // nothing lingers to fight the feed's own hover styles.
+        article.style.opacity = '0';
+        article.style.transform = 'translateY(6px)';
+        article.style.transition = 'opacity 240ms cubic-bezier(0.23, 1, 0.32, 1), transform 240ms cubic-bezier(0.23, 1, 0.32, 1)';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            article.style.opacity = '1';
+            article.style.transform = 'translateY(0)';
+            setTimeout(() => {
+                article.style.removeProperty('opacity');
+                article.style.removeProperty('transform');
+                article.style.removeProperty('transition');
+            }, 300);
+        }));
+    }
+
     // --- Reactions on posts ---
     function submitReaction(payload, guestName, guestEmail) {
         fetch(`${baseUrl}/reaction`, fetchOpts('POST', {
@@ -2364,7 +2382,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
     }
 
-    document.querySelectorAll('[data-reaction-btn]').forEach(btn => {
+    // One handler for every heart, optimistic in the social-app sense: the count moves
+    // the moment the thumb lands, then reconciles with what the server says (the server
+    // toggles — a second tap takes the like back). The page does not know your history
+    // at load, so the first tap assumes "add"; the response's `action` corrects the
+    // button's memory either way, and any failure puts the number back exactly.
+    function attachReactionHandler(btn) {
         btn.addEventListener('click', () => {
             const payload = {
                 reactionable_type: btn.dataset.reactionableType,
@@ -2372,7 +2395,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 type: btn.dataset.reactionType || 'like',
             };
 
+            const countEls = () => document.querySelectorAll(`[data-reaction-container="${payload.reactionable_id}"] [data-reaction-count]`);
+            const paint = (liked) => {
+                btn.dataset.liked = liked ? '1' : '';
+                btn.classList.toggle('is-liked', liked);
+            };
+
             const doReaction = (name, email) => {
+                const wasLiked = btn.dataset.liked === '1';
+                const prev = parseInt(countEls()[0]?.textContent || '0', 10) || 0;
+
+                countEls().forEach(el => { el.textContent = wasLiked ? Math.max(0, prev - 1) : prev + 1; });
+                paint(!wasLiked);
+
+                const revert = () => {
+                    countEls().forEach(el => { el.textContent = prev; });
+                    paint(wasLiked);
+                };
+
                 const body = { ...payload };
                 if (name) body.guest_name = name;
                 if (email) body.guest_email = email;
@@ -2380,15 +2420,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(r => r.json())
                     .then(data => {
                         if (data.success) {
-                            document.querySelectorAll(`[data-reaction-container="${payload.reactionable_id}"] [data-reaction-count]`).forEach(el => {
-                                el.textContent = data.count;
-                            });
-                        } else if (data.requires_login) {
-                            $toast('warning', (data.error || 'Please sign in.') + ' ' + window.location.origin + '/login/code');
-                        } else if (data.error) {
-                            $toast('error', data.error);
+                            countEls().forEach(el => { el.textContent = data.count; });
+                            paint(data.action === 'added');
+                        } else {
+                            revert();
+                            if (data.requires_login) {
+                                $toast('warning', (data.error || 'Please sign in.') + ' ' + window.location.origin + '/login/code');
+                            } else if (data.error) {
+                                $toast('error', data.error);
+                            }
                         }
-                    });
+                    })
+                    .catch(revert);
             };
 
             if (isAuthenticated) {
@@ -2397,7 +2440,98 @@ document.addEventListener('DOMContentLoaded', () => {
                 showGuestModal({ type: 'reaction', payload, callback: (name, email) => doReaction(name, email) });
             }
         });
-    });
+    }
+
+    document.querySelectorAll('[data-reaction-btn]').forEach(attachReactionHandler);
+
+    // --- Live updates ---------------------------------------------------------------
+    //
+    // The page keeps itself current while it sits open: one light request every ~25s
+    // (paused while the tab is hidden) refreshes every heart and comment tally, and a
+    // story someone else publishes waits behind a quiet "new stories" pill rather than
+    // splicing itself into the feed under a reader's thumb.
+    let latestKnownPostId = 0;
+
+    (function startLiveUpdates() {
+        const feed = document.getElementById('life-feed');
+        if (!feed || !baseUrl) return;
+
+        latestKnownPostId = Math.max(0, ...[...feed.querySelectorAll('article[data-post-id]')]
+            .map(a => parseInt(a.dataset.postId, 10) || 0));
+
+        const pending = [];
+
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'live-new-pill hidden';
+        pill.setAttribute('aria-live', 'polite');
+        feed.parentNode.insertBefore(pill, feed);
+
+        pill.addEventListener('click', () => {
+            // Oldest first, so the newest of them ends up on top — the feed's own order.
+            pending.forEach(p => prependPostArticle(p));
+            bumpStoryCount(pending.length);
+            pending.length = 0;
+            pill.classList.remove('is-visible');
+            setTimeout(() => pill.classList.add('hidden'), 200);
+            applyFeedFilters();
+        });
+
+        const applyCounts = (kind, map) => {
+            // Every tally, zero included — a like someone took back has to come down too.
+            document.querySelectorAll(`[data-${kind}-container]`).forEach(container => {
+                const id = container.dataset[`${kind}Container`];
+                const el = container.querySelector(`[data-${kind}-count]`);
+                if (el && id) el.textContent = (map && map[id]) || 0;
+            });
+        };
+
+        const poll = () => {
+            fetch(`${baseUrl}/live?after_id=${latestKnownPostId}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            })
+                .then(r => (r.ok ? r.json() : null))
+                .then(data => {
+                    if (!data) return;
+                    applyCounts('reaction', data.reactions);
+                    applyCounts('comment', data.comments);
+                    (data.new_posts || []).forEach(p => {
+                        // Guard against a poll that raced our own composer submit.
+                        if (!document.getElementById('chapter-' + p.id) && !pending.some(q => q.id === p.id)) {
+                            pending.push(p);
+                        }
+                    });
+                    if (data.latest_post_id) {
+                        latestKnownPostId = Math.max(latestKnownPostId, data.latest_post_id);
+                    }
+                    if (pending.length) {
+                        pill.textContent = pending.length === 1 ? '1 new story' : `${pending.length} new stories`;
+                        pill.classList.remove('hidden');
+                        requestAnimationFrame(() => pill.classList.add('is-visible'));
+                    }
+                })
+                .catch(() => {});
+        };
+
+        const POLL_MS = 25000;
+        let timer = null;
+        const start = () => { if (!timer) timer = setInterval(poll, POLL_MS); };
+        const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+
+        // A hidden tab neither needs fresh tallies nor deserves the battery cost;
+        // coming back polls once immediately so the page is current the moment
+        // it is looked at again.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                poll();
+                start();
+            } else {
+                stop();
+            }
+        });
+
+        start();
+    })();
 
 
     // --- Comment sheet -------------------------------------------------------------

@@ -8,7 +8,7 @@
     <div class="p-4">
         <div class="flex items-center gap-3">
             @if ($post->user?->profile_photo_url)
-                <img src="{{ $post->user->profile_photo_url }}" alt="{{ $post->user->name }}" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+                <img src="{{ \App\Helpers\ResponsiveImage::url($post->user->profile_photo, 160) ?? $post->user->profile_photo_url }}" alt="{{ $post->user->name }}" class="h-10 w-10 shrink-0 rounded-full object-cover" loading="lazy" decoding="async" />
             @else
                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-600 dark:bg-brand-500/30 dark:text-brand-400">
                     {{ strtoupper(substr($post->user?->name ?? $memorial->full_name ?? '?', 0, 1)) }}
@@ -71,7 +71,7 @@
                 <div class="mt-3 space-y-3">
                     @foreach ($post->media as $m)
                         @if ($m->type === 'photo')
-                            <img src="{{ $m->url }}" alt="{{ $m->caption }}" class="max-w-full rounded-lg" />
+                            <img {!! \App\Helpers\ResponsiveImage::attrs($m->path, '(min-width: 768px) 42rem, 100vw') !!} alt="{{ $m->caption }}" class="max-w-full rounded-lg" loading="lazy" decoding="async" />
                         @elseif ($m->type === 'video')
                             <x-media.video-player :src="$m->url" :caption="$m->caption" />
                         @elseif ($m->type === 'music')

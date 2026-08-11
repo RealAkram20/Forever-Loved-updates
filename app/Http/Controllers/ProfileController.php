@@ -56,10 +56,12 @@ class ProfileController extends Controller
 
         if ($user->profile_photo) {
             Storage::disk('public')->delete($user->profile_photo);
+            app(\App\Services\ImageDerivativeService::class)->delete($user->profile_photo);
         }
 
         $path = StorageHelper::userProfilePath($user->id);
         $storedPath = $request->file('profile_photo')->store($path, 'public');
+        \App\Jobs\GenerateImageDerivatives::dispatch($storedPath);
 
         $user->update(['profile_photo' => $storedPath]);
 
@@ -72,6 +74,7 @@ class ProfileController extends Controller
 
         if ($user->profile_photo) {
             Storage::disk('public')->delete($user->profile_photo);
+            app(\App\Services\ImageDerivativeService::class)->delete($user->profile_photo);
             $user->update(['profile_photo' => null]);
         }
 
