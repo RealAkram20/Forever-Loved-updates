@@ -95,6 +95,8 @@ return array(
     'Laravel\\Breeze\\' => array($vendorDir . '/laravel/breeze/src'),
     'Jose\\Component\\' => array($vendorDir . '/web-token/jwt-library'),
     'Jean85\\' => array($vendorDir . '/jean85/pretty-package-versions/src'),
+    'Intervention\\Image\\' => array($vendorDir . '/intervention/image/src'),
+    'Intervention\\Gif\\' => array($vendorDir . '/intervention/gif/src'),
     'Illuminate\\Support\\' => array($vendorDir . '/laravel/framework/src/Illuminate/Macroable', $vendorDir . '/laravel/framework/src/Illuminate/Collections', $vendorDir . '/laravel/framework/src/Illuminate/Conditionable', $vendorDir . '/laravel/framework/src/Illuminate/Reflection'),
     'Illuminate\\' => array($vendorDir . '/laravel/framework/src/Illuminate'),
     'Http\\Promise\\' => array($vendorDir . '/php-http/promise/src'),
