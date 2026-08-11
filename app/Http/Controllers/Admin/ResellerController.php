@@ -369,16 +369,15 @@ class ResellerController extends Controller
             return back()->with('error', 'Reactivate this reseller before logging in as them — while suspended, their dashboard is blocked and you would have no way back.');
         }
 
-        // Captured before the swap: after Auth::login() the request's user *is* the reseller
+        // Captured before the swap: after the switch the request's user *is* the reseller
         // owner, so reading it afterwards would record them as their own impersonator and
         // leave stopImpersonating() with no way back to the admin account.
         $impersonatorId = $request->user()->id;
 
-        Auth::login($reseller->owner);
+        \App\Support\ImpersonationSwitch::to($request, $reseller->owner);
 
-        // Every Auth::login() should rotate the session id; put() after the rotation so the
-        // marker lands in the session that survives.
-        $request->session()->regenerate();
+        // put() after the switch rotates the session id, so the marker lands in the
+        // session that survives.
         $request->session()->put('impersonator_id', $impersonatorId);
 
         return redirect()->route('dashboard');
@@ -393,8 +392,9 @@ class ResellerController extends Controller
             return redirect()->route('dashboard');
         }
 
-        Auth::login($admin);
-        $request->session()->regenerate();
+        // remember: the person at the keyboard already proved they are this admin when
+        // they signed in; coming back from support work should not cost them that.
+        \App\Support\ImpersonationSwitch::to($request, $admin, remember: true);
 
         return redirect()->route('settings.resellers');
     }

@@ -53,8 +53,7 @@ class AuthenticatedSessionController extends Controller
         // the keyboard. Restore the admin instead, exactly as Return to Admin does.
         $impersonatorId = $request->session()->pull('impersonator_id');
         if ($impersonatorId && ($admin = \App\Models\User::find($impersonatorId))) {
-            Auth::login($admin);
-            $request->session()->regenerate();
+            \App\Support\ImpersonationSwitch::to($request, $admin, remember: true);
 
             return redirect()->route('settings.resellers')
                 ->with('success', 'Signed out of the reseller account — you are back on your own.');
