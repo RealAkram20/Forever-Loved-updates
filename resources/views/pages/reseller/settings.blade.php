@@ -192,6 +192,10 @@
                     <p class="font-medium text-gray-800 dark:text-white/90">Appearance</p>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Logo, favicon, colours and fonts</p>
                 </a>
+                <a href="{{ route('reseller.embed') }}" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition">
+                    <p class="font-medium text-gray-800 dark:text-white/90">Embed on your website</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Show memorials on any site you own</p>
+                </a>
                 <a href="{{ route('reseller.payments') }}" class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition">
                     <p class="font-medium text-gray-800 dark:text-white/90">Payment Settings</p>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Your own Pesapal account</p>

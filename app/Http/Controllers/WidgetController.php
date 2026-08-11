@@ -48,4 +48,50 @@ class WidgetController extends Controller
             'fullUrl' => $memorial->publicUrl(),
         ]);
     }
+
+    /**
+     * The embeddable directory: the Find a Memorial experience minus the site chrome,
+     * for an iframe on somebody else's website. Two modes — `memorials=all` renders the
+     * whole catalogue of whichever site served the script (with search and pagination),
+     * a comma-separated slug list renders just that curated set. Tenant scoping falls
+     * out of the serving origin exactly as it does for the full directory page.
+     */
+    public function directory(\Illuminate\Http\Request $request)
+    {
+        $tenant = $this->embeddingTenantOrAbort();
+
+        $selection = trim((string) $request->query('memorials', 'all'));
+        $slugs = ($selection === '' || strtolower($selection) === 'all')
+            ? []
+            : array_slice(array_values(array_filter(array_map('trim', explode(',', $selection)))), 0, 60);
+
+        return view('pages.widget.directory', [
+            'mode' => $slugs === [] ? 'all' : 'picked',
+            'slugs' => $slugs,
+            'tenant' => $tenant,
+        ]);
+    }
+
+    /** JSON for the directory widget — the directory page's own results, gate included. */
+    public function directoryResults(\Illuminate\Http\Request $request)
+    {
+        $this->embeddingTenantOrAbort();
+
+        return app(MemorialDirectoryController::class)->directoryResults($request);
+    }
+
+    /**
+     * Same rule the single widget applies memorial-by-memorial, asked of the serving
+     * site: a reseller's origin only embeds if their tier includes embedding.
+     */
+    private function embeddingTenantOrAbort(): ?Reseller
+    {
+        $tenant = \App\Helpers\ThemeSetting::siteTenant();
+
+        if ($tenant && ! $tenant->tier?->feature_embedding) {
+            abort(403, 'Embedding is not included in this reseller\'s current plan.');
+        }
+
+        return $tenant;
+    }
 }

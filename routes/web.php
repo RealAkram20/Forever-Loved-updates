@@ -347,6 +347,8 @@ Route::middleware(['auth'])->group(function () {
         // no reason to expose a second, redundant URL for the same page. This bare /reseller
         // redirect just keeps old links/bookmarks working.
         Route::get('/', fn () => redirect()->route('dashboard'));
+        Route::get('/embed', [App\Http\Controllers\Reseller\EmbedController::class, 'show'])->name('embed');
+        Route::get('/embed/search', [App\Http\Controllers\Reseller\EmbedController::class, 'search'])->name('embed.search');
         Route::get('/memorials', [App\Http\Controllers\Reseller\DashboardController::class, 'memorials'])->name('memorials');
         Route::get('/memorials/create', [App\Http\Controllers\Reseller\DashboardController::class, 'createMemorial'])->name('memorials.create');
         Route::post('/memorials', [App\Http\Controllers\Reseller\DashboardController::class, 'storeMemorial'])->name('memorials.store');
@@ -488,6 +490,14 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
 
 // Embed widget (public, unauthenticated) - read-only memorial view for iframe embedding
 // on a reseller's own external site, via public/embed.js.
+// Before /widget/{slug}, or "directory" would be read as a memorial slug.
+Route::get('/widget/directory', [WidgetController::class, 'directory'])
+    ->name('widget.directory')
+    ->middleware(EmbedFrameHeaders::class);
+Route::get('/widget/directory/results', [WidgetController::class, 'directoryResults'])
+    ->name('widget.directory.results')
+    ->middleware(EmbedFrameHeaders::class);
+
 Route::get('/widget/{slug}', [WidgetController::class, 'show'])
     ->name('widget.show')
     ->where('slug', '[a-z0-9\-]+')
