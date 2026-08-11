@@ -105,6 +105,9 @@ Route::domain('{domain}')->group(function () use ($foreignDomainPattern) {
 // claim the root on reseller hosts, and their patterns exclude this one.
 Route::get('/', [PageController::class, 'home'])->name('home');
 
+// The crawler's map of everything public — marketing pages and every public memorial.
+Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
+
 // AJAX memorial search (public)
 Route::get('/api/search/memorials', [MemorialController::class, 'search'])->middleware('throttle:60,1')->name('memorials.search');
 
