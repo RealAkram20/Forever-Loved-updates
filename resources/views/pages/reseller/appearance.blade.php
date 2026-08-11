@@ -43,12 +43,15 @@
             <x-common.reseller-address :reseller="$reseller" class="max-w-md" />
 
             @if ($reseller->tier?->feature_embedding)
+                {{-- The hand-edit-a-placeholder snippet used to live here, and pasting it
+                     verbatim produced a 404 on the embedder's site. The builder writes a
+                     correct snippet from real memorials; this just points at it. --}}
                 <div class="mt-5">
-                    <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Embed a memorial on your own website</p>
-                    <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                        Replace <code class="font-mono">MEMORIAL-SLUG</code> with the memorial's address, which you can copy from your Memorials list.
+                    <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Embed memorials on your own website</p>
+                    <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                        Show a single memorial, a hand-picked set, or your whole directory on any site you own — the builder writes the copy-paste snippet for you.
                     </p>
-                    <pre class="overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">&lt;script src="{{ url('/embed.js') }}" data-memorial="MEMORIAL-SLUG"&gt;&lt;/script&gt;</pre>
+                    <a href="{{ route('reseller.embed') }}" class="btn btn-secondary btn-sm">Open the embed builder</a>
                 </div>
             @else
                 <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Embedding isn't included in your current plan.</p>
