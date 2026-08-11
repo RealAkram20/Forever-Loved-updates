@@ -20,6 +20,17 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
+        // This dashboard belongs to whoever's site is being served. An admin — or any
+        // user unconnected to this reseller — who signs in on a reseller's domain must
+        // not run the platform's dashboard dressed in that reseller's brand: they are
+        // sent to their own designated place (the platform for platform people, their
+        // own reseller's site for someone else's client). This tenant's own people
+        // pass straight through, so there is no loop.
+        $tenant = \App\Helpers\ThemeSetting::siteTenant();
+        if ($tenant && $user && $user->reseller_id !== $tenant->id) {
+            return redirect()->to(\App\Support\PostAuthRedirect::url($user));
+        }
+
         // Resellers' real home is their own business dashboard (client memorials, clients,
         // plans, onboarding). Rendered directly here — not a redirect — so the URL stays
         // /dashboard instead of exposing a separate /reseller one for the same page.

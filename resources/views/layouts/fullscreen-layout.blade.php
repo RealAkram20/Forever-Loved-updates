@@ -113,6 +113,26 @@ const checkMobile = () => {
 };
 window.addEventListener('resize', checkMobile);">
 
+    {{-- An admin (or any platform-side staffer) browsing a reseller's site sees who
+         they are and where they really belong — same voice as the impersonation
+         banner in app.blade.php. The Back to Admin link is absolute on purpose:
+         route() on this host roots at the reseller's domain, and the whole point
+         is to leave it. The tenant's own people never see this. --}}
+    @php
+        $viewingTenant = \App\Helpers\ThemeSetting::siteTenant();
+    @endphp
+    @auth
+        @if ($viewingTenant && auth()->user()->hasRole(['admin', 'super-admin']) && auth()->user()->reseller_id !== $viewingTenant->id)
+            <div class="flex flex-wrap items-center justify-between gap-3 bg-amber-500 px-4 py-2.5 text-sm text-white md:px-6">
+                <span>Viewing <strong>{{ $viewingTenant->name }}</strong>'s site as platform admin.</span>
+                <a href="{{ rtrim(config('app.url'), '/') }}/dashboard"
+                   class="rounded-lg bg-white/20 px-3 py-1 font-medium hover:bg-white/30 transition">
+                    Back to Admin
+                </a>
+            </div>
+        @endif
+    @endauth
+
     {{-- preloader --}}
     <x-common.preloader/>
     {{-- preloader end --}}
