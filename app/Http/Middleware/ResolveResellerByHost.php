@@ -79,6 +79,16 @@ class ResolveResellerByHost
         $reseller = $this->resolve($host);
 
         if (! $reseller) {
+            // Custom domains are stored bare, but people type www anyway — and the proxy
+            // routes www.<domain> here on purpose. One canonical host, one 301 carrying
+            // the full path and query, on every route rather than only the front page.
+            if (str_starts_with($host, 'www.') && $this->resolve(substr($host, 4)) !== null) {
+                return redirect()->to(
+                    $request->getScheme().'://'.substr($host, 4).$request->getRequestUri(),
+                    301
+                );
+            }
+
             return $next($request);
         }
 

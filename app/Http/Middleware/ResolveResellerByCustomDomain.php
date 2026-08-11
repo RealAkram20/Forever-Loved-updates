@@ -30,6 +30,8 @@ class ResolveResellerByCustomDomain
             ->first();
 
         if (! $reseller) {
+            // www.<domain> never reaches here: ResolveResellerByHost (web group, so it
+            // runs first) already 301s it to the bare form for every path.
             abort(404);
         }
 

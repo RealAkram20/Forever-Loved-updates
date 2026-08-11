@@ -22,6 +22,10 @@ Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')
     ->everyMinute()
     ->withoutOverlapping(5);
 
+// Keeps Traefik's router files in step with verified reseller custom domains, via the
+// bind-mounted folder its file provider watches. A no-op wherever the mount is absent.
+Schedule::command('domains:sync-proxy')->everyMinute()->withoutOverlapping(5);
+
 Schedule::command('subscriptions:process-lifecycle')->dailyAt('06:00');
 
 // Self-heal orders stuck in pending when both callback and IPN were missed.
