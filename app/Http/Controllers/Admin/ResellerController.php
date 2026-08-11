@@ -181,6 +181,9 @@ class ResellerController extends Controller
             'custom_domain_verified_at' => now(),
         ]);
 
+        // Routed now, not on the scheduler's next minute — "verified" should mean live.
+        app(\App\Services\CustomDomainProxySync::class)->sync();
+
         return back()->with('success', "\"{$reseller->custom_domain}\" marked as verified.");
     }
 
@@ -244,6 +247,10 @@ class ResellerController extends Controller
             'custom_domain_verified_at' => $verified ? now() : null,
         ]);
 
+        if ($verified) {
+            app(\App\Services\CustomDomainProxySync::class)->sync();
+        }
+
         return back()->with(
             $verified ? 'success' : 'error',
             $verified
@@ -270,6 +277,9 @@ class ResellerController extends Controller
             'custom_domain_status' => Reseller::DOMAIN_UNVERIFIED,
             'custom_domain_verified_at' => null,
         ]);
+
+        // Un-routed now rather than lingering until the scheduler's next pass.
+        app(\App\Services\CustomDomainProxySync::class)->sync();
 
         return back()->with('success', "\"{$domain}\" removed. Their {$reseller->slug}.".config('reseller.domain').' address still works.');
     }
