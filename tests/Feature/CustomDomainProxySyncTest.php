@@ -20,6 +20,9 @@ function proxyDir(): string
     foreach (glob($dir.'/*.yaml') ?: [] as $f) {
         unlink($f);
     }
+    // The folder is shared with files the proxy's own tooling writes; the sync must
+    // never treat those as stale.
+    file_put_contents($dir.'/default_redirect_503.yaml', "http: {}\n");
     config(['proxy.custom_domains_dir' => $dir]);
 
     return $dir;
@@ -47,10 +50,10 @@ it('writes a router file per verified domain and removes it when the domain goes
     $result = $sync->sync();
 
     expect($result['written'])->toBe(1)
-        ->and(is_file($dir.'/kangaruride.com.yaml'))->toBeTrue()
-        ->and(is_file($dir.'/not-yet-verified.com.yaml'))->toBeFalse();
+        ->and(is_file($dir.'/custom-domain-kangaruride.com.yaml'))->toBeTrue()
+        ->and(is_file($dir.'/custom-domain-not-yet-verified.com.yaml'))->toBeFalse();
 
-    $yaml = file_get_contents($dir.'/kangaruride.com.yaml');
+    $yaml = file_get_contents($dir.'/custom-domain-kangaruride.com.yaml');
     expect($yaml)->toContain('Host(`kangaruride.com`)')
         ->and($yaml)->toContain('Host(`www.kangaruride.com`)')
         ->and($yaml)->toContain('certResolver: letsencrypt')
@@ -62,7 +65,9 @@ it('writes a router file per verified domain and removes it when the domain goes
     $acme->update(['custom_domain' => null]);
 
     expect($sync->sync()['removed'])->toBe(1)
-        ->and(is_file($dir.'/kangaruride.com.yaml'))->toBeFalse();
+        ->and(is_file($dir.'/custom-domain-kangaruride.com.yaml'))->toBeFalse()
+        // The proxy tooling's own file is not ours to clean up.
+        ->and(is_file($dir.'/default_redirect_503.yaml'))->toBeTrue();
 });
 
 it('never writes a file that could shadow the platform own hosts', function () {
@@ -76,7 +81,7 @@ it('never writes a file that could shadow the platform own hosts', function () {
 
     app(CustomDomainProxySync::class)->sync();
 
-    expect(glob($dir.'/*.yaml'))->toBeEmpty();
+    expect(glob($dir.'/custom-domain-*.yaml'))->toBeEmpty();
 });
 
 it('is a no-op when no proxy directory is configured', function () {

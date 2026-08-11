@@ -60,7 +60,11 @@ class CustomDomainProxySync
                     || ! preg_match('/^[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?)+$/', $domain);
 
                 if (! $offLimits) {
-                    $wanted[$domain.'.yaml'] = $this->routerYaml($domain);
+                    // Prefixed because the folder is Traefik's whole dynamic-config dir
+                    // (its file provider does not descend into subdirectories), shared
+                    // with files Coolify writes. The prefix is both our namespace and
+                    // the only pattern the cleanup below is allowed to delete.
+                    $wanted['custom-domain-'.$domain.'.yaml'] = $this->routerYaml($domain);
                 }
             });
 
@@ -77,7 +81,7 @@ class CustomDomainProxySync
             $written++;
         }
 
-        foreach (glob($dir.DIRECTORY_SEPARATOR.'*.yaml') ?: [] as $existing) {
+        foreach (glob($dir.DIRECTORY_SEPARATOR.'custom-domain-*.yaml') ?: [] as $existing) {
             if (! array_key_exists(basename($existing), $wanted)) {
                 unlink($existing);
                 $removed++;
