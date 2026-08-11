@@ -95,6 +95,17 @@ class ResolveResellerByHost
         app()->instance(Reseller::class, $reseller);
         ThemeSetting::markResolvedFromRequest();
 
+        // Their host, their URLs — all of them. AppServiceProvider roots every generated
+        // URL at APP_URL (so subdirectory installs work), which on a white-labeled host
+        // stamped the platform's address onto every login form action, register link,
+        // canonical tag and asset path: a visitor who clicked almost anything was walked
+        // off the reseller's site and onto ours. Re-rooting at the request's own host
+        // keeps every route(), url() and asset() theirs. Only here, where the host is
+        // provably a tenant's — the /r/{slug} fallback runs on the platform's host and
+        // keeps the platform root. Queued jobs and mail never pass through this
+        // middleware, so their links still root at APP_URL, as they must.
+        \Illuminate\Support\Facades\URL::forceRootUrl($request->getScheme().'://'.$request->getHttpHost());
+
         $path = trim($request->path(), '/');
 
         if (in_array($path, self::TENANT_OPTIONAL_PATHS, true)

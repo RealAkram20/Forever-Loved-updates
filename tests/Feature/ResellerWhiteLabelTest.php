@@ -402,3 +402,24 @@ it('survives the round trip when the owner signs in without a password', functio
     $this->get('http://localhost/settings/resellers')->assertSuccessful();
     expect(auth()->id())->toBe($admin->id);
 });
+
+it('keeps every generated URL on the reseller host instead of walking visitors to the platform', function () {
+    $acme = whiteLabelTenant('acme', 'kangaruride.com');
+
+    $body = $this->get('http://kangaruride.com/login')->assertOk()->getContent();
+
+    // The login form, the register link, the assets — all of it must be theirs.
+    // config('app.url') is the platform root; its host has no business on this page.
+    $platformHost = parse_url(config('app.url'), PHP_URL_HOST);
+    expect($body)->toContain('kangaruride.com/login')
+        ->and(str_contains($body, 'http://'.$platformHost.'/'))->toBeFalse();
+});
+
+it('keeps the platform root on the platform own host', function () {
+    whiteLabelTenant('acme', 'kangaruride.com');
+
+    $body = $this->get('http://localhost/login')->assertOk()->getContent();
+
+    expect($body)->toContain('localhost/login')
+        ->and(str_contains($body, 'kangaruride.com'))->toBeFalse();
+});
