@@ -357,10 +357,14 @@ class MemorialMediaController extends Controller
         }
 
         if (!$userId && $guestEmail) {
+            // The memorial's reseller owns this relationship — same rule as tributes,
+            // reactions and collaborator invites.
             $user = \App\Models\User::create([
                 'name' => $guestName,
                 'email' => strtolower($guestEmail),
                 'password' => null,
+                'reseller_id' => $memorial->reseller_id,
+                'original_reseller_id' => $memorial->reseller_id,
             ]);
             $userId = $user->id;
         }

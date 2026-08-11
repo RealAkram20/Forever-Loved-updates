@@ -35,7 +35,9 @@ class MemorialShareMetaHelper
             'title' => $title,
             'description' => self::memorialDescription($memorial, $deceasedName),
             'url' => $canonical,
-            'site_name' => (string) config('app.name', 'Forever-Loved'),
+            // The site the memorial actually lives on — a reseller's name on their own
+            // memorial cards, not ours. These are the most-forwarded URLs there are.
+            'site_name' => SiteShareMetaHelper::appDisplayName(),
             // A memorial page is a page about a person, and crawlers treat 'profile'
             // exactly like 'website' when they don't care about the difference.
             'type' => 'profile',
@@ -60,10 +62,10 @@ class MemorialShareMetaHelper
             $description = Str::limit($description, self::DESCRIPTION_LIMIT, '…');
         }
 
-        $shareUrl = route('memorial.chapter.public', [
-            'memorial_slug' => $memorial->slug,
-            'share_id' => $post->share_id,
-        ], true);
+        // Built from the memorial's own public address, not route(): publicUrl() is
+        // correct on any host and inside queued jobs, where the URL generator's root
+        // is the platform's.
+        $shareUrl = $memorial->publicUrl().'/chapter/'.$post->share_id;
 
         [$imagePath, $imageUrl] = self::firstPostShareImage($post)
             ?? [$memorial->profile_photo_path, $memorial->profile_photo_url];
@@ -72,7 +74,7 @@ class MemorialShareMetaHelper
             'title' => $title,
             'description' => $description,
             'url' => $shareUrl,
-            'site_name' => (string) config('app.name', 'Forever-Loved'),
+            'site_name' => SiteShareMetaHelper::appDisplayName(),
             'type' => 'article',
             'image_alt' => Str::limit($postTitle.' — '.$deceasedName, 200, '…'),
             ...self::shareImage($imagePath, $imageUrl),

@@ -99,12 +99,18 @@ class GoogleLoginController extends Controller
         }
 
         if (! $user) {
+            // First Google sign-in on a reseller host makes them that reseller's client,
+            // exactly as the register form does.
+            $reseller = \App\Helpers\ThemeSetting::tenant();
+
             $user = User::create([
                 'name' => $name,
                 'email' => $email,
                 'password' => null,
                 'google_id' => $googleId,
                 'email_verified_at' => now(),
+                'reseller_id' => $reseller?->id,
+                'original_reseller_id' => $reseller?->id,
             ]);
 
             if (Role::where('name', 'user')->where('guard_name', 'web')->exists()) {
@@ -118,7 +124,9 @@ class GoogleLoginController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Through PostAuthRedirect like every other sign-in: a reseller's client lands
+        // on their reseller's branded dashboard, not wherever this host happens to be.
+        return redirect()->intended(\App\Support\PostAuthRedirect::url($user));
     }
 
     private function applyGoogleConfig(): void

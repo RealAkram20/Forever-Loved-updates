@@ -132,11 +132,21 @@ class MemorialSignupController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        // The wizard is the main conversion funnel, and it runs on reseller hosts too:
+        // whoever registers here on a white-labeled site becomes THAT reseller's client,
+        // exactly as RegisteredUserController already does. Without this, a reseller's
+        // primary signup path quietly built the platform's user base instead of theirs —
+        // and the memorial created two steps later inherited the wrong owner with it.
+        $reseller = \App\Helpers\ThemeSetting::tenant();
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'reseller_id' => $reseller?->id,
+            'original_reseller_id' => $reseller?->id,
         ]);
+        $user->assignRole('user');
 
         event(new Registered($user));
         NotificationService::notifyNewUserSignup($user);
@@ -176,7 +186,10 @@ class MemorialSignupController extends Controller
         if (empty($data['first_name'])) {
             return redirect()->route('memorial.create.step1');
         }
-        $plans = SubscriptionPlan::where('is_active', true)->sellableTo(auth()->user())->orderBy('sort_order')->get();
+        // sellableOnHost, not sellableTo: on a reseller's site the wizard must offer the
+        // RESELLER's plans and prices regardless of who the visitor already is — a
+        // platform-registered visitor on kangaruride.com was being shown our catalogue.
+        $plans = SubscriptionPlan::where('is_active', true)->sellableOnHost(\App\Helpers\ThemeSetting::siteTenantId(), auth()->user())->orderBy('sort_order')->get();
         $currency = SystemSetting::get('payments.currency', 'USD');
         $paymentsEnabled = (bool) SystemSetting::get('payments.enabled', false);
         $pesapalEnabled = (bool) SystemSetting::get('payments.pesapal_enabled', false);
@@ -231,8 +244,9 @@ class MemorialSignupController extends Controller
         $data = session(self::SESSION_KEY, []);
 
         $planId = (int) ($request->input('plan_id') ?? $data['plan_id'] ?? 0);
-        // sellableTo, not find(): the id can come straight off the request here.
-        $plan = SubscriptionPlan::sellableTo($request->user())->find($planId);
+        // Host-scoped, not find(): the id can come straight off the request here, and the
+        // catalogue must match what step 3 offered on this host.
+        $plan = SubscriptionPlan::sellableOnHost(\App\Helpers\ThemeSetting::siteTenantId(), $request->user())->find($planId);
         if (! $plan || $plan->isFree()) {
             return response()->json(['success' => false, 'error' => 'Please select a paid plan.'], 400);
         }
@@ -293,7 +307,7 @@ class MemorialSignupController extends Controller
 
         // Re-scoped rather than trusted from session: this is the path that grants a free
         // plan's entitlements with no payment step in between.
-        $plan = SubscriptionPlan::sellableTo($request->user())->find($data['plan_id']);
+        $plan = SubscriptionPlan::sellableOnHost(\App\Helpers\ThemeSetting::siteTenantId(), $request->user())->find($data['plan_id']);
         $isFreePlan = $plan && $plan->isFree();
 
         $memorial = $this->createMemorialFromSession($request->user(), $data, $plan);

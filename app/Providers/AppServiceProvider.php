@@ -39,6 +39,31 @@ class AppServiceProvider extends ServiceProvider
         // production is worse than no listener at all.
         Event::listen(Login::class, RecordLastLogin::class);
 
+        // The stock reset email is signed by config('app.name') top to bottom. A
+        // reseller's client must get one that reads as the site they use — name in
+        // the subject, the sender line and the sign-off, and a link built relative so
+        // it roots at whichever host serves the request.
+        \Illuminate\Auth\Notifications\ResetPassword::toMailUsing(function ($notifiable, string $token) {
+            $siteName = \App\Helpers\BrandingHelper::displayNameFor($notifiable->reseller);
+            $url = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            $mail = (new \Illuminate\Notifications\Messages\MailMessage)
+                ->from(config('mail.from.address'), $siteName)
+                ->subject("Reset Password - {$siteName}")
+                ->line('You are receiving this email because we received a password reset request for your account.')
+                ->action('Reset Password', $url)
+                ->line('If you did not request a password reset, no further action is required.')
+                ->salutation(new \Illuminate\Support\HtmlString('Regards,<br>'.e($siteName)));
+            if ($notifiable->reseller?->contact_email) {
+                $mail->replyTo($notifiable->reseller->contact_email);
+            }
+
+            return $mail;
+        });
+
         View::composer('layouts.fullscreen-layout', function ($view) {
             app(SeoMetaResolver::class)->applyToFullscreenLayout($view);
         });

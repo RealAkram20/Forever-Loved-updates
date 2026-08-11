@@ -15,7 +15,7 @@
                 <div class="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-6">
                     <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">{{ $props['sidebar_title'] ?? 'Reach Out' }}</h3>
                     <div class="space-y-4">
-                        @php $contactEmail = \App\Models\SystemSetting::get('smtp.from_address'); @endphp
+                        @php $contactEmail = \App\Helpers\BrandingHelper::contactEmail(); @endphp
                         @if ($contactEmail)
                         <div class="flex items-start gap-3">
                             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400">

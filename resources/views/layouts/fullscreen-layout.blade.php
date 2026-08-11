@@ -25,7 +25,8 @@
     {{-- <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script> --}}
 
     <!-- App base URL for JS fetch calls -->
-    <script>window.__appBaseUrl = @json(rtrim(config('app.url'), '/'));</script>
+    {{-- url('/') and not config('app.url') — see layouts/app.blade.php. --}}
+    <script>window.__appBaseUrl = @json(rtrim(url('/'), '/'));</script>
     <script>window.__defaultTheme = @json(\App\Helpers\BrandingHelper::defaultTheme());</script>
 
     <!-- Theme Store -->

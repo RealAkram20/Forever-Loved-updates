@@ -144,7 +144,7 @@
                     <x-common.common-grid-shape/>
                     <div class="flex max-w-xs flex-col items-center">
                         <a href="{{ route('home') }}" class="mb-4 block">
-                            <img src="{{ \App\Helpers\BrandingHelper::authLogoUrl() }}" alt="Forever-Loved" />
+                            <img src="{{ \App\Helpers\BrandingHelper::authLogoUrl() }}" alt="{{ \App\Helpers\SiteShareMetaHelper::appDisplayName() }}" />
                         </a>
                         <p class="text-center text-gray-400 dark:text-white/60">
                             Create and share beautiful memorials for your loved ones.

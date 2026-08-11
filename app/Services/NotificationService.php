@@ -115,7 +115,9 @@ class NotificationService
                 ? "{$businessName} has created a memorial for {$memorialName} and given you access to it. Sign in with this email address — no password needed, we'll email you a code."
                 : "{$businessName} has set up an account for you. Sign in with this email address — no password needed, we'll email you a code.",
             'user',
-            route('login.passwordless'),
+            // The invitee's own site's sign-in, not route(): invites fire from admin
+            // screens and reseller dashboards on hosts that are not the invitee's.
+            static::siteLink($invitee, 'login/code'),
             ['business' => $businessName, 'memorial' => $memorialName],
         );
     }
@@ -136,7 +138,7 @@ class NotificationService
                 ? "{$inviterName} invited you to help manage the memorial for {$name}. Sign in with this email address — no password needed, we'll email you a code."
                 : "{$inviterName} invited you to help manage the memorial for {$name}. Open it to start editing.",
             'user',
-            $isNewAccount ? route('login.passwordless') : $memorial->publicUrl(),
+            $isNewAccount ? static::siteLink($invitee, 'login/code') : $memorial->publicUrl(),
             ['memorial' => $name, 'inviter' => $inviterName],
         );
     }
@@ -169,33 +171,53 @@ class NotificationService
             return;
         }
 
-        $appName = SystemSetting::get('branding.app_name', config('app.name'));
+        // Whose mail this reads as: the recipient's reseller when they have one —
+        // resolved from the user row, because this runs in the queue worker where no
+        // request, host or session exists to ask.
+        $reseller = $user->reseller;
+        $appName = \App\Helpers\BrandingHelper::displayNameFor($reseller);
         $subject = $notification->title;
 
         Mail::html(
-            static::buildEmailHtml($notification, $appName),
-            function ($msg) use ($user, $subject, $appName) {
+            static::buildEmailHtml($notification, $appName, $reseller),
+            function ($msg) use ($user, $subject, $appName, $reseller) {
                 $msg->to($user->email, $user->name)
-                    ->subject("{$appName} - {$subject}");
+                    ->subject("{$appName} - {$subject}")
+                    // Display name is what recipients read; the address stays the
+                    // platform's, which is the domain SPF/DKIM actually sign for.
+                    ->from(config('mail.from.address'), $appName);
+                if ($reseller?->contact_email) {
+                    $msg->replyTo($reseller->contact_email);
+                }
             }
         );
     }
 
-    private static function buildEmailHtml(Notification $notification, string $appName): string
+    private static function buildEmailHtml(Notification $notification, string $appName, ?\App\Models\Reseller $reseller = null): string
     {
+        // Everything interpolated below is escaped: titles and messages carry guest
+        // input (a commenter's name is whatever they typed), and this string is
+        // rendered as HTML in the recipient's mail client.
+        $appName = e($appName);
+        $brand = e($reseller?->primary_color ?: '#465fff');
+
         $actionButton = '';
         if ($notification->action_url) {
+            $safeUrl = e($notification->action_url);
             $actionButton = <<<HTML
             <tr>
                 <td style="padding:24px 0 0;">
-                    <a href="{$notification->action_url}"
-                       style="display:inline-block;background:#465fff;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+                    <a href="{$safeUrl}"
+                       style="display:inline-block;background:{$brand};color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
                         View Details
                     </a>
                 </td>
             </tr>
             HTML;
         }
+
+        $safeTitle = e($notification->title);
+        $safeMessage = e($notification->message);
 
         return <<<HTML
         <!DOCTYPE html>
@@ -207,7 +229,7 @@ class NotificationService
                     <td align="center">
                         <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
                             <tr>
-                                <td style="background:#465fff;padding:24px 32px;">
+                                <td style="background:{$brand};padding:24px 32px;">
                                     <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:600;">{$appName}</h1>
                                 </td>
                             </tr>
@@ -216,8 +238,8 @@ class NotificationService
                                     <table width="100%" cellpadding="0" cellspacing="0">
                                         <tr>
                                             <td>
-                                                <h2 style="margin:0 0 8px;color:#1f2937;font-size:18px;font-weight:600;">{$notification->title}</h2>
-                                                <p style="margin:0;color:#6b7280;font-size:15px;line-height:1.6;">{$notification->message}</p>
+                                                <h2 style="margin:0 0 8px;color:#1f2937;font-size:18px;font-weight:600;">{$safeTitle}</h2>
+                                                <p style="margin:0;color:#6b7280;font-size:15px;line-height:1.6;">{$safeMessage}</p>
                                             </td>
                                         </tr>
                                         {$actionButton}
@@ -265,6 +287,21 @@ class NotificationService
             && !empty(SystemSetting::get('notifications.vapid_private_key'));
     }
 
+    /**
+     * An absolute link on the recipient's own site. Notification action URLs are baked
+     * in wherever the trigger ran — often the console, where route() roots at the
+     * platform — so a reseller's client was handed platform links in mail and push.
+     * publicBaseUrl() is built from config and safe in any context.
+     */
+    private static function siteLink(?\App\Models\User $user, string $path): string
+    {
+        $reseller = $user?->reseller;
+
+        return $reseller
+            ? $reseller->publicUrlForSlug(ltrim($path, '/'))
+            : rtrim((string) config('app.url'), '/').'/'.ltrim($path, '/');
+    }
+
     /** Public so the SendNotificationPush job can invoke it from the worker. */
     public static function dispatchPush(Notification $notification): void
     {
@@ -274,7 +311,9 @@ class NotificationService
             return;
         }
 
-        $appUrl = config('app.url', 'http://localhost/Forever-love');
+        // The recipient's own site, not the platform: a push tapped on a phone must
+        // land where that person actually signs in.
+        $appUrl = $notification->user?->reseller?->publicBaseUrl() ?: config('app.url', 'http://localhost');
         $actionUrl = $notification->action_url;
         if ($actionUrl && !str_starts_with($actionUrl, 'http')) {
             $actionUrl = rtrim($appUrl, '/') . '/' . ltrim($actionUrl, '/');
@@ -286,7 +325,8 @@ class NotificationService
             $notification->title,
             $notification->message,
             $actionUrl,
-            $notification->type . '-' . $notification->id
+            $notification->type . '-' . $notification->id,
+            $appUrl
         );
 
         foreach ($reports as $report) {
@@ -317,7 +357,8 @@ class NotificationService
         string $title,
         string $body,
         string $url,
-        string $tag
+        string $tag,
+        ?string $baseUrl = null
     ): array {
         if ($subscriptions->isEmpty()) {
             return [];
@@ -329,7 +370,9 @@ class NotificationService
             );
         }
 
-        $appUrl = config('app.url', 'http://localhost');
+        // The recipient's site when the caller knows it — icon, badge and VAPID
+        // subject then all wear the domain the person actually uses.
+        $appUrl = $baseUrl ?: config('app.url', 'http://localhost');
         $auth = [
             'VAPID' => [
                 'subject' => $appUrl,
@@ -463,7 +506,7 @@ class NotificationService
 
     public static function notifyPaymentMade(User $user, string $planName, string $amount): void
     {
-        static::send($user->id, 'payment_made', 'Payment Successful', "Your payment of {$amount} for {$planName} was received.", 'payment', route('dashboard'), ['plan' => $planName, 'amount' => $amount]);
+        static::send($user->id, 'payment_made', 'Payment Successful', "Your payment of {$amount} for {$planName} was received.", 'payment', static::siteLink($user, 'dashboard'), ['plan' => $planName, 'amount' => $amount]);
     }
 
     public static function notifyNewTribute(
@@ -598,6 +641,12 @@ class NotificationService
             ->where($preference, true)
             ->get();
 
+        // Loop-invariant branding, resolved once: with the database cache store every
+        // SystemSetting::get is a query, and a well-loved memorial has many subscribers.
+        $guestAppName = \App\Helpers\BrandingHelper::displayNameFor($memorial->reseller);
+        $guestBrand = e($memorial->reseller?->primary_color ?: '#6366f1');
+        $guestReplyTo = $memorial->reseller?->contact_email;
+
         foreach ($subs as $sub) {
             if ($sub->user_id && $sub->user_id === $excludeUserId) {
                 continue;
@@ -617,14 +666,18 @@ class NotificationService
                 $email = $sub->guest_email;
                 $name = $sub->guest_name ?? 'Subscriber';
                 if ($email) {
-                    $appName = SystemSetting::get('branding.app_name', config('app.name'));
-                    $html = "<p>Hi {$name},</p><p>{$message}</p><p><a href=\"{$actionUrl}\" style=\"display:inline-block;padding:10px 20px;background-color:#6366f1;color:white;border-radius:8px;text-decoration:none;font-weight:600;\">View Memorial</a></p><p style=\"color:#999;font-size:12px;\">You received this because you subscribed to updates for this memorial.</p>";
+                    // Memorial-keyed, not global: these go to visitors of a memorial
+                    // that may live on a reseller's site, and the name/message carry
+                    // guest input, so everything interpolated is escaped.
+                    $html = '<p>Hi '.e($name).',</p><p>'.e($message).'</p><p><a href="'.e($actionUrl).'" style="display:inline-block;padding:10px 20px;background-color:'.$guestBrand.';color:white;border-radius:8px;text-decoration:none;font-weight:600;">View Memorial</a></p><p style="color:#999;font-size:12px;">You received this because you subscribed to updates for this memorial.</p>';
                     \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
                         to: $email,
                         name: $name,
-                        subject: "{$appName} - {$title}",
+                        subject: "{$guestAppName} - {$title}",
                         body: $html,
                         isHtml: true,
+                        fromName: $guestAppName,
+                        replyTo: $guestReplyTo,
                     ));
                 }
             }
@@ -653,7 +706,7 @@ class NotificationService
             title: 'Memorial Status Updated',
             message: "Your memorial for {$memorial->full_name} has been {$label}.",
             icon: 'status',
-            actionUrl: route('memorials.index'),
+            actionUrl: static::siteLink($memorial->user, 'memorials'),
             data: [
                 'memorial_id' => $memorial->id,
                 'memorial_name' => $memorial->full_name,
@@ -837,7 +890,7 @@ class NotificationService
                 title: 'Subscription Expiring Soon',
                 message: "Your {$planName} plan for {$memorialName} expires in {$daysLabel}. Renew now to keep all premium features.",
                 icon: 'warning',
-                actionUrl: route('subscription.index'),
+                actionUrl: static::siteLink($subscription->user, 'subscription'),
                 data: [
                     'subscription_id' => $subscription->id,
                     'memorial_id' => $memorial?->id,
@@ -874,7 +927,7 @@ class NotificationService
                 title: 'Subscription Expired',
                 message: "Your {$planName} plan for {$memorialName} has expired today. Renew to restore premium features.",
                 icon: 'error',
-                actionUrl: route('subscription.index'),
+                actionUrl: static::siteLink($subscription->user, 'subscription'),
                 data: [
                     'subscription_id' => $subscription->id,
                     'memorial_id' => $memorial?->id,
@@ -910,7 +963,7 @@ class NotificationService
                 title: 'Subscription Overdue',
                 message: "Your {$planName} plan for {$memorialName} is overdue. Premium features have been locked. Renew now to restore them.",
                 icon: 'error',
-                actionUrl: route('subscription.index'),
+                actionUrl: static::siteLink($subscription->user, 'subscription'),
                 data: [
                     'subscription_id' => $subscription->id,
                     'memorial_id' => $memorial?->id,

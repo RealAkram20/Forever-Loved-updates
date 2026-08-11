@@ -104,20 +104,30 @@ class MemorialApiController extends Controller
 
         // Unknown address: create the account this flow has always created for them.
         if (! $userId && $guestEmail) {
+            // The memorial's reseller owns this relationship: a visitor moved to leave a
+            // tribute on a reseller's memorial becomes that reseller's user, not a stray
+            // platform account. Same principle as MemorialCollaboratorController.
             $user = User::create([
                 'name' => $guestName,
                 'email' => strtolower($guestEmail),
                 'password' => null,
+                'reseller_id' => $memorial->reseller_id,
+                'original_reseller_id' => $memorial->reseller_id,
             ]);
 
             NotificationService::notifyNewUserSignup($user);
 
+            // The site they were on, not the platform's name — this mail lands minutes
+            // after they used a white-labeled page.
+            $siteName = \App\Helpers\BrandingHelper::displayNameFor($memorial->reseller);
             $setupUrl = route('password.request');
             \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
                 to: $guestEmail,
                 name: $guestName,
-                subject: 'Welcome to Forever-Loved - Complete your account',
-                body: "Welcome to Forever-Loved!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: ".route('login.passwordless'),
+                subject: "Welcome to {$siteName} - Complete your account",
+                body: "Welcome to {$siteName}!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: ".route('login.passwordless'),
+                fromName: $siteName,
+                replyTo: $memorial->reseller?->contact_email,
             ));
 
             $userId = $user->id;
@@ -226,18 +236,24 @@ class MemorialApiController extends Controller
                 ], 422);
             }
 
-            // Create new user for first-time reactor
+            // Create new user for first-time reactor — the memorial's reseller owns the
+            // relationship, and the welcome mail wears the site they were actually on.
             $user = User::create([
                 'name' => $guestName,
                 'email' => strtolower($guestEmail),
                 'password' => null,
+                'reseller_id' => $memorial->reseller_id,
+                'original_reseller_id' => $memorial->reseller_id,
             ]);
 
+            $siteName = \App\Helpers\BrandingHelper::displayNameFor($memorial->reseller);
             \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
                 to: $guestEmail,
                 name: $guestName,
-                subject: 'Welcome to Forever-Loved',
-                body: 'Welcome to Forever-Loved! You can sign in with a one-time code at: '.route('login.passwordless'),
+                subject: "Welcome to {$siteName}",
+                body: "Welcome to {$siteName}! You can sign in with a one-time code at: ".route('login.passwordless'),
+                fromName: $siteName,
+                replyTo: $memorial->reseller?->contact_email,
             ));
 
             $userId = $user->id;

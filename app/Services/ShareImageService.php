@@ -64,7 +64,11 @@ class ShareImageService
         }
 
         return [
-            'url' => url($disk->url($derivativePath)),
+            // Via StorageHelper, not $disk->url(): the disk URL is absolute at APP_URL,
+            // which url() passes through untouched — so a memorial shared from a
+            // reseller's domain carried the platform's hostname inside its own card.
+            // publicUrl() is null only for an empty path, which cannot happen here.
+            'url' => (string) \App\Helpers\StorageHelper::publicUrl($derivativePath),
             'width' => self::WIDTH,
             'height' => self::HEIGHT,
             'type' => 'image/jpeg',

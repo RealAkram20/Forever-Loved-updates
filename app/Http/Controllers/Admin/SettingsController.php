@@ -404,6 +404,9 @@ class SettingsController extends Controller
         $order = PaymentOrder::create([
             'user_id' => $request->user_id,
             'memorial_id' => $request->memorial_id,
+            // Without this the order is orphaned from its tenant: invisible to the
+            // reseller's revenue report and reconciled against the wrong credentials.
+            'reseller_id' => $memorial->reseller_id,
             'subscription_plan_id' => $request->subscription_plan_id,
             'merchant_reference' => $merchantRef,
             'amount' => $plan->price,
@@ -418,7 +421,10 @@ class SettingsController extends Controller
         }
 
         if ($gateway === 'pesapal') {
-            $pesapal = app(\App\Services\PesapalService::class);
+            // The memorial's reseller's merchant account, exactly as the customer
+            // checkout does — an admin creating the order must not reroute a
+            // reseller's client's money into the platform's account.
+            $pesapal = \App\Services\PesapalService::forReseller($memorial->reseller);
             if (! $pesapal->isEnabled()) {
                 $order->update(['status' => 'failed']);
                 if ($request->ajax() || $request->wantsJson()) {
@@ -435,7 +441,6 @@ class SettingsController extends Controller
                 'country_code' => 'KE',
             ];
 
-            $pesapal = app(\App\Services\PesapalService::class);
             $callbackUrl = $pesapal->getCallbackUrl('payment.callback');
             $cancellationUrl = $pesapal->getCallbackUrl('payment.complete', ['result' => 'cancelled']);
 
@@ -591,7 +596,9 @@ class SettingsController extends Controller
             return null;
         }
 
-        $pesapal = app(PesapalService::class);
+        // The order's own merchant account: verifying a reseller-paid order against
+        // platform credentials returns nothing and blocks a genuinely paid order.
+        $pesapal = PesapalService::forReseller($order->reseller);
         if (! $pesapal->isEnabled()) {
             return null;
         }

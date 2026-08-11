@@ -45,6 +45,15 @@ class PaymentSettingsController extends Controller
             $reseller->pesapal_consumer_secret = $validated['pesapal_consumer_secret'];
         }
 
+        // An IPN id belongs to one merchant account in one environment. Keeping it
+        // across a key or sandbox→live change makes every checkout send a
+        // notification_id the new account does not own, and Pesapal rejects the order —
+        // the classic "worked in sandbox, dead in live" failure. Dropping it is safe:
+        // the service re-registers one on the next submit.
+        if ($reseller->isDirty(['pesapal_consumer_key', 'pesapal_consumer_secret', 'pesapal_environment'])) {
+            $reseller->pesapal_ipn_id = null;
+        }
+
         // Turning this on without credentials is worse than leaving it off: the service
         // silently falls back to the platform's account, so the reseller believes they are
         // collecting their clients' payments while the money lands with us.
