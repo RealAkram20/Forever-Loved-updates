@@ -157,12 +157,17 @@
                             <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Step 2 — point your domain here</p>
                             @if ($isApex ? $domainTargetIp : $domainTargetHost)
                                 @if ($isApex)
+                                    <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">Both records, so your site answers with and without <span class="font-mono">www</span>:</p>
                                     <x-common.dns-record type="A"
                                         :host="$reseller->custom_domain"
                                         :value="$domainTargetIp" />
+                                    <div class="mt-2">
+                                        <x-common.dns-record type="CNAME"
+                                            :host="'www.'.$reseller->custom_domain"
+                                            :value="$reseller->custom_domain" />
+                                    </div>
                                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                        At most providers the host field for this record is <span class="font-mono">@</span>.
-                                        Optionally add a CNAME for <span class="font-mono">www</span> pointing at <span class="font-mono">{{ $reseller->custom_domain }}</span> — visitors who type www will be brought to the right place.
+                                        At most providers the host field is <span class="font-mono">@</span> for the A record and <span class="font-mono">www</span> for the CNAME.
                                     </p>
                                 @else
                                     <x-common.dns-record type="CNAME"
@@ -170,7 +175,7 @@
                                         :value="$domainTargetHost" />
                                 @endif
                                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                    Once the domain is verified and this record is in place, your site goes live on it automatically — SSL certificate included — usually within a few minutes.
+                                    That's the complete set — nothing else to add. SSL certificates are issued and renewed automatically for {{ $isApex ? 'both addresses' : 'your address' }} once the records are in place; your site is live on the domain, fully secured, usually within a few minutes of DNS taking effect.
                                 </p>
                             @else
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Where to point the domain is still being set up by your platform admin — you can verify ownership now and check back soon for this step.</p>

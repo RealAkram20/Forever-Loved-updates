@@ -67,7 +67,10 @@ services:
       # and none of them lose state when a container is replaced. File-based
       # sessions would sign every visitor out on each deploy.
       - SESSION_DRIVER=${SESSION_DRIVER:-database}
-      - SESSION_LIFETIME=${SESSION_LIFETIME:-120}
+      # Eight hours, not the framework's two: admins run support sessions and
+      # families keep a memorial open in a tab all day; a session that dies at
+      # lunch reads as the site logging people out at random.
+      - SESSION_LIFETIME=${SESSION_LIFETIME:-480}
       - CACHE_STORE=${CACHE_STORE:-database}
       - QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
       - FILESYSTEM_DISK=local

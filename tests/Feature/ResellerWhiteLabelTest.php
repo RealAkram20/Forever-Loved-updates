@@ -368,3 +368,37 @@ it('still fully signs out a user who is not impersonating anyone', function () {
 
     expect(auth()->check())->toBeFalse();
 });
+
+it('keeps the admin session working across a full impersonation round trip', function () {
+    Role::findOrCreate('super-admin', 'web');
+    $admin = User::factory()->create();
+    $admin->assignRole('super-admin');
+
+    $acme = whiteLabelTenant('acme');
+
+    $this->actingAs($admin)->post('http://localhost/settings/resellers/'.$acme->id.'/login-as');
+
+    // A request in between, so AuthenticateSession gets a chance to compare hashes.
+    $this->get('http://localhost/dashboard')->assertSuccessful();
+    expect(auth()->id())->toBe($acme->owner->id);
+
+    $this->post('http://localhost/reseller/stop-impersonating')->assertRedirect();
+    $this->get('http://localhost/settings/resellers')->assertSuccessful();
+    expect(auth()->id())->toBe($admin->id);
+});
+
+it('survives the round trip when the owner signs in without a password', function () {
+    Role::findOrCreate('super-admin', 'web');
+    $admin = User::factory()->create();
+    $admin->assignRole('super-admin');
+
+    $acme = whiteLabelTenant('acme');
+    $acme->owner->forceFill(['password' => null])->save();
+
+    $this->actingAs($admin)->post('http://localhost/settings/resellers/'.$acme->id.'/login-as');
+    $this->get('http://localhost/dashboard')->assertSuccessful();
+
+    $this->post('http://localhost/reseller/stop-impersonating')->assertRedirect();
+    $this->get('http://localhost/settings/resellers')->assertSuccessful();
+    expect(auth()->id())->toBe($admin->id);
+});

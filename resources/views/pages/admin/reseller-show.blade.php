@@ -371,8 +371,15 @@
                             <x-common.dns-record :type="$domainIsApex ? 'A' : 'CNAME'"
                                 :host="$reseller->custom_domain"
                                 :value="$domainPointTarget" />
+                            @if ($domainIsApex)
+                                <div class="mt-2">
+                                    <x-common.dns-record type="CNAME"
+                                        :host="'www.'.$reseller->custom_domain"
+                                        :value="$reseller->custom_domain" />
+                                </div>
+                            @endif
                             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                Once verified and pointed, the proxy picks the domain up and issues its SSL certificate automatically — nothing to click here.
+                                The complete set — no extra records for SSL. Once verified and pointed, the proxy picks the domain up and issues its certificate{{ $domainIsApex ? 's (bare and www)' : '' }} automatically; nothing to click here.
                             </p>
                         @else
                             <p class="text-sm text-amber-600 dark:text-amber-400">
