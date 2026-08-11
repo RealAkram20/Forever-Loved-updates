@@ -435,6 +435,9 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::post('/track-share', [MemorialApiController::class, 'trackShare'])->name('track-share');
     Route::get('/stats', [MemorialApiController::class, 'stats'])->name('stats');
     Route::post('/reaction', [MemorialApiController::class, 'storeReaction'])->middleware('throttle:60,1')->name('reaction');
+    // Polled by the open page (~every 25s, paused in hidden tabs) so likes, comments
+    // and new stories land without a reload. Rate limit sized to that cadence.
+    Route::get('/live', [MemorialApiController::class, 'live'])->middleware('throttle:20,1')->name('live');
     Route::get('/posts', [MemorialApiController::class, 'posts'])->name('posts');
     Route::post('/posts', [MemorialApiController::class, 'storePost'])->name('posts.store');
     Route::patch('/posts/{postId}', [MemorialApiController::class, 'updatePost'])->name('posts.update');

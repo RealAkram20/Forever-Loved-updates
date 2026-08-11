@@ -1113,6 +1113,76 @@ class MemorialApiController extends Controller
         return response()->json(MemorialStatsHelper::get($memorial));
     }
 
+    /**
+     * One cheap round-trip the page polls while it is open: every story's current
+     * reaction and comment tally, plus any story published since `after_id` —
+     * serialized exactly as the composer's own response is, so the client renders
+     * both through the same code. This is what makes someone else's candle or
+     * comment appear without anyone reloading anything.
+     */
+    public function live(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+        if (! $this->canRead($memorial)) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
+
+        $postIds = $memorial->posts()->where('is_published', true)->pluck('id');
+
+        $reactions = Reaction::query()
+            ->where('reactionable_type', Post::class)
+            ->whereIn('reactionable_id', $postIds)
+            ->selectRaw('reactionable_id, count(*) as c')
+            ->groupBy('reactionable_id')
+            ->pluck('c', 'reactionable_id');
+
+        $comments = Comment::query()
+            ->whereIn('post_id', $postIds)
+            ->where('is_approved', true)
+            ->selectRaw('post_id, count(*) as c')
+            ->groupBy('post_id')
+            ->pluck('c', 'post_id');
+
+        $afterId = max(0, (int) $request->query('after_id', 0));
+
+        $newPosts = $afterId > 0
+            ? $memorial->posts()
+                ->where('is_published', true)
+                ->where('posts.id', '>', $afterId)
+                ->with(['user', 'media', 'memorial'])
+                ->orderBy('posts.id')
+                ->limit(20)
+                ->get()
+                ->map(fn (Post $p) => [
+                    'id' => $p->id,
+                    'share_id' => $p->share_id,
+                    'type' => $p->type,
+                    'tribute_type' => $p->tribute_type,
+                    'marker_verb' => $p->markerVerb(),
+                    'title' => $p->title,
+                    'content' => $p->content,
+                    'author' => $p->user?->name ?? $p->memorial->full_name,
+                    'author_photo' => \App\Helpers\ResponsiveImage::url($p->user?->profile_photo, 160) ?? $p->user?->profile_photo_url,
+                    'created_at' => $p->created_at->diffForHumans(),
+                    'created_at_iso' => $p->created_at->toIso8601String(),
+                    'media' => $p->media->map(fn ($m) => [
+                        'id' => $m->id,
+                        'type' => $m->type,
+                        'url' => \App\Helpers\StorageHelper::publicUrl($m->path),
+                        'caption' => $m->caption,
+                        'filename' => $m->filename,
+                    ])->toArray(),
+                ])->values()
+            : collect();
+
+        return response()->json([
+            'reactions' => $reactions,
+            'comments' => $comments,
+            'latest_post_id' => (int) ($postIds->max() ?? 0),
+            'new_posts' => $newPosts,
+        ]);
+    }
+
     private function formatPost(Post $post): array
     {
         $media = $post->relationLoaded('media') ? $post->media : $post->media;
