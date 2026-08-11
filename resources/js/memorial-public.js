@@ -700,7 +700,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         // The hero shows the same portrait, and is hidden until one exists.
                         const heroPortrait = document.getElementById('memorial-hero-portrait');
                         const heroPortraitImage = document.getElementById('memorial-hero-portrait-image');
-                        if (heroPortraitImage) heroPortraitImage.src = data.url;
+                        if (heroPortraitImage) {
+                            // The server-rendered srcset still lists the old photo's
+                            // derivatives, and srcset outranks src — drop it or the swap
+                            // is invisible.
+                            heroPortraitImage.removeAttribute('srcset');
+                            heroPortraitImage.src = data.url;
+                        }
                         heroPortrait?.classList.remove('hidden');
                     } else if (data.error) {
                         $toast('error', data.error);
@@ -730,6 +736,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const showCover = (url) => {
             coverSurfaces.forEach(({ image, fallback }) => {
                 if (image) {
+                    // srcset outranks src; without this the freshly uploaded cover
+                    // would lose to the old photo's derivative ladder.
+                    image.removeAttribute('srcset');
                     image.src = url;
                     image.classList.remove('hidden');
                 }
