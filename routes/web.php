@@ -108,6 +108,11 @@ Route::get('/', [PageController::class, 'home'])->name('home');
 // The crawler's map of everything public — marketing pages and every public memorial.
 Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
 
+// WhatsApp previews, old crawlers and stray bookmarks fetch this path directly and
+// never read <link rel="icon">. Serving it through code is what lets the admin's
+// (or on their own hosts, a reseller's) uploaded favicon actually reach them.
+Route::get('/favicon.ico', [\App\Http\Controllers\FaviconController::class, 'show'])->name('favicon');
+
 // AJAX memorial search (public)
 Route::get('/api/search/memorials', [MemorialController::class, 'search'])->middleware('throttle:60,1')->name('memorials.search');
 
