@@ -89,6 +89,34 @@ services:
       # Reseller::subdomainRoutingAvailable().
       - RESELLER_APP_DOMAIN=${RESELLER_APP_DOMAIN:-}
 
+    # Reseller subdomains: one router per direction, matching every {slug} under the
+    # base domain. Coolify's own generated labels handle the apex; these add the
+    # wildcard alongside them. No traefik.http.services.* is declared on purpose —
+    # Coolify doesn't declare one either, so every router (theirs and ours) rides the
+    # container's single implicit service on the exposed port; declaring one here
+    # would silently re-point Coolify's routers at it.
+    #
+    # The https router asks the `letsencrypt-dns` resolver (configured on the Coolify
+    # proxy, DNS-01 via Hostinger) for one certificate covering apex + wildcard.
+    # Until that resolver exists on the proxy, subdomains serve Traefik's default
+    # certificate — the apex keeps its own HTTP-01 certificate and is unaffected.
+    #
+    # The domain is written out literally: Traefik label rules take literal strings,
+    # and this file is the description of this deployment, which owns this domain.
+    # ($$ is a compose-escaped $ — the regex anchors, not variables.)
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.wildcard-forever-http.entryPoints=http
+      - traefik.http.routers.wildcard-forever-http.rule=HostRegexp(`^[a-z0-9-]+\.alwaysforeverloved\.com$$`)
+      - traefik.http.routers.wildcard-forever-http.middlewares=redirect-to-https
+      - traefik.http.routers.wildcard-forever-https.entryPoints=https
+      - traefik.http.routers.wildcard-forever-https.rule=HostRegexp(`^[a-z0-9-]+\.alwaysforeverloved\.com$$`)
+      - traefik.http.routers.wildcard-forever-https.middlewares=gzip
+      - traefik.http.routers.wildcard-forever-https.tls=true
+      - traefik.http.routers.wildcard-forever-https.tls.certresolver=letsencrypt-dns
+      - traefik.http.routers.wildcard-forever-https.tls.domains[0].main=alwaysforeverloved.com
+      - traefik.http.routers.wildcard-forever-https.tls.domains[0].sans=*.alwaysforeverloved.com
+
     volumes:
       # Everything families upload. The single most important line in this file:
       # without it, every photo and video is written into the container's own
