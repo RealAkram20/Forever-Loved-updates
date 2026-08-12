@@ -151,16 +151,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Send the visitor to the code sign-in, carrying where they are now, so signing in
-     * puts them straight back on this memorial rather than on the dashboard. Every
-     * "please sign in" moment on this page goes through here — losing someone's place
-     * at the exact moment they tried to say something is how they stop trying.
+     * Send the visitor to sign in, carrying where they are now, so signing in puts them
+     * straight back on this memorial rather than on the dashboard. Every "please sign in"
+     * moment on this page goes through here — losing someone's place at the exact moment
+     * they tried to say something is how they stop trying.
+     *
+     * The full sign-in page, not the code flow: it leads with one-click Google, takes a
+     * password right there, and offers the emailed code as the fallback — the code flow
+     * alone (type email, open inbox, copy six digits) is the slowest possible door to
+     * hand a person who just wants to post something.
      */
     function goSignIn(message) {
         const here = location.pathname + location.search + location.hash;
         $toast('warning', (message || 'Please sign in to continue.') + ' Taking you to sign in…');
         setTimeout(() => {
-            window.location.href = '/login/code?return=' + encodeURIComponent(here);
+            window.location.href = '/login?return=' + encodeURIComponent(here);
         }, 1600);
     }
 

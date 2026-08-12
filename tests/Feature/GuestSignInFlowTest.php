@@ -121,6 +121,16 @@ it('returns a code sign-in to the memorial that sent it', function () {
         ->assertRedirect('/m/'.$memorial->slug);
 });
 
+it('returns a password sign-in to the memorial that sent it', function () {
+    $user = User::factory()->create(['password' => bcrypt('secret-word-9')]);
+    $memorial = Memorial::factory()->create(['is_public' => true]);
+
+    $this->get('/login?return=/m/'.$memorial->slug);
+
+    $this->post('/login', ['email' => $user->email, 'password' => 'secret-word-9'])
+        ->assertRedirect('/m/'.$memorial->slug);
+});
+
 it('refuses an absolute url as a return target', function (string $evil) {
     $user = User::factory()->create();
 
@@ -173,6 +183,30 @@ it('signs a visitor in from a verified One Tap credential', function () {
     $user = User::where('email', 'onetap@example.com')->first();
     expect($user)->not->toBeNull()
         ->and($user->google_id)->toBe('108977041234567890123');
+});
+
+it('hands One Tap on a sign-in page the seeded return url', function () {
+    enableGoogleLogin();
+
+    $memorial = Memorial::factory()->create(['is_public' => true]);
+
+    Http::fake([
+        'oauth2.googleapis.com/tokeninfo*' => Http::response([
+            'iss' => 'https://accounts.google.com',
+            'aud' => 'test-client-id.apps.googleusercontent.com',
+            'sub' => '7',
+            'email' => 'onetap-return@example.com',
+            'email_verified' => 'true',
+        ]),
+    ]);
+
+    // Landing on the sign-in page seeds the intended URL; One Tap must hand it back so
+    // the page navigates there instead of reloading /login into a dashboard bounce.
+    $this->get('/login?return=/m/'.$memorial->slug);
+
+    $this->postJson('/auth/google/one-tap', ['credential' => 'fake-jwt'])
+        ->assertOk()
+        ->assertJson(['success' => true, 'redirect' => '/m/'.$memorial->slug]);
 });
 
 it('rejects a One Tap credential minted for another site', function () {

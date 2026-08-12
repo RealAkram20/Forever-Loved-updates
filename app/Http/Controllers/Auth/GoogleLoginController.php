@@ -154,7 +154,15 @@ class GoogleLoginController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return response()->json(['success' => true]);
+        // Where the page should take them. On a memorial nothing seeded an intended URL,
+        // so the answer is nowhere — reload in place, signed in. On a sign-in page the
+        // ?return= seeding did, and a plain reload would lose it: an authenticated visit
+        // to /login bounces to the dashboard, which is exactly the wrong-place landing
+        // this whole flow exists to prevent.
+        return response()->json([
+            'success' => true,
+            'redirect' => $request->session()->pull('url.intended'),
+        ]);
     }
 
     /**

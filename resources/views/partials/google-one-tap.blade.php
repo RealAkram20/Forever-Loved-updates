@@ -50,10 +50,13 @@
                 })
                     .then(r => r.json())
                     .then(data => {
-                        // Reload rather than patch the page: every view of this page has a
+                        if (!data.success) return;
+                        // A sign-in page seeded where the visitor was headed; follow it.
+                        // Anywhere else, reload in place: every view of this page has a
                         // signed-in rendering already, and a reload is the one transition
                         // guaranteed to agree with it everywhere.
-                        if (data.success) window.location.reload();
+                        if (data.redirect) window.location.href = data.redirect;
+                        else window.location.reload();
                     })
                     .catch(() => { /* the prompt failing must never break the page */ });
             }

@@ -97,7 +97,15 @@
                                          remembered now. A control whose unticked state means
                                          "log me out in two hours" is a control nobody wanted
                                          ticked off. --}}
-                                    <div class="flex items-center justify-end">
+                                    {{-- Both escape hatches, side by side. The code link
+                                         matters more than it looks: every account created
+                                         by a guest write has no password at all, so for
+                                         them this page's form is a locked door — the code
+                                         (or Google above) is how they actually get in. --}}
+                                    <div class="flex items-center justify-between gap-3">
+                                        <a href="{{ route('login.passwordless') }}" class="text-brand-500 hover:text-brand-600 text-sm">
+                                            Email me a login code
+                                        </a>
                                         @if (Route::has('password.request'))
                                             <a href="{{ route('password.request') }}" class="text-brand-500 hover:text-brand-600 text-sm">
                                                 Forgot password?
