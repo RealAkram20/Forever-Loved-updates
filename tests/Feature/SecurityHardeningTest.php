@@ -5,6 +5,7 @@ use App\Models\LoginCode;
 use App\Models\Media;
 use App\Models\Memorial;
 use App\Models\Reseller;
+use App\Models\Tribute;
 use App\Models\User;
 use App\Services\PesapalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -174,8 +175,12 @@ it('still serves a private memorial to its own owner', function () {
 
 // ─── Identity spoofing ──────────────────────────────────────────────────────
 
-it('refuses a guest tribute claiming a registered address', function () {
-    $member = User::factory()->create(['email' => 'member@example.com']);
+// A tap takes no identity at all now, so there is nothing to claim: an address sent to this
+// endpoint is ignored the way `message` is, rather than being resolved against the users
+// table and adopted. The tribute is recorded — it is a real gesture by a real visitor — it
+// just is not signed with anybody's name.
+it('will not sign a guest tribute with a registered member\'s identity', function () {
+    $member = User::factory()->create(['email' => 'member@example.com', 'name' => 'Real Member']);
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
     $this->postJson("/m/{$memorial->slug}/tribute", [
@@ -183,17 +188,38 @@ it('refuses a guest tribute claiming a registered address', function () {
         'message' => 'Signed by someone else',
         'guest_name' => 'Impostor',
         'guest_email' => 'member@example.com',
-    ])
-        ->assertStatus(422)
-        ->assertJson(['requires_login' => true]);
+    ])->assertOk();
 
-    expect($memorial->tributes()->where('user_id', $member->id)->exists())->toBeFalse();
+    $tribute = $memorial->tributes()->latest('id')->first();
+
+    expect($tribute)->not->toBeNull()
+        ->and($tribute->user_id)->toBeNull()
+        ->and($tribute->guest_name)->toBeNull()
+        ->and($tribute->guest_email)->toBeNull()
+        ->and($memorial->tributes()->where('user_id', $member->id)->exists())->toBeFalse();
+});
+
+// The address was not just adopted for display — it was registered. Tapping a candle made
+// you a user of the site without being told, and that account was then what blocked you
+// from writing a few words to go with the candle.
+it('creates no account for a tap', function () {
+    $memorial = Memorial::factory()->create(['is_public' => true]);
+    $before = User::count();
+
+    $this->postJson("/m/{$memorial->slug}/tribute", [
+        'type' => 'candle',
+        'guest_name' => 'Passing Visitor',
+        'guest_email' => 'passing-visitor@example.com',
+    ])->assertOk();
+
+    expect(User::count())->toBe($before)
+        ->and(User::where('email', 'passing-visitor@example.com')->exists())->toBeFalse();
 });
 
 it('accepts every offered tribute type and rejects retired ones', function () {
     $memorial = Memorial::factory()->create(['is_public' => true]);
 
-    foreach (\App\Models\Tribute::TYPES as $i => $type) {
+    foreach (Tribute::TYPES as $i => $type) {
         $this->postJson("/m/{$memorial->slug}/tribute", [
             'type' => $type,
             'guest_name' => 'Visitor '.$i,
@@ -201,7 +227,7 @@ it('accepts every offered tribute type and rejects retired ones', function () {
         ])->assertOk();
     }
 
-    expect($memorial->tributes()->count())->toBe(count(\App\Models\Tribute::TYPES));
+    expect($memorial->tributes()->count())->toBe(count(Tribute::TYPES));
 
     // 'note' was merged into 'prayer'; nothing in the UI renders or offers it any more, so
     // the API must not quietly keep minting rows of a type the page cannot display.

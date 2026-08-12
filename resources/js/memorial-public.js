@@ -1780,13 +1780,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = document.getElementById('guest-email')?.value?.trim();
         if (!name || !email) return;
 
-        if (pendingAction?.type === 'tribute') {
-            // Only the one-tap cards come through here — the composer collects a guest's
-            // name and email inline, in the form they are already filling in. The cards
-            // pass their own callback so they can burst and bump their tally once the
-            // details are in.
-            pendingAction.callback?.(name, email) ?? submitTribute(pendingAction.payload, name, email);
-        } else if (pendingAction?.type === 'reaction') {
+        // The one-tap cards no longer come through here: a tap asks for nothing. What is
+        // left is the things that still carry a name — a heart on someone's story, and a
+        // comment.
+        if (pendingAction?.type === 'reaction') {
             pendingAction.callback?.(name, email) ?? submitReaction(pendingAction.payload, name, email);
         } else if (pendingAction?.type === 'comment') {
             pendingAction.callback?.(name, email);
@@ -1800,10 +1797,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // nothing in the feed, the way a like does. Anything anyone writes is a story and goes
     // through the composer instead. Resolves to ok only when the tap was recorded, so the
     // caller knows whether it may celebrate.
-    function submitTribute(payload, guestName, guestEmail) {
+    //
+    // Carries no identity. It used to take a name and an email collected from a modal, and
+    // the server turned those into an account; now the server recognises a returning
+    // visitor by a cookie of its own, and a guest is asked for nothing at all.
+    function submitTribute(payload) {
         const body = { ...payload };
-        if (guestName) body.guest_name = guestName;
-        if (guestEmail) body.guest_email = guestEmail;
         const url = tributeUrl || `${baseUrl}/tribute`;
         return fetch(url, fetchOpts('POST', body))
             .then(async (r) => {
@@ -1825,10 +1824,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     updateTributeActionCount(data.tribute?.type || body.type, 1);
                     return { ok: true, duplicate: false };
-                } else if (data.requires_login) {
-                    hideGuestModal();
-                    $toast('warning', (data.error || 'Please sign in to continue.') + ' Taking you to sign in…');
-                    setTimeout(() => { window.location.href = window.location.origin + '/login/code'; }, 1800);
                 } else if (data.error) {
                     $toast('error', data.error);
                 }
@@ -2218,37 +2213,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // nothing about quotas, because a visitor tapping a candle has no idea what the
             // owner's plan is and should not be made to care. The request is what stops —
             // nothing is sent, so nothing is stored and no tally moves.
-            //
-            // Guests are short-circuited here too, deliberately: sending someone through
-            // sign-up for something that will not be recorded is worse than doing nothing.
             if (card.closest('[data-tribute-quota-reached]')) {
                 burstFrom(x, y, type, artSrc);
                 return;
             }
 
-            if (isAuthenticated) {
-                // Fire immediately — waiting on the round trip is what makes a tap feel dead.
-                // It plays on every tap, including repeats: the burst confirms the tap landed,
-                // while the count only moves the first time. Same contract as double-tapping
-                // a post you have already liked.
-                burstFrom(x, y, type, artSrc);
-                submitTribute({ type }).then(res => { if (res.ok) offerToSayMore(type); });
-                return;
-            }
-
-            // Guests have to identify themselves first. Celebrating before that would be
-            // celebrating something that has not happened yet, so the burst waits.
-            showGuestModal({
-                type: 'tribute',
-                payload: { type },
-                callback: (name, email) => {
-                    submitTribute({ type }, name, email).then(res => {
-                        if (!res.ok) return;
-                        burstFrom(rect.left + rect.width / 2, rect.top + rect.height / 2, type, artSrc);
-                        offerToSayMore(type);
-                    });
-                },
-            });
+            // One path for everybody, signed in or not. A tap asks for nothing — the server
+            // tells two visitors apart by a cookie it issues itself — so there is nothing to
+            // collect and no reason to make anyone wait.
+            //
+            // Fire immediately: waiting on the round trip is what makes a tap feel dead. It
+            // plays on every tap, including repeats — the burst confirms the tap landed,
+            // while the count only moves the first time. Same contract as double-tapping a
+            // post you have already liked.
+            burstFrom(x, y, type, artSrc);
+            submitTribute({ type }).then(res => { if (res.ok) offerToSayMore(type); });
         });
     });
 

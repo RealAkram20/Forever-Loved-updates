@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\BrandingHelper;
 use App\Helpers\HtmlHelper;
 use App\Helpers\MemorialStatsHelper;
 use App\Helpers\PlanLimitsHelper;
+use App\Helpers\ResponsiveImage;
+use App\Helpers\StorageHelper;
+use App\Jobs\SendRawEmail;
 use App\Models\Comment;
 use App\Models\Memorial;
 use App\Models\MemorialShare;
@@ -15,8 +19,12 @@ use App\Models\Tribute;
 use App\Models\User;
 use App\Services\NotificationService;
 use App\Support\GuestIdentity;
+use App\Support\ReliableDispatch;
+use App\Support\VisitorToken;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class MemorialApiController extends Controller
@@ -69,6 +77,22 @@ class MemorialApiController extends Controller
      * MemorialMediaController::storeTributePost() and become a story carrying the same
      * marker, so there is one feed and one composer. A `message` sent here is ignored
      * rather than rejected: an old client posting one still gets its tap counted.
+     *
+     * And it asks a signed-out visitor for nothing at all.
+     *
+     * It used to demand a name and an email address, turn that address into a real user
+     * account without saying so, and key the tribute on the new account's id. Three things
+     * were wrong with that. A form stood between a mourner and a gesture that is supposed to
+     * take one tap. The account was created silently, from a field labelled as attribution.
+     * And the account then blocked the next thing the page itself invited them to do — the
+     * "say something with your candle" prompt opens the composer, which saw the address it
+     * had just registered and refused it as somebody else's.
+     *
+     * `guest_name` and `guest_email` are still accepted and now ignored, on the same
+     * principle as `message`: an old client keeps working, it just no longer hands over
+     * anything. Identity for the dedupe comes from a cookie instead.
+     *
+     * @see VisitorToken
      */
     public function storeTribute(Request $request, string $slug): JsonResponse
     {
@@ -78,75 +102,28 @@ class MemorialApiController extends Controller
             return response()->json(['error' => 'Memorial is not public'], 404);
         }
 
-        $userId = $request->user()?->id;
-        if ($userId) {
-            $request->merge(['user_id' => $userId]);
-        }
-
         $validated = $request->validate([
             'type' => ['required', Rule::in(Tribute::TYPES)],
-            'guest_name' => ['required_without:user_id', 'nullable', 'string', 'max:255'],
-            'guest_email' => ['required_without:user_id', 'nullable', 'email'],
         ]);
 
-        $guestName = $request->user()?->name ?? $validated['guest_name'] ?? null;
-        $guestEmail = $request->user()?->email ?? $validated['guest_email'] ?? null;
+        $userId = $request->user()?->id;
 
-        if (! $userId && (! $guestName || ! $guestEmail)) {
-            return response()->json(['error' => 'Name and email are required for guests'], 422);
-        }
-
-        // A registered address belongs to its owner, not to whoever typed it. Adopting the
-        // match here published the tribute under that member's name and photo.
-        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
-            return GuestIdentity::requiresLoginResponse('leave a tribute');
-        }
-
-        // Unknown address: create the account this flow has always created for them.
-        if (! $userId && $guestEmail) {
-            // The memorial's reseller owns this relationship: a visitor moved to leave a
-            // tribute on a reseller's memorial becomes that reseller's user, not a stray
-            // platform account. Same principle as MemorialCollaboratorController.
-            $user = User::create([
-                'name' => $guestName,
-                'email' => strtolower($guestEmail),
-                'password' => null,
-                'reseller_id' => $memorial->reseller_id,
-                'original_reseller_id' => $memorial->reseller_id,
-            ]);
-
-            NotificationService::notifyNewUserSignup($user);
-
-            // The site they were on, not the platform's name — this mail lands minutes
-            // after they used a white-labeled page.
-            $siteName = \App\Helpers\BrandingHelper::displayNameFor($memorial->reseller);
-            $setupUrl = route('password.request');
-            \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
-                to: $guestEmail,
-                name: $guestName,
-                subject: "Welcome to {$siteName} - Complete your account",
-                body: "Welcome to {$siteName}!\n\nYou've left a tribute. To complete your account and set a password, visit: {$setupUrl}\n\nYou can also sign in with a one-time code at: ".route('login.passwordless'),
-                fromName: $siteName,
-                replyTo: $memorial->reseller?->contact_email,
-            ));
-
-            $userId = $user->id;
-            $guestName = $user->name;
-        }
+        // Issued on the tap, not on the page view — a visitor who only reads is never marked.
+        $visitorToken = $userId ? null : VisitorToken::fingerprintFor($request);
 
         // One tribute of each kind per person, so a tally means "how many people lit a
         // candle" rather than "how many times anyone tapped". Tapping again is not an error
         // — the endpoint is idempotent and hands back the tribute they already left, which
         // lets the page keep playing its burst without inflating the count.
         //
-        // Keyed on user_id alone: the guest branch above turns every new address into an
-        // account before reaching here, so a signed-out visitor is a user by this point too.
-        $existing = $userId
-            ? Tribute::where('memorial_id', $memorial->id)
-                ->where('user_id', $userId)
-                ->where('type', $validated['type'])
-                ->first()
-            : null;
+        // A signed-in person is keyed on their account, so the count follows them across
+        // devices. A guest is keyed on their browser, which is the most this can honestly
+        // know about someone who was asked for nothing.
+        $existing = Tribute::where('memorial_id', $memorial->id)
+            ->where('type', $validated['type'])
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(! $userId, fn ($q) => $q->whereNull('user_id')->where('visitor_token', $visitorToken))
+            ->first();
 
         if ($existing) {
             $existing->load('user');
@@ -161,15 +138,16 @@ class MemorialApiController extends Controller
         $tribute = Tribute::create([
             'memorial_id' => $memorial->id,
             'user_id' => $userId,
+            'visitor_token' => $visitorToken,
             'type' => $validated['type'],
-            'guest_name' => $guestName,
-            'guest_email' => $guestEmail,
             'is_approved' => true,
         ]);
 
         $tribute->load('user');
 
-        $authorName = $tribute->user?->name ?? $tribute->guest_name ?? 'Anonymous';
+        // "Someone lit a candle" is the honest line for a gesture nobody signed. Rows from
+        // before this change still carry the name their author gave, and still read with it.
+        $authorName = $tribute->user?->name ?? $tribute->guest_name ?? 'Someone';
         NotificationService::notifyNewTribute($memorial, $validated['type'], $authorName, $userId, $tribute);
 
         return response()->json([
@@ -246,8 +224,8 @@ class MemorialApiController extends Controller
                 'original_reseller_id' => $memorial->reseller_id,
             ]);
 
-            $siteName = \App\Helpers\BrandingHelper::displayNameFor($memorial->reseller);
-            \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
+            $siteName = BrandingHelper::displayNameFor($memorial->reseller);
+            ReliableDispatch::dispatch(new SendRawEmail(
                 to: $guestEmail,
                 name: $guestName,
                 subject: "Welcome to {$siteName}",
@@ -924,7 +902,7 @@ class MemorialApiController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection  $comments
+     * @param  Collection  $comments
      * @param  bool  $withReplies  Replies are themselves comments and have none of their own.
      */
     private function commentPayloads($comments, Request $request, Memorial $memorial, bool $withReplies = true): array
@@ -1093,7 +1071,7 @@ class MemorialApiController extends Controller
         ]);
 
         $hash = hash('sha256', ($request->ip() ?? '').'|'.($request->userAgent() ?? ''));
-        $today = \Carbon\Carbon::today();
+        $today = Carbon::today();
 
         $alreadyShared = MemorialShare::where('memorial_id', $memorial->id)
             ->where('visitor_hash', $hash)
@@ -1178,13 +1156,13 @@ class MemorialApiController extends Controller
                     'title' => $p->title,
                     'content' => $p->content,
                     'author' => $p->user?->name ?? $p->memorial->full_name,
-                    'author_photo' => \App\Helpers\ResponsiveImage::url($p->user?->profile_photo, 160) ?? $p->user?->profile_photo_url,
+                    'author_photo' => ResponsiveImage::url($p->user?->profile_photo, 160) ?? $p->user?->profile_photo_url,
                     'created_at' => $p->created_at->diffForHumans(),
                     'created_at_iso' => $p->created_at->toIso8601String(),
                     'media' => $p->media->map(fn ($m) => [
                         'id' => $m->id,
                         'type' => $m->type,
-                        'url' => \App\Helpers\StorageHelper::publicUrl($m->path),
+                        'url' => StorageHelper::publicUrl($m->path),
                         'caption' => $m->caption,
                         'filename' => $m->filename,
                     ])->toArray(),
@@ -1221,7 +1199,7 @@ class MemorialApiController extends Controller
             'media' => $media->map(fn ($m) => [
                 'id' => $m->id,
                 'type' => $m->type,
-                'url' => \App\Helpers\StorageHelper::publicUrl($m->path),
+                'url' => StorageHelper::publicUrl($m->path),
                 'caption' => $m->caption,
             ])->toArray(),
         ];

@@ -6,6 +6,7 @@ use App\Helpers\HtmlHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Str;
 
@@ -17,6 +18,7 @@ class Tribute extends Model
         'share_id',
         'memorial_id',
         'user_id',
+        'visitor_token',
         'type',
         'message',
         'migrated_post_id',
@@ -105,7 +107,7 @@ class Tribute extends Model
      *
      * @see database/migrations/2026_08_08_100001_move_written_tributes_into_stories.php
      */
-    public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function comments(): HasMany
     {
         return $this->hasMany(TributeComment::class)->whereNull('parent_id')->where('is_approved', true)->with(['user', 'replies'])->latest();
     }
@@ -124,6 +126,7 @@ class Tribute extends Model
         do {
             $id = Str::lower(Str::random(7));
         } while (static::where('share_id', $id)->exists());
+
         return $id;
     }
 }
