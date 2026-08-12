@@ -69,7 +69,7 @@
             </div>
 
             @if (!$isAuthenticated)
-                <div data-sheet-guest class="mb-2 grid grid-cols-2 gap-2">
+                <div data-sheet-guest data-guest-fields class="mb-2 grid grid-cols-2 gap-2">
                     <input type="text" data-sheet-guest-name autocomplete="name" placeholder="Your name"
                         class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
                     <input type="email" data-sheet-guest-email autocomplete="email" placeholder="your@email.com"

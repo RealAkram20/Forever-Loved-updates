@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\BrandingHelper;
 use App\Helpers\HtmlHelper;
 use App\Helpers\MemorialStatsHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Helpers\ResponsiveImage;
 use App\Helpers\StorageHelper;
-use App\Jobs\SendRawEmail;
 use App\Models\Comment;
 use App\Models\Memorial;
 use App\Models\MemorialShare;
@@ -19,7 +17,7 @@ use App\Models\Tribute;
 use App\Models\User;
 use App\Services\NotificationService;
 use App\Support\GuestIdentity;
-use App\Support\ReliableDispatch;
+use App\Support\GuestOnboarding;
 use App\Support\VisitorToken;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -205,6 +203,7 @@ class MemorialApiController extends Controller
         }
 
         // If guest with existing account, ask them to log in
+        $signedInJustNow = false;
         if (! $userId && $guestEmail) {
             $existingUser = User::where('email', strtolower($guestEmail))->first();
             if ($existingUser) {
@@ -214,27 +213,13 @@ class MemorialApiController extends Controller
                 ], 422);
             }
 
-            // Create new user for first-time reactor — the memorial's reseller owns the
-            // relationship, and the welcome mail wears the site they were actually on.
-            $user = User::create([
-                'name' => $guestName,
-                'email' => strtolower($guestEmail),
-                'password' => null,
-                'reseller_id' => $memorial->reseller_id,
-                'original_reseller_id' => $memorial->reseller_id,
-            ]);
-
-            $siteName = BrandingHelper::displayNameFor($memorial->reseller);
-            ReliableDispatch::dispatch(new SendRawEmail(
-                to: $guestEmail,
-                name: $guestName,
-                subject: "Welcome to {$siteName}",
-                body: "Welcome to {$siteName}! You can sign in with a one-time code at: ".route('login.passwordless'),
-                fromName: $siteName,
-                replyTo: $memorial->reseller?->contact_email,
-            ));
+            // First heart from a new address: the write is the signup. Account created,
+            // signed in on the spot with the remember cookie, welcome email explaining
+            // how to get back in from any other device.
+            $user = GuestOnboarding::signUpAndIn($request, $memorial, $guestName, $guestEmail);
 
             $userId = $user->id;
+            $signedInJustNow = true;
         }
 
         // Every branch is scoped to this memorial before anything is written. A comment has
@@ -277,11 +262,20 @@ class MemorialApiController extends Controller
 
         $count = $reactionable->reactions()->count();
 
-        return response()->json([
+        $response = [
             'success' => true,
             'action' => $action,
             'count' => $count,
-        ]);
+        ];
+
+        // Signing them in rotated the session id and with it the CSRF token; hand the page
+        // the new one so its next request doesn't 419.
+        if ($signedInJustNow) {
+            $response['signed_in'] = true;
+            $response['csrf'] = csrf_token();
+        }
+
+        return response()->json($response);
     }
 
     /**

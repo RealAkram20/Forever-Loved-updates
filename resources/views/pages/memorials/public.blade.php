@@ -1,4 +1,7 @@
-@extends('layouts.fullscreen-layout', ['hideFullscreenThemeToggle' => true])
+{{-- oneTapMode 'intent': the Google prompt waits for the first touch of something
+     interactive. A mourner opening a shared link reads in peace; the moment they move to
+     participate, the sign-in they would have needed is already offering itself. --}}
+@extends('layouts.fullscreen-layout', ['hideFullscreenThemeToggle' => true, 'oneTapMode' => 'intent'])
 
 @push('head')
 {{--

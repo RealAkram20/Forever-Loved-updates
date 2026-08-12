@@ -93,26 +93,11 @@
                                             <p class="mt-1.5 text-sm text-red-500">{{ $message }}</p>
                                         @enderror
                                     </div>
-                                    <!-- Checkbox -->
-                                    <div class="flex items-center justify-between">
-                                        <div x-data="{ checkboxToggle: {{ old('remember') ? 'true' : 'false' }} }">
-                                            <label for="remember_me"
-                                                class="flex cursor-pointer items-center text-sm font-normal text-gray-700 dark:text-gray-400 select-none">
-                                                <div class="relative">
-                                                    <input type="checkbox" id="remember_me" name="remember" class="sr-only" @change="checkboxToggle = !checkboxToggle" />
-                                                    <div :class="checkboxToggle ? 'border-brand-500 bg-brand-500' :
-                                                        'bg-transparent border-gray-300 dark:border-gray-700'"
-                                                        class="mr-3 flex h-5 w-5 items-center justify-center rounded-md border-[1.25px]">
-                                                        <span :class="checkboxToggle ? '' : 'opacity-0'">
-                                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                                <path d="M11.6666 3.5L5.24992 9.91667L2.33325 7" stroke="white" stroke-width="1.94437" stroke-linecap="round" stroke-linejoin="round" />
-                                                            </svg>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                Keep me logged in
-                                            </label>
-                                        </div>
+                                    {{-- No "Keep me logged in" checkbox: every sign-in is
+                                         remembered now. A control whose unticked state means
+                                         "log me out in two hours" is a control nobody wanted
+                                         ticked off. --}}
+                                    <div class="flex items-center justify-end">
                                         @if (Route::has('password.request'))
                                             <a href="{{ route('password.request') }}" class="text-brand-500 hover:text-brand-600 text-sm">
                                                 Forgot password?

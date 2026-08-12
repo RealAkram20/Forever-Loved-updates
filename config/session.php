@@ -30,9 +30,15 @@ return [
     | to expire immediately when the browser is closed then you may
     | indicate that via the expire_on_close configuration option.
     |
+    | 60 days, not Laravel's 2 hours. The people signing in are families visiting a
+    | memorial; making them authenticate twice in an afternoon was the single biggest
+    | source of "it keeps asking me to log in". The remember cookie (set on every
+    | sign-in) outlives even this and quietly re-authenticates when the session lapses
+    | — this longer lifetime just means the session itself rarely lapses at all.
+    |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    'lifetime' => (int) env('SESSION_LIFETIME', 86400),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

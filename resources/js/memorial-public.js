@@ -5,7 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const memorialSlug = document.querySelector('[data-memorial-slug]')?.dataset.memorialSlug;
     const canEdit = document.querySelector('[data-can-edit]')?.dataset.canEdit === '1';
     const canUpload = document.querySelector('[data-can-upload]')?.dataset.canUpload === '1';
-    const isAuthenticated = document.querySelector('[data-is-authenticated]')?.dataset.isAuthenticated === '1';
+    // `let`, not `const`: a guest's first write signs them in mid-page (see adoptSession),
+    // and everything downstream should immediately behave like the signed-in page.
+    let isAuthenticated = document.querySelector('[data-is-authenticated]')?.dataset.isAuthenticated === '1';
 
     if (!memorialSlug) return;
 
@@ -13,7 +15,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const tributeUrl = container?.dataset.tributeUrl;
     const scrollToChapterId = container?.dataset.scrollChapter || '';
     const baseUrl = tributeUrl ? tributeUrl.replace(/\/tribute$/, '') : `/m/${memorialSlug}`;
-    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    let csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    /**
+     * A guest's first write created their account and signed this session into it — the
+     * server says so by returning `signed_in` with a fresh CSRF token (signing in rotates
+     * the session, and the old token would 419 every request after it). Adopt both, and
+     * stop showing the name/email fields: they are somebody now, and asking again is the
+     * exact loop this exists to end.
+     */
+    function adoptSession(data) {
+        if (!data || !data.signed_in || !data.csrf) return;
+        csrf = data.csrf;
+        document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', data.csrf);
+        isAuthenticated = true;
+        document.querySelectorAll('[data-guest-fields]').forEach(el => el.classList.add('hidden'));
+    }
 
     const fetchOpts = (method, body = null) => ({
         method,
@@ -134,6 +151,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * Send the visitor to the code sign-in, carrying where they are now, so signing in
+     * puts them straight back on this memorial rather than on the dashboard. Every
+     * "please sign in" moment on this page goes through here — losing someone's place
+     * at the exact moment they tried to say something is how they stop trying.
+     */
+    function goSignIn(message) {
+        const here = location.pathname + location.search + location.hash;
+        $toast('warning', (message || 'Please sign in to continue.') + ' Taking you to sign in…');
+        setTimeout(() => {
+            window.location.href = '/login/code?return=' + encodeURIComponent(here);
+        }, 1600);
+    }
+
+    /**
      * POST multipart FormData with upload progress (fetch cannot report upload %).
      * @param {string} url
      * @param {FormData} formData
@@ -172,7 +203,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     resolve(data);
                 } else {
                     const msg = data.error || data.message || `Upload failed (${xhr.status})`;
-                    reject(new Error(msg));
+                    const err = new Error(msg);
+                    // The server's "this address has an account, sign in first" carries a
+                    // flag; keep it on the error so the caller can send them to sign in
+                    // (with a way back) instead of dead-ending on a red toast.
+                    err.requiresLogin = !!data.requires_login;
+                    reject(err);
                 }
             });
 
@@ -1467,6 +1503,48 @@ document.addEventListener('DOMContentLoaded', () => {
         storyComposerPrompt?.setAttribute('aria-expanded', 'false');
     }
 
+    // --- The draft survives the sign-in round trip ---
+    //
+    // When posting turns out to need signing in, the page navigates away and Quill's
+    // contents would go with it — which, for someone who just wrote three paragraphs about
+    // a person they lost, is the cruellest possible failure. So the draft is stashed
+    // before leaving and poured back into a reopened composer when they land back here
+    // (sign-in returns them via ?return=). sessionStorage, not localStorage: a draft
+    // belongs to this visit, not to the machine.
+    const COMPOSER_DRAFT_KEY = `memorial-draft:${location.pathname}`;
+
+    function stashComposerDraft() {
+        try {
+            sessionStorage.setItem(COMPOSER_DRAFT_KEY, JSON.stringify({
+                title: tributePostForm?.title?.value || '',
+                content: chapterQuill ? chapterQuill.root.innerHTML : (document.getElementById('chapter-content')?.value || ''),
+                marker: tributePostForm?.querySelector('input[name="story-marker"]:checked')?.value || '',
+            }));
+        } catch (_) { /* storage unavailable — the sign-in redirect still works */ }
+    }
+
+    function restoreComposerDraft() {
+        let draft = null;
+        try {
+            draft = JSON.parse(sessionStorage.getItem(COMPOSER_DRAFT_KEY) || 'null');
+            if (draft) sessionStorage.removeItem(COMPOSER_DRAFT_KEY);
+        } catch (_) { return; }
+        if (!draft || (!draft.title && !draft.content)) return;
+
+        openStoryComposer(draft.marker || '');
+        if (tributePostForm?.title) tributePostForm.title.value = draft.title || '';
+        initComposerEditors().then(() => {
+            if (chapterQuill && draft.content) {
+                // Their own words, written in this same editor minutes ago; the server
+                // sanitises every post on the way in regardless.
+                chapterQuill.clipboard.dangerouslyPasteHTML(0, draft.content);
+            }
+            $toast('success', 'Welcome back — your words are still here.');
+        });
+    }
+
+    restoreComposerDraft();
+
     /**
      * The marker artwork for a story built here, matching what the tribute-art partial
      * renders server-side so a card added by JS is indistinguishable from one from Blade.
@@ -1588,6 +1666,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : 'Posting your story…';
             postFormDataWithUploadProgress(`${baseUrl}/tribute-post`, fd, { label: uploadLabel })
                 .then(data => {
+                    adoptSession(data);
                     if (data.success && data.post) {
                         prependPostArticle(data.post);
                         latestKnownPostId = Math.max(latestKnownPostId, data.post.id || 0);
@@ -1606,7 +1685,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     resetButton();
                 })
                 .catch(err => {
-                    $toast('error', err.message || 'Something went wrong. Please try again.');
+                    if (err.requiresLogin) {
+                        // Their address already has an account. Stash the words — the
+                        // sign-in navigates away — then send them off; the return trip
+                        // lands back here and restoreComposerDraft() reopens the
+                        // composer holding everything they wrote.
+                        stashComposerDraft();
+                        goSignIn(err.message);
+                    } else {
+                        $toast('error', err.message || 'Something went wrong. Please try again.');
+                    }
                     resetButton();
                 });
         });
@@ -2353,6 +2441,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }))
             .then(r => r.json())
                     .then(data => {
+                        adoptSession(data);
                         if (data.success) {
                             document.querySelectorAll(`[data-reaction-container="${payload.reactionable_id}"] [data-reaction-count]`).forEach(el => {
                                 el.textContent = data.count;
@@ -2398,13 +2487,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(`${baseUrl}/reaction`, fetchOpts('POST', body))
                     .then(r => r.json())
                     .then(data => {
+                        adoptSession(data);
                         if (data.success) {
                             countEls().forEach(el => { el.textContent = data.count; });
                             paint(data.action === 'added');
                         } else {
                             revert();
                             if (data.requires_login) {
-                                $toast('warning', (data.error || 'Please sign in.') + ' ' + window.location.origin + '/login/code');
+                                goSignIn(data.error);
                             } else if (data.error) {
                                 $toast('error', data.error);
                             }
@@ -2913,7 +3003,11 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch(`${baseUrl}/posts/${state.postId}/comments`, fetchOpts('POST', body))
                 .then(async (r) => {
                     const data = await r.json().catch(() => ({}));
-                    if (!r.ok || !data.success) throw new Error(data.error || 'Could not post that.');
+                    if (!r.ok || !data.success) {
+                        const err = new Error(data.error || 'Could not post that.');
+                        err.requiresLogin = !!data.requires_login;
+                        throw err;
+                    }
                     return data;
                 })
                 .then(data => {
@@ -2927,6 +3021,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .catch((err) => {
                     setTotal(state.total - 1);
+                    if (err.requiresLogin) {
+                        // Retrying an identical send can only fail identically — their
+                        // address has an account, so the way forward is signing in, and
+                        // the return trip lands them back on this memorial.
+                        row?.remove();
+                        goSignIn(err.message);
+                        return;
+                    }
                     if (!row) { $toast('error', err.message); return; }
                     row.classList.remove('is-pending');
                     row.classList.add('is-failed');
@@ -3023,9 +3125,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(`${baseUrl}/reaction`, fetchOpts('POST', body))
                     .then(r => r.json())
                     .then(data => {
+                        adoptSession(data);
                         if (data.success) { paint(data.action === 'added', data.count); return; }
                         paint(wasOn, before);
-                        if (data.requires_login) $toast('warning', data.error || 'Please sign in to react.');
+                        if (data.requires_login) goSignIn(data.error);
                         else if (data.error) $toast('error', data.error);
                     })
                     .catch(() => { paint(wasOn, before); $toast('error', 'That didn’t save.'); });

@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Auth;
 use App\Helpers\SiteShareMetaHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
+use App\Support\ImpersonationSwitch;
+use App\Support\PostAuthRedirect;
+use App\Support\ReturnTo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,8 +19,12 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
+        // ?return=/some-memorial — seeded here so that store()'s redirect()->intended()
+        // puts the visitor back on the page that sent them, not on the dashboard.
+        ReturnTo::seedIntended($request);
+
         return view('pages.auth.signin', [
             'title' => 'Sign In',
             'shareMeta' => SiteShareMetaHelper::forNamedRoute(
@@ -39,7 +47,7 @@ class AuthenticatedSessionController extends Controller
 
         // A reseller's staff or client is sent to their own reseller's space, not the platform
         // dashboard — even when they signed in from the platform login. See PostAuthRedirect.
-        return redirect()->intended(\App\Support\PostAuthRedirect::url($request->user()));
+        return redirect()->intended(PostAuthRedirect::url($request->user()));
     }
 
     /**
@@ -52,8 +60,8 @@ class AuthenticatedSessionController extends Controller
         // underneath, and destroying it would sign out the person who is actually at
         // the keyboard. Restore the admin instead, exactly as Return to Admin does.
         $impersonatorId = $request->session()->pull('impersonator_id');
-        if ($impersonatorId && ($admin = \App\Models\User::find($impersonatorId))) {
-            \App\Support\ImpersonationSwitch::to($request, $admin, remember: true);
+        if ($impersonatorId && ($admin = User::find($impersonatorId))) {
+            ImpersonationSwitch::to($request, $admin, remember: true);
 
             return redirect()->route('settings.resellers')
                 ->with('success', 'Signed out of the reseller account — you are back on your own.');

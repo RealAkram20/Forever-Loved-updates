@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Helpers\SiteShareMetaHelper;
+use App\Helpers\ThemeSetting;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Support\PostAuthRedirect;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
@@ -35,7 +38,7 @@ class RegisteredUserController extends Controller
     /**
      * Handle an incoming registration request.
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
@@ -48,7 +51,7 @@ class RegisteredUserController extends Controller
         // Registering on a reseller's site (subdomain, custom domain, or /r/{slug}) makes the
         // new account that reseller's client, not a platform user — the white-label whole point.
         // The tenant is whatever the host / path middleware bound for this request.
-        $reseller = \App\Helpers\ThemeSetting::tenant();
+        $reseller = ThemeSetting::tenant();
 
         $user = User::create([
             'name' => $request->name,
@@ -70,6 +73,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(\App\Support\PostAuthRedirect::url($user));
+        return redirect(PostAuthRedirect::url($user));
     }
 }

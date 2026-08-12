@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\BrandingHelper;
 use App\Helpers\SiteShareMetaHelper;
 use App\Http\Controllers\Controller;
 use App\Models\LoginCode;
-use App\Services\SystemMailConfigurator;
 use App\Models\User;
+use App\Services\SystemMailConfigurator;
+use App\Support\PostAuthRedirect;
+use App\Support\ReturnTo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -18,8 +21,13 @@ class PasswordlessLoginController extends Controller
     /**
      * Show the email form (step 1).
      */
-    public function showEmailForm()
+    public function showEmailForm(Request $request)
     {
+        // A memorial page sending someone here appends ?return=; verifyCode() ends on
+        // redirect()->intended(), so seeding it now is what brings them back to the
+        // memorial — and whatever they were saying on it — instead of the dashboard.
+        ReturnTo::seedIntended($request);
+
         return view('auth.passwordless-login', ['step' => 'email']);
     }
 
@@ -35,7 +43,7 @@ class PasswordlessLoginController extends Controller
         $email = strtolower($validated['email']);
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return back()->withErrors(['email' => 'No account found with this email. Please create an account first.']);
         }
 
@@ -51,7 +59,7 @@ class PasswordlessLoginController extends Controller
         // client signing in on a white-labeled site gets a code email that reads as that
         // site. User-keyed first (works wherever they typed their email), the served
         // site's name as fallback for accounts that belong to nobody yet.
-        $siteName = \App\Helpers\BrandingHelper::displayNameFor($user->reseller);
+        $siteName = BrandingHelper::displayNameFor($user->reseller);
 
         try {
             Mail::raw(
@@ -67,6 +75,7 @@ class PasswordlessLoginController extends Controller
             );
         } catch (\Exception $e) {
             report($e);
+
             return back()->withErrors(['email' => 'Failed to send code. Please try again.']);
         }
 
@@ -79,7 +88,7 @@ class PasswordlessLoginController extends Controller
     public function showCodeForm(Request $request)
     {
         $email = session('email');
-        if (!$email) {
+        if (! $email) {
             return redirect()->route('login');
         }
 
@@ -128,7 +137,7 @@ class PasswordlessLoginController extends Controller
             ->latest()
             ->first();
 
-        if (!$loginCode || !$loginCode->isValid()) {
+        if (! $loginCode || ! $loginCode->isValid()) {
             RateLimiter::hit($throttleKey, 900);
 
             throw ValidationException::withMessages([
@@ -140,13 +149,17 @@ class PasswordlessLoginController extends Controller
         RateLimiter::clear($throttleKey);
 
         $user = User::where('email', $email)->firstOrFail();
-        Auth::login($user, $request->boolean('remember'));
+
+        // Always remembered, like the password and Google doors. Proving you hold the
+        // mailbox is the strongest sign-in this app has; it would be absurd for it to be
+        // the one that expires in two hours.
+        Auth::login($user, true);
 
         // Without this the pre-login session id survives authentication, so anyone who could
         // plant that id holds an authenticated session afterwards. The password login path
         // has always regenerated here; this one did not.
         $request->session()->regenerate();
 
-        return redirect()->intended(\App\Support\PostAuthRedirect::url($user));
+        return redirect()->intended(PostAuthRedirect::url($user));
     }
 }

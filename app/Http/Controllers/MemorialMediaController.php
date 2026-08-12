@@ -5,26 +5,32 @@ namespace App\Http\Controllers;
 use App\Helpers\HtmlHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Helpers\StorageHelper;
+use App\Jobs\GenerateImageDerivatives;
 use App\Models\Media;
 use App\Models\Memorial;
 use App\Models\Post;
-use App\Models\StoryChapter;
 use App\Models\Tribute;
+use App\Services\ImageDerivativeService;
 use App\Services\NotificationService;
 use App\Support\GuestIdentity;
-use Illuminate\Support\Facades\Cache;
+use App\Support\GuestOnboarding;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class MemorialMediaController extends Controller
 {
     private const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+
     /** Per-request cap on the guest chapter endpoint, which is reachable without signing in. */
     private const MAX_TRIBUTE_POST_FILES = 10;
+
     private const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
     private const ALLOWED_VIDEO_MIMES = ['video/mp4', 'video/webm', 'video/quicktime'];
+
     private const ALLOWED_AUDIO_MIMES = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'];
 
     /**
@@ -33,11 +39,11 @@ class MemorialMediaController extends Controller
     public function uploadProfilePhoto(Request $request, string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -45,7 +51,7 @@ class MemorialMediaController extends Controller
 
         $photo = $request->file('photo');
         $path = $photo->store(StorageHelper::memorialProfilePath($memorial->id), 'public');
-        \App\Jobs\GenerateImageDerivatives::dispatch($path);
+        GenerateImageDerivatives::dispatch($path);
 
         // Recorded because a profile photo never gets a media row, so it is invisible to
         // any usage sum that only looks at the media table.
@@ -71,11 +77,11 @@ class MemorialMediaController extends Controller
     public function uploadCoverPhoto(Request $request, string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -85,7 +91,7 @@ class MemorialMediaController extends Controller
 
         $photo = $request->file('photo');
         $path = $photo->store(StorageHelper::memorialCoverPath($memorial->id), 'public');
-        \App\Jobs\GenerateImageDerivatives::dispatch($path);
+        GenerateImageDerivatives::dispatch($path);
 
         $previous = $memorial->cover_photo_path;
 
@@ -98,7 +104,7 @@ class MemorialMediaController extends Controller
         // nothing and reachable by anyone who kept the URL.
         if ($previous && $previous !== $path) {
             Storage::disk('public')->delete($previous);
-            app(\App\Services\ImageDerivativeService::class)->delete($previous);
+            app(ImageDerivativeService::class)->delete($previous);
         }
 
         return response()->json([
@@ -113,17 +119,17 @@ class MemorialMediaController extends Controller
     public function removeCoverPhoto(string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
         if ($memorial->cover_photo_path) {
             Storage::disk('public')->delete($memorial->cover_photo_path);
-            app(\App\Services\ImageDerivativeService::class)->delete($memorial->cover_photo_path);
+            app(ImageDerivativeService::class)->delete($memorial->cover_photo_path);
             $memorial->update([
                 'cover_photo_path' => null,
                 'cover_photo_size' => null,
@@ -139,11 +145,11 @@ class MemorialMediaController extends Controller
     public function uploadGalleryMedia(Request $request, string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canUpload($memorial)) {
+        if (! $this->canUpload($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -175,8 +181,9 @@ class MemorialMediaController extends Controller
             ? PlanLimitsHelper::canUploadGalleryImage($memorial)
             : PlanLimitsHelper::canUploadGalleryVideo($memorial);
 
-        if (!$limitCheck['allowed']) {
+        if (! $limitCheck['allowed']) {
             $label = $type === 'photo' ? 'image' : 'video';
+
             return response()->json([
                 'error' => $limitCheck['reason']
                     ?? "Gallery {$label} limit reached ({$limitCheck['current']}/{$limitCheck['max']}). Upgrade your plan for more.",
@@ -188,13 +195,13 @@ class MemorialMediaController extends Controller
         // gigabytes. Video carries its own budget on top, because that is how the video
         // allowance is sold.
         $storageCheck = PlanLimitsHelper::canStore($memorial, $size, $type);
-        if (!$storageCheck['allowed']) {
+        if (! $storageCheck['allowed']) {
             return response()->json(['error' => $storageCheck['reason']], 422);
         }
 
         $path = $file->store(StorageHelper::memorialGalleryPath($memorial->id), 'public');
         if ($type === Media::TYPE_PHOTO) {
-            \App\Jobs\GenerateImageDerivatives::dispatch($path);
+            GenerateImageDerivatives::dispatch($path);
         }
 
         $media = Media::create([
@@ -228,11 +235,11 @@ class MemorialMediaController extends Controller
     public function uploadPostMedia(Request $request, string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -262,7 +269,7 @@ class MemorialMediaController extends Controller
 
         $path = $file->store(StorageHelper::memorialPostsPath($memorial->id), 'public');
         if ($type === Media::TYPE_PHOTO) {
-            \App\Jobs\GenerateImageDerivatives::dispatch($path);
+            GenerateImageDerivatives::dispatch($path);
         }
 
         $media = Media::create([
@@ -303,7 +310,7 @@ class MemorialMediaController extends Controller
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
 
-        if (!$memorial->is_public) {
+        if (! $memorial->is_public) {
             return response()->json(['error' => 'Memorial is not public'], 404);
         }
 
@@ -327,7 +334,7 @@ class MemorialMediaController extends Controller
         ]);
 
         $tributeCheck = PlanLimitsHelper::canAddTribute($memorial);
-        if (!$tributeCheck['allowed']) {
+        if (! $tributeCheck['allowed']) {
             return response()->json([
                 'error' => "Tribute limit reached ({$tributeCheck['current']}/{$tributeCheck['max']}). Upgrade your plan for more.",
             ], 422);
@@ -335,7 +342,7 @@ class MemorialMediaController extends Controller
 
         $idempotencyKey = $validated['idempotency_key'] ?? null;
         if ($idempotencyKey) {
-            $cacheKey = 'tribute_post:' . $memorial->id . ':' . $idempotencyKey;
+            $cacheKey = 'tribute_post:'.$memorial->id.':'.$idempotencyKey;
             $cached = Cache::get($cacheKey);
             if ($cached !== null) {
                 return response()->json($cached);
@@ -346,27 +353,24 @@ class MemorialMediaController extends Controller
         $guestName = $validated['guest_name'] ?? null;
         $guestEmail = $validated['guest_email'] ?? null;
 
-        if (!$userId && (!$guestName || !$guestEmail)) {
+        if (! $userId && (! $guestName || ! $guestEmail)) {
             return response()->json(['error' => 'Name and email are required to add your chapter'], 422);
         }
 
         // A registered address is its owner's; adopting the match published this chapter,
         // and any media attached to it, under that member's name.
-        if (!$userId && GuestIdentity::isRegistered($guestEmail)) {
+        if (! $userId && GuestIdentity::isRegistered($guestEmail)) {
             return GuestIdentity::requiresLoginResponse('add your chapter');
         }
 
-        if (!$userId && $guestEmail) {
-            // The memorial's reseller owns this relationship — same rule as tributes,
-            // reactions and collaborator invites.
-            $user = \App\Models\User::create([
-                'name' => $guestName,
-                'email' => strtolower($guestEmail),
-                'password' => null,
-                'reseller_id' => $memorial->reseller_id,
-                'original_reseller_id' => $memorial->reseller_id,
-            ]);
+        // Their first write is their signup: account created, signed in on the spot with
+        // the long-lived remember cookie, welcome email telling them what happened. On
+        // this browser they are never asked for name and email again.
+        $signedInJustNow = false;
+        if (! $userId && $guestEmail) {
+            $user = GuestOnboarding::signUpAndIn($request, $memorial, $guestName, $guestEmail);
             $userId = $user->id;
+            $signedInJustNow = true;
         }
 
         // Scoped to THIS memorial before anything is attached or linked. The validation rules
@@ -415,7 +419,7 @@ class MemorialMediaController extends Controller
                 if ($withinAllowance && $file->getSize() <= self::MAX_VIDEO_SIZE) {
                     $path = $file->store(StorageHelper::memorialPostsPath($memorial->id), 'public');
                     if ($type === Media::TYPE_PHOTO) {
-                        \App\Jobs\GenerateImageDerivatives::dispatch($path);
+                        GenerateImageDerivatives::dispatch($path);
                     }
                     $media = Media::create([
                         'memorial_id' => $memorial->id,
@@ -448,8 +452,17 @@ class MemorialMediaController extends Controller
             'success' => true,
             'post' => $this->formatPost($post),
         ];
+
+        // Signing them in rotated the session id, and with it the CSRF token — the page is
+        // still holding the old one, so it is handed the new one to adopt. Deliberately
+        // outside the idempotency cache: a token belongs to the request that rotated it,
+        // not to a replay minutes later.
         if ($idempotencyKey) {
-            Cache::put('tribute_post:' . $memorial->id . ':' . $idempotencyKey, $response, now()->addMinutes(5));
+            Cache::put('tribute_post:'.$memorial->id.':'.$idempotencyKey, $response, now()->addMinutes(5));
+        }
+        if ($signedInJustNow) {
+            $response['signed_in'] = true;
+            $response['csrf'] = csrf_token();
         }
 
         return response()->json($response);
@@ -461,15 +474,15 @@ class MemorialMediaController extends Controller
     public function uploadBackgroundMusic(Request $request, string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
-        if (!PlanLimitsHelper::canUseBackgroundMusic($memorial)) {
+        if (! PlanLimitsHelper::canUseBackgroundMusic($memorial)) {
             return response()->json(['error' => 'Background music is not available on your current plan. Upgrade for this feature.'], 422);
         }
 
@@ -478,7 +491,7 @@ class MemorialMediaController extends Controller
         $file = $request->file('file');
         $mime = $file->getMimeType();
 
-        if (!in_array($mime, self::ALLOWED_AUDIO_MIMES)) {
+        if (! in_array($mime, self::ALLOWED_AUDIO_MIMES)) {
             return response()->json(['error' => 'Invalid file type. Use MP3, WAV, or OGG audio.'], 422);
         }
 
@@ -501,11 +514,11 @@ class MemorialMediaController extends Controller
     public function removeBackgroundMusic(string $slug): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -524,11 +537,11 @@ class MemorialMediaController extends Controller
     public function updateGalleryMedia(Request $request, string $slug, int $mediaId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
@@ -583,16 +596,16 @@ class MemorialMediaController extends Controller
     public function deleteGalleryMedia(string $slug, int $mediaId): JsonResponse
     {
         $memorial = Memorial::where('slug', $slug)->firstOrFail();
-        if (!$this->canEdit($memorial)) {
+        if (! $this->canEdit($memorial)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $mediaCheck = PlanLimitsHelper::canModifyMedia($memorial);
-        if (!$mediaCheck['allowed']) {
+        if (! $mediaCheck['allowed']) {
             return response()->json(['error' => $mediaCheck['reason']], 403);
         }
 
         $media = $memorial->media()->find($mediaId);
-        if (!$media) {
+        if (! $media) {
             return response()->json(['success' => true, 'type' => 'unknown']);
         }
 
@@ -609,7 +622,7 @@ class MemorialMediaController extends Controller
         $type = $media->type;
 
         Storage::disk('public')->delete($media->path);
-        app(\App\Services\ImageDerivativeService::class)->delete($media->path);
+        app(ImageDerivativeService::class)->delete($media->path);
         $media->delete();
 
         return response()->json(['success' => true, 'type' => $type]);

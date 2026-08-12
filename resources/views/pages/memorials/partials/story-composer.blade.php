@@ -43,7 +43,9 @@
 
     <div id="story-composer-form" class="story-composer__form hidden px-4 pb-4">
         @if (!$isAuthenticated)
-            <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {{-- data-guest-fields: hidden by adoptSession() the moment a first write signs
+                 this visitor in — from then on the page must stop asking who they are. --}}
+            <div data-guest-fields class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                     <label for="chapter-guest-name" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Your name</label>
                     <input type="text" id="chapter-guest-name" autocomplete="name"

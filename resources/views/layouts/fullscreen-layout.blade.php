@@ -313,6 +313,11 @@ window.addEventListener('resize', checkMobile);">
 
     @yield('content')
 
+    {{-- Google One Tap for signed-out visitors on the platform's own site. Renders
+         nothing for tenants, signed-in users, or installs without Google configured;
+         memorial pages pass $oneTapMode = 'intent' to hold it until first interaction. --}}
+    @include('partials.google-one-tap')
+
 </body>
 
 @stack('scripts')

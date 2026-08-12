@@ -1,10 +1,10 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordlessLoginController;
@@ -50,6 +50,12 @@ Route::middleware('guest')->group(function () {
     Route::get('auth/google/callback', [GoogleLoginController::class, 'callback'])
         ->middleware('throttle:20,1')
         ->name('google.callback');
+
+    // Google One Tap: the corner prompt posts its credential here and the page reloads
+    // signed in. Same guest gate as the other doors — a signed-in visitor has no prompt.
+    Route::post('auth/google/one-tap', [GoogleLoginController::class, 'oneTap'])
+        ->middleware('throttle:20,1')
+        ->name('google.one-tap');
 });
 
 Route::middleware('auth')->group(function () {

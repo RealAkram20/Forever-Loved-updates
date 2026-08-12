@@ -3,14 +3,21 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Helpers\SocialLoginHelper;
+use App\Helpers\ThemeSetting;
 use App\Http\Controllers\Controller;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Support\PostAuthRedirect;
+use App\Support\ReturnTo;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Laravel\Socialite\Facades\Socialite;
 use Spatie\Permission\Models\Role;
 
@@ -34,16 +41,22 @@ class GoogleLoginController extends Controller
         // callback() ends on redirect()->intended(), so a known flow just seeds
         // the intended URL before we hand off to Google.
         $flowRoute = self::FLOW_DESTINATIONS[(string) $request->query('flow')] ?? null;
-        if ($flowRoute && \Illuminate\Support\Facades\Route::has($flowRoute)) {
+        if ($flowRoute && Route::has($flowRoute)) {
             $request->session()->put('url.intended', route($flowRoute));
         }
+
+        // ?return=/some-memorial, relative-path-only — same open-redirect posture as the
+        // flow allowlist above, just for "back to the page that sent you" rather than a
+        // named step. Lets a visitor who chose Google mid-memorial land back on the
+        // memorial instead of the dashboard.
+        ReturnTo::seedIntended($request);
 
         try {
             $this->applyGoogleConfig();
 
             return Socialite::driver('google')->redirect();
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Google sign-in redirect failed', [
+            Log::error('Google sign-in redirect failed', [
                 'error' => $e->getMessage(),
                 'exception' => get_class($e),
                 'redirect_uri' => SocialLoginHelper::googleCallbackUrl(),
@@ -66,7 +79,7 @@ class GoogleLoginController extends Controller
         try {
             $googleUser = Socialite::driver('google')->user();
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Google sign-in callback failed', [
+            Log::warning('Google sign-in callback failed', [
                 'error' => $e->getMessage(),
                 'exception' => get_class($e),
                 'redirect_uri' => SocialLoginHelper::googleCallbackUrl(),
@@ -89,6 +102,69 @@ class GoogleLoginController extends Controller
         $name = $googleUser->getName()
             ?: ($googleUser->getNickname() ?: (explode('@', $email)[0] ?? 'User'));
 
+        $user = $this->resolveOrCreateUser($email, $googleId, $name);
+
+        Auth::login($user, true);
+        $request->session()->regenerate();
+
+        // Through PostAuthRedirect like every other sign-in: a reseller's client lands
+        // on their reseller's branded dashboard, not wherever this host happens to be.
+        return redirect()->intended(PostAuthRedirect::url($user));
+    }
+
+    /**
+     * Google One Tap — the corner prompt. The page's JS hands over the credential Google
+     * gave it (a signed ID token) and this verifies it with Google and signs the visitor
+     * in, in place: no redirect round trip, no form. The caller reloads the page.
+     *
+     * Verification goes to Google's tokeninfo endpoint rather than a local JWT decode: it
+     * checks the signature, expiry and issuer in one call, with no new dependency. What
+     * remains ours to check is that the token was minted for OUR client id — without the
+     * `aud` check, any site's Google token would sign its holder into this one.
+     */
+    public function oneTap(Request $request): JsonResponse
+    {
+        if (! SocialLoginHelper::googleLoginEnabled()) {
+            abort(404);
+        }
+
+        $validated = $request->validate(['credential' => ['required', 'string']]);
+
+        $clientId = trim((string) (SystemSetting::get('oauth.google_client_id', '') ?: env('GOOGLE_CLIENT_ID', '')));
+
+        $response = Http::timeout(10)
+            ->get('https://oauth2.googleapis.com/tokeninfo', ['id_token' => $validated['credential']]);
+
+        $claims = $response->json() ?? [];
+        $issuerOk = in_array($claims['iss'] ?? '', ['accounts.google.com', 'https://accounts.google.com'], true);
+        $audienceOk = ($claims['aud'] ?? null) === $clientId && $clientId !== '';
+        $emailOk = ! empty($claims['email']) && in_array($claims['email_verified'] ?? false, [true, 'true', 1, '1'], true);
+
+        if (! $response->ok() || ! $issuerOk || ! $audienceOk || ! $emailOk) {
+            return response()->json(['error' => 'Google sign-in could not be verified.'], 422);
+        }
+
+        $email = strtolower($claims['email']);
+        $user = $this->resolveOrCreateUser(
+            $email,
+            (string) ($claims['sub'] ?? ''),
+            trim((string) ($claims['name'] ?? '')) ?: (explode('@', $email)[0] ?? 'User'),
+        );
+
+        Auth::login($user, true);
+        $request->session()->regenerate();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * The account behind a verified Google identity — matched by google_id, then by email
+     * (adopting the google_id onto an existing account), created if neither exists. Shared
+     * by the OAuth redirect flow and One Tap so the two doors can never resolve the same
+     * person differently.
+     */
+    private function resolveOrCreateUser(string $email, string $googleId, string $name): User
+    {
         $user = User::where('google_id', $googleId)->first();
 
         if (! $user) {
@@ -101,7 +177,7 @@ class GoogleLoginController extends Controller
         if (! $user) {
             // First Google sign-in on a reseller host makes them that reseller's client,
             // exactly as the register form does.
-            $reseller = \App\Helpers\ThemeSetting::tenant();
+            $reseller = ThemeSetting::tenant();
 
             $user = User::create([
                 'name' => $name,
@@ -121,12 +197,7 @@ class GoogleLoginController extends Controller
             NotificationService::notifyNewUserSignup($user);
         }
 
-        Auth::login($user, true);
-        $request->session()->regenerate();
-
-        // Through PostAuthRedirect like every other sign-in: a reseller's client lands
-        // on their reseller's branded dashboard, not wherever this host happens to be.
-        return redirect()->intended(\App\Support\PostAuthRedirect::url($user));
+        return $user;
     }
 
     private function applyGoogleConfig(): void
