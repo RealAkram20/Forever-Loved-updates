@@ -498,7 +498,9 @@
                     <span x-show="savingAll">Saving...</span>
                     <span x-show="savedAll && !savingAll">Saved!</span>
                 </button>
-                <a href="{{ route('memorials.index') }}" class="btn btn-secondary btn-md">
+                {{-- Reseller staff came from their client-memorial list, not /memorials,
+                     which for them is empty — they manage these, they don't own them. --}}
+                <a href="{{ $backUrl ?? route('memorials.index') }}" class="btn btn-secondary btn-md">
                     Cancel
                 </a>
             </div>

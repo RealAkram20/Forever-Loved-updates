@@ -61,6 +61,10 @@ Normally the same bare domain as `APP_URL`.
 The **wildcard is required**. Every reseller gets `{slug}.yourdomain.com` the moment an
 admin creates them — there is no per-reseller DNS step, by design.
 
+> Production (alwaysforeverloved.com on Hostinger + Coolify): see the
+> [wildcard runbook](#12-production-runbook-wildcard-subdomains-on-hostinger--coolify) below
+> for the exact records and proxy configuration.
+
 ## 4. TLS — BLOCKER
 
 A wildcard certificate covering **both** `yourdomain.com` and `*.yourdomain.com`.
@@ -129,6 +133,14 @@ php artisan memorials:backfill-photo-sizes
 # Reports any reseller the correction pushes into billable overage.
 php artisan memorials:backfill-reseller-attribution --dry-run   # inspect first
 php artisan memorials:backfill-reseller-attribution
+
+# The reseller intake screen used to collect one combined name and leave first_name and
+# last_name null. Accessors parse full_name on read, so most names still render — but a
+# single-token name ("Prince") parses to an empty last name, and the edit form requires
+# one, so the invited client could not save that memorial at all.
+# Intake collects the parts now; this stores them for the rows created before it did.
+php artisan memorials:backfill-name-split --dry-run   # inspect first
+php artisan memorials:backfill-name-split
 ```
 
 ## 9. Do NOT seed demo data
@@ -162,6 +174,98 @@ automatic and needs nothing here; TLS issuance does not.
 
 Until one of these exists, keep custom domains **disabled**. Subdomains work fine without
 any of it.
+
+## 12. Production runbook: wildcard subdomains on Hostinger + Coolify
+
+The concrete version of §3 + §4 for the live deployment (`alwaysforeverloved.com`,
+DNS at Hostinger, app deployed by Coolify behind its Traefik proxy). As of 2026-08-12
+the wildcard DNS record does **not** exist — every reseller subdomain is NXDOMAIN —
+and the `letsencrypt-dns` certificate resolver referenced by `docker-compose.yaml`
+is not defined on the proxy. Work through these in order; each step is one-time and
+covers all current and future resellers.
+
+### 12.1 Wildcard DNS record at Hostinger
+
+hPanel → **Domains → alwaysforeverloved.com → DNS / Nameservers** → add:
+
+| Type | Name | Points to | TTL |
+|---|---|---|---|
+| A | `*` | `169.58.157.254` (must equal the apex A record) | 3600 |
+
+Verify from any machine (allow TTL for propagation):
+
+```bash
+dig +short aplus.alwaysforeverloved.com          # expect 169.58.157.254
+dig +short anything-at-all.alwaysforeverloved.com # expect 169.58.157.254
+dig +short alwaysforeverloved.com                 # must match the two above
+```
+
+### 12.2 Confirm the Coolify proxy is Traefik v3
+
+```bash
+docker exec coolify-proxy traefik version
+```
+
+The wildcard router labels in `docker-compose.yaml` use bare-regex
+``HostRegexp(`^[a-z0-9-]+\.alwaysforeverloved\.com$`)`` syntax, which is **Traefik v3
+only** — on v2 the rule is invalid and the router silently never loads. If the proxy
+is v2, upgrade it from Coolify (**Servers → your server → Proxy**) first.
+
+While there, confirm the bundled lego build supports the `hostinger` DNS provider
+(present in recent Traefik 3.x; check the deployed version's ACME provider docs for
+the exact credential variable — expected `HOSTINGER_API_KEY`, minted at
+hPanel → **Account → API**).
+
+### 12.3 Define the `letsencrypt-dns` resolver on the proxy
+
+Coolify → **Servers → your server → Proxy → Configuration** (this edits
+`/data/coolify/proxy/docker-compose.yml`). Add to the Traefik service — keeping every
+existing flag and the existing HTTP-01 resolver untouched (the apex keeps its cert):
+
+```yaml
+    environment:
+      - HOSTINGER_API_KEY=<token from hPanel API page>
+    command:
+      # ...existing flags stay...
+      - '--certificatesresolvers.letsencrypt-dns.acme.email=realakram20@gmail.com'
+      - '--certificatesresolvers.letsencrypt-dns.acme.storage=/traefik/acme-dns.json'
+      - '--certificatesresolvers.letsencrypt-dns.acme.dnschallenge.provider=hostinger'
+      - '--certificatesresolvers.letsencrypt-dns.acme.dnschallenge.delaybeforecheck=60s'
+      - '--certificatesresolvers.letsencrypt-dns.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53'
+```
+
+The resolver name `letsencrypt-dns` must match the
+`tls.certresolver=letsencrypt-dns` label in this repo's `docker-compose.yaml` exactly.
+Restart the proxy from Coolify after saving.
+
+### 12.4 Redeploy the app
+
+Redeploy from Coolify so the wildcard router labels (added 2026-08-11) are applied to
+the running container. Confirm the app's environment there has
+`APP_URL=https://alwaysforeverloved.com` (bare, no path) and `RESELLER_APP_DOMAIN`
+empty or `alwaysforeverloved.com`.
+
+### 12.5 Verify end to end
+
+```bash
+# Router answers for the subdomain (not the proxy's 404 default backend)
+curl -sI https://aplus.alwaysforeverloved.com/ | head -5
+
+# Certificate is the Let's Encrypt wildcard, not "TRAEFIK DEFAULT CERT"
+openssl s_client -connect alwaysforeverloved.com:443 \
+  -servername aplus.alwaysforeverloved.com </dev/null 2>/dev/null \
+  | openssl x509 -noout -issuer -ext subjectAltName -dates
+# expect SANs: alwaysforeverloved.com, *.alwaysforeverloved.com
+
+# HTTP redirects to HTTPS
+curl -sI http://aplus.alwaysforeverloved.com/ | grep -i location
+
+# Watch issuance if the cert doesn't appear within a minute or two
+docker logs coolify-proxy 2>&1 | grep -i acme | tail -20
+```
+
+Then from the app server: `php artisan reseller:doctor aplus` — every probe should
+PASS. Finish with the smoke test below.
 
 ---
 

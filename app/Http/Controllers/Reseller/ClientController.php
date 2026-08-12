@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 /**
@@ -47,7 +46,11 @@ class ClientController extends Controller
         $client = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => Hash::make(str()->random(32)),
+            // Passwordless, like every other invited account here: the invite sends a
+            // login code, and nobody is ever told a password. A random hash instead
+            // only meant the account had a secret that could not be used or reset by
+            // anyone, which is the same thing dressed up as different.
+            'password' => null,
             'reseller_id' => $resellerId,
             'original_reseller_id' => $resellerId,
         ]);
@@ -77,11 +80,37 @@ class ClientController extends Controller
         );
     }
 
+    /**
+     * One client and the memorials this reseller holds for them. Exists because the
+     * roster could only ever show a count — answering "which memorials?" meant leaving
+     * for the tenant-wide list and searching by name.
+     */
+    public function show(Request $request, User $user)
+    {
+        $this->authorizeClient($request, $user);
+
+        $resellerId = $request->user()->reseller_id;
+
+        return view('pages.reseller.client-show', [
+            'title' => $user->name,
+            'client' => $user,
+            // Scoped: a client may also own memorials under a previous reseller or
+            // directly on the platform, and those are not this reseller's to show.
+            'memorials' => $user->memorials()
+                ->where('reseller_id', $resellerId)
+                ->latest()
+                ->get(),
+        ]);
+    }
+
     public function update(Request $request, User $user)
     {
         $this->authorizeClient($request, $user);
 
-        $validated = $request->validate([
+        // Its own error bag: the roster hosts both an "add client" and an "edit client"
+        // form, and a shared bag would light up the wrong one — and refill it with the
+        // other form's rejected input.
+        $validated = $request->validateWithBag('updateClient', [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
         ]);
@@ -89,6 +118,21 @@ class ClientController extends Controller
         $user->update($validated);
 
         return back()->with('success', "Client \"{$user->name}\" updated.");
+    }
+
+    /**
+     * Send the invitation again — the common case being that it was created before SMTP
+     * worked, or the family never found the first one.
+     */
+    public function resendInvite(Request $request, User $user)
+    {
+        $this->authorizeClient($request, $user);
+
+        NotificationService::notifyAccountInvite($user, $request->user()->reseller->name);
+
+        return back()->with('success', NotificationService::emailConfigured()
+            ? "Invitation resent to {$user->email}."
+            : "Nothing was sent to {$user->email} — outgoing email is not configured yet.");
     }
 
     public function destroy(Request $request, User $user)

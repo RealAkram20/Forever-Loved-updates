@@ -40,6 +40,24 @@
             </div>
         @endunless
 
+        @if ($wildcardDnsDead ?? false)
+            {{-- Routing is configured correctly in the app, but the one DNS record it all
+                 depends on is missing — so the confident-looking addresses below resolve
+                 nowhere. This is the page an admin is on when they mint one. --}}
+            <div class="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 9v4m0 3v.01M10.3 4.3 2.6 17.6A1.5 1.5 0 0 0 3.9 20h16.2a1.5 1.5 0 0 0 1.3-2.4L13.7 4.3a1.5 1.5 0 0 0-2.6 0Z"/></svg>
+                <div class="text-sm">
+                    <p class="font-medium text-red-900 dark:text-red-200">Wildcard DNS for <code class="font-mono">*.{{ config('reseller.domain') }}</code> does not resolve</p>
+                    <p class="mt-0.5 text-red-800 dark:text-red-300/90">
+                        Every reseller subdomain below is currently unreachable. Add the wildcard A record and
+                        wildcard certificate — the one-time steps in
+                        <span class="font-medium">RESELLER-PRODUCTION-CHECKLIST.md</span> §12 — then run
+                        <code class="font-mono">php artisan reseller:doctor</code> to confirm.
+                    </p>
+                </div>
+            </div>
+        @endif
+
         @if (session('success'))
             <div class="mb-4 rounded-lg bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-700 dark:text-green-400">{{ session('success') }}</div>
         @endif

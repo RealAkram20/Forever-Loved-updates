@@ -26,6 +26,17 @@
                         <p class="mt-2 text-gray-500 dark:text-gray-400">Start free or unlock everything. You can upgrade anytime.</p>
                     </div>
 
+                    {{-- Server-side failures land back here: chiefly a provider whose memorial
+                         allowance is used up. The Alpine `error` below only ever holds messages
+                         from the checkout fetch, so without this the page would silently
+                         reappear unchanged and the family would keep pressing the button. --}}
+                    @if (session('error'))
+                        <div class="mb-6 flex items-start gap-3 rounded-xl bg-red-50 px-4 py-3 dark:bg-red-900/20">
+                            <svg class="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.75v5M12 16h.01"/></svg>
+                            <p class="text-sm text-red-700 dark:text-red-400">{{ session('error') }}</p>
+                        </div>
+                    @endif
+
                     <form id="step3-plan-form" method="POST" action="{{ route('memorial.create.storeStep3') }}" class="space-y-6" @submit="handleSubmit($event)" @change="if ($event.target.name === 'plan_id') planSelectionChanged = $event.target.value">
                         @csrf
 

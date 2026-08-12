@@ -11,8 +11,10 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\DomainVerificationService;
 use App\Services\NotificationService;
+use App\Support\ResellerHealthProbe;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -51,7 +53,28 @@ class ResellerController extends Controller
                 'memorials' => Memorial::whereNotNull('reseller_id')->count(),
             ],
             'defaultTierId' => SystemSetting::get('reseller.default_tier_id') ?: null,
+            'wildcardDnsDead' => $this->wildcardDnsDead(),
         ]);
+    }
+
+    /**
+     * True when this environment claims subdomain routing works but the wildcard DNS
+     * record does not actually resolve — meaning every address on the roster below is
+     * dead, which the admin should hear from this page rather than from a reseller.
+     *
+     * Reads a cached verdict only, never probing inline. A DNS lookup on the render path
+     * would block for the resolver timeout under precisely the condition it is meant to
+     * detect. The value is refreshed out of band by the scheduled reseller:doctor run
+     * (routes/console.php); until it has run once there is nothing to say, so nothing
+     * is said.
+     */
+    private function wildcardDnsDead(): bool
+    {
+        if (! Reseller::subdomainRoutingAvailable()) {
+            return false; // A different, louder banner already covers this case.
+        }
+
+        return Cache::get(ResellerHealthProbe::WILDCARD_DEAD_CACHE_KEY) === true;
     }
 
     /**

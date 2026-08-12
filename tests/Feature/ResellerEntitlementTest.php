@@ -83,7 +83,9 @@ it('blocks creating a memorial past the tier allowance', function () {
     $this->actingAs($owner)->post('http://localhost/reseller/memorials', [
         'client_name' => 'First Client',
         'client_email' => 'first@example.test',
-        'full_name' => 'Jane Doe',
+        'first_name' => 'Jane',
+        'last_name' => 'Doe',
+        'theme' => 'free',
     ])->assertRedirect();
 
     expect(Memorial::where('reseller_id', $owner->reseller_id)->count())->toBe(1);
@@ -92,7 +94,9 @@ it('blocks creating a memorial past the tier allowance', function () {
     $this->actingAs($owner)->post('http://localhost/reseller/memorials', [
         'client_name' => 'Second Client',
         'client_email' => 'second@example.test',
-        'full_name' => 'John Roe',
+        'first_name' => 'John',
+        'last_name' => 'Roe',
+        'theme' => 'free',
     ])->assertSessionHas('error');
 
     expect(Memorial::where('reseller_id', $owner->reseller_id)->count())->toBe(1)

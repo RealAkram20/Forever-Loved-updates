@@ -83,6 +83,11 @@ class MenuHelper
                     // logo, favicon and the full colour/font set now live in one place rather
                     // than a "Branding" page that only controlled a single colour.
                     ['icon' => 'appearance', 'name' => 'Appearance', 'path' => url('/reseller/appearance')],
+                    // Never hidden by tier, for the same reason as Reports: the page
+                    // makes its own case when embedding isn't included. A headline
+                    // feature reachable only from a card on two other pages was, in
+                    // practice, a feature most resellers never found.
+                    ['icon' => 'pages', 'name' => 'Embed', 'path' => url('/reseller/embed'), 'match' => 'reseller/embed'],
                     // Staff administer the whole reseller account, so only the owner may manage
                     // them — the nav entry is hidden for everyone else, matching the route guard.
                     ($reseller && auth()->id() === $reseller->owner_user_id)
