@@ -1,7 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
-    <div x-data="{ create: {{ $errors->hasAny(['name', 'email']) ? 'true' : 'false' }} }">
+    @php
+        // The update form has its own error bag, so a rejected edit reopens the edit
+        // modal on the right client rather than the add-client one.
+        $editErrors = $errors->getBag('updateClient');
+    @endphp
+    {{-- `editing` is always an object, never null: x-model needs a writable target, and
+         binding it to null throws on every page load and every modal close. `editingOpen`
+         carries the visibility instead. --}}
+    <div x-data="{
+        create: {{ $errors->getBag('default')->hasAny(['name', 'email']) ? 'true' : 'false' }},
+        editingOpen: {{ $editErrors->any() && old('client_id') ? 'true' : 'false' }},
+        editing: {{ Illuminate\Support\Js::from([
+            'id' => old('client_id') ? (int) old('client_id') : null,
+            'name' => old('name', ''),
+            'email' => old('email', ''),
+        ]) }},
+        edit(client) { this.editing = { ...client }; this.editingOpen = true },
+    }">
         <x-common.page-header title="Clients"
             desc="The families you're building memorials for. Each one can sign in to view and help finish their memorial.">
             <x-slot:actions>
@@ -39,7 +56,10 @@
                             @foreach ($clients as $client)
                                 <tr class="transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-white/[0.02]">
                                     <td class="px-6 py-4">
-                                        <div class="font-medium text-gray-800 dark:text-white/90">{{ $client->name }}</div>
+                                        <a href="{{ route('reseller.clients.show', $client) }}"
+                                            class="font-medium text-gray-800 transition-colors duration-150 hover:text-brand-600 dark:text-white/90 dark:hover:text-brand-400">
+                                            {{ $client->name }}
+                                        </a>
                                         <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $client->email }}</div>
                                     </td>
                                     {{-- memorials_count, not memorials->count(): the controller scopes the
@@ -47,7 +67,18 @@
                                          re-query per row and quietly show memorials held elsewhere. --}}
                                     <td class="px-3 py-4 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ $client->memorials_count }}</td>
                                     <td class="px-3 py-4 text-gray-500 dark:text-gray-400">{{ $client->created_at?->format('M j, Y') }}</td>
-                                    <td class="px-6 py-4 text-right">
+                                    <td class="px-6 py-4 text-right whitespace-nowrap">
+                                        <button type="button"
+                                            @click="edit({{ Illuminate\Support\Js::from(['id' => $client->id, 'name' => $client->name, 'email' => $client->email]) }})"
+                                            class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 transition-[transform,background-color,color] duration-150 ease-out hover:bg-gray-100 hover:text-gray-700 active:scale-[0.97] dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-200">
+                                            Edit
+                                        </button>
+                                        <form action="{{ route('reseller.clients.resend-invite', $client) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 transition-[transform,background-color,color] duration-150 ease-out hover:bg-gray-100 hover:text-gray-700 active:scale-[0.97] dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-200">
+                                                Resend invite
+                                            </button>
+                                        </form>
                                         <form action="{{ route('reseller.clients.destroy', $client) }}" method="POST" class="inline"
                                             onsubmit="return confirm('Remove {{ addslashes($client->name) }} from your client list? Their memorials stay published — only the link to your business is removed.')">
                                             @csrf @method('DELETE')
@@ -109,6 +140,55 @@
                     <div class="flex justify-end gap-3">
                         <button type="button" @click="create = false" class="btn btn-secondary btn-md">Cancel</button>
                         <button type="submit" class="btn btn-primary btn-md">Add client</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Editing a client. The route existed from the start; nothing ever linked to it,
+             so a mistyped family name or a changed email address could not be corrected
+             from anywhere in the product. --}}
+        <div x-show="editingOpen" x-cloak @keydown.escape.window="editingOpen = false" class="fixed inset-0 z-99999 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
+            <div x-show="editingOpen" x-transition:enter="transition-opacity duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                x-transition:leave="transition-opacity duration-150 ease-out" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                @click="editingOpen = false" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm"></div>
+
+            <div x-show="editingOpen"
+                x-transition:enter="transition duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                x-transition:enter-start="opacity-0 scale-[0.97]" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition duration-150 ease-out"
+                x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-[0.98]"
+                class="relative my-auto w-full max-w-lg rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl">
+
+                <div class="flex items-start justify-between gap-4 px-6 py-5">
+                    <div>
+                        <h3 class="text-base font-medium text-gray-800 dark:text-white/90">Edit client</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Changing the email changes where their sign-in code is sent.</p>
+                    </div>
+                    <button type="button" @click="editingOpen = false" class="-mr-2 -mt-1 rounded-lg p-2 text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <form x-bind:action="editing.id ? '{{ route('reseller.clients') }}/' + editing.id : ''" method="POST" class="space-y-5 border-t border-gray-100 dark:border-gray-800 p-6">
+                    @csrf @method('PUT')
+                    {{-- Echoed back so a rejected save reopens this modal on the same client. --}}
+                    <input type="hidden" name="client_id" x-bind:value="editing.id" />
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                        <input type="text" name="name" x-model="editing.name" required
+                            class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
+                        @if ($editErrors->has('name')) <p class="mt-1 text-sm text-red-500">{{ $editErrors->first('name') }}</p> @endif
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                        <input type="email" name="email" x-model="editing.email" required
+                            class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
+                        @if ($editErrors->has('email')) <p class="mt-1 text-sm text-red-500">{{ $editErrors->first('email') }}</p> @endif
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" @click="editingOpen = false" class="btn btn-secondary btn-md">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-md">Save changes</button>
                     </div>
                 </form>
             </div>

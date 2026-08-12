@@ -26,6 +26,13 @@ Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')
 // bind-mounted folder its file provider watches. A no-op wherever the mount is absent.
 Schedule::command('domains:sync-proxy')->everyMinute()->withoutOverlapping(5);
 
+// Every reseller address depends on one wildcard DNS record that this app cannot create.
+// Probing here rather than on the admin roster's render path keeps a resolver timeout off
+// a page load, and means the banner is already right the first time an admin opens it.
+Schedule::call(fn () => app(\App\Support\ResellerHealthProbe::class)->refreshWildcardVerdict())
+    ->hourly()
+    ->when(fn () => \App\Models\Reseller::subdomainRoutingAvailable());
+
 Schedule::command('subscriptions:process-lifecycle')->dailyAt('06:00');
 
 // Self-heal orders stuck in pending when both callback and IPN were missed.

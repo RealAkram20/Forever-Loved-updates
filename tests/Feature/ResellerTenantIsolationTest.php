@@ -106,9 +106,11 @@ it('stops a reseller attaching a memorial to an outside account by email', funct
         ->post('http://localhost/reseller/memorials', [
             'client_name' => 'Beta Family',
             'client_email' => 'betafamily@example.test',
-            'full_name' => 'Stolen Memorial',
+            'first_name' => 'Stolen',
+            'last_name' => 'Memorial',
+            'theme' => 'free',
         ])
-        ->assertSessionHas('error');
+        ->assertSessionHasErrors('client_email');
 
     expect(Memorial::where('full_name', 'Stolen Memorial')->exists())->toBeFalse()
         ->and($betaClient->fresh()->memorials()->count())->toBe(0);
@@ -122,7 +124,9 @@ it('lets a reseller reuse the email of their own existing client', function () {
         ->post('http://localhost/reseller/memorials', [
             'client_name' => 'Our Family',
             'client_email' => 'ourfamily@example.test',
-            'full_name' => 'Jane Doe',
+            'first_name' => 'Jane',
+            'last_name' => 'Doe',
+            'theme' => 'free',
         ])
         ->assertRedirect();
 

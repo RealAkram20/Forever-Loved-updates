@@ -1,11 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
+    {{--
+        Reseller intake. The memorial sections below are the same partials the platform's
+        own /memorials/create renders — staff sitting with a family can record everything
+        they're told in one pass, instead of filling a seven-field stub and leaving the
+        rest to a screen the family may never open.
+
+        Only the client and the deceased's name are required. Everything else can be
+        finished later on the memorial's edit screen.
+    --}}
     <x-common.page-breadcrumb pageTitle="Create Memorial for a Client" />
 
-    @if (session('error'))
-        <div class="mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">{{ session('error') }}</div>
-    @endif
+    <x-common.flash />
 
     @php $remaining = $reseller->memorialsRemaining(); @endphp
 
@@ -26,68 +33,42 @@
             <a href="{{ route('reseller.memorials') }}" class="btn btn-secondary btn-md mt-5">Back to memorials</a>
         </div>
     @else
-    <x-common.component-card title="Client & Memorial Details" desc="We'll email the client an invitation so they can sign in and help finish the memorial.">
-        @if ($remaining !== null && $remaining <= 5)
-            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/25 dark:bg-amber-900/20">
-                <p class="text-sm text-amber-800 dark:text-amber-300">
-                    {{ $remaining }} of {{ number_format($reseller->memorialAllowance()) }} profiles left in your {{ $reseller->tier?->name }} tier.
-                </p>
-            </div>
-        @endif
-
-        <form action="{{ route('reseller.memorials.store') }}" method="POST" class="space-y-5">
+        <form method="POST" action="{{ route('reseller.memorials.store') }}" x-data="memorialCreateForm()">
             @csrf
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Name</label>
-                    <input type="text" name="client_name" value="{{ old('client_name') }}" required
-                        class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                    @error('client_name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+
+            @if ($remaining !== null && $remaining <= 5)
+                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/25 dark:bg-amber-900/20">
+                    <p class="text-sm text-amber-800 dark:text-amber-300">
+                        {{ $remaining }} of {{ number_format($reseller->memorialAllowance()) }} profiles left in your {{ $reseller->tier?->name }} tier.
+                    </p>
                 </div>
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Email</label>
-                    <input type="email" name="client_email" value="{{ old('client_email') }}" required
-                        class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                    @error('client_email') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+            @endif
+
+            <div class="space-y-6">
+                @include('pages.reseller.partials.client-card', ['step' => 1])
+                @include('pages.memorials.partials.form-identity', ['step' => 2])
+                @include('pages.memorials.partials.form-biography-summary', ['step' => 3])
+                @include('pages.memorials.partials.form-birth', ['step' => 4])
+                @include('pages.memorials.partials.form-passed-away', ['step' => 5])
+                @include('pages.memorials.partials.form-family', ['step' => 6])
+                @include('pages.memorials.partials.form-education', ['step' => 7])
+                @include('pages.memorials.partials.form-biography-editor', ['step' => null])
+                @include('pages.memorials.partials.form-settings', [
+                    'step' => null,
+                    'plans' => $plans,
+                    'defaultPlanId' => $defaultPlanId,
+                ])
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <button type="submit" class="btn btn-primary btn-md">Create Memorial</button>
+                    <a href="{{ route('reseller.memorials') }}" class="btn btn-secondary btn-md">Cancel</a>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Anything left blank can be filled in later — you'll be able to keep editing after this.
+                    </p>
                 </div>
-            </div>
-
-            <div>
-                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name of the Deceased</label>
-                <input type="text" name="full_name" value="{{ old('full_name') }}" required
-                    class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                @error('full_name') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
-            </div>
-
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Date of Birth</label>
-                    <input type="date" name="date_of_birth" value="{{ old('date_of_birth') }}"
-                        class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                </div>
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Date of Passing</label>
-                    <input type="date" name="date_of_passing" value="{{ old('date_of_passing') }}"
-                        class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden" />
-                </div>
-            </div>
-
-            <div>
-                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Short Description</label>
-                <textarea name="short_description" rows="3"
-                    class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden">{{ old('short_description') }}</textarea>
-            </div>
-
-            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="hidden" name="is_public" value="0">
-                <input type="checkbox" name="is_public" value="1" checked class="rounded border-gray-300 dark:border-gray-700 text-brand-500 focus:ring-brand-500" />
-                Public memorial
-            </label>
-
-            <div class="flex justify-end">
-                <button type="submit" class="btn btn-primary btn-md">Create Memorial</button>
             </div>
         </form>
-    </x-common.component-card>
+
+        @include('pages.memorials.partials.form-scripts')
     @endif
 @endsection

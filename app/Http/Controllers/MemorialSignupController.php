@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ResellerCapacityExceededException;
 use App\Helpers\SiteShareMetaHelper;
 use App\Models\Memorial;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
 use App\Models\User;
-use App\Models\UserSubscription;
+use App\Services\MemorialCreationService;
 use App\Services\NotificationService;
-use App\Services\TemplateBioGeneratorService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 
@@ -257,7 +256,11 @@ class MemorialSignupController extends Controller
                 return response()->json(['success' => false, 'error' => 'Please complete Step 1 first.'], 400);
             }
         } else {
-            $memorial = $this->createMemorialFromSession($request->user(), $data, $plan);
+            try {
+                $memorial = $this->createMemorialFromSession($request->user(), $data, $plan);
+            } catch (ResellerCapacityExceededException $e) {
+                return response()->json(['success' => false, 'error' => $e->visitorMessage()], 422);
+            }
             session()->forget(self::SESSION_KEY);
             session([self::RESUME_KEY => $memorial->id]);
         }
@@ -310,25 +313,17 @@ class MemorialSignupController extends Controller
         $plan = SubscriptionPlan::sellableOnHost(\App\Helpers\ThemeSetting::siteTenantId(), $request->user())->find($data['plan_id']);
         $isFreePlan = $plan && $plan->isFree();
 
-        $memorial = $this->createMemorialFromSession($request->user(), $data, $plan);
+        try {
+            $memorial = $this->createMemorialFromSession($request->user(), $data, $plan);
+        } catch (ResellerCapacityExceededException $e) {
+            // A reseller's included allowance holds for self-serve signups on their
+            // site too; the family is told to talk to the provider, not to us.
+            return redirect()->route('memorial.create.step3')->with('error', $e->visitorMessage());
+        }
         session()->forget(self::SESSION_KEY);
 
         if ($isFreePlan && $plan) {
-            $subscription = UserSubscription::create([
-                'user_id' => $request->user()->id,
-                'memorial_id' => $memorial->id,
-                'subscription_plan_id' => $plan->id,
-                'starts_at' => now(),
-                'ends_at' => null,
-                'status' => 'active',
-                'payment_gateway' => null,
-                'payment_reference' => null,
-            ]);
-            $memorial->update([
-                'plan' => 'free',
-                'subscription_plan_id' => $plan->id,
-                'user_subscription_id' => $subscription->id,
-            ]);
+            app(MemorialCreationService::class)->attachPlanSubscription($memorial, $plan);
 
             return redirect()->route('memorial.create.preparing', ['slug' => $memorial->slug]);
         }
@@ -363,68 +358,19 @@ class MemorialSignupController extends Controller
         ]);
     }
 
+    /**
+     * @throws ResellerCapacityExceededException when the signup happens on a reseller
+     *                                           site whose allowance is used up
+     */
     private function createMemorialFromSession($user, array $data, ?SubscriptionPlan $plan = null): Memorial
     {
-        $fullName = trim(implode(' ', array_filter([
-            $data['first_name'],
-            $data['middle_name'] ?? '',
-            $data['last_name'],
-        ])));
+        // The wizard's historical behavior: the theme label mirrors the plan tier.
+        $planLabel = ($plan && ! $plan->isFree()) ? Memorial::PLAN_PAID : Memorial::PLAN_FREE;
 
-        $planLabel = ($plan && ! $plan->isFree()) ? 'paid' : 'free';
-
-        $memorial = Memorial::create([
-            'user_id' => $user->id,
-            'slug' => $this->generateSlug($fullName),
-            'title' => 'In Loving Memory of '.$fullName,
-            'full_name' => $fullName,
-            'first_name' => $data['first_name'],
-            'middle_name' => $data['middle_name'] ?? null,
-            'last_name' => $data['last_name'],
-            'gender' => $data['gender'] ?? null,
-            'relationship' => $data['relationship'] ?? null,
-            'short_description' => $data['short_description'] ?? null,
-            'nationality' => $data['nationality'] ?? null,
-            'primary_profession' => $data['primary_profession'] ?? null,
-            'major_achievements' => $data['major_achievements'] ?? null,
-            'date_of_birth' => $data['date_of_birth'] ?? null,
-            'date_of_passing' => $data['date_of_passing'] ?? null,
-            'birth_city' => $data['birth_city'] ?? null,
-            'birth_state' => $data['birth_state'] ?? null,
-            'birth_country' => $data['birth_country'] ?? null,
-            'death_city' => $data['death_city'] ?? null,
-            'death_state' => $data['death_state'] ?? null,
-            'death_country' => $data['death_country'] ?? null,
+        return app(MemorialCreationService::class)->create($user, array_merge($data, [
             'biography' => null,
             'theme' => $planLabel,
-            'plan' => $planLabel,
-            'completion_status' => 'pending',
             'is_public' => true,
-        ]);
-
-        try {
-            $bioService = app(TemplateBioGeneratorService::class);
-            $biography = $bioService->generateStructured($memorial);
-            if ($biography && trim($biography) !== '') {
-                $memorial->update(['biography' => $biography]);
-            }
-        } catch (\Throwable $e) {
-            report($e);
-        }
-
-        return $memorial;
-    }
-
-    private function generateSlug(string $fullName): string
-    {
-        $baseSlug = Str::slug($fullName);
-        $slug = $baseSlug;
-        $suffix = 0;
-        while (Memorial::where('slug', $slug)->exists()) {
-            $suffix++;
-            $slug = $baseSlug.'-'.$suffix;
-        }
-
-        return $slug;
+        ]), $plan);
     }
 }

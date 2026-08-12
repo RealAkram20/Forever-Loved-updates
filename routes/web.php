@@ -367,8 +367,10 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/clients', [ClientController::class, 'index'])->name('clients');
         Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
-        Route::put('/clients/{user}', [ClientController::class, 'update'])->name('clients.update');
-        Route::delete('/clients/{user}', [ClientController::class, 'destroy'])->name('clients.destroy');
+        Route::get('/clients/{user}', [ClientController::class, 'show'])->name('clients.show')->whereNumber('user');
+        Route::put('/clients/{user}', [ClientController::class, 'update'])->name('clients.update')->whereNumber('user');
+        Route::post('/clients/{user}/resend-invite', [ClientController::class, 'resendInvite'])->name('clients.resend-invite')->whereNumber('user');
+        Route::delete('/clients/{user}', [ClientController::class, 'destroy'])->name('clients.destroy')->whereNumber('user');
 
         // Reseller's own staff (the 'reseller' role) — owner-only, enforced in the controller.
         Route::get('/staff', [App\Http\Controllers\Reseller\StaffController::class, 'index'])->name('staff');

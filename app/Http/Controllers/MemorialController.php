@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ResellerCapacityExceededException;
 use App\Helpers\AiConfigHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Helpers\QueueHealthHelper;
 use App\Helpers\ThemeSetting;
+use App\Http\Requests\StoreMemorialRequest;
 use App\Jobs\GenerateBiography;
 use App\Models\Memorial;
 use App\Models\Reseller;
 use App\Services\BiographyGenerator;
 use App\Services\GeminiBioGeneratorService;
+use App\Services\MemorialCreationService;
 use App\Services\NotificationService;
 use App\Services\TemplateBioGeneratorService;
 use Illuminate\Http\JsonResponse;
@@ -131,98 +134,15 @@ class MemorialController extends Controller
     /**
      * Store a newly created memorial.
      */
-    public function store(Request $request)
+    public function store(StoreMemorialRequest $request, MemorialCreationService $creator)
     {
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'gender' => ['nullable', Rule::in(['male', 'female'])],
-            'relationship' => ['nullable', 'string', 'max:255'],
-            'short_description' => ['nullable', 'string', 'max:255'],
-            'nationality' => ['nullable', 'string', 'max:255'],
-            'primary_profession' => ['nullable', 'string', 'max:255'],
-            'notable_title' => ['nullable', 'string', 'max:255'],
-            'major_achievements' => ['nullable', 'string', 'max:2000'],
-            'known_for' => ['nullable', 'string', 'max:500'],
-            'active_year_start' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'active_year_end' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'date_of_birth' => ['nullable', 'date'],
-            'date_of_passing' => ['nullable', 'date'],
-            'birth_city' => ['nullable', 'string', 'max:255'],
-            'birth_state' => ['nullable', 'string', 'max:255'],
-            'birth_country' => ['nullable', 'string', 'max:255'],
-            'death_city' => ['nullable', 'string', 'max:255'],
-            'death_state' => ['nullable', 'string', 'max:255'],
-            'death_country' => ['nullable', 'string', 'max:255'],
-            'is_public' => ['nullable', 'boolean'],
-            'biography' => ['nullable', 'string', 'max:50000'],
-            'theme' => ['required', Rule::in(['free', 'premium', 'classic', 'modern', 'garden'])],
-            'plan' => ['nullable', Rule::in(['free', 'paid'])],
-            'companies' => ['nullable', 'array'],
-            'companies.*.company_name' => ['nullable', 'string', 'max:255'],
-            'co_founders' => ['nullable', 'array'],
-            'co_founders.*.name' => ['nullable', 'string', 'max:255'],
-            'children' => ['nullable', 'array'],
-            'children.*.child_name' => ['nullable', 'string', 'max:255'],
-            'children.*.birth_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'spouses' => ['nullable', 'array'],
-            'spouses.*.spouse_name' => ['nullable', 'string', 'max:255'],
-            'spouses.*.marriage_start_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'spouses.*.marriage_end_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'parents' => ['nullable', 'array'],
-            'parents.*.parent_name' => ['nullable', 'string', 'max:255'],
-            'parents.*.relationship_type' => ['nullable', Rule::in(['biological', 'adoptive'])],
-            'siblings' => ['nullable', 'array'],
-            'siblings.*.sibling_name' => ['nullable', 'string', 'max:255'],
-            'education' => ['nullable', 'array'],
-            'education.*.institution_name' => ['nullable', 'string', 'max:255'],
-            'education.*.start_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'education.*.end_year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'education.*.degree' => ['nullable', 'string', 'max:255'],
-            'relationship_other' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $validated['relationship'] = Memorial::resolveRelationship(
-            $validated['relationship'] ?? null,
-            $validated['relationship_other'] ?? null
-        );
-        unset($validated['relationship_other']);
-
-        $validated['user_id'] = $request->user()->id;
-        $validated['plan'] = $validated['plan'] ?? ($validated['theme'] === 'premium' ? 'paid' : 'free');
-        $validated['completion_status'] = Memorial::COMPLETION_PENDING;
-        $validated['full_name'] = trim(implode(' ', array_filter([
-            $validated['first_name'],
-            $validated['middle_name'] ?? '',
-            $validated['last_name'],
-        ])));
-        $validated['title'] = 'In Loving Memory of '.$validated['full_name'];
-        $validated['slug'] = static::generateUniqueSlug($validated['full_name']);
-        $validated['is_public'] = $request->boolean('is_public', true);
-
-        $bio = trim($validated['biography'] ?? '');
-        $validated['biography'] = $bio ?: null;
-
-        $scalarData = collect($validated)->except(['companies', 'co_founders', 'children', 'spouses', 'parents', 'siblings', 'education'])->toArray();
-
-        $memorial = DB::transaction(function () use ($scalarData, $validated) {
-            $memorial = Memorial::create($scalarData);
-            static::syncMemorialRelations($memorial, $validated);
-
-            return $memorial;
-        });
-
-        if (empty($memorial->biography)) {
-            try {
-                $bioService = app(TemplateBioGeneratorService::class);
-                $biography = $bioService->generateStructured($memorial);
-                if ($biography && trim($biography) !== '') {
-                    $memorial->update(['biography' => $biography]);
-                }
-            } catch (\Throwable $e) {
-                report($e);
-            }
+        try {
+            $memorial = $creator->create($request->user(), $request->validatedPayload());
+        } catch (ResellerCapacityExceededException $e) {
+            // A reseller's client (or staff) creating here counts against the same tier
+            // allowance as the reseller intake screen — this used to be the one door
+            // with no doorman.
+            return back()->withInput()->with('error', $e->staffMessage());
         }
 
         return redirect()->route('memorial.create.preparing', ['slug' => $memorial->slug]);
@@ -256,7 +176,24 @@ class MemorialController extends Controller
             'aiEnabled' => $aiProvider !== null,
             'aiProviderName' => $aiProvider,
             'quotaInfo' => PlanLimitsHelper::getQuotaInfo($memorial),
+            'backUrl' => $this->listUrlFor($memorial),
         ]);
+    }
+
+    /**
+     * Where "Cancel" and a completed save should return to.
+     *
+     * Reseller staff reach this screen from their own client-memorial list and do not
+     * own the record, so /memorials — which shows only a user's own memorials — would
+     * be an empty page presented as "back".
+     */
+    private function listUrlFor(Memorial $memorial): string
+    {
+        $user = request()->user();
+
+        return ($user && ! $user->hasRole(['admin', 'super-admin']) && $memorial->isManagedByResellerStaff($user))
+            ? route('reseller.memorials')
+            : route('memorials.index');
     }
 
     /**
@@ -346,7 +283,7 @@ class MemorialController extends Controller
             ]);
         }
 
-        return redirect()->route('memorials.index')
+        return redirect()->to($this->listUrlFor($memorial))
             ->with('status', 'Memorial updated successfully.');
     }
 
@@ -880,94 +817,21 @@ class MemorialController extends Controller
 
     /**
      * Sync relational data (companies, co-founders, children, spouses, parents, siblings, education).
-     * Only syncs relations that exist as keys in $validated (allows partial updates).
+     * Delegates to MemorialCreationService — the single implementation shared by every
+     * creation and edit path. Kept as a static shim because seven call sites across
+     * this controller's section/field autosave endpoints use it.
      */
     protected static function syncMemorialRelations(Memorial $memorial, array $validated): void
     {
-        if (array_key_exists('companies', $validated)) {
-            $memorial->notableCompanies()->delete();
-            foreach (array_filter($validated['companies'] ?? [], fn ($c) => ! empty(trim($c['company_name'] ?? ''))) as $i => $c) {
-                $memorial->notableCompanies()->create(['company_name' => trim($c['company_name']), 'sort_order' => $i]);
-            }
-        }
-
-        if (array_key_exists('co_founders', $validated)) {
-            $memorial->coFounders()->delete();
-            foreach (array_filter($validated['co_founders'] ?? [], fn ($c) => ! empty(trim($c['name'] ?? ''))) as $i => $c) {
-                $memorial->coFounders()->create(['name' => trim($c['name']), 'sort_order' => $i]);
-            }
-        }
-
-        if (array_key_exists('children', $validated)) {
-            $memorial->children()->delete();
-            foreach (array_filter($validated['children'] ?? [], fn ($c) => ! empty(trim($c['child_name'] ?? ''))) as $c) {
-                $memorial->children()->create([
-                    'child_name' => trim($c['child_name']),
-                    'birth_year' => ! empty($c['birth_year']) ? (int) $c['birth_year'] : null,
-                ]);
-            }
-        }
-
-        if (array_key_exists('spouses', $validated)) {
-            $memorial->spouses()->delete();
-            foreach (array_filter($validated['spouses'] ?? [], fn ($c) => ! empty(trim($c['spouse_name'] ?? ''))) as $c) {
-                $memorial->spouses()->create([
-                    'spouse_name' => trim($c['spouse_name']),
-                    'marriage_start_year' => ! empty($c['marriage_start_year']) ? (int) $c['marriage_start_year'] : null,
-                    'marriage_end_year' => ! empty($c['marriage_end_year']) ? (int) $c['marriage_end_year'] : null,
-                ]);
-            }
-        }
-
-        if (array_key_exists('parents', $validated)) {
-            $memorial->parents()->delete();
-            foreach (array_filter($validated['parents'] ?? [], fn ($c) => ! empty(trim($c['parent_name'] ?? ''))) as $c) {
-                $memorial->parents()->create([
-                    'parent_name' => trim($c['parent_name']),
-                    'relationship_type' => in_array($c['relationship_type'] ?? '', ['biological', 'adoptive']) ? $c['relationship_type'] : 'biological',
-                ]);
-            }
-        }
-
-        if (array_key_exists('siblings', $validated)) {
-            $memorial->siblings()->delete();
-            foreach (array_filter($validated['siblings'] ?? [], fn ($c) => ! empty(trim($c['sibling_name'] ?? ''))) as $c) {
-                $memorial->siblings()->create(['sibling_name' => trim($c['sibling_name'])]);
-            }
-        }
-
-        if (array_key_exists('education', $validated)) {
-            $memorial->education()->delete();
-            foreach (array_filter($validated['education'] ?? [], fn ($c) => ! empty(trim($c['institution_name'] ?? ''))) as $c) {
-                $memorial->education()->create([
-                    'institution_name' => trim($c['institution_name']),
-                    'start_year' => ! empty($c['start_year']) ? (int) $c['start_year'] : null,
-                    'end_year' => ! empty($c['end_year']) ? (int) $c['end_year'] : null,
-                    'degree' => ! empty($c['degree']) ? trim($c['degree']) : null,
-                ]);
-            }
-        }
+        app(MemorialCreationService::class)->syncRelations($memorial, $validated);
     }
 
     /**
      * Generate a URL slug from full name (e.g. "Miiro Rio Akram" -> "miiro-rio-akram").
-     * Ensures uniqueness by appending a suffix if needed.
+     * Delegates to MemorialCreationService, the single slug implementation.
      */
     protected static function generateUniqueSlug(string $fullName, ?int $excludeMemorialId = null): string
     {
-        $baseSlug = Str::slug($fullName);
-        $slug = $baseSlug;
-        $suffix = 0;
-
-        while (
-            Memorial::where('slug', $slug)
-                ->when($excludeMemorialId, fn ($q) => $q->where('id', '!=', $excludeMemorialId))
-                ->exists()
-        ) {
-            $suffix++;
-            $slug = $baseSlug.'-'.$suffix;
-        }
-
-        return $slug;
+        return app(MemorialCreationService::class)->uniqueSlug($fullName, $excludeMemorialId);
     }
 }
