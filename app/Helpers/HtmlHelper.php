@@ -63,7 +63,15 @@ class HtmlHelper
 
     public static function sanitize(?string $html): string
     {
-        return self::clean($html, self::ALLOWED_TAGS);
+        $clean = self::clean($html, self::ALLOWED_TAGS);
+
+        // Quill leaves an empty <p><br></p> for every blank line the author typed, and
+        // the prose styling then stacks its paragraph margins on top of a full line of
+        // nothing — which is why stories and biographies read with holes between
+        // paragraphs. Every caller of this method is user prose (stories, tributes,
+        // comments, biographies — the page builder has its own sanitizer), and in prose
+        // an empty paragraph is never meaning, only leftover markup.
+        return preg_replace('/<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>/i', '', $clean);
     }
 
     /**

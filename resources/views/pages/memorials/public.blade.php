@@ -166,48 +166,58 @@
         </div>
     </div>
 
-    {{-- Memorial hero: name, years and portrait over the cover photo --}}
+    {{-- Memorial hero: an art-directed remembrance scene — deep indigo night, one candle,
+         lilies in the corner, the portrait dissolving into the dark like a memory.
+
+         Always dark, whatever the site theme: the scene is the design. The cover photo no
+         longer backs the hero (it still dresses the profile card); the artwork here is the
+         same for every memorial, which is what makes each one feel dressed rather than
+         wallpapered with whatever photo happened to be widest. --}}
     @php
         $birthYear = $memorial->date_of_birth?->format('Y') ?: ($memorial->birth_year ?: null);
         $deathYear = $memorial->date_of_passing?->format('Y') ?: ($memorial->death_year ?: null);
+        $heroBio = \Illuminate\Support\Str::limit(trim(strip_tags($memorial->biography ?? '')), 150);
     @endphp
-    <section id="memorial-hero" class="relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
-        {{-- Backdrop shares the cover photo, so one upload dresses both the hero and the card --}}
-        <div class="absolute inset-0" aria-hidden="true">
-            {{-- srcset from the derivative ladder; the upload JS clears it when it swaps
-                 src, or the browser would keep showing the old photo from the old srcset. --}}
-            <img id="memorial-hero-image"
-                @if ($memorial->cover_photo_path) {!! \App\Helpers\ResponsiveImage::attrs($memorial->cover_photo_path, '100vw') !!} @endif
-                alt=""
-                class="h-full w-full object-cover {{ $memorial->cover_photo_path ? '' : 'hidden' }}" />
-            <div id="memorial-hero-fallback" class="memorial-hero-wash h-full w-full {{ $memorial->cover_photo_path ? 'hidden' : '' }}"></div>
-        </div>
-        {{-- Two-part scrim. The flat wash guarantees legibility over any photo a family
-             uploads; the directional layer only kicks in at lg, where the text sits left
-             and the portrait right, so more of the image stays visible behind the portrait. --}}
-        <div class="absolute inset-0 bg-white/80 dark:bg-gray-900/80" aria-hidden="true"></div>
-        <div class="absolute inset-0 hidden bg-gradient-to-r from-white via-white/75 to-transparent lg:block dark:from-gray-900 dark:via-gray-900/75" aria-hidden="true"></div>
+    <section id="memorial-hero" class="memorial-hero">
+        <img class="memorial-hero__bg" src="{{ asset('images/memorial/hero-backdrop.webp') }}" alt="" aria-hidden="true" />
+        <div class="memorial-hero__vignette" aria-hidden="true"></div>
 
-        <div class="relative mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 py-10 text-center sm:px-6 sm:py-12 lg:flex-row lg:justify-between lg:gap-10 lg:px-8 lg:py-14 lg:text-left">
-            <div class="min-w-0">
-                <h1 class="font-display text-3xl font-semibold leading-tight text-gray-900 sm:text-4xl lg:text-5xl dark:text-white">{{ $memorial->full_name }}</h1>
-                @if ($birthYear || $deathYear)
-                    <p class="font-display mt-3 text-xl text-gray-700 sm:text-2xl dark:text-gray-300">
-                        {{ $birthYear }}@if ($birthYear && $deathYear) &ndash; @endif{{ $deathYear }}
-                    </p>
-                @endif
-                <p class="mt-4 text-sm font-medium uppercase tracking-[0.2em] text-brand-600 dark:text-brand-400">In Loving Memory</p>
-            </div>
-
+        <div class="memorial-hero__frame">
             {{-- Always in the markup, hidden until there is a photo, so uploading one from
-                 the card below can reveal it without a reload. --}}
-            <div id="memorial-hero-portrait"
-                class="shrink-0 rounded-2xl bg-white p-2.5 shadow-xl shadow-gray-900/10 dark:bg-gray-800 dark:shadow-black/40 {{ $memorial->profile_photo_path ? '' : 'hidden' }}">
+                 the profile card reveals it without a reload (the JS toggles `hidden`). --}}
+            <div id="memorial-hero-portrait" class="memorial-hero__portrait {{ $memorial->profile_photo_path ? '' : 'hidden' }}">
                 <img id="memorial-hero-portrait-image"
-                    @if ($memorial->profile_photo_path) {!! \App\Helpers\ResponsiveImage::attrs($memorial->profile_photo_path, '(min-width: 640px) 12rem, 10rem') !!} fetchpriority="high" @endif
-                    alt="{{ $memorial->full_name }}"
-                    class="h-40 w-40 rounded-xl object-cover sm:h-48 sm:w-48" />
+                    @if ($memorial->profile_photo_path) {!! \App\Helpers\ResponsiveImage::attrs($memorial->profile_photo_path, '(min-width: 1024px) 26rem, 66vw') !!} fetchpriority="high" @endif
+                    alt="{{ $memorial->full_name }}" />
             </div>
+
+            <div class="memorial-hero__content">
+                <p class="memorial-hero__eyebrow">In Loving Memory</p>
+                <h1 class="memorial-hero__name">{{ $memorial->full_name }}</h1>
+                @if ($birthYear || $deathYear)
+                    <p class="memorial-hero__years">{{ $birthYear }}@if ($birthYear && $deathYear) &ndash; @endif{{ $deathYear }}</p>
+                @endif
+                <div class="memorial-hero__divider" aria-hidden="true">
+                    <span></span>
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    <span></span>
+                </div>
+                @if ($heroBio !== '')
+                    <p class="memorial-hero__bio">{{ $heroBio }}</p>
+                @endif
+                {{-- Opens the composer at the top of the feed — the same one everything
+                     else opens, so the invitation and the act are never two places. --}}
+                <button type="button" id="hero-share-memory" class="memorial-hero__cta">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                    Share a Memory
+                </button>
+            </div>
+
+            {{-- Inside the frame, not the section: the portrait is positioned off the
+                 centered 80rem frame, and on a wide monitor a section-anchored cluster
+                 drifts away from it. Sharing the frame keeps the flowers wrapped around
+                 the portrait's lower arc at every viewport width. --}}
+            <img class="memorial-hero__flowers" src="{{ asset('images/memorial/hero-flowers.webp') }}" alt="" aria-hidden="true" />
         </div>
     </section>
 
@@ -402,7 +412,18 @@
                                 </button>
                             @endif
                             <h2 class="text-lg font-semibold text-gray-900 dark:text-white/90 @if($canEdit) pr-12 @endif">Biography</h2>
-                            <div data-display class="mt-3 text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">{!! \App\Helpers\BiographyFormatter::format($memorial->biography) ?: 'Add biography...' !!}</div>
+                            {{-- Visitors get a folded biography: a long life story shouldn't
+                                 push the gallery and stories below three screens of scroll.
+                                 The clamp is visitor-only — an editor sees the whole text,
+                                 because the inline editor reads this element's markup and
+                                 clamping it would make editing feel like the text was lost.
+                                 The button appears only when the text actually overflows. --}}
+                            <div data-display @if(!$canEdit) data-bio-clamp @endif class="mt-3 text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">{!! \App\Helpers\BiographyFormatter::format($memorial->biography) ?: 'Add biography...' !!}</div>
+                            @if (!$canEdit)
+                                <button type="button" data-bio-toggle aria-expanded="false" class="mt-2 hidden text-sm font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400">
+                                    Show more
+                                </button>
+                            @endif
                             @if ($canEdit)
                                 <div data-edit class="hidden mt-3 space-y-4">
                                     <div>

@@ -1839,6 +1839,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Folded biography (visitors only) ---
+    //
+    // The blade only marks the display element data-bio-clamp for visitors; an editor
+    // keeps the full text because the inline editor reads this element's markup. The
+    // clamp class is applied first and taken back off if the text turns out to fit,
+    // so short biographies never wear a fade or a button that does nothing.
+    const bioClamp = document.querySelector('[data-bio-clamp]');
+    const bioToggle = document.querySelector('[data-bio-toggle]');
+    if (bioClamp && bioToggle) {
+        bioClamp.classList.add('is-clamped');
+        if (bioClamp.scrollHeight > bioClamp.clientHeight + 12) {
+            bioToggle.classList.remove('hidden');
+        } else {
+            bioClamp.classList.remove('is-clamped');
+        }
+        bioToggle.addEventListener('click', () => {
+            const open = bioClamp.classList.toggle('is-open');
+            bioToggle.textContent = open ? 'Show less' : 'Show more';
+            bioToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            // Folding a long text back up from its foot would leave the reader
+            // stranded below the collapsed box; bring the biography back into view.
+            if (!open) bioClamp.closest('[data-editable]')?.scrollIntoView({ block: 'start' });
+        });
+    }
+
     // --- Guest modal (name + email for tributes/reactions) ---
     const guestModal = document.getElementById('guest-modal');
     const guestForm = document.getElementById('guest-form');
@@ -2349,6 +2374,10 @@ document.addEventListener('DOMContentLoaded', () => {
         openStoryComposer(sayMoreBtn.dataset.marker || '');
         sayMoreBtn.classList.add('hidden');
     });
+
+    // The hero's "Share a Memory" — same composer, no marker preselected. The hero
+    // invitation and the feed's composer must always be one door.
+    document.getElementById('hero-share-memory')?.addEventListener('click', () => openStoryComposer(''));
 
     function avatarHtml(photo, name, size = 'h-10 w-10', fallbackClasses = 'bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-400 text-sm font-semibold') {
         if (photo) {
