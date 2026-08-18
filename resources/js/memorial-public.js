@@ -2044,7 +2044,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // overlay, and on a tint that pale the highlight takes the whole shape to near-white —
     // which in a field of purple reads as a different object rather than as a petal
     // catching the light.
-    const PETAL_COLOURS = ['#b040e0', '#a030d0', '#9020c0', '#8010b0', '#7000a0', '#600090'];
+    const PETAL_COLOURS = ['#cf94e4', '#c280d9', '#b369cc', '#a748c5', '#9817bb', '#8a15ae'];
 
     // Drawn from rather than picked uniformly, because the narrow shapes — the edge-on
     // sliver especially — read as a hairline at small sizes. A few are what sells the

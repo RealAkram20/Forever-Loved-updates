@@ -31,22 +31,23 @@ to the outside is removed, then take the remaining white back out of the anti-al
 so the subject does not keep a pale halo. Check the result on both a light and a dark
 ground before committing it; a halo is invisible on white and obvious on black.
 
-## Recolouring, and why each one needed a different method
+## How the current three were made
 
-All three are violet, and each needed a different way of selecting what to move — worth
-knowing before the next one:
+- **Candle** — a photoreal render (mauve pillar on a plum dish) that arrived on white.
+  Keyed with a 7% flood-fill from the border, the alpha eroded by one pixel and softened
+  so the anti-aliased white ramp does not survive as a halo, then trimmed, padded square
+  and downscaled to 256px. No recolour: it already sits in the palette.
+- **Praying hands** — same treatment, same source style, purple cuffs.
+- **Flower** — the violet rose, lifted a step lighter to sit beside the softer candle and
+  hands: `gamma 1.5`, brightness ×1.12 and saturation ×0.78 in HSL, applied through a
+  hue mask (250–335°) so the leaves and stem keep their greens. `PETAL_COLOURS` in
+  `resources/js/memorial-public.js` had the identical transform applied to each swatch, so
+  the petals that rain down are still made of the same purples as the rose.
 
-- **Flower** — replaced outright, no recolour.
-- **Candle** — the wax, the holder *and* the flame are all warm, so a hue test takes the
-  flame with everything else. The flame is protected by *where* it is instead: a
-  soft-edged ellipse over the wick, with the ramp on that edge doing the work of stopping
-  the join reading as a cut-out pasted onto a purple candle.
-- **Praying hands** — only the sleeves moved. Here hue alone was enough: the sleeves sit at
-  195–225°, the skin and the light at 15–60°, and those do not overlap. No mask needed.
-
-In every case the pixel's own distance from the middle of the source range is carried over
-as the same offset around the new hue, and its lightness is kept. That is what preserves
-the shading — a flat hue rotation flattens the subject into one block of colour.
+Earlier versions were recoloured from other hues; if that ever comes back, the method that
+worked was to carry each pixel's offset from the middle of the source hue range over as
+the same offset around the target hue and keep its lightness — a flat hue rotation
+flattens the shading into one block of colour.
 
 ## What a replacement has to be
 

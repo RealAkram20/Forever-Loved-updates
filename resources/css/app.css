@@ -1797,17 +1797,25 @@ html:not(.dark) {
 }
 
 /* The portrait: an oval that belongs to the scene rather than a photo pasted
-   onto it — feathered mask so the edges dissolve into the night, with a warm
-   halo behind it borrowed from the candle. */
+   onto it — feathered mask so the edges dissolve into the night. It used to carry a
+   warm halo and a glowing frame as well; both went once the scene had a lit candle
+   and a bokeh backdrop of its own — one more light source read as clutter, not
+   warmth. The fine gold line stays; that is what holds the photo. */
 .memorial-hero__portrait {
   position: absolute;
-  /* Low enough that the frame's bottom arc tucks into the lily cluster — the oval
-     stands in the flowers rather than hanging in the sky. (It started at 2.4rem,
-     came down twice; the flowers are what it rests on.) */
-  top: 6.5rem;
-  right: -3%;
-  width: 66%;
-  max-width: 22rem;
+  /* Anchored to the foot of the hero, not its top, so the frame's lower arc always
+     tucks into the lily cluster — the oval stands in the flowers rather than hanging
+     in the sky. Measured from the top it only lined up for one bio length; the
+     flowers sit on the bottom edge, so the portrait is measured from there too.
+     (The box runs ~16% past the ring, hence the offset.) */
+  top: auto;
+  bottom: 3rem;
+  right: -2%;
+  /* Kept modest on a phone: at two-thirds of the width the oval sat under the text
+     column and the hero read as crowded. Just over half leaves the name and the
+     lines under it a clear left column, with the feathered edge doing the meeting. */
+  width: 54%;
+  max-width: 17rem;
   z-index: 1;
 }
 
@@ -1823,18 +1831,7 @@ html:not(.dark) {
   bottom: 16.5%;
   border: 1.5px solid rgba(226, 181, 126, 0.9);
   border-radius: 50%;
-  box-shadow:
-    0 0 22px rgba(230, 180, 120, 0.35),
-    inset 0 0 26px rgba(230, 180, 120, 0.22);
   pointer-events: none;
-}
-
-.memorial-hero__portrait::before {
-  content: '';
-  position: absolute;
-  inset: -10%;
-  background: radial-gradient(ellipse 50% 50% at 50% 48%, rgba(247, 178, 110, 0.5) 0%, rgba(216, 128, 84, 0.18) 52%, transparent 74%);
-  z-index: -1;
 }
 
 .memorial-hero__portrait img {
@@ -1848,12 +1845,15 @@ html:not(.dark) {
   mask-image: radial-gradient(ellipse 50% 48% at 50% 46%, #000 54%, rgba(0, 0, 0, 0.4) 68%, transparent 82%);
 }
 
-/* Lilies and candle, bottom-right, over the portrait's lower edge. */
+/* Lilies and candle, bottom-right, over the portrait's lower edge. The asset is a
+   wide 3:2 arrangement — one lily, a bud, a candle, a spray of gypsophila — that
+   reads whole at a modest size, so it is kept small on every width: an accent the
+   portrait rests on, not a second subject competing with the name. */
 .memorial-hero__flowers {
   position: absolute;
-  right: -4%;
-  bottom: -2%;
-  width: min(80%, 25rem);
+  right: -3%;
+  bottom: -1%;
+  width: min(48%, 15rem);
   z-index: 2;
   pointer-events: none;
   user-select: none;
@@ -1863,7 +1863,7 @@ html:not(.dark) {
   position: relative;
   z-index: 3;
   /* Children clear the portrait on the right, like the reference. */
-  padding-right: 40%;
+  padding-right: 34%;
 }
 
 .memorial-hero__eyebrow {
@@ -1965,6 +1965,7 @@ html:not(.dark) {
 
   .memorial-hero__portrait {
     top: 50%;
+    bottom: auto;
     transform: translateY(-52%);
     right: 6%;
     width: 44%;
@@ -1982,15 +1983,9 @@ html:not(.dark) {
   /* Tucked under the frame's lower-right arc, like on a phone — the portrait
      stands in the arrangement rather than the flowers decorating a far corner. */
   .memorial-hero__flowers {
-    right: calc(6% - 4rem);
-    width: min(48%, 26rem);
-    bottom: -3%;
-    /* The asset is a hard crop; with the cluster sitting mid-scene its right edge
-       shows as a vertical slice through the lilies. Feather the last stretch so the
-       arrangement dissolves into the glow instead of ending at a line. Not applied
-       on phones, where that edge runs off-screen. */
-    -webkit-mask-image: linear-gradient(to right, #000 78%, transparent 99%);
-    mask-image: linear-gradient(to right, #000 78%, transparent 99%);
+    right: calc(6% - 2.5rem);
+    width: min(38%, 21rem);
+    bottom: -2%;
   }
 }
 
@@ -2024,9 +2019,9 @@ html:not(.dark) {
   }
 
   .memorial-hero__flowers {
-    right: calc(8% - 2rem);
-    width: 28rem;
-    bottom: -3%;
+    right: calc(8% - 1.5rem);
+    width: 23rem;
+    bottom: -2%;
   }
 }
 
