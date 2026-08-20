@@ -8,7 +8,7 @@
     "name": "preload-helper"
   },
   "resources/css/app.css": {
-    "file": "assets/app-gsxrz-s9.css",
+    "file": "assets/app-rkAHifVP.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -130,7 +130,7 @@
     "isDynamicEntry": true
   },
   "resources/js/memorial-public.js": {
-    "file": "assets/memorial-public-BghrXp70.js",
+    "file": "assets/memorial-public-Bu-0WRLz.js",
     "name": "memorial-public",
     "src": "resources/js/memorial-public.js",
     "isEntry": true,

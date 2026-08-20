@@ -2375,10 +2375,6 @@ document.addEventListener('DOMContentLoaded', () => {
         sayMoreBtn.classList.add('hidden');
     });
 
-    // The hero's "Share a Memory" — same composer, no marker preselected. The hero
-    // invitation and the feed's composer must always be one door.
-    document.getElementById('hero-share-memory')?.addEventListener('click', () => openStoryComposer(''));
-
     function avatarHtml(photo, name, size = 'h-10 w-10', fallbackClasses = 'bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-400 text-sm font-semibold') {
         if (photo) {
             return `<img src="${escapeHtml(photo)}" alt="${escapeHtml(name || '')}" class="${size} shrink-0 rounded-full object-cover" />`;
