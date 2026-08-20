@@ -179,7 +179,14 @@
         $heroBio = \Illuminate\Support\Str::limit(trim(strip_tags($memorial->biography ?? '')), 150);
     @endphp
     <section id="memorial-hero" class="memorial-hero">
-        <img class="memorial-hero__bg" src="{{ asset('images/memorial/hero-backdrop.webp') }}" alt="" aria-hidden="true" />
+        @php
+            // Stamped with the file's mtime for the same reason the tribute artwork is:
+            // swapping the asset under a fixed URL leaves returning visitors on the old
+            // picture until their cache expires.
+            $heroBackdropPath = public_path('images/memorial/hero-backdrop.webp');
+            $heroBackdropVersion = is_file($heroBackdropPath) ? filemtime($heroBackdropPath) : null;
+        @endphp
+        <img class="memorial-hero__bg" src="{{ asset('images/memorial/hero-backdrop.webp') }}{{ $heroBackdropVersion ? '?v='.$heroBackdropVersion : '' }}" alt="" aria-hidden="true" />
         <div class="memorial-hero__vignette" aria-hidden="true"></div>
 
         <div class="memorial-hero__frame">
@@ -213,18 +220,6 @@
                 </button>
             </div>
 
-            {{-- Inside the frame, not the section: the portrait is positioned off the
-                 centered 80rem frame, and on a wide monitor a section-anchored cluster
-                 drifts away from it. Sharing the frame keeps the flowers wrapped around
-                 the portrait's lower arc at every viewport width. --}}
-            @php
-                // Stamped with the file's mtime for the same reason the tribute artwork is:
-                // swapping the asset under a fixed URL leaves returning visitors on the old
-                // picture until their cache expires.
-                $heroFlowersPath = public_path('images/memorial/hero-flowers.webp');
-                $heroFlowersVersion = is_file($heroFlowersPath) ? filemtime($heroFlowersPath) : null;
-            @endphp
-            <img class="memorial-hero__flowers" src="{{ asset('images/memorial/hero-flowers.webp') }}{{ $heroFlowersVersion ? '?v='.$heroFlowersVersion : '' }}" alt="" aria-hidden="true" />
         </div>
     </section>
 
