@@ -203,6 +203,9 @@ class GoogleLoginController extends Controller
 
             event(new Registered($user));
             NotificationService::notifyNewUserSignup($user);
+            // Only on the branch that just created the account — a returning Google sign-in
+            // must not be welcomed again.
+            NotificationService::sendWelcomeEmail($user);
         }
 
         return $user;

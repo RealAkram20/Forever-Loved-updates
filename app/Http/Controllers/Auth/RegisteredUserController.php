@@ -70,6 +70,8 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         NotificationService::notifyNewUserSignup($user);
+        // The admins have been told; tell the person who just signed up what to do next.
+        NotificationService::sendWelcomeEmail($user);
 
         Auth::login($user);
 

@@ -468,6 +468,74 @@ class NotificationService
 
     // ─── Notification Trigger Helpers ──────────────────────────────
 
+    /**
+     * The welcome email — the one piece of mail a new account gets for itself.
+     *
+     * Signup already notified the admins; the person who just signed up was told nothing,
+     * which is how someone lands on an empty dashboard from a Google button and has no idea
+     * that a memorial is the thing to make next.
+     *
+     * Transactional, so it is not gated on the recipient's notification preference the way
+     * static::send() is — it is the account's own receipt and its first instruction, in the
+     * same class as a verification mail. It is still gated on mail being configured at all:
+     * SendRawEmail drops silently when it is not.
+     *
+     * Branding is resolved from the user's own reseller rather than from the request, because
+     * this runs in a queue worker where there is no host to read a tenant from.
+     */
+    public static function sendWelcomeEmail(User $user): void
+    {
+        if (! $user->email) {
+            return;
+        }
+
+        $reseller = $user->reseller;
+        $appName = \App\Helpers\BrandingHelper::displayNameFor($reseller);
+        $brand = \App\Helpers\BrandingHelper::sanitizeHex($reseller?->primary_color ?: '#465fff', '#465fff');
+
+        // White on a pale brand is unreadable, and a reseller's palette is often pale. Pick
+        // the ink from the colour rather than assuming white. luminance() is perceived
+        // brightness on a 0-255 scale, not 0-1 — a fractional threshold here silently marks
+        // every colour as light and puts dark ink on a navy button.
+        $brandInk = \App\Helpers\BrandingHelper::luminance($brand) > 150 ? '#1f2937' : '#ffffff';
+
+        $html = view('emails.welcome', [
+            'appName' => $appName,
+            'brand' => $brand,
+            'brandInk' => $brandInk,
+            'brandTint' => \App\Helpers\BrandingHelper::lighten($brand, 82),
+            'name' => trim(explode(' ', trim((string) $user->name))[0] ?? ''),
+            'email' => $user->email,
+            'ctaUrl' => static::siteLink($user, 'create-memorial/step-1'),
+            'homeUrl' => static::siteLink($user, 'dashboard'),
+            'supportEmail' => $reseller?->contact_email ?: \App\Helpers\BrandingHelper::contactEmail(),
+            'steps' => [
+                [
+                    'title' => 'Create the memorial',
+                    'body' => "Their name, the years, and a photograph. That is enough to begin — everything else can be added later.",
+                ],
+                [
+                    'title' => 'Add their story',
+                    'body' => 'Write the biography, build a gallery, add the chapters of a life as you remember them.',
+                ],
+                [
+                    'title' => 'Invite family and friends',
+                    'body' => 'Share the link. Anyone who opens it can leave a memory, light a candle or lay a flower.',
+                ],
+            ],
+        ])->render();
+
+        \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
+            to: $user->email,
+            name: $user->name,
+            subject: "Welcome to {$appName}",
+            body: $html,
+            isHtml: true,
+            fromName: $appName,
+            replyTo: $reseller?->contact_email ?: null,
+        ));
+    }
+
     public static function notifyNewUserSignup(User $user): void
     {
         static::sendToAdmins(
