@@ -75,8 +75,19 @@ class NotificationService
     }
 
     /**
-     * Send a memorial-specific notification.
-     * Admin: receives for all memorials. Super-admin: only for memorials they own.
+     * Send a memorial-specific notification to whoever is entitled to hear about *this*
+     * memorial.
+     *
+     * super-admin is the platform owner — the install assigns it, an admin may not promote
+     * anyone into it, and MemorialController::search shows them every memorial in every
+     * status. They hear about all of them.
+     *
+     * admin is the lesser role, scoped to what they own: that same search narrows a plain
+     * admin to where('user_id', $user->id). So they hear about their own memorials only.
+     *
+     * This was inverted — it skipped the super-admin on every memorial they did not
+     * personally own and notified every plain admin about the whole site. The effect was
+     * that the one account that must not miss anything received nothing at all.
      */
     public static function sendToAdminsForMemorial(
         \App\Models\Memorial $memorial,
@@ -90,7 +101,7 @@ class NotificationService
         $adminUsers = User::role(['admin', 'super-admin'])->get();
 
         foreach ($adminUsers as $admin) {
-            if ($admin->hasRole('super-admin') && $memorial->user_id !== $admin->id) {
+            if (! $admin->hasRole('super-admin') && $memorial->user_id !== $admin->id) {
                 continue;
             }
             static::send($admin->id, $type, $title, $message, $icon, $actionUrl, $data);
@@ -165,6 +176,15 @@ class NotificationService
     public static function dispatchEmail(Notification $notification): void
     {
         SystemMailConfigurator::applyFromSettings();
+
+        // Mail can be turned off, or never configured, between enqueue and delivery. Without
+        // this the send throws inside the worker, retries three times and settles in
+        // failed_jobs — which is how a queue accumulates hundreds of dead jobs that all say
+        // the same thing. Dropping silently matches SendRawEmail, and the admin dashboard
+        // reports unconfigured mail on its own.
+        if (! SystemMailConfigurator::mailDeliveryConfigured()) {
+            return;
+        }
 
         $user = $notification->user;
         if (!$user || !$user->email) {
