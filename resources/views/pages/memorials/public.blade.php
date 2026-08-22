@@ -166,54 +166,61 @@
         </div>
     </div>
 
-    {{-- Memorial hero: an art-directed remembrance scene — deep indigo night, one candle,
-         lilies in the corner, the portrait dissolving into the dark like a memory.
+    {{-- Memorial hero: the remembrance scene as a band across the top, the portrait
+         crossing its lower edge, and the name centred beneath it.
 
-         Always dark, whatever the site theme: the scene is the design. The cover photo no
-         longer backs the hero (it still dresses the profile card); the artwork here is the
-         same for every memorial, which is what makes each one feel dressed rather than
-         wallpapered with whatever photo happened to be widest. --}}
+         The scene is the same artwork for every memorial, which is what makes each one
+         feel dressed rather than wallpapered with whatever cover photo happened to be
+         widest — the cover still dresses the profile card, not this. --}}
     @php
         $birthYear = $memorial->date_of_birth?->format('Y') ?: ($memorial->birth_year ?: null);
         $deathYear = $memorial->date_of_passing?->format('Y') ?: ($memorial->death_year ?: null);
-        $heroBio = \Illuminate\Support\Str::limit(trim(strip_tags($memorial->biography ?? '')), 150);
+        // Stamped with the file's mtime for the same reason the tribute artwork is:
+        // swapping the asset under a fixed URL leaves returning visitors on the old
+        // picture until their cache expires.
+        $heroBackdropPath = public_path('images/memorial/hero-backdrop.webp');
+        $heroBackdropVersion = is_file($heroBackdropPath) ? filemtime($heroBackdropPath) : null;
     @endphp
     <section id="memorial-hero" class="memorial-hero">
-        @php
-            // Stamped with the file's mtime for the same reason the tribute artwork is:
-            // swapping the asset under a fixed URL leaves returning visitors on the old
-            // picture until their cache expires.
-            $heroBackdropPath = public_path('images/memorial/hero-backdrop.webp');
-            $heroBackdropVersion = is_file($heroBackdropPath) ? filemtime($heroBackdropPath) : null;
-        @endphp
-        <img class="memorial-hero__bg" src="{{ asset('images/memorial/hero-backdrop.webp') }}{{ $heroBackdropVersion ? '?v='.$heroBackdropVersion : '' }}" alt="" aria-hidden="true" />
-        <div class="memorial-hero__vignette" aria-hidden="true"></div>
+        <div class="memorial-hero__band" aria-hidden="true">
+            <img class="memorial-hero__bg" src="{{ asset('images/memorial/hero-backdrop.webp') }}{{ $heroBackdropVersion ? '?v='.$heroBackdropVersion : '' }}" alt="" />
+        </div>
 
         <div class="memorial-hero__frame">
             {{-- Always in the markup, hidden until there is a photo, so uploading one from
-                 the profile card reveals it without a reload (the JS toggles `hidden`). --}}
+                 the profile card reveals it without a reload (the JS toggles `hidden`).
+                 The frame's own top padding clears the band, so a memorial without a photo
+                 still starts its name below the scene. --}}
             <div id="memorial-hero-portrait" class="memorial-hero__portrait {{ $memorial->profile_photo_path ? '' : 'hidden' }}">
                 <img id="memorial-hero-portrait-image"
-                    @if ($memorial->profile_photo_path) {!! \App\Helpers\ResponsiveImage::attrs($memorial->profile_photo_path, '(min-width: 1024px) 26rem, 66vw') !!} fetchpriority="high" @endif
+                    @if ($memorial->profile_photo_path) {!! \App\Helpers\ResponsiveImage::attrs($memorial->profile_photo_path, '(min-width: 1024px) 16rem, 14rem') !!} fetchpriority="high" @endif
                     alt="{{ $memorial->full_name }}" />
             </div>
 
-            <div class="memorial-hero__content">
-                <p class="memorial-hero__eyebrow">In Loving Memory</p>
-                <h1 class="memorial-hero__name">{{ $memorial->full_name }}</h1>
-                @if ($birthYear || $deathYear)
-                    <p class="memorial-hero__years">{{ $birthYear }}@if ($birthYear && $deathYear) &ndash; @endif{{ $deathYear }}</p>
-                @endif
-                <div class="memorial-hero__divider" aria-hidden="true">
-                    <span></span>
-                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                    <span></span>
-                </div>
-                @if ($heroBio !== '')
-                    <p class="memorial-hero__bio">{{ $heroBio }}</p>
-                @endif
+            <p class="memorial-hero__eyebrow">In Loving Memory</p>
+            <h1 class="memorial-hero__name">{{ $memorial->full_name }}</h1>
+            @if ($birthYear || $deathYear)
+                <p class="memorial-hero__years">{{ $birthYear }}@if ($birthYear && $deathYear) &ndash; @endif{{ $deathYear }}</p>
+            @endif
+            <div class="memorial-hero__divider" aria-hidden="true">
+                <span></span>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <span></span>
             </div>
 
+            @if ($quotaInfo['share_memories'] ?? false)
+                {{-- The dropdown has to be this button's immediate next sibling: that is how
+                     the shared toggle handler finds it when there is no post id. --}}
+                <div class="memorial-hero__share" data-share-container>
+                    <button type="button" data-share-toggle data-share-url="{{ url()->current() }}" class="memorial-hero__share-btn">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                        Share this memorial
+                    </button>
+                    <div data-share-dropdown class="memorial-hero__share-menu hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                        @include('pages.memorials.partials.share-dropdown', ['shareUrl' => url()->current()])
+                    </div>
+                </div>
+            @endif
         </div>
     </section>
 
