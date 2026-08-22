@@ -38,11 +38,10 @@ ground before committing it; a halo is invisible on white and obvious on black.
   so the anti-aliased white ramp does not survive as a halo, then trimmed, padded square
   and downscaled to 256px. No recolour: it already sits in the palette.
 - **Praying hands** — same treatment, same source style, purple cuffs.
-- **Flower** — the violet rose, lifted a step lighter to sit beside the softer candle and
-  hands: `gamma 1.5`, brightness ×1.12 and saturation ×0.78 in HSL, applied through a
-  hue mask (250–335°) so the leaves and stem keep their greens. `PETAL_COLOURS` in
-  `resources/js/memorial-public.js` had the identical transform applied to each swatch, so
-  the petals that rain down are still made of the same purples as the rose.
+- **Flower** — a painted rose running coral at its heart to purple at the petal edges,
+  with a few petals already falling. Keyed the same way; it arrived inside a screenshot
+  frame, so the black edges were shaved before the flood-fill (a frame touching the border
+  stops the fill reaching the white). No recolour.
 
 Earlier versions were recoloured from other hues; if that ever comes back, the method that
 worked was to carry each pixel's offset from the middle of the source hue range over as
@@ -66,13 +65,16 @@ requirements, and source art almost never arrives meeting them:
 
 ## The colour is not only in the file
 
-`flower.png` is violet, and two other places are set to match it. If the artwork changes
+`flower.png` is a coral-to-purple rose, and two other places are set to match it. If the artwork changes
 again, these change with it:
 
 - `PETAL_COLOURS` in `resources/js/memorial-public.js` — the petals that rain down when the
-  card is tapped, sampled from this file so they are made of the same violets. The
-  artwork's palest tints are deliberately left out: each petal carries a white highlight
-  overlay that takes a pale tint to near-white.
+  card is tapped, sampled from this file so they are made of the same colours. Sample a
+  spread along the flower's own gradient rather than one average tint: this rose runs
+  coral to purple, and a field of one flat pink reads as confetti instead of that flower
+  coming apart. The artwork's palest tints are deliberately left out: each petal carries a
+  white highlight overlay that takes a pale tint to near-white, which against the page's
+  own pale ground is not a petal at all.
 - The inline flower motif in `tribute-art.blade.php`, the fallback drawn when this file is
   missing.
 

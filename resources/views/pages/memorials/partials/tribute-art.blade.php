@@ -30,18 +30,18 @@
             <path d="M32 46c-6 0-11-3-13-8 6-2 11 0 13 4z" fill="#22c55e"/>
             <path d="M32 40c5 0 9-2 11-7-5-2-9 0-11 4z" fill="#4ade80"/>
             <g transform="translate(32,24)">
-                <ellipse rx="9" ry="14" fill="#7c3aed" transform="rotate(0)"/>
-                <ellipse rx="9" ry="14" fill="#8b5cf6" transform="rotate(60)"/>
-                <ellipse rx="9" ry="14" fill="#7c3aed" transform="rotate(120)"/>
-                <ellipse rx="8" ry="11" fill="#a78bfa" transform="rotate(30)"/>
-                <ellipse rx="8" ry="11" fill="#7e22ce" transform="rotate(90)"/>
-                <ellipse rx="8" ry="11" fill="#a78bfa" transform="rotate(150)"/>
-                <circle r="5.5" fill="#6d28d9"/>
-                <circle r="2.5" fill="#5b21b6"/>
+                <ellipse rx="9" ry="14" fill="#aa5796" transform="rotate(0)"/>
+                <ellipse rx="9" ry="14" fill="#c96a9d" transform="rotate(60)"/>
+                <ellipse rx="9" ry="14" fill="#aa5796" transform="rotate(120)"/>
+                <ellipse rx="8" ry="11" fill="#dd6f8f" transform="rotate(30)"/>
+                <ellipse rx="8" ry="11" fill="#c96a9d" transform="rotate(90)"/>
+                <ellipse rx="8" ry="11" fill="#dd6f8f" transform="rotate(150)"/>
+                <circle r="5.5" fill="#f0857a"/>
+                <circle r="2.5" fill="#f8a48f"/>
             </g>
         </g>
-        <path d="M50 40c3-1 6 1 6 4s-4 4-6 2-2-5 0-6z" fill="#a78bfa" opacity="0.85"/>
-        <path d="M46 54c2.5-1 5 .8 5 3.2s-3.2 3.3-4.9 1.6-1.8-4-.1-4.8z" fill="#c4b5fd" opacity="0.7"/>
+        <path d="M50 40c3-1 6 1 6 4s-4 4-6 2-2-5 0-6z" fill="#c96a9d" opacity="0.85"/>
+        <path d="M46 54c2.5-1 5 .8 5 3.2s-3.2 3.3-4.9 1.6-1.8-4-.1-4.8z" fill="#f0a08c" opacity="0.7"/>
     </svg>
 @elseif ($type === 'candle')
     <svg viewBox="0 0 64 64" fill="none" class="h-full w-full" aria-hidden="true">

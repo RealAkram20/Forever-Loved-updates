@@ -2037,14 +2037,17 @@ document.addEventListener('DOMContentLoaded', () => {
 </defs></svg>`;
 
     // Sampled off the flower artwork itself rather than picked by eye, so the petals that
-    // fall are the same purples the rose on the card is made of. Re-sample these whenever
+    // fall are made of the same colours as the rose on the card. Re-sample these whenever
     // that file changes — public/images/tributes/README.md says so for this reason.
+    //
+    // The rose runs coral at its heart to purple at the petal edges, so the palette runs
+    // that way too: a field of one flat pink would read as confetti rather than as that
+    // flower coming apart.
     //
     // The artwork's own lightest tints are left out. Each petal carries a white highlight
     // overlay, and on a tint that pale the highlight takes the whole shape to near-white —
-    // which in a field of purple reads as a different object rather than as a petal
-    // catching the light.
-    const PETAL_COLOURS = ['#cf94e4', '#c280d9', '#b369cc', '#a748c5', '#9817bb', '#8a15ae'];
+    // which against this page's own pale ground is not a petal at all.
+    const PETAL_COLOURS = ['#f08a72', '#e76069', '#dd6f8f', '#c96a9d', '#aa5796', '#8b3f84'];
 
     // Drawn from rather than picked uniformly, because the narrow shapes — the edge-on
     // sliver especially — read as a hairline at small sizes. A few are what sells the
