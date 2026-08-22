@@ -194,13 +194,23 @@
         </div>
 
         {{-- Notification Types Info --}}
-        <x-common.component-card title="Notification Events" desc="These events trigger notifications in the system.">
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <x-common.component-card title="Notification Events" desc="What the system sends, grouped by who receives it.">
+            {{-- Three audiences, not two. The split that matters is not admin-vs-user but
+                 *scope*: the platform's own admins hear about every memorial on the site,
+                 a memorial's owner hears about theirs, and a visitor hears about the one
+                 they chose to follow. Each card says who it means, because "admin" alone
+                 has meant both of the first two at different points.
+
+                 Dot colours are shared across the cards on purpose: a tribute is pink and
+                 a life chapter purple wherever it is listed, so the same event is
+                 recognisable whichever audience is reading. --}}
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                    <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90 mb-3 flex items-center gap-2">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90 mb-1 flex items-center gap-2">
                         <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                        Admin Notifications
+                        System Admin Notifications
                     </h4>
+                    <p class="mb-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">Platform admins, across every memorial on the site.</p>
                     <ul class="space-y-2 text-xs text-gray-500 dark:text-gray-400">
                         <li class="flex items-start gap-2">
                             <span class="w-1.5 h-1.5 bg-blue-400 rounded-full mt-1.5 flex-shrink-0"></span>
@@ -221,10 +231,11 @@
                     </ul>
                 </div>
                 <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                    <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90 mb-3 flex items-center gap-2">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90 mb-1 flex items-center gap-2">
                         <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                        User Notifications
+                        Admin Notifications
                     </h4>
+                    <p class="mb-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">The person who owns a memorial, about that memorial.</p>
                     <ul class="space-y-2 text-xs text-gray-500 dark:text-gray-400">
                         <li class="flex items-start gap-2">
                             <span class="w-1.5 h-1.5 bg-amber-400 rounded-full mt-1.5 flex-shrink-0"></span>
@@ -241,6 +252,23 @@
                         <li class="flex items-start gap-2">
                             <span class="w-1.5 h-1.5 bg-purple-400 rounded-full mt-1.5 flex-shrink-0"></span>
                             New life chapter on their memorial
+                        </li>
+                    </ul>
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90 mb-1 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        Visitor Notifications
+                    </h4>
+                    <p class="mb-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">Followers without an account. Email only, for the one memorial they subscribed to.</p>
+                    <ul class="space-y-2 text-xs text-gray-500 dark:text-gray-400">
+                        <li class="flex items-start gap-2">
+                            <span class="w-1.5 h-1.5 bg-pink-400 rounded-full mt-1.5 flex-shrink-0"></span>
+                            New tribute on a memorial they follow
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="w-1.5 h-1.5 bg-purple-400 rounded-full mt-1.5 flex-shrink-0"></span>
+                            New life chapter on a memorial they follow
                         </li>
                     </ul>
                 </div>
