@@ -663,6 +663,56 @@ class SettingsController extends Controller
     }
 
     /**
+     * Retry every failed job, from the dashboard rather than a shell.
+     *
+     * The health banner used to end at "run php artisan queue:retry all", which assumes a
+     * terminal on the server. On managed hosting there often is not one, so the warning was
+     * a dead end and the count simply grew.
+     *
+     * Retrying does not fix anything by itself: these jobs failed for a reason, and if that
+     * reason still stands they will fail again and the count will come back. The banner says
+     * so next to the button.
+     */
+    public function retryFailedJobs()
+    {
+        $before = \App\Helpers\QueueHealthHelper::failedJobsCount();
+
+        if ($before === 0) {
+            return back()->with('success', 'There are no failed jobs to retry.');
+        }
+
+        \Illuminate\Support\Facades\Artisan::call('queue:retry', ['id' => ['all']]);
+
+        return back()->with('success', "{$before} failed ".\Illuminate\Support\Str::plural('job', $before)." queued to run again. If the cause has not been fixed they will fail a second time — check back in a minute.");
+    }
+
+    /**
+     * Delete every failed job.
+     *
+     * Destructive and deliberately separate from retry: this throws the work away rather
+     * than reattempting it, which is what an admin wants once the failures are understood
+     * and known to be stale — old notification emails from before SMTP was configured, say,
+     * which nobody wants delivered days late.
+     */
+    public function clearFailedJobs()
+    {
+        $before = \App\Helpers\QueueHealthHelper::failedJobsCount();
+
+        if ($before === 0) {
+            return back()->with('success', 'There are no failed jobs to clear.');
+        }
+
+        \Illuminate\Support\Facades\Artisan::call('queue:flush');
+
+        Log::info('Failed jobs cleared from the admin dashboard', [
+            'count' => $before,
+            'by' => request()->user()?->id,
+        ]);
+
+        return back()->with('success', "{$before} failed ".\Illuminate\Support\Str::plural('job', $before)." deleted. They are gone for good — anything they would have sent will not be sent.");
+    }
+
+    /**
      * Send one real email through the saved SMTP settings, in the request, and report what
      * happened.
      *

@@ -263,6 +263,14 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('throttle:6,1')
             ->name('smtp.test');
 
+        // The health banner's two ways out, for an admin with no shell on the server.
+        Route::post('/queue/retry-failed', [SettingsController::class, 'retryFailedJobs'])
+            ->middleware('throttle:6,1')
+            ->name('queue.retry-failed');
+        Route::post('/queue/clear-failed', [SettingsController::class, 'clearFailedJobs'])
+            ->middleware('throttle:6,1')
+            ->name('queue.clear-failed');
+
         Route::get('/notifications', [SettingsController::class, 'notifications'])->name('notifications');
         Route::put('/notifications', [SettingsController::class, 'updateNotifications'])->name('notifications.update');
 

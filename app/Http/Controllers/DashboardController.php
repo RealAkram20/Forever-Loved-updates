@@ -76,6 +76,8 @@ class DashboardController extends Controller
             'schedulerDown' => ! \App\Helpers\QueueHealthHelper::schedulerHealthy(),
             'queueBacklog' => ! \App\Helpers\QueueHealthHelper::queueHealthy(),
             'failedJobs' => \App\Helpers\QueueHealthHelper::failedJobsCount(),
+            // Why they failed, not just how many: the count alone is not a diagnosis.
+            'failedJobsSummary' => \App\Helpers\QueueHealthHelper::failedJobsSummary(),
             'debugInProduction' => app()->environment('production') && (bool) config('app.debug'),
             'smtpMissing' => (bool) \App\Models\SystemSetting::get('notifications.email_enabled', false)
                 && ! (bool) \App\Models\SystemSetting::get('smtp.enabled', false),

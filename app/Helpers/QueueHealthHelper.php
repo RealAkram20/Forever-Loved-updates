@@ -49,6 +49,55 @@ class QueueHealthHelper
     }
 
     /**
+     * The single most common reason jobs are failing, and when it last happened.
+     *
+     * A count on its own is not a diagnosis: "151 jobs failed" reads the same whether the
+     * SMTP password is wrong or the host is unreachable, and those need opposite fixes. The
+     * queue almost always fills from one cause repeating, so the top reason is usually the
+     * whole story — and surfacing it here means an admin on managed hosting can see it
+     * without a shell they may not have.
+     *
+     * Only the first line of the trace is kept. The rest is a stack, which tells an admin
+     * nothing and would push the banner off the screen.
+     *
+     * @return array{count: int, reason: ?string, share: int, lastAt: ?string}
+     */
+    public static function failedJobsSummary(): array
+    {
+        $empty = ['count' => 0, 'reason' => null, 'share' => 0, 'lastAt' => null];
+
+        return rescue(function () use ($empty) {
+            $rows = DB::table('failed_jobs')
+                ->select('exception', 'failed_at')
+                ->orderByDesc('failed_at')
+                ->limit(500)
+                ->get();
+
+            if ($rows->isEmpty()) {
+                return $empty;
+            }
+
+            $tally = [];
+            foreach ($rows as $row) {
+                $first = trim(strtok((string) $row->exception, "\n"));
+                // Paths and line numbers differ between otherwise identical failures and
+                // would split one cause into many, so the trailing location is dropped.
+                $first = preg_replace('/ in [^\s]+:\d+$/', '', $first) ?? $first;
+                $key = mb_substr($first, 0, 300);
+                $tally[$key] = ($tally[$key] ?? 0) + 1;
+            }
+            arsort($tally);
+
+            return [
+                'count' => static::failedJobsCount(),
+                'reason' => (string) array_key_first($tally),
+                'share' => (int) reset($tally),
+                'lastAt' => (string) $rows->first()->failed_at,
+            ];
+        }, $empty, false);
+    }
+
+    /**
      * The crontab line an admin should paste into their host's panel.
      *
      * Two shared-hosting traps this avoids:

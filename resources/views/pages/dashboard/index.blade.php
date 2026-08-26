@@ -7,6 +7,13 @@
          ADMIN / SUPER-ADMIN SECTION
          ═══════════════════════════════════════════════════════════════ --}}
     @if ($isAdmin)
+        {{-- The health actions below post back here, so this is where their result lands. --}}
+        @if (session('success'))
+            <div class="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-800/50 dark:bg-green-900/20 dark:text-green-300">
+                {{ session('success') }}
+            </div>
+        @endif
+
         {{-- System health warnings --}}
         @if (! empty($systemHealth) && ($systemHealth['schedulerDown'] || $systemHealth['queueBacklog'] || $systemHealth['failedJobs'] > 0 || $systemHealth['debugInProduction'] || $systemHealth['smtpMissing']))
             <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20" x-data="{ showCron: false }">
@@ -30,7 +37,38 @@
                                 <li><strong>Background jobs are backed up.</strong> The queue worker is not keeping up — check that the cron is running every minute.</li>
                             @endif
                             @if ($systemHealth['failedJobs'] > 0)
-                                <li><strong>{{ $systemHealth['failedJobs'] }} background {{ Str::plural('job', $systemHealth['failedJobs']) }} failed.</strong> Check <code class="rounded bg-amber-100 px-1 text-xs dark:bg-amber-900/40">storage/logs/laravel.log</code> or run <code class="rounded bg-amber-100 px-1 text-xs dark:bg-amber-900/40">php artisan queue:retry all</code>.</li>
+                                {{-- The count was the whole message here, and a count is not a
+                                     diagnosis: the same number appears whether a password is
+                                     wrong or a host is unreachable. The reason itself is shown,
+                                     and the two ways out are buttons rather than an artisan
+                                     command, because on managed hosting there is often no shell
+                                     to type it into and the warning was a dead end. --}}
+                                <li>
+                                    <strong>{{ $systemHealth['failedJobs'] }} background {{ Str::plural('job', $systemHealth['failedJobs']) }} failed.</strong>
+                                    @if (! empty($systemHealth['failedJobsSummary']['reason']))
+                                        Most of them for the same reason:
+                                        <code class="mt-1.5 block overflow-x-auto whitespace-pre-wrap break-words rounded bg-amber-100 px-2 py-1.5 text-xs dark:bg-amber-900/40">{{ $systemHealth['failedJobsSummary']['reason'] }}</code>
+                                        <span class="mt-1 block text-xs opacity-80">
+                                            {{ $systemHealth['failedJobsSummary']['share'] }} of the {{ min(500, $systemHealth['failedJobs']) }} most recent
+                                            @if ($systemHealth['failedJobsSummary']['lastAt'])
+                                                &middot; last failed {{ \Illuminate\Support\Carbon::parse($systemHealth['failedJobsSummary']['lastAt'])->diffForHumans() }}
+                                            @endif
+                                        </span>
+                                    @endif
+                                    <span class="mt-2 flex flex-wrap items-center gap-2">
+                                        <form method="POST" action="{{ route('settings.queue.retry-failed') }}"
+                                            onsubmit="return confirm('Retry all {{ $systemHealth['failedJobs'] }} failed jobs? If the cause is still there they will simply fail again.')">
+                                            @csrf
+                                            <button type="submit" class="rounded-lg border border-amber-300 bg-white/70 px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-white dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-100">Retry all</button>
+                                        </form>
+                                        <form method="POST" action="{{ route('settings.queue.clear-failed') }}"
+                                            onsubmit="return confirm('Delete all {{ $systemHealth['failedJobs'] }} failed jobs permanently? Whatever they would have sent will never be sent.')">
+                                            @csrf
+                                            <button type="submit" class="rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40">Clear them</button>
+                                        </form>
+                                        <span class="text-xs opacity-80">Fix the cause first — retrying into the same fault just refills the list.</span>
+                                    </span>
+                                </li>
                             @endif
                             @if ($systemHealth['debugInProduction'])
                                 <li><strong>APP_DEBUG is on in production.</strong> Error pages may leak secrets — set <code class="rounded bg-amber-100 px-1 text-xs dark:bg-amber-900/40">APP_DEBUG=false</code> in .env.</li>
