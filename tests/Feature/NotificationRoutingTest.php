@@ -152,3 +152,63 @@ it('leaves a visitor unsubscribed from the event they did not opt into', functio
 
     Illuminate\Support\Facades\Queue::assertNotPushed(App\Jobs\SendRawEmail::class);
 });
+
+it('puts a working unsubscribe link in the visitor email that stops the next one', function () {
+    [, , , $memorial] = routingCast();
+
+    $sub = MemorialSubscription::create([
+        'memorial_id' => $memorial->id,
+        'user_id' => null,
+        'guest_name' => 'A Visitor',
+        'guest_email' => 'visitor@example.test',
+        'notify_tributes' => true,
+        'notify_life_chapters' => true,
+    ]);
+
+    Illuminate\Support\Facades\Queue::fake();
+
+    NotificationService::notifyMemorialSubscribers(
+        $memorial, 'notify_tributes', 'New Tribute', 'Someone left a flower.', 'https://example.test/m',
+    );
+
+    $body = null;
+    Illuminate\Support\Facades\Queue::assertPushed(App\Jobs\SendRawEmail::class, function ($job) use (&$body) {
+        $body = $job->body;
+
+        return true;
+    });
+
+    // Pull the link straight out of the message, so this asserts on what the visitor is
+    // actually given rather than on a URL rebuilt to match.
+    expect($body)->toContain('Unsubscribe');
+    preg_match('#href="([^"]*unsubscribe[^"]*)"#', (string) $body, $m);
+    expect($m[1] ?? null)->not->toBeNull();
+
+    $link = html_entity_decode($m[1]);
+
+    test()->get($link)->assertOk()->assertSee('unsubscribed', false);
+
+    expect(MemorialSubscription::find($sub->id))->toBeNull();
+});
+
+it('refuses an unsubscribe link whose signature has been tampered with', function () {
+    [, , , $memorial] = routingCast();
+
+    $sub = MemorialSubscription::create([
+        'memorial_id' => $memorial->id,
+        'user_id' => null,
+        'guest_email' => 'visitor@example.test',
+        'notify_tributes' => true,
+        'notify_life_chapters' => true,
+    ]);
+
+    // Somebody else's subscription id, pasted into a link signed for this one.
+    $path = Illuminate\Support\Facades\URL::signedRoute(
+        'memorial.unsubscribe', ['subscription' => $sub->id], absolute: false,
+    );
+    $tampered = str_replace('/unsubscribe/'.$sub->id, '/unsubscribe/'.($sub->id + 1), $path);
+
+    test()->get($tampered)->assertForbidden();
+
+    expect(MemorialSubscription::find($sub->id))->not->toBeNull();
+});

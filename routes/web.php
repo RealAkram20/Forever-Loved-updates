@@ -129,6 +129,17 @@ Route::get('/p/{slug}', fn (string $slug) => redirect("/{$slug}", 301))->where('
 Route::get('/contact', [ContactController::class, 'show'])->name('contact');
 Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:10,1')->name('contact.send');
 
+// One-click unsubscribe from a memorial's update emails.
+//
+// Signed rather than authenticated: the recipient is a visitor who has no account and never
+// will, and asking them to prove who they are before they may stop receiving mail is how an
+// unsubscribe link becomes decorative. Signed *relatively* so the same link is valid on a
+// reseller's own host — the signature covers the path, not the domain it was minted on.
+Route::get('/unsubscribe/{subscription}', [PublicMemorialController::class, 'unsubscribe'])
+    ->middleware('signed:relative')
+    ->whereNumber('subscription')
+    ->name('memorial.unsubscribe');
+
 // Memorial creation flow (multi-step signup)
 Route::prefix('create-memorial')->name('memorial.create.')->group(function () {
     Route::get('/step-1', [MemorialSignupController::class, 'step1'])->name('step1');

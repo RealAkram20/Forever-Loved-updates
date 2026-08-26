@@ -754,10 +754,25 @@ class NotificationService
                 $email = $sub->guest_email;
                 $name = $sub->guest_name ?? 'Subscriber';
                 if ($email) {
+                    // A way out, in the message itself. This audience holds no account, so
+                    // there is no settings page they could ever reach to stop these — the
+                    // link is the only control they have, and mail providers increasingly
+                    // treat its absence as a spam signal.
+                    //
+                    // Signed relatively, then hung off the recipient's own site: an absolute
+                    // signature minted in a queue worker would carry the platform's host and
+                    // send a reseller's visitor to the wrong domain to unsubscribe.
+                    $unsubscribePath = \Illuminate\Support\Facades\URL::signedRoute(
+                        'memorial.unsubscribe',
+                        ['subscription' => $sub->id],
+                        absolute: false,
+                    );
+                    $unsubscribeUrl = static::siteLink($sub->user_id ? $sub->user : null, $unsubscribePath);
+
                     // Memorial-keyed, not global: these go to visitors of a memorial
                     // that may live on a reseller's site, and the name/message carry
                     // guest input, so everything interpolated is escaped.
-                    $html = '<p>Hi '.e($name).',</p><p>'.e($message).'</p><p><a href="'.e($actionUrl).'" style="display:inline-block;padding:10px 20px;background-color:'.$guestBrand.';color:white;border-radius:8px;text-decoration:none;font-weight:600;">View Memorial</a></p><p style="color:#999;font-size:12px;">You received this because you subscribed to updates for this memorial.</p>';
+                    $html = '<p>Hi '.e($name).',</p><p>'.e($message).'</p><p><a href="'.e($actionUrl).'" style="display:inline-block;padding:10px 20px;background-color:'.$guestBrand.';color:white;border-radius:8px;text-decoration:none;font-weight:600;">View Memorial</a></p><p style="color:#999;font-size:12px;">You received this because you subscribed to updates for this memorial. <a href="'.e($unsubscribeUrl).'" style="color:#999;">Unsubscribe</a>.</p>';
                     \App\Support\ReliableDispatch::dispatch(new \App\Jobs\SendRawEmail(
                         to: $email,
                         name: $name,

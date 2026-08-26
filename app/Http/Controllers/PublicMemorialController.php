@@ -6,6 +6,7 @@ use App\Helpers\MemorialShareMetaHelper;
 use App\Helpers\MemorialStatsHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Models\Memorial;
+use App\Models\MemorialSubscription;
 use App\Models\MemorialView;
 use App\Models\Page;
 use App\Models\PaymentOrder;
@@ -17,6 +18,35 @@ use Illuminate\Support\Facades\Log;
 
 class PublicMemorialController extends Controller
 {
+    /**
+     * Stop a visitor's update emails for one memorial, from a link in the email itself.
+     *
+     * The subscribe/unsubscribe pair already on this site is a JSON endpoint that wants the
+     * visitor to be back on the memorial page with the address they used typed in again —
+     * which is not a thing anyone does from an inbox, so in practice these emails could not
+     * be stopped at all.
+     *
+     * Deliberately idempotent, and deliberately quiet about what it did not find: clicking
+     * twice, or clicking a link for a subscription somebody already removed, says
+     * "unsubscribed" either way. The alternative — "no such subscription" — turns the page
+     * into a check for whether a given address is subscribed to a given memorial, which is
+     * not something a stranger with a copied link should be able to ask.
+     */
+    public function unsubscribe(Request $request, int $subscription)
+    {
+        $sub = MemorialSubscription::find($subscription);
+        $memorial = $sub ? Memorial::find($sub->memorial_id) : null;
+
+        if ($sub) {
+            $sub->delete();
+        }
+
+        return view('pages.memorials.unsubscribed', [
+            'title' => 'Unsubscribed',
+            'memorial' => $memorial,
+        ]);
+    }
+
     /**
      * Display a public memorial by slug (no auth required).
      * CMS pages are checked first so custom pages live at /{slug} without the /p/ prefix.
