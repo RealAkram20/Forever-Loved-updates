@@ -9,6 +9,19 @@
         </div>
     @endif
 
+    {{-- The failure path gets its own block, and shows the mail server's own words in a
+         <pre>: "Connection could not be established" and "535 authentication failed" call
+         for completely different fixes, and flattening them into one polite sentence is
+         what makes an SMTP problem take a day instead of a minute. --}}
+    @if (session('smtp_test_error'))
+        <div class="mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3">
+            <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ session('smtp_test_error') }}</p>
+            @if (session('smtp_test_detail'))
+                <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded bg-red-100/70 dark:bg-red-950/40 p-2 text-xs text-red-800 dark:text-red-300">{{ session('smtp_test_detail') }}</pre>
+            @endif
+        </div>
+    @endif
+
     @if ($errors->any())
         <div class="mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3">
             <p class="text-sm font-medium text-red-700 dark:text-red-400 mb-1">Please fix the following errors:</p>
@@ -140,5 +153,31 @@
                 Save Changes
             </button>
         </div>
+    </form>
+
+    {{-- Its own form, outside the one above: a form cannot be nested, and this must post to
+         a different route. It sits after Save because that is the order it has to be used
+         in — the test reads the saved settings, not the fields above it. --}}
+    <form action="{{ route('settings.smtp.test') }}" method="POST" class="mt-6">
+        @csrf
+        <x-common.component-card title="Send a test email" desc="Sends one real message through the saved settings, right now, and shows you exactly what the mail server said.">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div class="flex-1">
+                    <label for="test_email" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Send to</label>
+                    <input type="email" id="test_email" name="test_email"
+                        value="{{ old('test_email') }}"
+                        placeholder="{{ auth()->user()?->email }}"
+                        class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden dark:border-gray-700 dark:text-white/90 dark:placeholder:text-white/30" />
+                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Leave empty to send to your own address.</p>
+                </div>
+                <button type="submit" class="btn btn-secondary btn-md h-11 shrink-0">
+                    Send test email
+                </button>
+            </div>
+            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                Save your changes first. This tests the settings that are stored, which are the
+                ones the application actually sends with — not what is typed in the form above.
+            </p>
+        </x-common.component-card>
     </form>
 @endsection

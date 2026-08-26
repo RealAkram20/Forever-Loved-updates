@@ -15,7 +15,10 @@ use App\Services\PaymentResultProcessor;
 use App\Services\PesapalService;
 use App\Support\PlanFeatures;
 use App\Support\ProtectedRoles;
+use App\Services\SystemMailConfigurator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -657,6 +660,73 @@ class SettingsController extends Controller
         }
 
         return back()->with('success', 'SMTP settings updated successfully.');
+    }
+
+    /**
+     * Send one real email through the saved SMTP settings, in the request, and report what
+     * happened.
+     *
+     * Deliberately not queued. A queued test would report "sent" the moment it was accepted
+     * onto the queue and hide the failure in a worker log — which is the situation this
+     * button exists to end. Sending inline is slower and is the entire point: the exception
+     * the mail server raises is the answer, so it is shown verbatim rather than flattened
+     * into "could not send".
+     *
+     * It tests what is *saved*, not what is typed in the form above it. Anything else would
+     * report on a configuration the application is not actually using.
+     */
+    public function sendTestSmtpEmail(Request $request)
+    {
+        $validated = $request->validate([
+            'test_email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        $to = $validated['test_email'] ?? $request->user()->email;
+
+        if (! $to) {
+            return back()->with('smtp_test_error', 'No address to send to: this account has no email address, so enter one above.');
+        }
+
+        SystemMailConfigurator::applyFromSettings();
+
+        // Distinguish "switched off" from "broken". Without this the admin gets a driver
+        // error for what is really an unticked checkbox two fields above the button.
+        if (! (bool) SystemSetting::get('smtp.enabled', false)) {
+            return back()->with('smtp_test_error', 'SMTP is switched off, so nothing was sent. Turn on "Enable SMTP" above, save, then test again.');
+        }
+
+        if (empty(SystemSetting::get('smtp.host'))) {
+            return back()->with('smtp_test_error', 'No SMTP host is saved, so nothing was sent. Fill in the host above, save, then test again.');
+        }
+
+        $host = (string) SystemSetting::get('smtp.host');
+        $port = (string) SystemSetting::get('smtp.port', 587);
+        $encryption = (string) SystemSetting::get('smtp.encryption', 'tls');
+        $sentAt = now()->toDayDateTimeString();
+        $appName = \App\Helpers\BrandingHelper::displayNameFor(null);
+
+        $body = view('emails.smtp-test', [
+            'appName' => $appName,
+            'host' => $host,
+            'port' => $port,
+            'encryption' => $encryption,
+            'sentAt' => $sentAt,
+            'to' => $to,
+        ])->render();
+
+        try {
+            Mail::html($body, function ($message) use ($to, $appName) {
+                $message->to($to)->subject("{$appName} - SMTP test");
+            });
+        } catch (\Throwable $e) {
+            Log::warning('SMTP test email failed', ['to' => $to, 'host' => $host, 'error' => $e->getMessage()]);
+
+            return back()
+                ->with('smtp_test_error', 'The mail server refused the message. Its own words are below — that text is the fault, not a generic failure.')
+                ->with('smtp_test_detail', $e->getMessage());
+        }
+
+        return back()->with('success', "Test email sent to {$to} via {$host}:{$port} ({$encryption}). If it does not arrive within a minute or two, check the spam folder and the from-address — the connection itself worked.");
     }
 
     // ─── Notification Settings ──────────────────────────────────────

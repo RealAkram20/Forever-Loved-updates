@@ -257,6 +257,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/smtp', [SettingsController::class, 'smtp'])->name('smtp');
         Route::put('/smtp', [SettingsController::class, 'updateSmtp'])->name('smtp.update');
+        // Throttled because it sends a real message on demand: an admin panel is not a relay,
+        // and the button is only useful a handful of times in a row anyway.
+        Route::post('/smtp/test', [SettingsController::class, 'sendTestSmtpEmail'])
+            ->middleware('throttle:6,1')
+            ->name('smtp.test');
 
         Route::get('/notifications', [SettingsController::class, 'notifications'])->name('notifications');
         Route::put('/notifications', [SettingsController::class, 'updateNotifications'])->name('notifications.update');
