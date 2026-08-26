@@ -30,6 +30,7 @@ class SeedShowcaseMemorial extends Command
 {
     protected $signature = 'memorial:showcase
         {--reseller=Uganda Funeral Services : Reseller name to attach to, matched as a prefix}
+        {--owner= : Email of the account that should own it; defaults to the reseller owner}
         {--slug=wilson-ssekandi-mubiru : Memorial slug}
         {--private : Create it hidden, so it can be checked before anyone can reach it}';
 
@@ -43,12 +44,9 @@ class SeedShowcaseMemorial extends Command
             return self::FAILURE;
         }
 
-        $owner = User::find($reseller->owner_user_id);
+        $owner = $this->resolveOwner($reseller);
 
         if (! $owner) {
-            $this->error("Reseller \"{$reseller->name}\" has no owner user (owner_user_id={$reseller->owner_user_id}).");
-            $this->line('The memorial needs an owner. Set the reseller owner first.');
-
             return self::FAILURE;
         }
 
@@ -126,6 +124,54 @@ class SeedShowcaseMemorial extends Command
         }
 
         return $matches->first();
+    }
+
+    /**
+     * Who the memorial belongs to.
+     *
+     * An explicit --owner is asked for by email rather than id because the id differs
+     * between this database and live, and the whole point of naming the account is to be
+     * sure which one it lands on.
+     */
+    private function resolveOwner(Reseller $reseller): ?User
+    {
+        $email = trim((string) $this->option('owner'));
+
+        if ($email === '') {
+            $owner = User::find($reseller->owner_user_id);
+
+            if (! $owner) {
+                $this->error("Reseller \"{$reseller->name}\" has no owner user (owner_user_id={$reseller->owner_user_id}).");
+                $this->line('Pass --owner=someone@example.com, or set the reseller owner first.');
+
+                return null;
+            }
+
+            return $owner;
+        }
+
+        $owner = User::where('email', $email)->first();
+
+        if (! $owner) {
+            $this->error("No user with email \"{$email}\".");
+
+            return null;
+        }
+
+        // A user already tenanted to a different reseller is not a naming slip to work
+        // around — creating here would put this memorial on the wrong company's site,
+        // which is the same mistake resolving the reseller by name exists to prevent.
+        if ($owner->reseller_id !== null && (int) $owner->reseller_id !== (int) $reseller->id) {
+            $this->error("\"{$email}\" belongs to reseller id {$owner->reseller_id}, not {$reseller->id} ({$reseller->name}).");
+
+            return null;
+        }
+
+        if ($owner->reseller_id === null) {
+            $this->warn("\"{$email}\" is not tenanted to any reseller; attaching the memorial to {$reseller->name} explicitly.");
+        }
+
+        return $owner;
     }
 
     private function resolvePlan(): ?SubscriptionPlan
