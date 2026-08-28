@@ -29,6 +29,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->prependToGroup('web', InstallMiddleware::class);
+
+        // Widening the session cookie's domain left every browser holding two cookies of the
+        // same name — the old host-only one and the new dotted one — and PHP keeps the first,
+        // which browsers order oldest-first. Every request landed on a fresh session and every
+        // write answered "CSRF token mismatch". Prepended so it runs last on the way out, after
+        // EncryptCookies. Removable one session lifetime after that deploy.
+        $middleware->prependToGroup('web', \App\Http\Middleware\ForgetStaleHostOnlyCookies::class);
         $middleware->appendToGroup('web', AddRequestLogContext::class);
 
         // Binds each session to the password it was created under, which is what makes
