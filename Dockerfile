@@ -26,6 +26,17 @@ COPY vite.config.js ./
 COPY resources ./resources
 COPY public ./public
 
+# themes/ is scanned by Tailwind — resources/css/app.css carries an
+# `@source '../../themes/**/*.blade.php'` for it, because templates live at the project root
+# rather than under resources/. Leaving it out of this stage did not fail the build: it
+# produced a bundle 19KB smaller with every template-only utility silently absent. On the
+# first reseller to apply Dignified, `hidden lg:block` never got its `lg:block`, so the
+# navigation rendered at zero height, and the services grid and footer drew their own text
+# colours dark-on-dark and light-on-light. The page was there; none of it could be read.
+#
+# Anything else app.css names as a @source belongs here too.
+COPY themes ./themes
+
 RUN npm run build
 
 # ─── Stage 2: PHP dependencies ────────────────────────────────────────────────
