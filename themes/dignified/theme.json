@@ -858,7 +858,7 @@
     },
     "shadows": {
         "components/home-header.blade.php": "820de3b69230eb00",
-        "components/visitor-footer.blade.php": "08095db5c49d63a7",
+        "components/visitor-footer.blade.php": "1468e3ab057aed4e",
         "layouts/visitor.blade.php": "7726e3ae729de412",
         "page-builder/widgets/section-grid.blade.php": "26adaacea1ef7740",
         "pages/memorial-directory/index.blade.php": "b06f49c750c05b03",

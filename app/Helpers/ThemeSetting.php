@@ -253,6 +253,29 @@ class ThemeSetting
         );
     }
 
+    /**
+     * Only what this tenant has written themselves, with no fallback at all.
+     *
+     * get() layers tenant → theme → platform, which is right for a colour: something always
+     * has to be painted. It is wrong for words. A reseller who has not written a footer line
+     * should get an empty footer, not ours — "Celebrate lives that matter" is our marketing,
+     * and under a funeral home's logo it describes the wrong company to a grieving family.
+     *
+     * Returns null on the platform's own site, where there is no tenant to have an opinion.
+     */
+    public static function tenantOwn(string $key): ?string
+    {
+        $reseller = self::siteTenant();
+
+        if (! $reseller) {
+            return null;
+        }
+
+        $value = ResellerSetting::allFor($reseller->id)[$key]['value'] ?? null;
+
+        return is_string($value) && trim($value) !== '' ? $value : null;
+    }
+
     /** Whether the active tenant has overridden this key at all. Used to label the form. */
     public static function isOverridden(string $key): bool
     {

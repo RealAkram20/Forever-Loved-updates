@@ -30,6 +30,16 @@
                     </p>
                     @error('contact_email') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                 </div>
+                <div class="max-w-md">
+                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300" for="tagline">Footer description</label>
+                    <textarea id="tagline" name="tagline" rows="3"
+                        placeholder="Providing dignified funeral services with compassion, respect and professionalism."
+                        class="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm leading-relaxed text-gray-800 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden dark:border-gray-700 dark:text-white/90">{{ old('tagline', $tagline) }}</textarea>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        The line under your logo in the footer. Leave blank and nothing is shown there.
+                    </p>
+                    @error('tagline') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                </div>
                 <button type="submit" class="btn btn-primary btn-md">Save</button>
             </form>
         </x-common.component-card>
@@ -95,9 +105,11 @@
                         placeholder='&lt;iframe src="https://www.google.com/maps/embed?pb=..." ...&gt;&lt;/iframe&gt;'
                         class="{{ $areaCls }} font-mono text-xs">{{ old('contact.'.$CD::MAP_EMBED, $contact[$CD::MAP_EMBED] ?? '') }}</textarea>
                     <p class="{{ $hintCls }}">
-                        In Google Maps, find your location and choose <span class="font-medium">Share &rarr; Embed a map</span>,
-                        then paste the whole snippet here. OpenStreetMap embeds work too. Leave blank to show a simple
-                        location card instead of a live map.
+                        <span class="font-medium">Optional.</span> Your address above already draws the map &mdash;
+                        leave this blank unless you want a particular view, such as a satellite layer or a pin on a
+                        specific entrance. To set one, find your location in Google Maps and choose
+                        <span class="font-medium">Share &rarr; Embed a map</span>, then paste the whole snippet here.
+                        OpenStreetMap embeds work too.
                     </p>
                     @error('contact.'.$CD::MAP_EMBED)
                         <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>

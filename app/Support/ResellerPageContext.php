@@ -27,7 +27,12 @@ class ResellerPageContext
     public static function forWidgets(Reseller $reseller, array $widgetTypes): array
     {
         $context = [
-            'tagline' => SystemSetting::get('branding.tagline', 'Celebrate lives that matter'),
+            // This context is only ever built for a reseller's page, so the platform's line
+            // has no business in it — an empty default means their hero simply omits it rather
+            // than carrying our marketing on their site.
+            // Parenthesised: a cast binds tighter than ??, so `(string) $a['k'] ?? ''` still
+            // reads the key unguarded and throws when it is absent.
+            'tagline' => (string) (\App\Models\ResellerSetting::allFor($reseller->id)['branding.tagline']['value'] ?? ''),
         ];
 
         if (in_array(PricingPlansWidget::type(), $widgetTypes, true)) {

@@ -37,7 +37,14 @@ class PageController extends Controller
         $reseller = ThemeSetting::siteTenant();
 
         $appName = SiteShareMetaHelper::appDisplayName();
-        $tagline = SystemSetting::get('branding.tagline', 'Celebrate lives that matter');
+
+        // Ours only on our own site. "Celebrate lives that matter" is our marketing line, and
+        // it was rendering six times on a funeral home's front page — in their hero, under
+        // their logo — because this read the platform setting regardless of whose site was
+        // being served. A reseller gets their own line, or none.
+        $tagline = $reseller
+            ? (string) ThemeSetting::tenantOwn('branding.tagline')
+            : SystemSetting::get('branding.tagline', 'Celebrate lives that matter');
 
         $popularMemorials = Memorial::where('is_public', true)
             ->where('status', Memorial::STATUS_ACTIVE)

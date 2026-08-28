@@ -10,10 +10,19 @@
     $tenantSite = \App\Helpers\ThemeSetting::isResellerSite() ? \App\Helpers\ThemeSetting::tenant() : null;
     $homeUrl = $tenantSite ? $tenantSite->publicBaseUrl() : route('home');
     $tagline = \App\Models\SystemSetting::get('branding.tagline', 'Celebrate lives that matter');
-    $footerDescription = \App\Models\SystemSetting::get(
-        'branding.footer_description',
-        'Creating the digital home for every life story—with honor, love, and care. Here to help you share the lives that matter, forever and all.'
-    );
+
+    // The line under the logo. A reseller writes theirs in Settings, and it is the same field
+    // the other templates read, so one box controls the footer whichever design they run.
+    //
+    // On their site it is theirs or nothing: our "Creating the digital home for every life
+    // story…" under a funeral home's logo is our copy on their page, describing our business
+    // to their families.
+    $footerDescription = $tenantSite
+        ? (string) \App\Helpers\ThemeSetting::tenantOwn('branding.tagline')
+        : \App\Models\SystemSetting::get(
+            'branding.footer_description',
+            'Creating the digital home for every life story—with honor, love, and care. Here to help you share the lives that matter, forever and all.'
+        );
     $supportHours = \App\Models\SystemSetting::get('branding.support_hours', 'M – S 9:00am – 5pm');
     $footerQuickItems = $footerQuickItems ?? collect();
     $footerCompanyItems = $footerCompanyItems ?? collect();

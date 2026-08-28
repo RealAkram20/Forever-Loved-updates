@@ -93,19 +93,58 @@ class SiteContactDetails
      * because "Embed a map" hands you the snippet and asking someone to extract the src from
      * it is how a settings field goes unused.
      */
+    /**
+     * The map to show beside the address.
+     *
+     * Prefers whatever the business pasted, and otherwise builds one from the address itself —
+     * because asking a funeral director to find "Share → Embed a map", copy an iframe, and get
+     * a `pb=` parameter four hundred characters long into a form intact is asking for the
+     * failure we already had: a truncated one, rendering "Invalid 'pb' parameter" where their
+     * location should be.
+     *
+     * Typing the address is the whole job now. The pasted field stays for anyone who wants a
+     * particular view — a pinned suite number, a satellite layer — and still wins when set.
+     */
     public static function mapEmbedUrl(): ?string
     {
         $value = trim((string) self::get(self::MAP_EMBED, ''));
 
-        if ($value === '') {
+        if ($value !== '') {
+            if (preg_match('/\bsrc\s*=\s*["\']([^"\']+)["\']/i', $value, $m)) {
+                $value = html_entity_decode($m[1], ENT_QUOTES);
+            }
+
+            if (self::isAllowedMapUrl($value)) {
+                return $value;
+            }
+        }
+
+        return self::mapEmbedUrlFromAddress();
+    }
+
+    /**
+     * A map centred on the saved address, with no API key and no geocoding step.
+     *
+     * `output=embed` is the keyless form Google has served for years; the alternative needs a
+     * Maps Platform key, which is a bill and a console for something a reseller should get by
+     * typing where they are.
+     *
+     * Built here rather than stored, so it follows the address: change the address and the map
+     * moves with it, instead of quietly pointing at the old premises.
+     */
+    public static function mapEmbedUrlFromAddress(): ?string
+    {
+        $address = trim((string) self::get(self::ADDRESS, ''));
+
+        if ($address === '') {
             return null;
         }
 
-        if (preg_match('/\bsrc\s*=\s*["\']([^"\']+)["\']/i', $value, $m)) {
-            $value = html_entity_decode($m[1], ENT_QUOTES);
-        }
+        // The address is a textarea — newlines separate the lines of a postal address, and a
+        // query wants them as one line.
+        $query = trim(preg_replace('/\s+/', ' ', $address));
 
-        return self::isAllowedMapUrl($value) ? $value : null;
+        return 'https://maps.google.com/maps?q='.urlencode($query).'&output=embed';
     }
 
     public static function isAllowedMapUrl(string $url): bool

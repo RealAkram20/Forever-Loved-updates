@@ -31,6 +31,10 @@ class SettingsController extends Controller
             'title' => 'Settings',
             'reseller' => $reseller,
             'contact' => $contact,
+            // The line under the logo in the footer. Read from this reseller's own row rather
+            // than the platform's branding.tagline, so the field shows what they wrote and
+            // stays empty — showing its placeholder — when they have written nothing.
+            'tagline' => \App\Models\ResellerSetting::allFor($reseller->id)['branding.tagline']['value'] ?? '',
             // Two independent gates: the platform must offer custom domains at all, and
             // this reseller's tier must include domain routing. Both have to hold.
             'domainsEnabled' => SystemSetting::get('domains.custom_domains_enabled', false),
@@ -47,9 +51,24 @@ class SettingsController extends Controller
             // Nullable: blank falls back to the platform's address rather than dropping the
             // enquiry, so an unset field is a routing choice and not a silent hole.
             'contact_email' => ['nullable', 'email', 'max:255'],
+            'tagline' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $request->user()->reseller->update($validated);
+        $reseller = $request->user()->reseller;
+
+        $reseller->update(['name' => $validated['name'], 'contact_email' => $validated['contact_email'] ?? null]);
+
+        // Kept as this reseller's own row rather than written to the platform's
+        // branding.tagline, which is ours and is what every other site falls back to. Blank
+        // clears the row, so their footer shows nothing rather than inheriting our line on
+        // their business's page.
+        $tagline = trim((string) ($validated['tagline'] ?? ''));
+
+        if ($tagline === '') {
+            \App\Models\ResellerSetting::forget($reseller->id, 'branding.tagline');
+        } else {
+            \App\Models\ResellerSetting::set($reseller->id, 'branding.tagline', $tagline);
+        }
 
         return back()->with('success', 'Settings updated.');
     }

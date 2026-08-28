@@ -10,7 +10,9 @@
     $footerQuickItems = $footerQuickItems ?? collect();
     $footerCompanyItems = $footerCompanyItems ?? collect();
 
-    $tagline = ThemeSetting::get('branding.tagline');
+    // Their own words or none. ThemeSetting::get() would fall through to the platform's
+    // line, which is our marketing sitting under their logo.
+    $tagline = ThemeSetting::tenantOwn('branding.tagline');
     $address = ThemeSetting::get('branding.contact_address');
     $phone = ThemeSetting::get('branding.contact_phone');
     $phoneAlt = ThemeSetting::get('branding.contact_phone_alt');
