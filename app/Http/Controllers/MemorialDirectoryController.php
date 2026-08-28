@@ -165,7 +165,19 @@ class MemorialDirectoryController extends Controller
         $perPage = min(max($perPage, 6), 48);
         $memorials = $query
             ->withCount('tributes')
-            ->select(['id', 'slug', 'full_name', 'primary_profession', 'profile_photo_path', 'gender', 'visitor_count', 'date_of_birth', 'date_of_passing', 'birth_year', 'death_year'])
+            // reseller_id and the relation are load-bearing, not decoration.
+            //
+            // publicUrl() asks the memorial who owns it and addresses the link at that
+            // reseller's own host. Left out of a narrow select, `reseller_id` reads as null,
+            // the relation answers null, and every card on a funeral home's directory linked
+            // to `platform.com/{slug}` — their own memorials, listed on their own page, each
+            // one a door out of their site. Exactly the leak the sitemap's select documents
+            // avoiding; this one was written without it.
+            //
+            // Eager loaded rather than assigned from the tenant we already hold, because the
+            // embeddable directory can serve a curated set that spans more than one site.
+            ->with('reseller')
+            ->select(['id', 'slug', 'full_name', 'primary_profession', 'profile_photo_path', 'gender', 'visitor_count', 'date_of_birth', 'date_of_passing', 'birth_year', 'death_year', 'reseller_id'])
             ->orderBy('full_name')
             ->paginate($perPage);
 

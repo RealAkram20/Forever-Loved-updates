@@ -64,17 +64,29 @@ class MemorialController extends Controller
             // Tenant-scoped, matching the home page and the public directory: searching from a
             // reseller's own site used to return the platform's memorials and other resellers',
             // and none of the tenant's own were distinguishable in the results.
-            $tenant = ThemeSetting::tenant();
+            //
+            // siteTenantId(), not tenant(). Which memorials a search returns follows whose site
+            // it is, never who is looking — the same distinction the directory and the home page
+            // already make. tenant() falls back to the signed-in user's own reseller, so a
+            // funeral home's staff searching on *our* site were served their own memorials
+            // instead of ours, and a super-admin viewing as a reseller got that tenant's results
+            // wherever they searched.
+            $tenantId = ThemeSetting::siteTenantId();
 
             $base->where('is_public', true)
                 ->where('status', Memorial::STATUS_ACTIVE)
-                ->when($tenant, fn ($q) => $q->where('reseller_id', $tenant->id))
-                ->unless($tenant, fn ($q) => $q->whereNull('reseller_id'))
+                ->when($tenantId, fn ($q) => $q->where('reseller_id', $tenantId))
+                ->unless($tenantId, fn ($q) => $q->whereNull('reseller_id'))
                 ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
         }
 
         $memorials = $base
-            ->select(['id', 'slug', 'full_name', 'primary_profession', 'profile_photo_path', 'birth_year', 'death_year', 'date_of_birth', 'date_of_passing'])
+            // reseller_id and the relation are what publicUrl() addresses the link with. Left
+            // out of the select it reads as null and every result linked to the platform, out
+            // of whichever site the visitor was searching from. Eager loaded because the admin
+            // branches above can return memorials from more than one tenant at once.
+            ->with('reseller')
+            ->select(['id', 'slug', 'full_name', 'primary_profession', 'profile_photo_path', 'birth_year', 'death_year', 'date_of_birth', 'date_of_passing', 'reseller_id'])
             ->orderByRaw('CASE WHEN full_name LIKE ? THEN 0 ELSE 1 END', ["{$query}%"])
             ->orderBy('full_name')
             ->limit(8)

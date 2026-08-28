@@ -1,3 +1,23 @@
+{{--
+    The watermark behind a card with no photograph.
+
+    It was `images/forever-loved-placeholder.jpeg` unconditionally — our own logo, wordmark and
+    all, printed faintly behind every photo-less memorial on a funeral home's own directory. The
+    same class of leak as the platform tagline in their footer, and on a busier page: a directory
+    of twenty memorials with a handful of photographs between them was mostly our brand.
+
+    On our own site it stays: the artwork is drawn for this, square, and the initial sits in the
+    middle of it by design. On a reseller's it goes, rather than becoming their logo — theirs is
+    a wide landscape mark, and behind a 4:5 card with the initial bubble over its centre it came
+    out as a fragment of a wordmark rather than a brand. Their logo is in the header twice
+    already; the card wants a tinted panel and a letter, which is a finished empty state on its
+    own and carries nobody's branding at all.
+--}}
+@php
+    $directoryPlaceholder = \App\Helpers\ThemeSetting::isResellerSite()
+        ? null
+        : asset('images/forever-loved-placeholder.jpeg');
+@endphp
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] w-full"
     x-data="{
         viewMode: 'grid',
@@ -174,11 +194,13 @@
                 <a :href="item.url" class="group block min-w-0 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200">
                     <div class="aspect-[4/5] bg-gray-50 dark:bg-gray-700/50 overflow-hidden flex items-center justify-center">
                         <template x-if="item.photo">
-                            <img :src="item.photo" alt="" class="h-full w-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300" onerror="this.onerror=null; this.src='{{ asset('images/forever-loved-placeholder.jpeg') }}'; this.alt=''; this.classList.add('opacity-25','object-contain')" />
+                            <img :src="item.photo" alt="" class="h-full w-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300" onerror="this.onerror=null; this.alt=''; @if ($directoryPlaceholder) this.src='{{ $directoryPlaceholder }}'; this.classList.add('opacity-25','object-contain'); @else this.style.display='none'; @endif" />
                         </template>
                         <template x-if="!item.photo">
                             <div class="relative flex w-full h-full items-center justify-center bg-gray-50 dark:bg-gray-700/30">
-                                <img src="{{ asset('images/forever-loved-placeholder.jpeg') }}" alt="" class="absolute inset-0 h-full w-full object-contain opacity-25 dark:opacity-20 p-8" />
+                                @if ($directoryPlaceholder)
+                                    <img src="{{ $directoryPlaceholder }}" alt="" class="absolute inset-0 h-full w-full object-contain opacity-25 dark:opacity-20 p-8" />
+                                @endif
                                 <div class="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/80 dark:bg-gray-600/80 text-2xl font-semibold text-gray-500 dark:text-gray-400 shadow-sm" x-text="(item.name || '?').charAt(0).toUpperCase()"></div>
                             </div>
                         </template>
@@ -202,11 +224,13 @@
                 <a :href="item.url" class="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-4 md:gap-5 items-center rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200">
                     <div class="relative h-24 w-24 md:h-28 md:w-28 shrink-0 rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center">
                         <template x-if="item.photo">
-                            <img :src="item.photo" alt="" class="h-full w-full object-cover object-center" onerror="this.onerror=null; this.src='{{ asset('images/forever-loved-placeholder.jpeg') }}'; this.alt=''; this.classList.add('opacity-25','object-contain')" />
+                            <img :src="item.photo" alt="" class="h-full w-full object-cover object-center" onerror="this.onerror=null; this.alt=''; @if ($directoryPlaceholder) this.src='{{ $directoryPlaceholder }}'; this.classList.add('opacity-25','object-contain'); @else this.style.display='none'; @endif" />
                         </template>
                         <template x-if="!item.photo">
                             <div class="relative flex w-full h-full items-center justify-center bg-gray-50 dark:bg-gray-700/30 overflow-hidden">
-                                <img src="{{ asset('images/forever-loved-placeholder.jpeg') }}" alt="" class="absolute inset-0 h-full w-full object-contain opacity-25 dark:opacity-20 p-4" />
+                                @if ($directoryPlaceholder)
+                                    <img src="{{ $directoryPlaceholder }}" alt="" class="absolute inset-0 h-full w-full object-contain opacity-25 dark:opacity-20 p-4" />
+                                @endif
                                 <span class="relative text-xl font-semibold text-gray-500 dark:text-gray-400" x-text="(item.name || '?').charAt(0).toUpperCase()"></span>
                             </div>
                         </template>
