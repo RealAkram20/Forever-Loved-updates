@@ -152,14 +152,80 @@
         border-radius: 0;
     }
 
+    /* The tabs.
+
+       The platform's selected tab is brand-derived three times over: crimson label, crimson
+       tint behind it, crimson underline. On a palette whose crimson is already carrying the
+       portrait frame, the nav's active block and every dated line on the page, a fourth use of
+       it inside a white card is one red too many — and the label is the part that suffers,
+       because crimson on pink is the weakest contrast on the page.
+
+       The open tab is all three of this template's colours at once, in the order the rest of the
+       site uses them: an ink block, a gold label on it, and under it the gold-then-crimson rule
+       that runs beneath the footer, the section headings and the foot of the memorial band.
+       Black is a brand colour here, not an absence of one — it is the nav bar, the services band
+       and the footer — so the tab that is open is filled the way those are.
+
+       Gold on ink rather than white, because white is what every other label on this card is and
+       the open tab should not have to rely on its background alone to say so.
+
+       border-image rather than a border-colour, for the same reason the band's foot uses it: two
+       colours on one edge, with hard stops so the join is clean. The element has width on its
+       bottom border only, so that is the only edge the image paints — a pixel thicker than the
+       platform's, because a marker that cannot be seen from the other side of the card is not
+       marking anything.
+
+       Keyed on aria-selected rather than the utility classes: the tab script rewrites those on
+       every click, but it sets the attribute in the same breath, so this holds for the tab the
+       page opens on and for every tab opened after. */
+    .memorial-tab-btn[aria-selected='true'],
+    .dark .memorial-tab-btn[aria-selected='true'] {
+        color: var(--dg-gold);
+        background-color: var(--dg-ink);
+        border-bottom: 3px solid transparent;
+        border-image-source: linear-gradient(
+            to right,
+            var(--dg-gold) 0%,
+            var(--dg-gold) 38%,
+            var(--dg-red) 72%,
+            var(--dg-red) 100%
+        );
+        border-image-slice: 1;
+    }
+
+    /* The initial that stands in for someone with no photograph.
+
+       A crimson letter on a pink disc, beside every story, tribute and comment — so the more a
+       family used the page, the more of it turned pink. The same block as the open tab: ink
+       with a white letter, which is a colour this brand already owns and which lets the names
+       beside it read as the thing on the row that matters.
+
+       `text-brand-600` is part of the selector on purpose. It is what the discs holding a letter
+       have and the disc holding the subscribe bell does not — that one keeps its tint, because a
+       crimson bell on black would be worse than what it replaced.
+
+       `rounded-full` is untouched by the squaring rule above, so these stay circles. */
+    .rounded-full.bg-brand-100.text-brand-600,
+    .dark .rounded-full.bg-brand-100.text-brand-600 {
+        background-color: var(--dg-ink);
+        color: #ffffff;
+    }
+
     /* The profile card parks below this template's header, not the platform's.
 
-       That card is `md:sticky md:top-16` — 64px, measured against the platform header. This
-       template's is taller: between md and lg the whole white identity bar pins, and the card
-       would have slid 36px underneath it. From lg the nav parks alone at 48px and the card's
-       own `lg:top-[4.5rem]` already clears it, so only the middle band needs an answer. */
-    @media (min-width: 768px) and (max-width: 1023.98px) {
+       That card is `md:sticky md:top-16 lg:top-[4.5rem]` — 64px and 72px, both measured against
+       the platform's header. This one is taller at every width because it pins whole, logo and
+       nav together: 100px from md, 167px from lg. Left alone the card slid under it by 36px and
+       then by 95px.
+
+       Each offset is the header's height plus a 1rem breath, so the card sits against it rather
+       than touching. If the header's height changes, these change with it. */
+    @media (min-width: 768px) {
         main aside > div { top: 7.25rem; }
+    }
+
+    @media (min-width: 1024px) {
+        main aside > div { top: 11.5rem; }
     }
 
     /* The portrait, in the template's own two colours.

@@ -250,32 +250,26 @@
     /* Body copy is Lato at a size that survives being read by someone who is upset. */
     .dg-body { line-height: 1.75; }
 
-    /* The header follows the page down.
+    /* The header follows the page down — the whole header, logo included.
 
-       The base template's header has been `sticky top-0` all along; this one was the outlier,
-       and on a long memorial or a services page the navigation was a scroll back to the top.
+       The base template's has been `sticky top-0` all along; this one was the outlier, and on a
+       long memorial or the services page the way back was a scroll to the top.
 
-       It sticks in two different ways, because it is two bars. Below lg there is only the white
-       identity bar — the dark nav collapses into the hamburger that lives in it — so the whole
-       thing pins. From lg up, pinning both would park 166px of chrome on every page; instead the
-       negative offset lets the identity bar scroll away and parks the nav alone at the top,
-       which is the bar that has the links in it.
+       A first pass let the white identity bar scroll away above lg and parked only the dark nav,
+       on the grounds that the nav is the bar with the links in it. That is the wrong bar to
+       keep. This is a funeral home's site: the logo is the part that has to stay, because it is
+       what tells a visitor two pages deep whose business they are dealing with. The nav rides
+       along underneath it, which costs 167px on a wide screen and is worth it.
 
-       -7.375rem is that identity bar's exact height at lg: 78px of logo inside 20px of padding
-       top and bottom. It is a measurement, not a taste — if the logo box changes, this changes
-       with it, or the nav parks with a white sliver above it. */
+       One offset, one rule, every width. */
     .dg-header {
         position: sticky;
         top: 0;
         z-index: 40;
-        /* An edge, for the moment it starts overlapping the page. Below lg the pinned bar is
-           white and content ran straight under it with nothing between the two. Every page on
-           this template opens on a dark hero directly beneath the header, so at rest the shadow
-           falls on something already dark and the design at the top of the page is unchanged. */
+        /* An edge, for the moment it starts overlapping the page — the pinned bar is white and
+           content ran straight under it with nothing between the two. Every page on this
+           template opens on a dark hero directly beneath the header, so at rest the shadow falls
+           on something already dark and the top of the page looks exactly as it did. */
         box-shadow: 0 6px 18px rgb(0 0 0 / 0.10);
-    }
-
-    @media (min-width: 1024px) {
-        .dg-header { top: -7.375rem; }
     }
 </style>
