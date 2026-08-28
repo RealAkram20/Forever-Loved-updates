@@ -82,7 +82,7 @@
         <p>@yield('message')</p>
         <div class="actions">
             @yield('actions')
-            <a href="{{ url('/') }}" class="btn btn-secondary">Back to home</a>
+            <a href="{{ \App\Support\SiteUrl::to('') }}" class="btn btn-secondary">Back to home</a>
         </div>
     </div>
     <div class="footer">{{ $appName }}</div>

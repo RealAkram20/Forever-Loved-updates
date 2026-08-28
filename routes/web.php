@@ -32,6 +32,7 @@ use App\Http\Controllers\WidgetController;
 use App\Http\Middleware\EmbedFrameHeaders;
 use App\Http\Middleware\EnsureResellerActive;
 use App\Http\Middleware\ResolveReseller;
+use App\Http\Middleware\UsePlatformBranding;
 use App\Http\Middleware\ResolveResellerByCustomDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -101,9 +102,13 @@ Route::domain('{domain}')->group(function () use ($foreignDomainPattern) {
         ->middleware(ResolveResellerByCustomDomain::class);
 });
 
+// UsePlatformBranding on the public pages below: our marketing pages wear our own brand
+// even for a signed-in reseller's staff, who are also the people we are selling to. It is
+// inert wherever a reseller was resolved from the request, so it never reaches their site.
+//
 // Landing / Home page (public). Reachable on the app's own host only — the two groups above
 // claim the root on reseller hosts, and their patterns exclude this one.
-Route::get('/', [PageController::class, 'home'])->name('home');
+Route::get('/', [PageController::class, 'home'])->middleware(UsePlatformBranding::class)->name('home');
 
 // The crawler's map of whichever site is being served — see SitemapController.
 Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
@@ -114,19 +119,43 @@ Route::get('/robots.txt', [\App\Http\Controllers\SitemapController::class, 'robo
 // (or on their own hosts, a reseller's) uploaded favicon actually reach them.
 Route::get('/favicon.ico', [\App\Http\Controllers\FaviconController::class, 'show'])->name('favicon');
 
+// Gallery screenshots, served straight out of themes/{template}/ so a template
+// stays one self-contained directory. Three segments, so it can never be read as a memorial
+// slug by the /{slug} route registered later.
+Route::get('/themes/{template}/screenshot', [\App\Http\Controllers\ThemeScreenshotController::class, 'show'])
+    ->where('template', '[a-z0-9\-]+')
+    ->name('themes.screenshot');
+
+// Theme preview, on whichever host is serving the site being previewed.
+//
+// Registered globally rather than inside the reseller domain group because a verified custom
+// domain is not in that group, and the preview has to work on all three of a reseller's
+// addresses. ResolveResellerByHost binds the tenant on any of them; on the platform's own
+// host there is no tenant and `enter` answers 404, which is correct — there is nothing here
+// to preview. Two segments, so neither can be read as a memorial slug by /{slug} below.
+//
+// `enter` is unauthenticated on purpose: it is reached on a host that has no session for the
+// person yet, which is the entire reason the link is signed. See App\Themes\ThemePreview.
+Route::get('/theme-preview/{theme}', [\App\Http\Controllers\ThemePreviewController::class, 'enter'])
+    ->middleware('signed:relative')
+    ->whereNumber('theme')
+    ->name('theme.preview.enter');
+Route::get('/theme-preview/stop', [\App\Http\Controllers\ThemePreviewController::class, 'stop'])
+    ->name('theme.preview.stop');
+
 // AJAX memorial search (public)
 Route::get('/api/search/memorials', [MemorialController::class, 'search'])->middleware('throttle:60,1')->name('memorials.search');
 
 // Find Memorial directory (public)
-Route::get('/find-memorial', [MemorialDirectoryController::class, 'index'])->name('memorial.directory');
+Route::get('/find-memorial', [MemorialDirectoryController::class, 'index'])->middleware(UsePlatformBranding::class)->name('memorial.directory');
 
 // Public visitor pages
-Route::get('/pricing', [PageController::class, 'pricing'])->name('pricing');
-Route::get('/about', [PageController::class, 'about'])->name('about');
-Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->name('privacy-policy');
-Route::get('/terms-of-use', [PageController::class, 'termsOfUse'])->name('terms-of-use');
+Route::get('/pricing', [PageController::class, 'pricing'])->middleware(UsePlatformBranding::class)->name('pricing');
+Route::get('/about', [PageController::class, 'about'])->middleware(UsePlatformBranding::class)->name('about');
+Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->middleware(UsePlatformBranding::class)->name('privacy-policy');
+Route::get('/terms-of-use', [PageController::class, 'termsOfUse'])->middleware(UsePlatformBranding::class)->name('terms-of-use');
 Route::get('/p/{slug}', fn (string $slug) => redirect("/{$slug}", 301))->where('slug', '[a-z0-9\-]+');
-Route::get('/contact', [ContactController::class, 'show'])->name('contact');
+Route::get('/contact', [ContactController::class, 'show'])->middleware(UsePlatformBranding::class)->name('contact');
 Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:10,1')->name('contact.send');
 
 // One-click unsubscribe from a memorial's update emails.
@@ -311,6 +340,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/site-layout/{key}', [SiteLayoutController::class, 'update'])->name('site-layout.update');
 
         // Editable Pages (route-based SEO lives under /pages/seo/..., not a separate Settings section)
+        Route::post('/page-media', [App\Http\Controllers\PageMediaController::class, 'store'])->name('page-media.store');
+        Route::delete('/page-media', [App\Http\Controllers\PageMediaController::class, 'destroy'])->name('page-media.destroy');
+
         Route::get('/pages', [App\Http\Controllers\Admin\PageController::class, 'index'])->name('pages.index');
         Route::get('/pages/create', [App\Http\Controllers\Admin\PageController::class, 'create'])->name('pages.create');
         Route::post('/pages', [App\Http\Controllers\Admin\PageController::class, 'store'])->name('pages.store');
@@ -353,6 +385,14 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/reseller-tiers', [ResellerTierController::class, 'store'])->name('reseller-tiers.store');
             Route::put('/reseller-tiers/{resellerTier}', [ResellerTierController::class, 'update'])->name('reseller-tiers.update');
             Route::delete('/reseller-tiers/{resellerTier}', [ResellerTierController::class, 'destroy'])->name('reseller-tiers.destroy');
+
+            // The theme catalogue, beside the roster and the pricing because it is part of how
+            // the reseller program is configured rather than a site-wide appearance setting.
+            Route::get('/themes', [App\Http\Controllers\Admin\ThemeController::class, 'index'])->name('themes');
+            Route::post('/themes/sync', [App\Http\Controllers\Admin\ThemeController::class, 'sync'])->name('themes.sync');
+            Route::post('/themes/{theme}/publish', [App\Http\Controllers\Admin\ThemeController::class, 'togglePublished'])->name('themes.toggle')->whereNumber('theme');
+            // Which plan a theme needs. Gates applying only — see the add_minimum_tier migration.
+            Route::post('/themes/{theme}/tier', [App\Http\Controllers\Admin\ThemeController::class, 'setMinimumTier'])->name('themes.tier')->whereNumber('theme');
 
             Route::get('/reseller-settings', [ResellerSettingsController::class, 'edit'])->name('reseller-settings');
             Route::put('/reseller-settings', [ResellerSettingsController::class, 'update'])->name('reseller-settings.update');
@@ -408,12 +448,27 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/settings', [App\Http\Controllers\Reseller\SettingsController::class, 'edit'])->name('settings');
         Route::put('/settings', [App\Http\Controllers\Reseller\SettingsController::class, 'update'])->name('settings.update');
+        // Address, phones, hours, socials and the map — facts about the business, so they sit
+        // with Settings rather than with the theme. A reseller who switches theme keeps them.
+        Route::put('/settings/contact', [App\Http\Controllers\Reseller\SettingsController::class, 'updateContact'])->name('settings.contact.update');
         Route::put('/settings/domain', [App\Http\Controllers\Reseller\SettingsController::class, 'updateCustomDomain'])->name('settings.domain.update');
         Route::post('/settings/domain/verify', [App\Http\Controllers\Reseller\SettingsController::class, 'verifyCustomDomain'])->name('settings.domain.verify');
 
         // Appearance replaced the old Branding page (logo + favicon + one colour) with the
         // full colour and font set. /branding is kept as a redirect so existing links,
         // bookmarks and the "More Settings" card keep working.
+        // Theme sits beside Appearance, not inside it: "what does our site look like" and
+        // "what colour is our button" are different questions asked at different times, and
+        // folding the first into the thirty-colour form would bury the control most
+        // resellers actually came for.
+        Route::get('/theme', [App\Http\Controllers\Reseller\ThemeController::class, 'index'])->name('theme');
+        Route::post('/theme/apply', [App\Http\Controllers\Reseller\ThemeController::class, 'apply'])->name('theme.apply');
+        // Look before applying. Mints a short-lived signed link and redirects to it; the
+        // preview itself lives in a session on the tenant's host, which is not this one.
+        Route::post('/theme/preview', [App\Http\Controllers\Reseller\ThemeController::class, 'preview'])->name('theme.preview');
+        Route::post('/theme/save', [App\Http\Controllers\Reseller\ThemeController::class, 'save'])->name('theme.save');
+        Route::delete('/theme/{theme}', [App\Http\Controllers\Reseller\ThemeController::class, 'destroy'])->name('theme.destroy')->whereNumber('theme');
+
         Route::get('/appearance', [App\Http\Controllers\Reseller\AppearanceController::class, 'edit'])->name('appearance');
         Route::put('/appearance', [App\Http\Controllers\Reseller\AppearanceController::class, 'update'])->name('appearance.update');
         Route::delete('/appearance/reset', [App\Http\Controllers\Reseller\AppearanceController::class, 'reset'])->name('appearance.reset');
@@ -434,6 +489,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/menus/items/{item}', [App\Http\Controllers\Reseller\MenuController::class, 'updateItem'])->name('menus.items.update')->whereNumber('item');
         Route::delete('/menus/items/{item}', [App\Http\Controllers\Reseller\MenuController::class, 'destroyItem'])->name('menus.items.destroy')->whereNumber('item');
         Route::post('/menus/reorder', [App\Http\Controllers\Reseller\MenuController::class, 'reorder'])->name('menus.reorder');
+
+        // Uploads from inside the page builder. Files land under this reseller's own folder,
+        // decided from their account rather than from anything in the request.
+        Route::post('/media', [App\Http\Controllers\PageMediaController::class, 'store'])->name('media.store');
+        Route::delete('/media', [App\Http\Controllers\PageMediaController::class, 'destroy'])->name('media.destroy');
 
         Route::get('/pages', [App\Http\Controllers\Reseller\PageController::class, 'index'])->name('pages.index');
         Route::get('/pages/homepage', [App\Http\Controllers\Reseller\PageController::class, 'editHome'])->name('pages.home');
@@ -563,12 +623,37 @@ Route::prefix('r/{reseller}')
         Route::get('find-memorial', [MemorialDirectoryController::class, 'index'])
             ->name('reseller.memorial.directory');
 
+        // The rest of their standard pages, for the same reason find-memorial is here.
+        //
+        // Without these the paths fell through to /r/{reseller}/{slug} below and were read as
+        // memorial slugs, so a reseller on a subdirectory install could not reach their own
+        // About, Pricing or Contact page at all — the header linked to them and the links did
+        // not work. On a real host these are the platform's own routes with the tenant bound
+        // by ResolveResellerByHost, which is why the gap only ever showed up in development.
+        Route::get('about', [PageController::class, 'about'])->name('reseller.about');
+        Route::get('pricing', [PageController::class, 'pricing'])->name('reseller.pricing');
+        Route::get('privacy-policy', [PageController::class, 'privacyPolicy'])->name('reseller.privacy-policy');
+        Route::get('terms-of-use', [PageController::class, 'termsOfUse'])->name('reseller.terms-of-use');
+        Route::get('contact', [ContactController::class, 'show'])->name('reseller.contact');
+        Route::post('contact', [ContactController::class, 'send'])->middleware('throttle:10,1')->name('reseller.contact.send');
+
         // The header search box, for the same reason. MemorialController@search is already
         // tenant-scoped, but nothing bound a tenant to it under this fallback, so it fell
         // back to the platform's memorials for any visitor who was not signed in.
         Route::get('api/search/memorials', [MemorialController::class, 'search'])
             ->middleware('throttle:60,1')
             ->name('reseller.memorials.search');
+
+        // Theme preview, for the path fallback. Same pair as the host routes below and for
+        // the same reason login/register are duplicated here: the tenant comes from the path
+        // in this environment, so the shared route cannot resolve one. MUST stay inside this
+        // group — outside it, 'theme-preview' is read as a memorial slug.
+        Route::get('theme-preview/{theme}', [\App\Http\Controllers\ThemePreviewController::class, 'enter'])
+            ->middleware('signed:relative')
+            ->whereNumber('theme')
+            ->name('reseller.theme.preview.enter');
+        Route::get('theme-preview/stop', [\App\Http\Controllers\ThemePreviewController::class, 'stop'])
+            ->name('reseller.theme.preview.stop');
 
         Route::middleware('guest')->group(function () {
             Route::get('login', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'create'])->name('reseller.login');

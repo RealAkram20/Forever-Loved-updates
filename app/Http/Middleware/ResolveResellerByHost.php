@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Helpers\ThemeSetting;
 use App\Models\Reseller;
+use App\Themes\ActiveTheme;
+use App\Themes\ThemePreview;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -72,6 +74,10 @@ class ResolveResellerByHost
             // runs after the web group, so ResolveReseller binds again afterwards.
             app()->forgetInstance(Reseller::class);
             app()->forgetInstance(ThemeSetting::REQUEST_TENANT_FLAG);
+            // Same reasoning, for the view paths: a template prepended for the previous
+            // request would render the platform's own site in a reseller's design.
+            app(ActiveTheme::class)->reset();
+            ThemeSetting::forgetThemeTokens();
 
             return $next($request);
         }
@@ -94,6 +100,12 @@ class ResolveResellerByHost
 
         app()->instance(Reseller::class, $reseller);
         ThemeSetting::markResolvedFromRequest();
+        // Their host, their template — for every route on it, not just the two that declare a
+        // domain, which is the same reason this middleware exists at all.
+        // Preview, when their own staff has one running on this site, otherwise what they
+        // have applied. resolveTemplate() also swaps the palette to match, so a preview
+        // answers "what would our site look like" rather than half of it.
+        app(ActiveTheme::class)->use(ThemePreview::resolveTemplate($reseller));
 
         // Their host, their URLs — all of them. AppServiceProvider roots every generated
         // URL at APP_URL (so subdirectory installs work), which on a white-labeled host

@@ -43,18 +43,24 @@
             @forelse ($headerNavItems as $navItem)
                 <a href="{{ $navItem->resolvedUrl() }}"
                    @if($navItem->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif
+                   @if($navItem->isActive($currentRoute)) aria-current="page" @endif
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $navItem->isActive($currentRoute) ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">{{ $navItem->label }}</a>
             @empty
                 <a href="{{ $homeUrl }}"
+                   @if($currentRoute === 'home') aria-current="page" @endif
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Home</a>
                 @unless ($tenantSite)
                 <a href="{{ route('about') }}"
+                   @if($currentRoute === 'about') aria-current="page" @endif
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'about' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">About</a>
                 <a href="{{ route('pricing') }}"
+                   @if($currentRoute === 'pricing') aria-current="page" @endif
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'pricing' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Pricing</a>
                 <a href="{{ route('memorial.directory') }}"
+                   @if($currentRoute === 'memorial.directory') aria-current="page" @endif
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'memorial.directory' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Find Memorial</a>
                 <a href="{{ route('contact') }}"
+                   @if($currentRoute === 'contact') aria-current="page" @endif
                    class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $currentRoute === 'contact' ? 'text-brand-600 dark:text-brand-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200' }}">Contact</a>
                 @endunless
             @endforelse
@@ -263,6 +269,7 @@
             @forelse ($headerNavItems as $navItem)
                 <a href="{{ $navItem->resolvedUrl() }}"
                    @if($navItem->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif
+                   @if($navItem->isActive($currentRoute)) aria-current="page" @endif
                    class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $navItem->isActive($currentRoute) ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">{{ $navItem->label }}</a>
             @empty
                 <a href="{{ $homeUrl }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium {{ $currentRoute === 'home' ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800' }}">Home</a>

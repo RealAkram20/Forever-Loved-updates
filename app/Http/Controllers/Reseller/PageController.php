@@ -188,7 +188,7 @@ class PageController extends Controller
             'isCreateMode' => false,
             'reseller' => $reseller,
             'page' => $page,
-            'widgetDefinitions' => app(WidgetRegistry::class)->definitionsForEditor(),
+            'widgetDefinitions' => app(WidgetRegistry::class)->definitionsForEditor(true),
             'initialDocument' => app(PageLayoutService::class)->initialDocumentForEditor($page),
         ]);
     }
@@ -227,7 +227,7 @@ class PageController extends Controller
             'isCreateMode' => true,
             'reseller' => $reseller,
             'page' => null,
-            'widgetDefinitions' => app(WidgetRegistry::class)->definitionsForEditor(),
+            'widgetDefinitions' => app(WidgetRegistry::class)->definitionsForEditor(true),
             'initialDocument' => ['version' => 1, 'widgets' => []],
         ]);
     }
@@ -308,7 +308,7 @@ class PageController extends Controller
             'isCreateMode' => false,
             'reseller' => $reseller,
             'page' => $page,
-            'widgetDefinitions' => app(WidgetRegistry::class)->definitionsForEditor(),
+            'widgetDefinitions' => app(WidgetRegistry::class)->definitionsForEditor(true),
             'initialDocument' => app(PageLayoutService::class)->initialDocumentForEditor($page),
         ]);
     }
@@ -433,6 +433,21 @@ class PageController extends Controller
             'version' => $request->input('version', 1),
             'widgets' => $request->input('widgets', []),
         ]);
+
+        // Render the preview in the reseller's own template.
+        //
+        // This endpoint is on *our* host, so none of the ResolveReseller* middleware ran and
+        // ActiveTheme was still on the base template. The harness extends layouts.visitor,
+        // which a template overrides — so a reseller running Dignified was shown their page in
+        // the platform's design: sans-serif where their site is small-caps serif, a rounded
+        // crimson button where theirs is a square gold one, no gold rule, and `{theme}/…`
+        // images resolving to a directory the base template does not have. They were editing
+        // one design and publishing another, which is the one thing a live preview must not do.
+        //
+        // Applied here rather than in middleware because this is the only route that renders a
+        // tenant's site from our host on purpose. templateSlug() already falls back to the base
+        // template when their theme's directory is not deployed.
+        app(\App\Themes\ActiveTheme::class)->use($reseller->templateSlug());
 
         // The preview view is a generic render harness (widgets + context, editable chrome);
         // it carries no platform-specific data of its own, so the reseller reuses it directly.

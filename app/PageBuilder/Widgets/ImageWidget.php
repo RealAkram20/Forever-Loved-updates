@@ -34,7 +34,13 @@ class ImageWidget implements PageWidgetContract
     public static function rules(): array
     {
         return [
-            'src' => 'required|string|max:2000',
+            // Nullable, not required. defaultProps ships an empty src, so `required` meant a
+            // freshly dropped Image widget failed the whole page save with "The props.src
+            // field is required" — an error naming a field the person cannot connect to the
+            // widget they just added, on a page whose other edits are then lost. Half-built is
+            // a state a page passes through; the view renders a placeholder until an image is
+            // chosen. Found by the theme conformance suite.
+            'src' => 'nullable|string|max:2000',
             'alt' => 'nullable|string|max:500',
             'caption' => 'nullable|string|max:500',
             'href' => 'nullable|string|max:2000',

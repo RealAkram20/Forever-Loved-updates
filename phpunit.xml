@@ -18,6 +18,13 @@
         </include>
     </source>
     <php>
+        <!-- PHP's default 128M is not enough to hold this suite any more. Every test boots an
+             application, and ImageDerivativesTest genuinely scales real photographs through GD
+             — several megabytes a clone. Past roughly 650 tests the run died mid-file with
+             "Allowed memory size exhausted" inside Intervention's Cloner, which reads as a
+             broken test rather than as a full process and cost a while to place.
+             Not a leak: the same suite passes at 512M, and the failing file passes alone. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing" force="true"/>
         <!-- The dev .env points APP_URL at a subdirectory (http://localhost/Forever).
              The test client resolves relative paths against it, so $this->get('/reports')

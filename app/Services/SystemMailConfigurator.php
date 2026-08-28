@@ -29,6 +29,27 @@ class SystemMailConfigurator
         Config::set('mail.mailers.smtp.password', SystemSetting::get('smtp.password'));
 
         $encryption = SystemSetting::get('smtp.encryption', 'tls');
+
+        // Symfony's mailer picks its transport from the DSN *scheme*, and only accepts "smtp"
+        // or "smtps". Laravel ignores `encryption` outright — see MailManager::createSmtpTransport
+        // — so setting it alone left this whole dropdown inert: whatever an admin chose,
+        // delivery was decided by MAIL_SCHEME in the environment or, failing that, by the port.
+        //
+        // Worse, an environment carrying MAIL_SCHEME=tls throws
+        // UnsupportedSchemeException on every send, and nothing in the admin UI could reach it.
+        // That is what filled production's failed-jobs table, and it is why no password reset
+        // or login code left the server: they are queued mail like everything else.
+        //
+        //   ssl  -> smtps  implicit TLS, the whole session encrypted from connect (usually 465)
+        //   tls  -> smtp   STARTTLS, upgraded after connect (usually 587)
+        //   none -> smtp   no upgrade offered; the transport is the same either way
+        //
+        // Set explicitly so the saved setting wins over a stale env var, which is the only way
+        // an admin on managed hosting can fix this without a shell.
+        Config::set('mail.mailers.smtp.scheme', $encryption === 'ssl' ? 'smtps' : 'smtp');
+
+        // Still published for anything that reads it back for display; it no longer decides
+        // anything.
         Config::set('mail.mailers.smtp.encryption', $encryption === 'none' ? null : $encryption);
 
         $fromAddress = SystemSetting::get('smtp.from_address');

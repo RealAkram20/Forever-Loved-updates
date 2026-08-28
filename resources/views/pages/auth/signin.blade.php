@@ -6,7 +6,7 @@
             <!-- Form -->
             <div class="flex w-full flex-1 flex-col lg:w-1/2">
                 <div class="mx-auto w-full max-w-md pt-10">
-                    <a href="{{ route('home') }}"
+                    <a href="{{ \App\Support\SiteUrl::to('/') }}"
                         class="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
                         <svg class="stroke-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M12.7083 5L7.5 10.2083L12.7083 15.4167" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -136,7 +136,7 @@
                 <div class="z-1 flex items-center justify-center">
                     <x-common.common-grid-shape/>
                     <div class="flex max-w-xs flex-col items-center">
-                        <a href="{{ route('home') }}" class="mb-4 block">
+                        <a href="{{ \App\Support\SiteUrl::to('/') }}" class="mb-4 block">
                             <img src="{{ \App\Helpers\BrandingHelper::authLogoUrl() }}" alt="{{ \App\Helpers\SiteShareMetaHelper::appDisplayName() }}" />
                         </a>
                         <p class="text-center text-gray-400 dark:text-white/60">

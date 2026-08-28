@@ -1,0 +1,873 @@
+{
+    "name": "Dignified",
+    "description": "A formal funeral-home site: small-caps serif headings, a monochrome hero, gold and crimson accents, and a services grid on dark florals. Built for businesses whose visitors arrive grieving rather than browsing.",
+    "tokens": {
+        "branding.primary_color": "#BB1520",
+        "branding.secondary_color": "#F9BE1C",
+        "branding.accent_color": "#F9BE1C",
+        "branding.bg_light": "#F9F9F9",
+        "branding.bg_dark": "#141414",
+        "branding.button1_color": "#F9BE1C",
+        "branding.button1_text_color": "#1A1A1A",
+        "branding.button2_color": "#BB1520",
+        "branding.button2_text_color": "#FFFFFF",
+        "branding.cta_bg_light": "#1A1A1A",
+        "branding.cta_bg_dark": "#1A1A1A",
+        "branding.default_theme": "light",
+        "appearance.font_heading": "Cormorant Garamond",
+        "appearance.font_body": "Lato"
+    },
+    "default_home_blocks": [
+        {
+            "type": "hero",
+            "props": []
+        },
+        {
+            "type": "features_grid",
+            "props": []
+        },
+        {
+            "type": "cta_banner",
+            "props": []
+        }
+    ],
+    "default_pages": {
+        "visitor-home": {
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "Dignified care. Compassionate service.",
+                        "body": "Honouring life with respect and supporting families with compassion.",
+                        "image": "{theme}/hero.webp",
+                        "height": "tall",
+                        "overlay": "medium",
+                        "alignment": "left",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "Learn more",
+                        "button_url": "/about",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "About Us",
+                        "heading": "Compassion when you need it most",
+                        "body": "We provide professional, respectful and affordable funeral services tailored to meet the needs of every family.\n\nFrom funeral arrangements to repatriation and memorial support, we are with you every step of the way.",
+                        "image": "{theme}/about.webp",
+                        "image_side": "left",
+                        "image_ratio": "5/6",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Read more",
+                        "button_url": "/about",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "casket",
+                                "title": "Funeral Arrangements",
+                                "text": "",
+                                "url": ""
+                            },
+                            {
+                                "icon": "file-lock",
+                                "title": "Documentation & Advisory",
+                                "text": "",
+                                "url": ""
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Repatriation Services",
+                                "text": "",
+                                "url": ""
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "",
+                                "url": ""
+                            },
+                            {
+                                "icon": "cross",
+                                "title": "Burial & Cremation",
+                                "text": "",
+                                "url": ""
+                            },
+                            {
+                                "icon": "urn",
+                                "title": "Condolence Support",
+                                "text": "",
+                                "url": ""
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "alignment": "center",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Why Choose Us",
+                        "heading": "We're here for you",
+                        "body": "Our experienced team provides caring support when you need it most.\n\nWe handle every detail with the utmost respect, at prices that are clear and openly communicated.",
+                        "image": "{theme}/why.webp",
+                        "image_side": "left",
+                        "image_ratio": "5/6",
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Learn more",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "We value your feedback",
+                        "heading": "Help us serve you better.",
+                        "body": "",
+                        "image": "{theme}/feedback.webp",
+                        "height": "band",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "enquiry",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_contact",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "Contact & Location",
+                        "body": "",
+                        "show_map": true,
+                        "map_side": "right",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal"
+                    }
+                }
+            ]
+        },
+        "services": {
+            "title": "Our Services",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "What we do",
+                        "heading": "Our Services",
+                        "body": "Everything a family needs, from the first call to the weeks that follow.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "casket",
+                                "title": "Funeral Arrangements",
+                                "text": "",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "file-lock",
+                                "title": "Documentation & Advisory",
+                                "text": "",
+                                "url": "/documentation-advisory"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Repatriation Services",
+                                "text": "",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "cross",
+                                "title": "Burial & Cremation",
+                                "text": "",
+                                "url": "/burial-cremation"
+                            },
+                            {
+                                "icon": "urn",
+                                "title": "Condolence Support",
+                                "text": "",
+                                "url": "/condolence-support"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "alignment": "center",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "We value your feedback",
+                        "heading": "Help us serve you better.",
+                        "body": "",
+                        "image": "{theme}/feedback.webp",
+                        "height": "band",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "enquiry",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_contact",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "Contact & Location",
+                        "body": "",
+                        "show_map": true,
+                        "map_side": "right",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal"
+                    }
+                }
+            ]
+        },
+        "funeral-arrangements": {
+            "title": "Funeral Arrangements",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Funeral Arrangements",
+                        "body": "Planning a service that reflects the person it is for.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Funeral Arrangements",
+                        "heading": "Planning a service that reflects the person it is for.",
+                        "body": "We take care of every practical detail of the funeral itself — the order of service, the venue, the flowers, the transport and the timing.\n\nYou tell us what matters. We handle the rest, and we tell you what things cost before you agree to them.",
+                        "image": "{theme}/about.webp",
+                        "image_side": "left",
+                        "image_ratio": "5/6",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "file-lock",
+                                "title": "Documentation & Advisory",
+                                "text": "",
+                                "url": "/documentation-advisory"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Repatriation Services",
+                                "text": "",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "cross",
+                                "title": "Burial & Cremation",
+                                "text": "",
+                                "url": "/burial-cremation"
+                            },
+                            {
+                                "icon": "urn",
+                                "title": "Condolence Support",
+                                "text": "",
+                                "url": "/condolence-support"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "alignment": "center",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "documentation-advisory": {
+            "title": "Documentation & Advisory",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Documentation & Advisory",
+                        "body": "The paperwork a death requires, handled properly.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Documentation & Advisory",
+                        "heading": "The paperwork a death requires, handled properly.",
+                        "body": "Registering a death, obtaining certificates, and the permits a burial or cremation needs.\n\nWe know which office needs which form and in what order, so you are not sent between them twice.",
+                        "image": "{theme}/why.webp",
+                        "image_side": "right",
+                        "image_ratio": "5/6",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "casket",
+                                "title": "Funeral Arrangements",
+                                "text": "",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Repatriation Services",
+                                "text": "",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "cross",
+                                "title": "Burial & Cremation",
+                                "text": "",
+                                "url": "/burial-cremation"
+                            },
+                            {
+                                "icon": "urn",
+                                "title": "Condolence Support",
+                                "text": "",
+                                "url": "/condolence-support"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "alignment": "center",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "repatriation-services": {
+            "title": "Repatriation Services",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Repatriation Services",
+                        "body": "Bringing someone home, wherever home is.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Repatriation Services",
+                        "heading": "Bringing someone home, wherever home is.",
+                        "body": "Transporting a loved one between districts or across borders, with the documentation each crossing requires.\n\nWe coordinate with the receiving family and the authorities at both ends so nothing waits on a form nobody knew about.",
+                        "image": "{theme}/hero.webp",
+                        "image_side": "left",
+                        "image_ratio": "5/6",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "casket",
+                                "title": "Funeral Arrangements",
+                                "text": "",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "file-lock",
+                                "title": "Documentation & Advisory",
+                                "text": "",
+                                "url": "/documentation-advisory"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "cross",
+                                "title": "Burial & Cremation",
+                                "text": "",
+                                "url": "/burial-cremation"
+                            },
+                            {
+                                "icon": "urn",
+                                "title": "Condolence Support",
+                                "text": "",
+                                "url": "/condolence-support"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "alignment": "center",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "memorial-services": {
+            "title": "Memorial Services",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Memorial Services",
+                        "body": "A place to remember, on the day and afterwards.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Memorial Services",
+                        "heading": "A place to remember, on the day and afterwards.",
+                        "body": "Memorial gatherings, anniversary services, and a lasting online memorial page where family and friends can leave their tributes.\n\nDistance stops being the reason someone could not be there.",
+                        "image": "{theme}/about.webp",
+                        "image_side": "right",
+                        "image_ratio": "5/6",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "casket",
+                                "title": "Funeral Arrangements",
+                                "text": "",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "file-lock",
+                                "title": "Documentation & Advisory",
+                                "text": "",
+                                "url": "/documentation-advisory"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Repatriation Services",
+                                "text": "",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "cross",
+                                "title": "Burial & Cremation",
+                                "text": "",
+                                "url": "/burial-cremation"
+                            },
+                            {
+                                "icon": "urn",
+                                "title": "Condolence Support",
+                                "text": "",
+                                "url": "/condolence-support"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "alignment": "center",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "burial-cremation": {
+            "title": "Burial & Cremation",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Burial & Cremation",
+                        "body": "Either path, arranged with the same care.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Burial & Cremation",
+                        "heading": "Either path, arranged with the same care.",
+                        "body": "Burial plots, graveside services, and cremation arranged with the crematorium of your choosing.\n\nWe will explain what each involves and what each costs, without steering you toward one.",
+                        "image": "{theme}/why.webp",
+                        "image_side": "left",
+                        "image_ratio": "5/6",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "casket",
+                                "title": "Funeral Arrangements",
+                                "text": "",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "file-lock",
+                                "title": "Documentation & Advisory",
+                                "text": "",
+                                "url": "/documentation-advisory"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Repatriation Services",
+                                "text": "",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "urn",
+                                "title": "Condolence Support",
+                                "text": "",
+                                "url": "/condolence-support"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "alignment": "center",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "condolence-support": {
+            "title": "Condolence Support",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Condolence Support",
+                        "body": "Help that does not stop after the service.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Condolence Support",
+                        "heading": "Help that does not stop after the service.",
+                        "body": "Bereavement support for the family, and help with the practical matters that surface in the weeks afterwards.\n\nThere is no clock on this. Call us when you need to.",
+                        "image": "{theme}/hero.webp",
+                        "image_side": "right",
+                        "image_ratio": "5/6",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "casket",
+                                "title": "Funeral Arrangements",
+                                "text": "",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "file-lock",
+                                "title": "Documentation & Advisory",
+                                "text": "",
+                                "url": "/documentation-advisory"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Repatriation Services",
+                                "text": "",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "cross",
+                                "title": "Burial & Cremation",
+                                "text": "",
+                                "url": "/burial-cremation"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal",
+                        "alignment": "center",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        }
+    },
+    "shadows": {
+        "components/home-header.blade.php": "820de3b69230eb00",
+        "components/visitor-footer.blade.php": "08095db5c49d63a7",
+        "layouts/visitor.blade.php": "7726e3ae729de412",
+        "page-builder/widgets/section-grid.blade.php": "26adaacea1ef7740",
+        "pages/memorial-directory/index.blade.php": "b06f49c750c05b03",
+        "pages/visitor/about.blade.php": "d71c7b70e6dda71f",
+        "pages/visitor/cms-page.blade.php": "2fe8d2a6720a7e57",
+        "pages/visitor/contact.blade.php": "7e542facffba482f",
+        "pages/visitor/home.blade.php": "3bcedd14966795e8",
+        "pages/visitor/pricing.blade.php": "9eedb39b42e90d53",
+        "pages/visitor/privacy-policy.blade.php": "4521efe06c869ba5",
+        "pages/visitor/terms-of-use.blade.php": "d39574ec6821f90d"
+    }
+}

@@ -27,7 +27,14 @@ class PageController extends Controller
      */
     public function home()
     {
-        $reseller = ThemeSetting::tenant();
+        // siteTenant(), not tenant(). Content follows the *host*; only branding follows the
+        // viewer. tenant() falls back to the signed-in user's own reseller, so this served a
+        // funeral home's own front page — their hero, their About, their memorials — to their
+        // staff on *our* marketing site, and left them no way to read ours at all. Every
+        // sibling on this controller already made the distinction; home was the one that did
+        // not. See the docblock on ThemeSetting::siteTenant(), which describes this exact
+        // failure.
+        $reseller = ThemeSetting::siteTenant();
 
         $appName = SiteShareMetaHelper::appDisplayName();
         $tagline = SystemSetting::get('branding.tagline', 'Celebrate lives that matter');
@@ -65,8 +72,16 @@ class PageController extends Controller
             }
         }
 
+        // A template that ships its own front page outranks the *platform's* builder layout.
+        //
+        // That layout is our fallback for anyone who has built nothing, and serving it here
+        // put our arrangement of blocks — our hero, our showcase — inside a reseller's themed
+        // site, which is the one thing a theme exists to prevent. It does not outrank the
+        // reseller's own layout, checked above: that is something they built deliberately.
+        $themeOwnsHome = app(\App\Themes\ActiveTheme::class)->ownsView('pages.visitor.home');
+
         $layoutPage = Page::getBySlug(Page::SLUG_VISITOR_HOME);
-        if ($layoutPage && $layoutPage->hasLayout()) {
+        if (! $themeOwnsHome && $layoutPage && $layoutPage->hasLayout()) {
             return view('pages.visitor.page-layout', [
                 'title' => 'Home',
                 'widgets' => $layoutPage->layout['widgets'],

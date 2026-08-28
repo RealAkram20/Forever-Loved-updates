@@ -55,6 +55,10 @@ class Reseller extends Model
         'logo_dark_path',
         'favicon_path',
         'primary_color',
+        // Fillable alongside the other appearance columns. The only writer that takes it from
+        // a request is Reseller\ThemeController::apply(), which resolves the id through
+        // Theme::selectableFor() first — the authorisation boundary is there, not here.
+        'theme_id',
         'pesapal_enabled',
         'pesapal_consumer_key',
         'pesapal_consumer_secret',
@@ -231,6 +235,27 @@ class Reseller extends Model
     public function tier(): BelongsTo
     {
         return $this->belongsTo(ResellerTier::class, 'reseller_tier_id');
+    }
+
+    /**
+     * The theme their public site renders with. Null means the base template — which is where
+     * the design every reseller has today now lives, so null is not "unstyled".
+     */
+    public function theme(): BelongsTo
+    {
+        return $this->belongsTo(Theme::class);
+    }
+
+    /**
+     * The template directory to render this reseller's site from.
+     *
+     * Falls back to the base template for a reseller who has chosen nothing, and for one
+     * whose theme points at a directory that is no longer deployed. A site in the wrong
+     * design is recoverable; a site returning 500 to every visitor is not.
+     */
+    public function templateSlug(): string
+    {
+        return $this->theme?->templateSlug() ?? \App\Themes\ThemeRegistry::BASE;
     }
 
     public function staff(): HasMany

@@ -7,6 +7,8 @@ use App\Listeners\RecordLastLogin;
 use App\Models\Menu;
 use App\Services\SeoMetaResolver;
 use App\SiteBlocks\SiteBlockRegistry;
+use App\Themes\ActiveTheme;
+use App\Themes\ThemeRegistry;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -21,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(SiteBlockRegistry::class, fn () => new SiteBlockRegistry);
+        $this->app->singleton(ThemeRegistry::class, fn () => new ThemeRegistry);
+        $this->app->singleton(ActiveTheme::class, fn ($app) => new ActiveTheme($app->make(ThemeRegistry::class)));
     }
 
     /**
@@ -28,6 +32,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The base template is `resources/views` itself. The platform's own site lives there
+        // and nothing is moved out of it — an earlier version of this relocated the visitor
+        // blades into `themes/basic/`, which meant the main website was being served from
+        // inside the reseller theme system. That is the wrong dependency: the platform should
+        // not render through machinery that exists for tenants.
+        //
+        // `themes/basic/` now carries only a manifest, so the catalogue has a row to point at.
+        // It ships no blades and needs no view location.
+        //
+        // Templates that *do* ship blades are prepended per request by ActiveTheme, so the
+        // chain is [chosen template] → resources/views. The platform's host prepends nothing
+        // at all, which is what keeps the main site exactly as it was.
+
         // Force APP_URL for all generated URLs (fixes subdirectory: /Forever-love)
         $appUrl = config('app.url');
         if ($appUrl) {

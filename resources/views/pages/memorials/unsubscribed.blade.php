@@ -36,7 +36,7 @@
                 You can turn updates back on from that page whenever you like.
             </p>
         @else
-            <a href="{{ url('/') }}" class="btn btn-primary btn-md mt-7">Back to home</a>
+            <a href="{{ \App\Support\SiteUrl::to('/') }}" class="btn btn-primary btn-md mt-7">Back to home</a>
         @endif
     </div>
 @endsection

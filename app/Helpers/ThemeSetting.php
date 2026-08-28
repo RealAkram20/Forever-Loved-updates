@@ -50,6 +50,17 @@ class ThemeSetting
     }
 
     /**
+     * Marker for "this is one of the platform's own public pages, so the platform is the
+     * brand" — set by UsePlatformBranding on our marketing routes. See tenant().
+     */
+    public const PLATFORM_BRANDING_FLAG = 'branding.platform_only';
+
+    public static function usePlatformBranding(): void
+    {
+        app()->instance(self::PLATFORM_BRANDING_FLAG, true);
+    }
+
+    /**
      * The reseller whose branding applies to this request, if any.
      *
      * Bound into the container by ResolveReseller (public subdomain),
@@ -57,11 +68,21 @@ class ThemeSetting
      * area). Falls back to the logged-in user's own reseller so a reseller's staff *and*
      * their clients see the same branding on every page they can reach — dashboard, memorial
      * editing, notifications — not only the routes that bind it explicitly.
+     *
+     * That fallback is switched off on our own marketing pages. A reseller's staff are also
+     * the people we are selling to, and our home page arriving in *their* logo and colours —
+     * our copy, our prices, their brand — misleads the reader about whose offer they are
+     * reading. Our shop window is ours. Only the fallback is suppressed: a reseller bound
+     * from the request still wins, so nothing changes anywhere on a reseller's own site.
      */
     public static function tenant(): ?Reseller
     {
         if (app()->bound(Reseller::class)) {
             return app(Reseller::class);
+        }
+
+        if (app()->bound(self::PLATFORM_BRANDING_FLAG)) {
+            return null;
         }
 
         return auth()->user()?->reseller;
@@ -113,6 +134,19 @@ class ThemeSetting
         return app()->bound(self::REQUEST_TENANT_FLAG) && self::tenant() !== null;
     }
 
+    /**
+     * Three layers, narrowest first:
+     *
+     *   1. what this reseller explicitly set   (reseller_settings / the column aliases)
+     *   2. what their chosen theme sets        (Theme::tokenValues())
+     *   3. the platform's default              (SystemSetting)
+     *
+     * A theme therefore ships a coherent palette while a reseller keeps the last word on any
+     * single value of it — which is the relationship the Appearance page already implies, and
+     * the reason applying a theme never silently discards colours somebody tuned by hand. The
+     * cost is one confusing state, so the theme page names it rather than leaving it to be
+     * discovered: "N of your own colours are overriding this theme".
+     */
     public static function get(string $key, mixed $default = null): mixed
     {
         $reseller = self::tenant();
@@ -123,9 +157,71 @@ class ThemeSetting
             if ($override !== null) {
                 return $override;
             }
+
+            $themed = self::themeValue($reseller, $key);
+
+            if ($themed !== null) {
+                return $themed;
+            }
         }
 
         return SystemSetting::get($key, $default);
+    }
+
+    /** @var array<int, array<string, string>> reseller id => token map, for this request */
+    private static array $themeTokens = [];
+
+    /**
+     * This reseller's theme tokens, loaded once per request.
+     *
+     * Memoised because brandColorCss() alone reads about forty keys to build a single
+     * `<style>` block; a query per key would put the theme layer on the critical path of
+     * every page load.
+     *
+     * Keyed off tenant() rather than siteTenant() on purpose: colours follow the brand, so a
+     * reseller's staff see their own palette on our host too. Markup follows the host and is
+     * resolved separately — see App\Themes\ActiveTheme.
+     */
+    private static function themeValue(Reseller $reseller, string $key): mixed
+    {
+        if (! array_key_exists($reseller->id, self::$themeTokens)) {
+            self::$themeTokens[$reseller->id] = $reseller->theme?->tokenValues() ?? [];
+        }
+
+        return self::$themeTokens[$reseller->id][$key] ?? null;
+    }
+
+    /**
+     * Serve this request a palette other than the one the reseller has applied.
+     *
+     * The single seam theme preview needs. It primes the same per-request memo themeValue()
+     * would otherwise fill from the database, so every reader downstream — brandColorCss(),
+     * the font links, a widget asking for one key — sees the previewed theme without knowing
+     * a preview exists.
+     *
+     * Deliberately only the *theme* layer. Layer 1, whatever the reseller set by hand, still
+     * wins over it, exactly as it would if the theme were applied for real. A preview that
+     * skipped that would show them a site they cannot actually have.
+     *
+     * Per-request and never written down. Nothing here touches resellers.theme_id.
+     *
+     * @param  array<string, string>  $tokens
+     */
+    public static function useThemeTokens(int $resellerId, array $tokens): void
+    {
+        self::$themeTokens[$resellerId] = $tokens;
+    }
+
+    /** Drop the memoised tokens — after a theme is applied, and between tests. */
+    public static function forgetThemeTokens(?int $resellerId = null): void
+    {
+        if ($resellerId === null) {
+            self::$themeTokens = [];
+
+            return;
+        }
+
+        unset(self::$themeTokens[$resellerId]);
     }
 
     /**

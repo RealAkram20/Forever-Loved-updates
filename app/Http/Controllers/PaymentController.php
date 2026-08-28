@@ -11,6 +11,7 @@ use App\Models\SystemSetting;
 use App\Services\NotificationService;
 use App\Services\PaymentResultProcessor;
 use App\Services\PesapalService;
+use App\Support\SiteUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -303,7 +304,10 @@ class PaymentController extends Controller
                 default => 'Payment is being processed.',
             };
             if ($data['result'] === 'cancelled') {
-                $data['redirect_url'] = url('/');
+                // "Back to Home" means the home of the site they were paying on. url('/')
+                // answers with the platform's address on every host, so a reseller's client
+                // who cancelled was handed to us instead of back to the funeral home.
+                $data['redirect_url'] = SiteUrl::to('/');
                 $data['redirect_label'] = 'Back to Home';
             }
         }

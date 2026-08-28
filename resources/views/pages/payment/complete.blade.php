@@ -50,7 +50,7 @@
                     class="btn btn-primary btn-md btn-block w-full">
                     {{ $redirect_label }}
                 </a>
-                <a href="{{ route('home') }}"
+                <a href="{{ \App\Support\SiteUrl::to('/') }}"
                     class="btn btn-secondary btn-md btn-block w-full">
                     Back to Home
                 </a>

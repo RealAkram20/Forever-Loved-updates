@@ -22,9 +22,15 @@ class SettingsController extends Controller
     {
         $reseller = $request->user()->reseller()->with('tier')->first();
 
+        $contact = [];
+        foreach (\App\Support\SiteContactDetails::keys() as $key) {
+            $contact[$key] = \App\Models\ResellerSetting::allFor($reseller->id)[$key]['value'] ?? '';
+        }
+
         return view('pages.reseller.settings', [
             'title' => 'Settings',
             'reseller' => $reseller,
+            'contact' => $contact,
             // Two independent gates: the platform must offer custom domains at all, and
             // this reseller's tier must include domain routing. Both have to hold.
             'domainsEnabled' => SystemSetting::get('domains.custom_domains_enabled', false),
@@ -46,6 +52,60 @@ class SettingsController extends Controller
         $request->user()->reseller->update($validated);
 
         return back()->with('success', 'Settings updated.');
+    }
+
+    /**
+     * Address, phones, hours, socials and the map.
+     *
+     * Facts about the business rather than appearance, so they are written here and not from
+     * the theme — a reseller who switches theme keeps their address. Blank clears the value,
+     * which is a real choice: a row nobody filled in is not rendered at all.
+     */
+    public function updateContact(Request $request)
+    {
+        $reseller = $request->user()->reseller;
+
+        $rules = [];
+        foreach (\App\Support\SiteContactDetails::rules() as $key => $rule) {
+            $rules['contact.'.$key] = $rule;
+        }
+
+        $request->validate($rules);
+
+        $submitted = (array) $request->input('contact', []);
+
+        // The map value is rendered inside an iframe, so it is checked against the host
+        // allow-list here rather than trusted because it came from a signed-in reseller.
+        $map = trim((string) ($submitted[\App\Support\SiteContactDetails::MAP_EMBED] ?? ''));
+        if ($map !== '') {
+            $extracted = $map;
+            if (preg_match('/\bsrc\s*=\s*["\']([^"\']+)["\']/i', $map, $m)) {
+                $extracted = html_entity_decode($m[1], ENT_QUOTES);
+            }
+
+            if (! \App\Support\SiteContactDetails::isAllowedMapUrl($extracted)) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['contact.'.\App\Support\SiteContactDetails::MAP_EMBED =>
+                        'That does not look like a '.\App\Support\SiteContactDetails::allowedMapHostsLabel().' embed. Paste the whole <iframe> snippet from "Embed a map", or just its src address.']);
+            }
+        }
+
+        foreach (\App\Support\SiteContactDetails::keys() as $key) {
+            $value = trim((string) ($submitted[$key] ?? ''));
+
+            if ($value === '') {
+                \App\Models\ResellerSetting::forget($reseller->id, $key);
+
+                continue;
+            }
+
+            \App\Models\ResellerSetting::set($reseller->id, $key, $value);
+        }
+
+        \App\Helpers\ThemeSetting::forgetThemeTokens($reseller->id);
+
+        return back()->with('success', 'Contact details updated.');
     }
 
     public function updateCustomDomain(Request $request, DomainVerificationService $domains)

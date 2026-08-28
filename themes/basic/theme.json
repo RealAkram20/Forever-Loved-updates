@@ -1,0 +1,23 @@
+{
+    "name": "Basic",
+    "description": "The original Forever design: a full-bleed hero, a memorial showcase carousel, a feature grid and a closing call to action. Clean, familiar, and the one every site ran on before themes existed.",
+    "tokens": [],
+    "default_home_blocks": [
+        {
+            "type": "hero",
+            "props": []
+        },
+        {
+            "type": "memorial_showcase",
+            "props": []
+        },
+        {
+            "type": "features_grid",
+            "props": []
+        },
+        {
+            "type": "cta_banner",
+            "props": []
+        }
+    ]
+}

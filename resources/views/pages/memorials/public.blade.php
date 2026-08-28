@@ -16,6 +16,21 @@
 @if (!empty($personSchemaLd))
 <script type="application/ld+json">{!! json_encode($personSchemaLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
 @endif
+
+{{-- The one place a template may speak on this page.
+
+     A memorial hosted by a funeral home should read as part of that business rather than as a
+     platform page wearing their logo. But this page is somebody's grief with two dozen working
+     parts attached — tributes, gallery, timeline, comments — and none of that is a template's
+     to restyle. So the opening is deliberately narrow: a template ships `memorial-theme` and it
+     is included here, in the head, where it can set type and colour and nothing else.
+
+     @includeIf, so a template that ships none renders nothing at all. This page is unchanged
+     for every reseller who is not on a template that opted in — which today is all but one.
+
+     Not the shared fullscreen-layout: that shell is also the page builder, the auth screens
+     and the dashboard, and a template's stylesheet has no business in any of them. --}}
+@includeIf('memorial-theme')
 @endpush
 
 @section('content')
@@ -175,15 +190,32 @@
     @php
         $birthYear = $memorial->date_of_birth?->format('Y') ?: ($memorial->birth_year ?: null);
         $deathYear = $memorial->date_of_passing?->format('Y') ?: ($memorial->death_year ?: null);
+        // The scene, and the one thing about this page a template may replace.
+        //
+        // A memorial on a reseller's site should look like it belongs to that business, and
+        // the band across the top is the only part of this page that is decoration rather
+        // than somebody's memory. A template ships
+        // `public/images/themes/{template}/memorial-backdrop.webp` and gets its own; every
+        // template that ships none — including the base one — keeps the platform's artwork,
+        // so this changes nothing for anybody who has not opted in.
+        //
+        // Deliberately not the cover photo and not the portrait: those belong to the family.
+        $memorialTemplate = app(\App\Themes\ActiveTheme::class)->template();
+        $heroBackdropRel = 'images/themes/'.$memorialTemplate.'/memorial-backdrop.webp';
+
+        if (! is_file(public_path($heroBackdropRel))) {
+            $heroBackdropRel = 'images/memorial/hero-backdrop.webp';
+        }
+
         // Stamped with the file's mtime for the same reason the tribute artwork is:
         // swapping the asset under a fixed URL leaves returning visitors on the old
         // picture until their cache expires.
-        $heroBackdropPath = public_path('images/memorial/hero-backdrop.webp');
+        $heroBackdropPath = public_path($heroBackdropRel);
         $heroBackdropVersion = is_file($heroBackdropPath) ? filemtime($heroBackdropPath) : null;
     @endphp
     <section id="memorial-hero" class="memorial-hero">
         <div class="memorial-hero__band" aria-hidden="true">
-            <img class="memorial-hero__bg" src="{{ asset('images/memorial/hero-backdrop.webp') }}{{ $heroBackdropVersion ? '?v='.$heroBackdropVersion : '' }}" alt="" />
+            <img class="memorial-hero__bg" src="{{ asset($heroBackdropRel) }}{{ $heroBackdropVersion ? '?v='.$heroBackdropVersion : '' }}" alt="" />
         </div>
 
         <div class="memorial-hero__frame">

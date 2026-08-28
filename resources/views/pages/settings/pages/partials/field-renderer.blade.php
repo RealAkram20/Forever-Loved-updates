@@ -1,15 +1,28 @@
-{{-- Text input --}}
+{{-- Text input.
+
+     `field.max` comes from the widget's own limit declaration (App\PageBuilder\Support\TextLimits),
+     the same number the validator enforces. maxlength stops the overrun as it happens; the
+     counter below explains why the field stopped accepting characters, which maxlength alone
+     never does. --}}
 <template x-if="field.kind === 'text'">
-    <input type="text" class="h-9 w-full rounded-lg border border-gray-300 bg-transparent px-2 text-sm dark:border-gray-600 dark:text-white"
-        :value="selectedWidget.props[field.name]" @input="updateProp(field.name, $event.target.value)"
-        :placeholder="field.placeholder || ''" />
+    <div>
+        <input type="text" class="h-9 w-full rounded-lg border border-gray-300 bg-transparent px-2 text-sm dark:border-gray-600 dark:text-white"
+            :value="selectedWidget.props[field.name]" @input="updateProp(field.name, $event.target.value)"
+            :maxlength="field.max || null"
+            :placeholder="field.placeholder || ''" />
+        @include('pages.settings.pages.partials.field-counter')
+    </div>
 </template>
 
 {{-- Textarea --}}
 <template x-if="field.kind === 'textarea'">
-    <textarea rows="3" class="w-full rounded-lg border border-gray-300 bg-transparent px-2 py-2 text-sm dark:border-gray-600 dark:text-white"
-        :value="selectedWidget.props[field.name]" @input="updateProp(field.name, $event.target.value)"
-        :placeholder="field.placeholder || ''"></textarea>
+    <div>
+        <textarea :rows="field.rows || 3" class="w-full rounded-lg border border-gray-300 bg-transparent px-2 py-2 text-sm dark:border-gray-600 dark:text-white"
+            :value="selectedWidget.props[field.name]" @input="updateProp(field.name, $event.target.value)"
+            :maxlength="field.max || null"
+            :placeholder="field.placeholder || ''"></textarea>
+        @include('pages.settings.pages.partials.field-counter')
+    </div>
 </template>
 
 {{-- Number --}}
@@ -36,6 +49,11 @@
             <option :value="opt" x-text="opt === '' ? 'Default' : (field.prefix ? field.prefix + opt : String(opt))"></option>
         </template>
     </select>
+</template>
+
+{{-- Repeater: a list of rows, each its own small form. --}}
+<template x-if="field.kind === 'repeater'">
+    @include('pages.settings.pages.partials.field-repeater')
 </template>
 
 {{-- JSON --}}
@@ -113,3 +131,5 @@
         </div>
     </div>
 </template>
+
+@include('pages.settings.pages.partials.field-repeater')

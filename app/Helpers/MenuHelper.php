@@ -79,6 +79,11 @@ class MenuHelper
                 'title' => 'Your business',
                 'items' => array_values(array_filter([
                     ['icon' => 'pricing', 'name' => 'Plans', 'path' => url('/reseller/plans')],
+                    // Theme before Appearance, and never tier-gated. Choosing a design is the
+                    // first thing a reseller wants and the coarsest control they have; the
+                    // thirty-colour form is the refinement afterwards. Gating it would make
+                    // the white-label pitch false for the tiers it is pitched hardest to.
+                    ['icon' => 'theme', 'name' => 'Theme', 'path' => url('/reseller/theme'), 'match' => 'reseller/theme'],
                     // Named to match the admin's own entry, and pointing at the merged page —
                     // logo, favicon and the full colour/font set now live in one place rather
                     // than a "Branding" page that only controlled a single colour.
@@ -163,6 +168,10 @@ class MenuHelper
                 'title' => 'Resellers',
                 'items' => [
                     ['icon' => 'store', 'name' => 'Resellers', 'path' => url('/settings/resellers'), 'match' => 'settings/resellers'],
+                    // The catalogue resellers choose their site design from. Sits here rather
+                    // than under Appearance because it configures the reseller program, not
+                    // the platform's own look.
+                    ['icon' => 'theme', 'name' => 'Themes', 'path' => url('/settings/themes'), 'match' => 'settings/themes'],
                     ['icon' => 'pricing', 'name' => 'Pricing', 'path' => url('/settings/reseller-pricing')],
                     ['icon' => 'settings', 'name' => 'Settings', 'path' => url('/settings/reseller-settings')],
                 ],
@@ -265,6 +274,8 @@ class MenuHelper
             'menus' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 
             'appearance' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21a9 9 0 1 1 9-9c0 2.485-2.015 3.75-4.5 3.75h-1.688c-1.036 0-1.875.84-1.875 1.875 0 .482.183.921.482 1.253.302.335.456.79.331 1.222-.212.734-.94.9-1.75.9Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.5" cy="11.25" r="1.125" fill="currentColor"/><circle cx="10.5" cy="7.5" r="1.125" fill="currentColor"/><circle cx="15" cy="7.5" r="1.125" fill="currentColor"/><circle cx="17.25" cy="11.25" r="1.125" fill="currentColor"/></svg>',
+
+            'theme' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.25" y="4.25" width="17.5" height="15.5" rx="2.25" stroke="currentColor" stroke-width="1.5"/><path d="M3.25 9H20.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M9.25 9V19.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
 
             'charts' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.00002 12.0957C4.00002 7.67742 7.58174 4.0957 12 4.0957C16.4183 4.0957 20 7.67742 20 12.0957C20 16.514 16.4183 20.0957 12 20.0957H5.06068L6.34317 18.8132C6.48382 18.6726 6.56284 18.4818 6.56284 18.2829C6.56284 18.084 6.48382 17.8932 6.34317 17.7526C4.89463 16.304 4.00002 14.305 4.00002 12.0957ZM12 2.5957C6.75332 2.5957 2.50002 6.849 2.50002 12.0957C2.50002 14.4488 3.35633 16.603 4.77303 18.262L2.71969 20.3154C2.50519 20.5299 2.44103 20.8525 2.55711 21.1327C2.6732 21.413 2.94668 21.5957 3.25002 21.5957H12C17.2467 21.5957 21.5 17.3424 21.5 12.0957C21.5 6.849 17.2467 2.5957 12 2.5957ZM7.62502 10.8467C6.93467 10.8467 6.37502 11.4063 6.37502 12.0967C6.37502 12.787 6.93467 13.3467 7.62502 13.3467H7.62512C8.31548 13.3467 8.87512 12.787 8.87512 12.0967C8.87512 11.4063 8.31548 10.8467 7.62512 10.8467H7.62502ZM10.75 12.0967C10.75 11.4063 11.3097 10.8467 12 10.8467H12.0001C12.6905 10.8467 13.2501 11.4063 13.2501 12.0967C13.2501 12.787 12.6905 13.3467 12.0001 13.3467H12C11.3097 13.3467 10.75 12.787 10.75 12.0967ZM16.375 10.8467C15.6847 10.8467 15.125 11.4063 15.125 12.0967C15.125 12.787 15.6847 13.3467 16.375 13.3467H16.3751C17.0655 13.3467 17.6251 12.787 17.6251 12.0967C17.6251 11.4063 17.0655 10.8467 16.3751 10.8467H16.375Z" fill="currentColor"></path></svg>',
 

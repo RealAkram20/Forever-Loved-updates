@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AddRequestLogContext;
 use App\Http\Middleware\InstallMiddleware;
+use App\Http\Middleware\AnnounceThemePreview;
 use App\Http\Middleware\ResolveResellerByHost;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -41,6 +42,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // were served unbranded on their white-labeled domain. Short-circuits on our own host
         // before any query, so the platform pays nothing for it.
         $middleware->appendToGroup('web', ResolveResellerByHost::class);
+
+        // Runs on the way out, so it sees the tenant however it was bound — including the
+        // /r/{slug} fallback, where the binding happens in a route middleware inside $next().
+        // Marks previewed pages no-store and welds the "this is a preview" bar onto them.
+        $middleware->appendToGroup('web', AnnounceThemePreview::class);
 
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));

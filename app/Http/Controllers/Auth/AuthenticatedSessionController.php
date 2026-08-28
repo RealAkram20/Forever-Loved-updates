@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\ImpersonationSwitch;
 use App\Support\PostAuthRedirect;
 use App\Support\ReturnTo;
+use App\Support\SiteUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -67,12 +68,21 @@ class AuthenticatedSessionController extends Controller
                 ->with('success', 'Signed out of the reseller account — you are back on your own.');
         }
 
+        // Read before the session goes, not after. redirect('/') here used to hand a
+        // reseller's client to *our* front page the moment they signed out of the
+        // reseller's white-labeled site — url('/') answers with the platform's address on
+        // every host. SiteUrl::to() sends them back to whichever site they were on.
+        //
+        // Resolved first because ThemeSetting::tenant() falls back to the signed-in user's
+        // reseller; once logout has run, only the host binding is left to answer with.
+        $home = SiteUrl::to('/');
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect($home);
     }
 }

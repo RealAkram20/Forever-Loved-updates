@@ -36,3 +36,14 @@ public.zip
 
 # Database backups - never commit these
 storage/backups/
+
+# Agent tooling — local to whoever is working here, not part of the application.
+/.claude/
+/.codex/
+/.agents/
+/skills-lock.json
+
+# Reference photography the Dignified template was matched against. The template ships
+# its own optimised webp under public/images/themes/; these are the originals and are
+# large enough to be worth keeping out of the history.
+/themes/*.png

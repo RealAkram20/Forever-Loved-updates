@@ -44,12 +44,22 @@ class WidgetRegistry
     /**
      * JSON payload for the page builder UI.
      *
+     * @param  bool  $forReseller  true inside a reseller's own builder, where the theme section
+     *                             widgets belong. The platform's builder does not offer them:
+     *                             the platform site is not themed, so they would render their
+     *                             plain fallback and never look like the design they exist for,
+     *                             and they duplicate `hero` and `features_grid` for that
+     *                             audience anyway.
      * @return array<int, array<string, mixed>>
      */
-    public function definitionsForEditor(): array
+    public function definitionsForEditor(bool $forReseller = false): array
     {
         $out = [];
         foreach ($this->typeMap() as $class) {
+            if (! $forReseller && is_subclass_of($class, \App\PageBuilder\Contracts\ResellerWidget::class)) {
+                continue;
+            }
+
             $out[] = [
                 'type' => $class::type(),
                 'label' => $class::label(),

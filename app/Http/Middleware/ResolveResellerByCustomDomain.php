@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Helpers\ThemeSetting;
 use App\Models\Reseller;
+use App\Themes\ActiveTheme;
+use App\Themes\ThemePreview;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,6 +40,10 @@ class ResolveResellerByCustomDomain
         app()->instance(Reseller::class, $reseller);
         // Their own domain, so their own site — see ThemeSetting::isResellerSite().
         ThemeSetting::markResolvedFromRequest();
+        // Preview, when their own staff has one running on this site, otherwise what they
+        // have applied. resolveTemplate() also swaps the palette to match, so a preview
+        // answers "what would our site look like" rather than half of it.
+        app(ActiveTheme::class)->use(ThemePreview::resolveTemplate($reseller));
 
         return $next($request);
     }
