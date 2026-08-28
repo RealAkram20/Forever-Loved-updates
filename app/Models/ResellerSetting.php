@@ -79,6 +79,28 @@ class ResellerSetting extends Model
         self::clearCache($resellerId);
     }
 
+    /**
+     * Drop only the named settings, leaving everything else this tenant has saved.
+     *
+     * Exists because forgetAll() is almost never what a caller means. Every reseller setting
+     * shares one table — colours and fonts alongside the business's phone numbers, address,
+     * opening hours, map and social links — so "reset the appearance" run through forgetAll()
+     * deleted a funeral home's contact details, which no part of that button claimed to touch
+     * and which nothing could give back.
+     *
+     * @param  array<int, string>  $keys
+     */
+    public static function forgetKeys(int $resellerId, array $keys): void
+    {
+        if ($keys === []) {
+            return;
+        }
+
+        static::where('reseller_id', $resellerId)->whereIn('key', $keys)->delete();
+
+        self::clearCache($resellerId);
+    }
+
     public static function clearCache(int $resellerId): void
     {
         Cache::forget(self::cacheKey($resellerId));

@@ -244,7 +244,11 @@ class AppearanceController extends Controller
     {
         $reseller = $request->user()->reseller;
 
-        ResellerSetting::forgetAll($reseller->id);
+        // Only what this page owns. Every reseller setting shares one table, so forgetAll()
+        // here also deleted the business's phone numbers, address, opening hours, map embed
+        // and social links — none of which this button mentions, and none of which could be
+        // recovered. A funeral home pressed "reset colours" and lost how families reach them.
+        ResellerSetting::forgetKeys($reseller->id, AppearanceKeys::resellerWritable());
 
         // primary_color is a colour like any other, just stored in a column — leaving it set
         // would make "reset every colour" quietly untrue for the most visible one on the site.
