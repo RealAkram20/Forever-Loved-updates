@@ -145,3 +145,26 @@ it('falls back to the platform backdrop when a template ships none', function ()
         ->assertOk()
         ->assertSee('images/memorial/hero-backdrop.webp', false);
 });
+
+it('frames the portrait in the reseller own two colours', function () {
+    // The only frame on the page, directly under the photograph, so it carries the template's
+    // crimson and gold rather than the platform's plain white card. Built from the palette, so
+    // a reseller who rebrands takes it with them.
+    $acme = blendTenant('blend-frame', 'dignified');
+    $memorial = blendMemorial($acme);
+
+    $this->get('/r/'.$acme->slug.'/'.$memorial->slug)
+        ->assertOk()
+        ->assertSee('.memorial-hero__portrait', false)
+        ->assertSee('linear-gradient(180deg,', false);
+});
+
+it('leaves the platform portrait mount plain', function () {
+    // A reseller not on this template keeps the white card, which is what suits every brand.
+    $acme = blendTenant('blend-frame-basic', null);
+    $memorial = blendMemorial($acme);
+
+    $this->get('/r/'.$acme->slug.'/'.$memorial->slug)
+        ->assertOk()
+        ->assertDontSee('.memorial-hero__portrait', false);
+});
