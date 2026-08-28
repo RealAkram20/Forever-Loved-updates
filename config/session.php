@@ -157,12 +157,31 @@ return [
     |--------------------------------------------------------------------------
     |
     | This value determines the domain and subdomains the session cookie is
-    | available to. By default, the cookie will be available to the root
-    | domain and all subdomains. Typically, this shouldn't be changed.
+    | available to.
+    |
+    | Laravel's default is null, which makes the cookie host-only: it is sent
+    | back to exactly the host that set it and to no subdomain of it. That
+    | default is wrong for this application by construction. Every reseller is
+    | minted a subdomain of APP_URL, and staff sign in on the apex — so a
+    | super-admin who opened a memorial on a reseller's subdomain arrived there
+    | anonymous. The page rendered, because it is public; the editing controls
+    | did not, because `canBeEditedBy(null)` is false. From the outside that
+    | looks like a permissions bug and it is a cookie one, which is why it is
+    | derived here rather than left to a variable somebody has to remember on
+    | every new environment.
+    |
+    | Leading dot, so the apex and every subdomain share one session. Custom
+    | domains are a separate origin and cannot be covered by any cookie we set;
+    | that handoff is what the signed relative URLs exist for.
+    |
+    | SESSION_DOMAIN still wins when it is set. Local development sets it to
+    | `null` explicitly — env() reads that as null and the default below is not
+    | consulted — because a dotted cookie domain on `localhost` is not sent by
+    | some browsers at all.
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => env('SESSION_DOMAIN', \App\Support\SessionCookieDomain::forAppUrl(env('APP_URL'))),
 
     /*
     |--------------------------------------------------------------------------
