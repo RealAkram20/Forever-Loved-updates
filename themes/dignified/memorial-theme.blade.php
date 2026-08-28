@@ -80,11 +80,12 @@
        its brand takes this with it. Two stops only: a hand-placed orange in the middle would
        be a third colour nobody chose, and the gradient produces it anyway.
 
-       The white ring inside is what stops the crimson bleeding into a dark suit or the gold
-       into a bright background — it is the mount, and the gradient is the frame around it. */
+       Thin, and with no white mount inside it. The white ring read as a second frame around
+       the first and made the whole thing heavier than the page it sits on; the photograph
+       should meet the colour directly. */
     .memorial-hero__portrait {
-        padding: 0.6rem;
-        border-radius: 1.4rem;
+        padding: 0.28rem;
+        border-radius: 1.15rem;
         background: linear-gradient(180deg, {{ $dgRed }} 0%, {{ $dgGold }} 100%);
         box-shadow: 0 18px 42px rgb(0 0 0 / 0.28);
     }
@@ -95,8 +96,7 @@
     }
 
     .memorial-hero__portrait img {
-        border: 5px solid #fff;
-        border-radius: 1rem;
-        background: #fff;
+        border: 0;
+        border-radius: 0.95rem;
     }
 </style>
