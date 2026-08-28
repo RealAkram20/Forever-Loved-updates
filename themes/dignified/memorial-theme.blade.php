@@ -196,9 +196,9 @@
     /* The initial that stands in for someone with no photograph.
 
        A crimson letter on a pink disc, beside every story, tribute and comment — so the more a
-       family used the page, the more of it turned pink. The same block as the open tab: ink
-       with a white letter, which is a colour this brand already owns and which lets the names
-       beside it read as the thing on the row that matters.
+       family used the page, the more of it turned pink. The same block as the open tab, down to
+       the letter on it: ink with gold, which is this template's pairing everywhere else and
+       which lets the names beside these read as the thing on the row that matters.
 
        `text-brand-600` is part of the selector on purpose. It is what the discs holding a letter
        have and the disc holding the subscribe bell does not — that one keeps its tint, because a
@@ -208,7 +208,7 @@
     .rounded-full.bg-brand-100.text-brand-600,
     .dark .rounded-full.bg-brand-100.text-brand-600 {
         background-color: var(--dg-ink);
-        color: #ffffff;
+        color: var(--dg-gold);
     }
 
     /* The profile card parks below this template's header, not the platform's.

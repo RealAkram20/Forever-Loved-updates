@@ -723,7 +723,23 @@
                              chip's own press feedback already confirms the tap was heard. --}}
                         @if ($showGalleryFilters)
                             <div class="mt-4 flex items-center gap-2">
-                                <div data-category-chips class="-mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter gallery by category">
+                                {{-- Scrolls on a phone, wraps on anything with a mouse.
+
+                                     This was a single-line scroller at every width, with its
+                                     scrollbar deliberately hidden — which is right on touch,
+                                     where you drag it, and a dead end everywhere else: a
+                                     memorial with more than four or five categories simply had
+                                     no way to reach the rest of them. Shift-scrolling is not an
+                                     affordance, it is a thing some people happen to know.
+
+                                     Wrapping from `sm` up costs a second line of chips and
+                                     makes every filter reachable by the input method that
+                                     screen actually has. min-w-0 stays for the touch case: a
+                                     flex item's min-width is `auto`, which floors it at its own
+                                     min-content — and the chips are `shrink-0 whitespace-nowrap`
+                                     — so without it the container can never shrink below its
+                                     contents and has no overflow to scroll. --}}
+                                <div data-category-chips class="-mx-1 flex min-w-0 flex-1 flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-y-2 sm:overflow-x-visible" role="group" aria-label="Filter gallery by category">
                                     @php
                                         $chipClass = 'shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97] motion-reduce:active:scale-100';
                                         $chipOn = 'border-brand-500 bg-brand-500 text-white';
