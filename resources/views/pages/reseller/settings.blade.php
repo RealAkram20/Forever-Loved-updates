@@ -48,7 +48,10 @@
                 @method('PUT')
 
                 @php
-                    use App\Support\SiteContactDetails as CD;
+                    // Not `use ... as CD`: Blade compiles this template into a nested
+                    // block and PHP only allows an import at the top level of a file, so
+                    // that form is a parse error and took the whole page down with it.
+                    $CD = \App\Support\SiteContactDetails::class;
                     $inputCls = 'h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900/80 dark:text-white/90';
                     $areaCls = str_replace('h-11 ', '', $inputCls).' py-3 leading-relaxed';
                     $labelCls = 'mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300';
@@ -58,51 +61,51 @@
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <div>
                         <label class="{{ $labelCls }}" for="c-phone">Phone</label>
-                        <input id="c-phone" type="text" name="contact[{{ CD::PHONE }}]" maxlength="40"
-                            value="{{ old('contact.'.CD::PHONE, $contact[CD::PHONE] ?? '') }}"
+                        <input id="c-phone" type="text" name="contact[{{ $CD::PHONE }}]" maxlength="40"
+                            value="{{ old('contact.'.$CD::PHONE, $contact[$CD::PHONE] ?? '') }}"
                             placeholder="+256 200 123 456" class="{{ $inputCls }}" />
                     </div>
 
                     <div>
                         <label class="{{ $labelCls }}" for="c-phone-alt">Second phone</label>
-                        <input id="c-phone-alt" type="text" name="contact[{{ CD::PHONE_ALT }}]" maxlength="40"
-                            value="{{ old('contact.'.CD::PHONE_ALT, $contact[CD::PHONE_ALT] ?? '') }}"
+                        <input id="c-phone-alt" type="text" name="contact[{{ $CD::PHONE_ALT }}]" maxlength="40"
+                            value="{{ old('contact.'.$CD::PHONE_ALT, $contact[$CD::PHONE_ALT] ?? '') }}"
                             placeholder="Optional" class="{{ $inputCls }}" />
                     </div>
 
                     <div>
                         <label class="{{ $labelCls }}" for="c-address">Address</label>
-                        <textarea id="c-address" name="contact[{{ CD::ADDRESS }}]" rows="3" maxlength="300"
+                        <textarea id="c-address" name="contact[{{ $CD::ADDRESS }}]" rows="3" maxlength="300"
                             placeholder="Plot 123, Kampala Road&#10;P.O. Box 5678, Kampala, Uganda"
-                            class="{{ $areaCls }}">{{ old('contact.'.CD::ADDRESS, $contact[CD::ADDRESS] ?? '') }}</textarea>
+                            class="{{ $areaCls }}">{{ old('contact.'.$CD::ADDRESS, $contact[$CD::ADDRESS] ?? '') }}</textarea>
                         <p class="{{ $hintCls }}">One line per line, the way you would write it on an envelope.</p>
                     </div>
 
                     <div>
                         <label class="{{ $labelCls }}" for="c-hours">Opening hours</label>
-                        <textarea id="c-hours" name="contact[{{ CD::HOURS }}]" rows="3" maxlength="300"
+                        <textarea id="c-hours" name="contact[{{ $CD::HOURS }}]" rows="3" maxlength="300"
                             placeholder="Mon - Fri: 8:00am - 5:00pm&#10;Sat: 9:00am - 1:00pm&#10;Sun: By appointment"
-                            class="{{ $areaCls }}">{{ old('contact.'.CD::HOURS, $contact[CD::HOURS] ?? '') }}</textarea>
+                            class="{{ $areaCls }}">{{ old('contact.'.$CD::HOURS, $contact[$CD::HOURS] ?? '') }}</textarea>
                     </div>
                 </div>
 
                 <div>
                     <label class="{{ $labelCls }}" for="c-map">Map</label>
-                    <textarea id="c-map" name="contact[{{ CD::MAP_EMBED }}]" rows="3" maxlength="1000"
+                    <textarea id="c-map" name="contact[{{ $CD::MAP_EMBED }}]" rows="3" maxlength="1000"
                         placeholder='&lt;iframe src="https://www.google.com/maps/embed?pb=..." ...&gt;&lt;/iframe&gt;'
-                        class="{{ $areaCls }} font-mono text-xs">{{ old('contact.'.CD::MAP_EMBED, $contact[CD::MAP_EMBED] ?? '') }}</textarea>
+                        class="{{ $areaCls }} font-mono text-xs">{{ old('contact.'.$CD::MAP_EMBED, $contact[$CD::MAP_EMBED] ?? '') }}</textarea>
                     <p class="{{ $hintCls }}">
                         In Google Maps, find your location and choose <span class="font-medium">Share &rarr; Embed a map</span>,
                         then paste the whole snippet here. OpenStreetMap embeds work too. Leave blank to show a simple
                         location card instead of a live map.
                     </p>
-                    @error('contact.'.CD::MAP_EMBED)
+                    @error('contact.'.$CD::MAP_EMBED)
                         <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror
                 </div>
 
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    @foreach ([[CD::SOCIAL_FACEBOOK, 'Facebook'], [CD::SOCIAL_TWITTER, 'X (Twitter)'], [CD::SOCIAL_INSTAGRAM, 'Instagram']] as [$key, $label])
+                    @foreach ([[$CD::SOCIAL_FACEBOOK, 'Facebook'], [$CD::SOCIAL_TWITTER, 'X (Twitter)'], [$CD::SOCIAL_INSTAGRAM, 'Instagram']] as [$key, $label])
                         <div>
                             <label class="{{ $labelCls }}">{{ $label }}</label>
                             <input type="url" name="contact[{{ $key }}]" maxlength="500"
