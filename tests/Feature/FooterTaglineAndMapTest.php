@@ -136,6 +136,9 @@ it('draws a map from the address alone', function () {
     // The keyless embed form, so nobody needs a Maps Platform key to show where they are.
     expect($url)->toContain('maps.google.com/maps?q=')
         ->and($url)->toContain('output=embed')
+        // Street level. Left to itself Google zoomed out to the whole country for an address
+        // it could not pin, which shows a family nothing about where to bring flowers.
+        ->and($url)->toContain('z=16')
         // The address is a textarea; its newlines have to collapse into one query.
         ->and($url)->not->toContain('%0A')
         ->and($url)->toContain('Kampala');

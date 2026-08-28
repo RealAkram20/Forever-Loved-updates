@@ -144,7 +144,11 @@ class SiteContactDetails
         // query wants them as one line.
         $query = trim(preg_replace('/\s+/', ' ', $address));
 
-        return 'https://maps.google.com/maps?q='.urlencode($query).'&output=embed';
+        // z=16 is street level: the road named in the address, its neighbours, and enough
+        // around it to recognise. Without a zoom Google picks its own, and for an address it
+        // cannot pin exactly that means the whole country — a marker somewhere in Uganda tells
+        // a family nothing about where to bring flowers.
+        return 'https://maps.google.com/maps?q='.urlencode($query).'&z=16&output=embed';
     }
 
     public static function isAllowedMapUrl(string $url): bool

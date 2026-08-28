@@ -68,6 +68,27 @@
     .memorial-hero__divider { color: {{ $dgGold }}; }
     .dark .memorial-hero__divider { color: {{ $dgGold }}; }
 
+    /* The scene sits lower on this template.
+
+       The platform's band is sized for artwork that fades to nothing a little under the
+       header. This one is a dark plate, and at that height it read as a stripe the portrait
+       was floating above rather than a scene it stands in — the photograph cleared it almost
+       entirely and the page went white too soon.
+
+       Only the band grows. The frame's padding and the portrait's negative margin are left
+       alone deliberately, so nothing below moves: the name, the dates and everything after
+       them stay exactly where they were, and the extra height is spent behind the portrait
+       where it is wanted. */
+    .memorial-hero__band { height: 13rem; }
+
+    @media (min-width: 640px) {
+        .memorial-hero__band { height: 15rem; }
+    }
+
+    @media (min-width: 1024px) {
+        .memorial-hero__band { height: 18rem; }
+    }
+
     /* The portrait, in the template's own two colours.
 
        The platform's mount is a plain white card, which is right for a page that has to suit
