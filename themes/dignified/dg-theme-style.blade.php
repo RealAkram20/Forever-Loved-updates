@@ -249,4 +249,33 @@
 
     /* Body copy is Lato at a size that survives being read by someone who is upset. */
     .dg-body { line-height: 1.75; }
+
+    /* The header follows the page down.
+
+       The base template's header has been `sticky top-0` all along; this one was the outlier,
+       and on a long memorial or a services page the navigation was a scroll back to the top.
+
+       It sticks in two different ways, because it is two bars. Below lg there is only the white
+       identity bar — the dark nav collapses into the hamburger that lives in it — so the whole
+       thing pins. From lg up, pinning both would park 166px of chrome on every page; instead the
+       negative offset lets the identity bar scroll away and parks the nav alone at the top,
+       which is the bar that has the links in it.
+
+       -7.375rem is that identity bar's exact height at lg: 78px of logo inside 20px of padding
+       top and bottom. It is a measurement, not a taste — if the logo box changes, this changes
+       with it, or the nav parks with a white sliver above it. */
+    .dg-header {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        /* An edge, for the moment it starts overlapping the page. Below lg the pinned bar is
+           white and content ran straight under it with nothing between the two. Every page on
+           this template opens on a dark hero directly beneath the header, so at rest the shadow
+           falls on something already dark and the design at the top of the page is unchanged. */
+        box-shadow: 0 6px 18px rgb(0 0 0 / 0.10);
+    }
+
+    @media (min-width: 1024px) {
+        .dg-header { top: -7.375rem; }
+    }
 </style>

@@ -146,6 +146,32 @@ it('never walks a visitor from a reseller site onto the platform', function (str
     }
 })->with('templates');
 
+it('pins the header so the navigation is reachable from anywhere on the page', function (string $template) {
+    // The base template's header has been `sticky top-0` since it was written; this one was
+    // the outlier, and on a long memorial or services page the navigation was a scroll back to
+    // the top. Asserted as a contract rather than as a fix, so the next template inherits it.
+    //
+    // Two spellings are accepted because the two templates legitimately differ: one says it in
+    // a utility class, the other in a rule, because it pins its two bars at different offsets.
+    // What matters is that the header stays on screen, not how it was written.
+    $tenant = conformanceTenant($template);
+    $html = $this->get(conformanceHost($tenant).'/')->assertOk()->getContent();
+
+    expect(preg_match('#<header\b[^>]*class="([^"]*)"#', $html, $m) === 1)
+        ->toBeTrue("template '{$template}' renders no <header> with a class");
+
+    $classes = preg_split('/\s+/', trim($m[1]));
+
+    $pinned = in_array('sticky', $classes, true)
+        || in_array('fixed', $classes, true)
+        || collect($classes)->contains(fn (string $class) => (bool) preg_match(
+            '#\.'.preg_quote($class, '#').'\s*\{[^}]*position:\s*(sticky|fixed)#',
+            $html
+        ));
+
+    expect($pinned)->toBeTrue("template '{$template}' lets its header scroll away");
+})->with('templates');
+
 it('credits the platform once, in the footer, and opens it in a new tab', function (string $template) {
     // The other side of the exception above: having carved a hole in that rule, this pins what
     // is allowed through it. One credit, in the footer, target=_blank — not a second link that

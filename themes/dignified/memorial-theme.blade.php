@@ -152,6 +152,16 @@
         border-radius: 0;
     }
 
+    /* The profile card parks below this template's header, not the platform's.
+
+       That card is `md:sticky md:top-16` — 64px, measured against the platform header. This
+       template's is taller: between md and lg the whole white identity bar pins, and the card
+       would have slid 36px underneath it. From lg the nav parks alone at 48px and the card's
+       own `lg:top-[4.5rem]` already clears it, so only the middle band needs an answer. */
+    @media (min-width: 768px) and (max-width: 1023.98px) {
+        main aside > div { top: 7.25rem; }
+    }
+
     /* The portrait, in the template's own two colours.
 
        The platform's mount is a plain white card, which is right for a page that has to suit

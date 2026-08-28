@@ -52,7 +52,7 @@
     $navLinkClass = 'flex flex-1 items-center justify-center whitespace-nowrap px-4 py-4 text-[11px] font-bold uppercase tracking-[0.14em] transition-colors duration-200 ease-out';
 @endphp
 
-<header x-data="{ mobileOpen: false }">
+<header class="dg-header" x-data="{ mobileOpen: false }">
     {{-- Top bar: the identity and the two things a grieving family looks for first. --}}
     <div class="bg-white">
         <div class="mx-auto flex max-w-7xl items-center gap-6 px-4 py-4 sm:px-6 lg:py-5 lg:px-8">
