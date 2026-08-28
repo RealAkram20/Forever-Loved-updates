@@ -95,7 +95,15 @@ it('leaves a memorial on the base template exactly as it was', function () {
 
 it('leaves the platform its own memorials', function () {
     $owner = User::factory()->create();
-    $memorial = Memorial::factory()->create(['reseller_id' => null, 'user_id' => $owner->id]);
+    // Pinned for the same reason blendMemorial() pins: the factory rolls `is_public` at 85%,
+    // and a private memorial is not served at all — so this failed about one run in seven for
+    // a reason that had nothing to do with templates.
+    $memorial = Memorial::factory()->create([
+        'reseller_id' => null,
+        'user_id' => $owner->id,
+        'is_public' => true,
+        'status' => Memorial::STATUS_ACTIVE,
+    ]);
 
     $this->get('/'.$memorial->slug)
         ->assertOk()
@@ -157,6 +165,44 @@ it('frames the portrait in the reseller own two colours', function () {
         ->assertOk()
         ->assertSee('.memorial-hero__portrait', false)
         ->assertSee('linear-gradient(180deg,', false);
+});
+
+it('ends the scene on the template own rule rather than a smear', function () {
+    // What "the blend is not clean" was.
+    //
+    // The platform dissolves the foot of its band with a mask so it can sit on any ground
+    // without knowing its colour, and wraps the page in `glass-bg-mesh` — three soft radial
+    // washes in indigo, pink and blue. Over a near-black plate the two together produced a
+    // grey ramp that ended in a second, faintly lilac one: two edges before the page reached
+    // white, where a family should see none.
+    //
+    // This template knows its own ground, so the band ends on the same gold-then-crimson rule
+    // that runs under its footer and its headings.
+    $acme = blendTenant('blend-foot', 'dignified');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, 'mask-image: none'))
+        ->toBeTrue('the template must turn the platform fade off, not merely draw over it')
+        ->and(str_contains($html, 'border-image-source: linear-gradient('))
+        ->toBeTrue('the band should end on this template rule')
+        ->and(str_contains($html, '.glass-bg-mesh'))
+        ->toBeTrue('the platform ambient wash has to be answered, or the second edge comes back');
+});
+
+it('leaves the platform fade and wash alone on the base template', function () {
+    // The other half of the promise. A reseller not running this template keeps the dissolve,
+    // which is what suits a page that has to sit on any brand's ground.
+    $acme = blendTenant('blend-foot-basic', null);
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, 'mask-image: none'))
+        ->toBeFalse('nothing should be switching the platform mask off here')
+        ->and(str_contains($html, 'glass-bg-mesh'))
+        ->toBeTrue('the platform wash is the platform default and stays');
 });
 
 it('leaves the platform portrait mount plain', function () {

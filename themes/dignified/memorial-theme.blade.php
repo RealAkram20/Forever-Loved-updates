@@ -68,18 +68,50 @@
     .memorial-hero__divider { color: {{ $dgGold }}; }
     .dark .memorial-hero__divider { color: {{ $dgGold }}; }
 
-    /* The scene sits lower on this template.
+    /* The page's own ground.
 
-       The platform's band is sized for artwork that fades to nothing a little under the
-       header. This one is a dark plate, and at that height it read as a stripe the portrait
-       was floating above rather than a scene it stands in — the photograph cleared it almost
-       entirely and the page went white too soon.
+       The memorial page is wrapped in `glass-bg-mesh`: three soft radial washes in indigo,
+       pink and blue, over a grey-to-white gradient. That is the platform's own atmosphere and
+       it is lovely on the platform. Under a black plate it is not: the washes are cool, so
+       the band appeared to dissolve into one grey layer and then into a second, faintly
+       lilac one before the page finally reached white — two edges where there should be
+       none, which is exactly what "double white layer" describes.
 
-       Only the band grows. The frame's padding and the portrait's negative margin are left
-       alone deliberately, so nothing below moves: the name, the dates and everything after
-       them stay exactly where they were, and the extra height is spent behind the portrait
-       where it is wanted. */
-    .memorial-hero__band { height: 13rem; }
+       Flat paper instead, the same value the rest of this template's sections are set on, so
+       the scene ends against the page rather than against a wash of somebody else's colour. */
+    .glass-bg-mesh {
+        background-image: none;
+        background-color: var(--dg-paper);
+    }
+
+    .dark .glass-bg-mesh { background-color: var(--dg-ink); }
+
+    /* The scene ends, rather than fading out.
+
+       The platform dissolves the foot of its band so it can sit on any ground without knowing
+       what colour that ground is. This template does know, and a dissolve is the wrong idiom
+       for it anyway: every dark block on this site — the nav, the services band, the footer —
+       ends on a hard edge, and a long grey ramp over a near-black plate reads as smudge rather
+       than as atmosphere. The mask went, and with it the haze.
+
+       What replaces it is the rule this template draws under everything else: gold, then
+       crimson, in the same proportions as the footer bar and the heading rules. It gives the
+       edge a reason to be there, and puts the brand's two colours across the full width of the
+       one part of this page a template is allowed to dress. */
+    .memorial-hero__band {
+        height: 13rem;
+        -webkit-mask-image: none;
+        mask-image: none;
+        border-bottom: 4px solid transparent;
+        border-image-source: linear-gradient(
+            to right,
+            var(--dg-gold) 0%,
+            var(--dg-gold) 38%,
+            var(--dg-red) 72%,
+            var(--dg-red) 100%
+        );
+        border-image-slice: 1;
+    }
 
     @media (min-width: 640px) {
         .memorial-hero__band { height: 15rem; }
@@ -87,6 +119,37 @@
 
     @media (min-width: 1024px) {
         .memorial-hero__band { height: 18rem; }
+    }
+
+    /* Square, and solid.
+
+       Everything this template builds is a rectangle with a thin border — `--t-radius: 0` is
+       the single loudest thing about it. The memorial page arrived rounded and translucent
+       (`glass-card` is white at 55% with a 16px backdrop blur), which is the platform's
+       material, not this one's, and it was the remaining reason the page read as a different
+       website behind the same header.
+
+       `rounded-full` is deliberately absent from the list: the avatars, the age bubble and the
+       status pills are circles because they are circles, not because of a house style. */
+    .glass-card {
+        background: #ffffff;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border: 1px solid rgb(0 0 0 / 0.10);
+    }
+
+    .dark .glass-card {
+        background: rgb(255 255 255 / 0.03);
+        border-color: rgb(255 255 255 / 0.08);
+    }
+
+    main .rounded,
+    main .rounded-md,
+    main .rounded-lg,
+    main .rounded-xl,
+    main .rounded-2xl,
+    main .rounded-3xl {
+        border-radius: 0;
     }
 
     /* The portrait, in the template's own two colours.
