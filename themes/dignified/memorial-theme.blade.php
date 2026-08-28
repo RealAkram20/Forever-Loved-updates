@@ -200,15 +200,41 @@
        the letter on it: ink with gold, which is this template's pairing everywhere else and
        which lets the names beside these read as the thing on the row that matters.
 
-       `text-brand-600` is part of the selector on purpose. It is what the discs holding a letter
-       have and the disc holding the subscribe bell does not — that one keeps its tint, because a
-       crimson bell on black would be worse than what it replaced.
+       The subscribe bell's disc goes with them. It was left out of an earlier pass on the
+       grounds that a crimson bell on black would be worse than the tint it replaced — which was
+       true of a crimson bell. The icon is gold now, so it belongs with the rest.
 
        `rounded-full` is untouched by the squaring rule above, so these stay circles. */
-    .rounded-full.bg-brand-100.text-brand-600,
-    .dark .rounded-full.bg-brand-100.text-brand-600 {
+    .rounded-full.bg-brand-100,
+    .dark .rounded-full.bg-brand-100 {
         background-color: var(--dg-ink);
         color: var(--dg-gold);
+    }
+
+    /* An icon inside one of those discs carries its own text-brand-* class, so it does not
+       inherit the colour above and has to be told. */
+    .rounded-full.bg-brand-100 svg {
+        color: var(--dg-gold);
+    }
+
+    /* "Invite Wilson's family and friends".
+
+       A dashed crimson outline on a pink wash — the loudest thing in the sidebar, and the
+       loudest use of crimson on a page that already spends it on the portrait frame, the years
+       and the open tab. Ink and gold, like the tab and the discs; the dash stays, because it is
+       what says this is something to add to rather than something already there.
+
+       By id, which is what the button has and what beats the utility classes on it — including
+       the hover, which would otherwise put the pink back on the way past. */
+    #invite-share-btn,
+    #invite-share-btn:hover {
+        background-color: var(--dg-ink);
+        border-color: var(--dg-gold);
+        color: var(--dg-gold);
+    }
+
+    #invite-share-btn:hover {
+        border-color: var(--dg-red);
     }
 
     /* The profile card parks below this template's header, not the platform's.
