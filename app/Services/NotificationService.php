@@ -300,6 +300,28 @@ class NotificationService
         return [];
     }
 
+    /**
+     * The HTTP client WebPush sends through.
+     *
+     * WebPush used to take `(auth, defaultOptions, timeout, clientOptions)` and build its own
+     * client from the last two. Since v11 the third argument is a PSR-18 client and the other
+     * two are gone, so the old call passed `30` where an object was expected and every push job
+     * died with a TypeError before sending anything — four failed jobs on the dashboard, and no
+     * notification delivered.
+     *
+     * Guzzle's client is a PSR-18 client, so both settings survive the move intact: the timeout
+     * that used to be argument three, and the CA bundle from getWebPushClientOptions() — which
+     * exists because a push endpoint that cannot verify TLS should fail loudly in production and
+     * be waivable in local development, not silently skipped.
+     *
+     * The library falls back to Psr18ClientDiscovery when handed null. Passing our own instead
+     * is what keeps those two settings from being quietly dropped by whatever discovery finds.
+     */
+    private static function webPushClient(): \GuzzleHttp\Client
+    {
+        return new \GuzzleHttp\Client(static::getWebPushClientOptions() + ['timeout' => 30]);
+    }
+
     private static function isPushEnabled(): bool
     {
         return (bool) SystemSetting::get('notifications.push_enabled', false)
@@ -401,8 +423,7 @@ class NotificationService
             ],
         ];
 
-        $clientOptions = static::getWebPushClientOptions();
-        $webPush = new WebPush($auth, [], 30, $clientOptions);
+        $webPush = new WebPush($auth, [], static::webPushClient());
         $payload = json_encode([
             'title' => $title,
             'body' => $body,

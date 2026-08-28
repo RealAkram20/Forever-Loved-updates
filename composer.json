@@ -15,7 +15,7 @@
         "laravel/framework": "^12.0",
         "laravel/socialite": "^5.26",
         "laravel/tinker": "^2.10.1",
-        "minishlink/web-push": "*",
+        "minishlink/web-push": "^11.0",
         "openspout/openspout": "^5.3",
         "pcinaglia/laraupdater": "*",
         "spatie/laravel-permission": "^7.2"
