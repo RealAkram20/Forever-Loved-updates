@@ -131,6 +131,8 @@
             <p class="text-[12px] text-white/45">
                 &copy; {{ date('Y') }} {{ $appName }}. All Rights Reserved.
             </p>
+
+            @include('partials.powered-by', ['tone' => 'dark'])
         </div>
     </div>
 

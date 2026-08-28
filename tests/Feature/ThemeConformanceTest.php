@@ -136,8 +136,26 @@ it('never walks a visitor from a reseller site onto the platform', function (str
     foreach (['/', '/about', '/contact', '/no-such-page'] as $path) {
         $html = $this->get($host.$path)->getContent();
 
-        expect($html)->not->toContain('href="'.$platformRoot.'"');
+        // The footer's "Powered by" credit is the one sanctioned link to us, and it opens in a
+        // new tab precisely so it does not walk anybody anywhere. Cut it out and hold the rest
+        // of the document to the original rule, rather than weakening the rule for all of it —
+        // the bugs this catches have all been links that looked innocent in isolation.
+        $withoutCredit = preg_replace('#<a\b[^>]*>\s*<span[^>]*>Powered by.*?</a>#s', '', $html);
+
+        expect($withoutCredit)->not->toContain('href="'.$platformRoot.'"');
     }
+})->with('templates');
+
+it('credits the platform once, in the footer, and opens it in a new tab', function (string $template) {
+    // The other side of the exception above: having carved a hole in that rule, this pins what
+    // is allowed through it. One credit, in the footer, target=_blank — not a second link that
+    // quietly grew the same shape.
+    $tenant = conformanceTenant($template);
+
+    $html = $this->get(conformanceHost($tenant).'/')->assertOk()->getContent();
+
+    expect(substr_count($html, '>Powered by<'))->toBe(1)
+        ->and(preg_match('#<a\b[^>]*target="_blank"[^>]*>\s*<span[^>]*>Powered by#s', $html))->toBe(1);
 })->with('templates');
 
 /*

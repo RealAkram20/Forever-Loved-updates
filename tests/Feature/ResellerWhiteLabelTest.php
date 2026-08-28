@@ -310,10 +310,16 @@ it('presents the reseller business name, not the platform one, on their pages', 
     SystemSetting::set('branding.app_name', 'Forever Loved');
     $acme = whiteLabelTenant('acme');
 
-    $this->get('http://localhost/r/acme')
-        ->assertOk()
-        ->assertSee($acme->name)
-        ->assertDontSee('Forever Loved');
+    $html = $this->get('http://localhost/r/acme')->assertOk()->getContent();
+
+    // The footer's "Powered by" credit names us on purpose, and it is the only place allowed
+    // to. Cut it out and hold everything else to the original rule — the alt text on our own
+    // mark is not the leak this was written to catch.
+    $withoutCredit = preg_replace('#<a\b[^>]*>\s*<span[^>]*>Powered by.*?</a>#s', '', $html);
+
+    expect(str_contains($withoutCredit, $acme->name))->toBeTrue('their name should be on their page')
+        ->and(str_contains($withoutCredit, 'Forever Loved'))
+        ->toBeFalse('ours should appear nowhere but the credit');
 });
 
 it('still presents the platform name on platform pages', function () {

@@ -87,6 +87,34 @@ class BrandingHelper
     }
 
     /**
+     * Our own mark, on somebody else's site.
+     *
+     * Every other accessor here resolves through ThemeSetting, which is the whole point of
+     * this class: on a reseller's host the logo, the palette and the name are theirs. This one
+     * has to do the opposite. The "Powered by" credit in a white-labeled footer is the single
+     * place the platform speaks as itself, and a tenant-aware read there would print the
+     * funeral home's own logo next to the words "Powered by" — which is both meaningless and,
+     * to anyone who has seen the two marks, confusing.
+     *
+     * SystemSetting directly, therefore, with no tenant layer and no ThemeSetting call.
+     *
+     * @param  string  $variant  'dark' for the mark meant to sit on a dark ground.
+     */
+    public static function platformLogoUrl(string $variant = 'light'): string
+    {
+        $key = $variant === 'dark' ? 'branding.logo_dark_path' : 'branding.logo_path';
+        $fallback = $variant === 'dark' ? 'images/logo/logo-dark.svg' : 'images/logo/logo.svg';
+
+        return self::publicDiskPathUrl(SystemSetting::get($key), $fallback);
+    }
+
+    /** The platform's own name, for the same reason and with the same tenant blindness. */
+    public static function platformName(): string
+    {
+        return (string) SystemSetting::get('branding.app_name', config('app.name', 'Forever Loved'));
+    }
+
+    /**
      * Get the auth page logo URL.
      */
     public static function authLogoUrl(): string
