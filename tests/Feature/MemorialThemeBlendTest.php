@@ -277,6 +277,31 @@ it('makes the falling petals the colours of whichever flower is on the card', fu
         ->and(str_contains($html, '#E7AA52'))->toBeTrue();
 });
 
+it('paints the candle scene in the template own night', function () {
+    // The scene opens full screen, so its sky was the loudest surface still carrying the
+    // platform's violet on a black-and-gold site. Five stops, read by memorial-candle-scene.js
+    // when it is imported on tap — long after this has run.
+    $acme = blendTenant('blend-sky', 'dignified');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, '__candleSceneSky'))->toBeTrue()
+        ->and(str_contains($html, '#2A1F17'))->toBeTrue()
+        // The platform's violet must not be what a themed site paints on.
+        ->and(str_contains($html, '#33204a'))->toBeFalse();
+});
+
+it('leaves the platform night to the platform', function () {
+    $acme = blendTenant('blend-sky-basic', null);
+    $memorial = blendMemorial($acme);
+
+    expect(str_contains(
+        $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent(),
+        '__candleSceneSky'
+    ))->toBeFalse('with no override the scene keeps its own five stops');
+});
+
 it('leaves the platform petals alone on a site running no template', function () {
     $acme = blendTenant('blend-petals-basic', null);
     $memorial = blendMemorial($acme);

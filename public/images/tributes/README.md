@@ -112,7 +112,14 @@ flowers on screen, and only after somebody tapped. It now takes three tints out 
 deep one and a bright one for the alternating petals, and the lightest for the particles,
 because at 72px on a pale page a pop made of the dark end alone reads as a smudge.
 
-What is still the platform's on every template: `memorial-candle-scene.js`, the full canvas
-scene a candle opens, which draws its own candle in amber against a purple night sky. Nothing
-about it reads the palette above. Theming it is a larger job than these files and has not been
-done.
+`memorial-candle-scene.js` — the full canvas scene a candle opens — takes a sky the same way:
+`window.__candleSceneSky`, five stops top to bottom, deepest at top and bottom with the horizon
+band lightest, because that is where the candles crowd. Everything else in that scene is flame,
+and flame suits any brand.
+
+Two things to know before picking five. It has to stay dark: every flame, halo and star there
+composites additively onto the ground. And it has to keep hue contrast against gold — dignified's
+first attempt carried ember brown the whole way up, which is a lovely colour and cost the flames
+their separation, so the field read as a muddy wash. The one that shipped holds the warmth to the
+horizon band and leaves the rest near-black. Paint any candidate against the flames before
+believing it; the difference does not show in the swatches.

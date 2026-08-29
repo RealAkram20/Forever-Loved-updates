@@ -43,6 +43,30 @@
 
      Set before the memorial bundle runs, which is what lets it read this rather than its own. --}}
 <script>window.__tributePetalColours = ['#5E1A19', '#9F2625', '#BB4948', '#CC622F', '#D78C34', '#E7AA52'];</script>
+
+{{-- The night the candle scene is painted on.
+
+     The platform's is violet, so its field of candles sits in our brand colour rather than in a
+     void. This template is not built out of violet, and on a black-and-gold brand that sky was
+     the one surface still saying somebody else's name — it opens full-screen, so it says it
+     loudly.
+
+     Five stops, top to bottom, keeping the shape the platform's has rather than inventing one:
+     deepest at the very top and the very bottom, lightest across the horizon band. That band is
+     where the candles crowd, and letting the ground lift there reads as their own light hanging
+     in the air instead of a flat backdrop behind them.
+
+     Near-black, with the warmth held back to the horizon band alone. A first pass carried
+     ember brown the whole way up and it cost more than it gave: gold on brown has far less hue
+     contrast than gold on violet, so the flames stopped separating from their own sky and the
+     field read as a muddy wash. Painted both against the same flames to compare, and the darker
+     one keeps the separation the violet was buying while still being this brand's black.
+
+     It stays dark because it has to. Every flame, halo and star in that scene composites
+     additively onto this, so the ground is what they are adding to.
+
+     The vignette is derived from the last stop rather than declared, so it cannot disagree. --}}
+<script>window.__candleSceneSky = ['#0C0B0A', '#17130F', '#2A1F17', '#140F0C', '#080706'];</script>
 <style>
     /* Where to crop the backdrop this template ships.
 

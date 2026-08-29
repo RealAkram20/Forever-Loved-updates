@@ -293,26 +293,43 @@ function makeNebula(w, h) {
 }
 
 /**
- * The ground the whole scene is painted on.
+ * The night this scene is painted on, darkest at the very top and the very bottom with the
+ * horizon band left lightest — that is where the candles crowd, and letting the ground lift
+ * there reads as their own light hanging in the air rather than as a flat backdrop.
  *
- * Violet rather than black, so the field sits in the brand's colour instead of in a void.
- * Deepest at the very bottom and again at the top, with the horizon band left lightest —
- * that is where the candles crowd, and letting the ground lift there reads as their own
- * light hanging in the air rather than as a flat backdrop behind them.
+ * Five stops, top to bottom. The platform's are violet, so the field sits in our colour
+ * instead of in a void; a template that is not built out of violet says so by setting
+ * `window.__candleSceneSky` to five of its own, which its memorial partial does before this
+ * module is ever imported — the scene is loaded on tap, long after.
  *
- * It stays dark on purpose. Every flame, halo and star in this scene composites additively,
- * so the ground is what they are adding to: lift it much further and the gold stops
- * separating from it.
+ * Whatever the colour, it has to stay dark. Every flame, halo and star here composites
+ * additively, so the ground is what they are adding to: lift it much further and the gold
+ * stops separating from it.
  */
+const SKY_OVERRIDDEN = Array.isArray(window.__candleSceneSky) && window.__candleSceneSky.length === 5;
+const SKY_STOPS = SKY_OVERRIDDEN
+    ? window.__candleSceneSky
+    : ['#1b1226', '#2a1b3d', '#33204a', '#241733', '#150e1e'];
+
+/** `#rrggbb` to `rgba(r, g, b, a)`, for tinting the vignette out of the sky's own colour. */
+function skyRgba(hex, alpha, darken = 1) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.round(((n >> 16) & 255) * darken);
+    const g = Math.round(((n >> 8) & 255) * darken);
+    const b = Math.round((n & 255) * darken);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function makeGround(w, h, horizon) {
     const canvas = makeCanvas(w, h);
     const ctx = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, '#1b1226');
-    grad.addColorStop(Math.max(0.02, horizon / h - 0.10), '#2a1b3d');
-    grad.addColorStop(Math.min(0.98, horizon / h + 0.06), '#33204a');
-    grad.addColorStop(0.72, '#241733');
-    grad.addColorStop(1, '#150e1e');
+    grad.addColorStop(0, SKY_STOPS[0]);
+    grad.addColorStop(Math.max(0.02, horizon / h - 0.10), SKY_STOPS[1]);
+    grad.addColorStop(Math.min(0.98, horizon / h + 0.06), SKY_STOPS[2]);
+    grad.addColorStop(0.72, SKY_STOPS[3]);
+    grad.addColorStop(1, SKY_STOPS[4]);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
     return canvas;
@@ -325,11 +342,21 @@ function makeVignette(w, h) {
         w / 2, h * 0.56, Math.min(w, h) * 0.22,
         w / 2, h * 0.56, Math.max(w, h) * 0.72,
     );
-    // Tinted rather than neutral black: a pure black vignette over a violet ground drains
-    // the colour back out of exactly the edges the ground was added for.
-    grad.addColorStop(0, 'rgba(14, 8, 22, 0)');
-    grad.addColorStop(0.62, 'rgba(14, 8, 22, 0.24)');
-    grad.addColorStop(1, 'rgba(11, 6, 17, 0.86)');
+    // Tinted out of the sky's own deepest stop rather than neutral black: a pure black
+    // vignette over a coloured ground drains the colour back out of exactly the edges the
+    // ground was added for. Derived rather than declared, so a template that changes the sky
+    // cannot leave a vignette behind that disagrees with it.
+    //
+    // Only derived when a template has actually set a sky. The platform's three were tuned by
+    // eye and are not a clean scaling of its bottom stop, so deriving them would shift our own
+    // scene by a few points for no reason anybody asked for.
+    const edge = SKY_OVERRIDDEN
+        ? [skyRgba(SKY_STOPS[4], 0), skyRgba(SKY_STOPS[4], 0.24), skyRgba(SKY_STOPS[4], 0.86, 0.8)]
+        : ['rgba(14, 8, 22, 0)', 'rgba(14, 8, 22, 0.24)', 'rgba(11, 6, 17, 0.86)'];
+
+    grad.addColorStop(0, edge[0]);
+    grad.addColorStop(0.62, edge[1]);
+    grad.addColorStop(1, edge[2]);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
     return canvas;
