@@ -14,7 +14,7 @@
 $copy = [
     'eyebrow' => 'Featured',
     'title' => 'Memorial Inspiration',
-    'description' => 'Not sure where to begin? A memorial can be as unique as the life it celebrates. Let these fictional examples inspire you to create a beautiful place filled with love, memories, and the moments that made someone special.',
+    'description' => 'Not sure where to begin? A memorial can be as unique as the life it celebrates. Let these illustrative memorials inspire you to create a beautiful place filled with love, memories, and the moments that made someone special.',
     'cta_label' => 'Create a Memorial',
     'mobile_cta_label' => 'Create a Memorial',
     'cta_route' => 'memorial.create.step1',

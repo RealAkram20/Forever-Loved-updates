@@ -27,13 +27,17 @@ class SiteLayoutService
             'blocks' => [
                 ['type' => HeroBlock::type(), 'props' => HeroBlock::defaultProps()],
                 // Our own wording for this row, kept here rather than in the block's defaults
-                // because it says something about the memorials shown — that they are examples
-                // to borrow from — which is true of ours and would be false on a reseller's
-                // site, where the same block shows real families.
+                // so a reseller adding the same block to their page inherits a neutral heading
+                // rather than our marketing.
+                //
+                // "Illustrative" rather than "fictional", which an earlier draft said: the row
+                // pulls any sufficiently complete public memorial on this site, so the day a
+                // real family builds one here, calling it fictional would be a false statement
+                // about somebody's father. Illustrative stays true either way.
                 ['type' => MemorialShowcaseBlock::type(), 'props' => array_merge(MemorialShowcaseBlock::defaultProps(), [
                     'eyebrow' => 'Featured',
                     'title' => 'Memorial Inspiration',
-                    'description' => 'Not sure where to begin? A memorial can be as unique as the life it celebrates. Let these fictional examples inspire you to create a beautiful place filled with love, memories, and the moments that made someone special.',
+                    'description' => 'Not sure where to begin? A memorial can be as unique as the life it celebrates. Let these illustrative memorials inspire you to create a beautiful place filled with love, memories, and the moments that made someone special.',
                 ])],
                 ['type' => FeaturesGridBlock::type(), 'props' => FeaturesGridBlock::defaultProps()],
                 ['type' => CtaBannerBlock::type(), 'props' => CtaBannerBlock::defaultProps()],
