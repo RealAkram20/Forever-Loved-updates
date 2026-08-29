@@ -48,6 +48,21 @@ const PHRASE_FONT = "italic 600 {size}px 'Playfair Display', Georgia, 'Times New
 // brief's three golds: near-white, warm, and deep.
 const GOLD = [[255, 247, 214], [255, 214, 107], [255, 184, 74]];
 
+/**
+ * The same five sky stops memorial-candle-scene.js takes, read the same way — one declaration
+ * on `window`, two scenes, so a template cannot theme one night and leave the other.
+ */
+const SKY_OVERRIDDEN = Array.isArray(window.__candleSceneSky) && window.__candleSceneSky.length === 5;
+const SKY_STOPS = SKY_OVERRIDDEN ? window.__candleSceneSky : [];
+
+/** `#rrggbb` to `rgba(r, g, b, a)`, with an optional lift for the stop nearest the light. */
+function skyRgba(hex, alpha, lift = 1) {
+    const n = parseInt(hex.slice(1), 16);
+    const c = (shift) => Math.min(255, Math.round(((n >> shift) & 255) * lift));
+
+    return `rgba(${c(16)}, ${c(8)}, ${c(0)}, ${alpha})`;
+}
+
 
 const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
@@ -185,12 +200,23 @@ function makeScrim(w, h, sourceX, sourceY) {
         sourceX, sourceY, 0,
         sourceX, sourceY, Math.max(w, h) * 0.95,
     );
-    // Violet rather than a warm near-black, to match the candle scene's ground and the
-    // artwork the light comes out of. Still dark: everything above it is additive gold, and
-    // this is what that gold is adding to.
-    grad.addColorStop(0, 'rgba(48, 30, 70, 0.58)');
-    grad.addColorStop(0.35, 'rgba(33, 20, 50, 0.88)');
-    grad.addColorStop(1, 'rgba(17, 10, 27, 0.965)');
+    // Matched to the candle scene's ground, because a visitor may open both within a minute of
+    // each other and two different nights on one memorial reads as two different sites.
+    //
+    // So it follows the same five stops that scene takes, when a template has set them: the
+    // horizon stop nearest the light, the deepest at the edge. Where none is set these are the
+    // hand-tuned violets they have always been — not a derivation of the platform's own sky,
+    // for the same reason the candle vignette is not.
+    //
+    // Dark either way. Everything above this is additive gold, and this is what that gold is
+    // adding to.
+    const backdrop = SKY_OVERRIDDEN
+        ? [skyRgba(SKY_STOPS[2], 0.58, 1.15), skyRgba(SKY_STOPS[3], 0.88), skyRgba(SKY_STOPS[4], 0.965)]
+        : ['rgba(48, 30, 70, 0.58)', 'rgba(33, 20, 50, 0.88)', 'rgba(17, 10, 27, 0.965)'];
+
+    grad.addColorStop(0, backdrop[0]);
+    grad.addColorStop(0.35, backdrop[1]);
+    grad.addColorStop(1, backdrop[2]);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
     return canvas;

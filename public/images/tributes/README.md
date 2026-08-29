@@ -88,10 +88,10 @@ here, so a template ships whichever of the three it wants to replace and inherit
 Everything above applies to those files too — transparent, square, cropped to the subject,
 nothing baked in that the page animates, ~256px.
 
-`dignified/tributes/flower.png` and `dignified/tributes/candle.png` are the ones that exist
-today: a black-to-gold rose and a pillar candle in the same gradient. That template ships no
-praying hands, so it inherits ours — which is the per-file inheritance working, not an omission
-to tidy up, though the purple cuffs do sit oddly beside two black-and-gold pieces.
+Dignified ships all three: a black-to-gold rose, a pillar candle in the same gradient, and a
+pair of praying hands with black cuffs running to crimson and gold. It shipped two of them for a
+while and inherited our hands, which is per-file inheritance doing its job — adding the third
+took a file and no code.
 
 The rose: It arrived
 inside a screenshot frame with an Edit button and a download icon in the corners, and with four
@@ -112,7 +112,8 @@ flowers on screen, and only after somebody tapped. It now takes three tints out 
 deep one and a bright one for the alternating petals, and the lightest for the particles,
 because at 72px on a pale page a pop made of the dark end alone reads as a smudge.
 
-`memorial-candle-scene.js` — the full canvas scene a candle opens — takes a sky the same way:
+`memorial-candle-scene.js` and `memorial-prayer-scene.js` — the full canvas scenes a candle and
+a prayer open — take a sky the same way:
 `window.__candleSceneSky`, five stops top to bottom, deepest at top and bottom with the horizon
 band lightest, because that is where the candles crowd. Everything else in that scene is flame,
 and flame suits any brand.
@@ -123,3 +124,11 @@ first attempt carried ember brown the whole way up, which is a lovely colour and
 their separation, so the field read as a muddy wash. The one that shipped holds the warmth to the
 horizon band and leaves the rest near-black. Paint any candidate against the flames before
 believing it; the difference does not show in the swatches.
+
+One declaration, both scenes. The prayer scene's backdrop is a radial wash rather than a
+vertical ramp, so it takes three of those five — horizon nearest the light, deepest at the edge
+— rather than a set of its own. A visitor can open both within a minute of each other, and two
+different nights on one memorial reads as two different sites.
+
+The prayer scene also draws the card's own artwork, so a template that replaces `prayer.png`
+gets its light rising out of its own hands with no further change.

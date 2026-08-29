@@ -220,20 +220,36 @@ it('gives a template its own flower on the tribute card', function () {
         ->toBeFalse('and not the platform rose alongside it');
 });
 
-it('lets a template replace some artwork and inherit the rest', function () {
-    // Per-file is the whole promise. This template ships a rose and a candle and has never
-    // drawn a pair of praying hands, so two of the three cards are its own and the third is
-    // ours — and a template that later adds one picks it up by dropping the file in.
+it('dresses every tribute card a template has artwork for', function () {
+    // This template now ships all three, which is what the per-file lookup was built to allow
+    // one file at a time — it shipped two for a while and inherited the hands, and adding the
+    // third took a file and no code.
     $acme = blendTenant('blend-per-file', 'dignified');
     $memorial = blendMemorial($acme);
 
     $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
 
-    expect(str_contains($html, 'images/themes/dignified/tributes/flower.png'))->toBeTrue()
-        ->and(str_contains($html, 'images/themes/dignified/tributes/candle.png'))->toBeTrue()
-        // Not shipped by this template, so it falls through rather than breaking.
-        ->and(str_contains($html, 'images/tributes/prayer.png'))->toBeTrue()
-        ->and(str_contains($html, 'images/themes/dignified/tributes/prayer.png'))->toBeFalse();
+    foreach (['flower', 'candle', 'prayer'] as $motif) {
+        expect(str_contains($html, "images/themes/dignified/tributes/{$motif}.png"))
+            ->toBeTrue("{$motif} should be the template's own");
+    }
+
+    // And none of ours leaks in alongside them.
+    expect(preg_match('#images/tributes/(flower|candle|prayer)\.png#', $html))->toBe(0);
+});
+
+it('still falls back per file for a template that ships none', function () {
+    // The other half of per-file, asserted on a template with no artwork of its own, so the
+    // fallback stays covered now that dignified has stopped exercising it.
+    $acme = blendTenant('blend-inherit', 'basic');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    foreach (['flower', 'candle', 'prayer'] as $motif) {
+        expect(str_contains($html, "images/tributes/{$motif}.png"))
+            ->toBeTrue("{$motif} should fall through to ours");
+    }
 });
 
 it('leaves the platform tribute artwork to the platform', function () {
