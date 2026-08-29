@@ -2071,17 +2071,23 @@ html:not(.dark) {
   object-fit: contain;
 }
 
+/* The five bars of the level meter that runs while a track plays.
+   Longhands, not the `animation` shorthand: the shorthand resets every property it
+   omits, so `animation: eq-bounce 0.45s ...` on the line below was silently throwing
+   away the ease-in-out declared here and falling back to `ease`. Each bar only needs
+   to vary its duration and its offset; everything the five share stays stated once. */
 .audio-eq-bar {
+  animation-name: eq-bounce;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
   transform-origin: bottom;
 }
-.audio-eq-bar-1 { animation: eq-bounce 0.45s infinite alternate; }
-.audio-eq-bar-2 { animation: eq-bounce 0.55s 0.1s infinite alternate; }
-.audio-eq-bar-3 { animation: eq-bounce 0.4s 0.15s infinite alternate; }
-.audio-eq-bar-4 { animation: eq-bounce 0.6s 0.05s infinite alternate; }
-.audio-eq-bar-5 { animation: eq-bounce 0.35s 0.2s infinite alternate; }
+.audio-eq-bar-1 { animation-duration: 0.45s; }
+.audio-eq-bar-2 { animation-duration: 0.55s; animation-delay: 0.1s; }
+.audio-eq-bar-3 { animation-duration: 0.4s;  animation-delay: 0.15s; }
+.audio-eq-bar-4 { animation-duration: 0.6s;  animation-delay: 0.05s; }
+.audio-eq-bar-5 { animation-duration: 0.35s; animation-delay: 0.2s; }
 
 @keyframes eq-bounce {
   0%   { height: 4px; }
