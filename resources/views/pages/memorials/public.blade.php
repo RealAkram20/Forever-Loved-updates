@@ -1596,6 +1596,18 @@
 
 </div>
 
+{{-- The site's own footer, which this page had been going without.
+
+     It extends layouts/fullscreen-layout directly rather than layouts/visitor, and the footer
+     is added by the latter — so every other public page had one and the single most-shared page
+     on the platform ended in nothing. No contact details, no legal links, no way back into the
+     site, and on a reseller's domain no "Powered by" either, on the one page their visitors
+     actually reach.
+
+     Outside the wrapper above deliberately. That div carries `glass-bg-mesh` and the page's own
+     gradient, and a footer inside it would be painted over by both. --}}
+<x-visitor-footer />
+
 {{-- Plan-gated with the rest of the visitor notification features: a memorial whose plan does
      not include guest notifications has nothing to subscribe anybody to. --}}
 @if ($quotaInfo['guest_notifications'] ?? false)

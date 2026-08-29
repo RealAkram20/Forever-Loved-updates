@@ -293,6 +293,38 @@ it('makes the falling petals the colours of whichever flower is on the card', fu
         ->and(str_contains($html, '#E7AA52'))->toBeTrue();
 });
 
+it('ends the memorial page on the site own footer', function () {
+    // This page extends layouts/fullscreen-layout directly rather than layouts/visitor, and the
+    // footer is added by the latter — so the most-shared page on the platform ended in nothing.
+    // On a reseller's domain that also meant no contact details, no legal links, and no
+    // "Powered by" on the one page their visitors actually reach.
+    $acme = blendTenant('blend-footer', 'dignified');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, '</footer>'))->toBeTrue('a memorial page should not be a dead end')
+        // The template's own footer, not the platform's — the view finder cascade decides, and
+        // this asserts the cascade is still reached from a page that bypasses layouts/visitor.
+        ->and(str_contains($html, 'Powered by'))->toBeTrue();
+});
+
+it('ends our own memorial pages on ours', function () {
+    $owner = User::factory()->create();
+    $memorial = Memorial::factory()->create([
+        'reseller_id' => null,
+        'user_id' => $owner->id,
+        'is_public' => true,
+        'status' => Memorial::STATUS_ACTIVE,
+    ]);
+
+    $html = $this->get('/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, '</footer>'))->toBeTrue()
+        // "Powered by ourselves" is not a sentence; the credit is reseller-only.
+        ->and(str_contains($html, 'Powered by'))->toBeFalse();
+});
+
 it('paints the candle scene in the template own night', function () {
     // The scene opens full screen, so its sky was the loudest surface still carrying the
     // platform's violet on a black-and-gold site. Five stops, read by memorial-candle-scene.js
