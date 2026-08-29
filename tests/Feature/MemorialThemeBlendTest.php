@@ -220,6 +220,22 @@ it('gives a template its own flower on the tribute card', function () {
         ->toBeFalse('and not the platform rose alongside it');
 });
 
+it('lets a template replace some artwork and inherit the rest', function () {
+    // Per-file is the whole promise. This template ships a rose and a candle and has never
+    // drawn a pair of praying hands, so two of the three cards are its own and the third is
+    // ours — and a template that later adds one picks it up by dropping the file in.
+    $acme = blendTenant('blend-per-file', 'dignified');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, 'images/themes/dignified/tributes/flower.png'))->toBeTrue()
+        ->and(str_contains($html, 'images/themes/dignified/tributes/candle.png'))->toBeTrue()
+        // Not shipped by this template, so it falls through rather than breaking.
+        ->and(str_contains($html, 'images/tributes/prayer.png'))->toBeTrue()
+        ->and(str_contains($html, 'images/themes/dignified/tributes/prayer.png'))->toBeFalse();
+});
+
 it('leaves the platform tribute artwork to the platform', function () {
     $owner = User::factory()->create();
     $memorial = Memorial::factory()->create([

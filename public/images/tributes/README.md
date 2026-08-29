@@ -88,7 +88,12 @@ here, so a template ships whichever of the three it wants to replace and inherit
 Everything above applies to those files too — transparent, square, cropped to the subject,
 nothing baked in that the page animates, ~256px.
 
-`dignified/tributes/flower.png` is the one that exists today: a black-to-gold rose. It arrived
+`dignified/tributes/flower.png` and `dignified/tributes/candle.png` are the ones that exist
+today: a black-to-gold rose and a pillar candle in the same gradient. That template ships no
+praying hands, so it inherits ours — which is the per-file inheritance working, not an omission
+to tidy up, though the purple cuffs do sit oddly beside two black-and-gold pieces.
+
+The rose: It arrived
 inside a screenshot frame with an Edit button and a download icon in the corners, and with four
 petals already falling. The chrome was painted out and the black frame shaved before the
 flood-fill — a frame touching the border stops the fill reaching the white — and the loose
@@ -100,3 +105,14 @@ to the platform's coral-to-purple when there is none. Sample the same way — a 
 flower's own gradient, extremes left out at both ends. Dignified's runs `#5E1A19` through
 `#E7AA52`: its true near-black takes the per-petal black overlay to a hole in the page, and its
 palest gold takes the white overlay to something that is not a petal at all.
+
+The pop that lands at the point of contact reads that same list. It used to be literal pink, so
+a template with a black-and-gold rose got its own petals raining past a pink flower — two
+flowers on screen, and only after somebody tapped. It now takes three tints out of the six: a
+deep one and a bright one for the alternating petals, and the lightest for the particles,
+because at 72px on a pale page a pop made of the dark end alone reads as a smudge.
+
+What is still the platform's on every template: `memorial-candle-scene.js`, the full canvas
+scene a candle opens, which draws its own candle in amber against a purple night sky. Nothing
+about it reads the palette above. Theming it is a larger job than these files and has not been
+done.

@@ -1972,13 +1972,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // a scatter of particles radiates outward, arcing and fading. Everything runs through the
     // Web Animations API rather than keyframes so it stays on the compositor and so repeated
     // taps each get their own independent, interruptible run.
+    // The pop that lands at the point of contact, in the same flower as the rain going past
+    // it. Left literal, this stayed the platform's pink while a template's black-and-gold
+    // petals fell around it — two flowers on screen at once, and only after somebody tapped.
+    //
+    // Derived from the palette a template already declares for its petals, so a template
+    // still states its flower once. Three tints out of the six: a deep one and a bright one
+    // for the alternating petals, and the lightest for the particles, because at 72px on a
+    // pale page a pop made of the dark end alone reads as a smudge. Where no template has
+    // spoken these are the pinks they always were, so the platform's own is untouched.
+    const petalTint = (i, fallback) => {
+        const p = window.__tributePetalColours;
+        return (Array.isArray(p) && p.length >= 6) ? p[i] : fallback;
+    };
+    const FLOWER_BURST_DEEP = petalTint(1, '#f472b6');
+    const FLOWER_BURST_MID = petalTint(4, '#f9a8d4');
+    const FLOWER_BURST_LIGHT = petalTint(5, '#fbcfe8');
+
     const BURST_MOTIFS = {
         flower: {
-            pop: '<svg viewBox="0 0 48 48" width="72" height="72"><g transform="translate(24,24)"><ellipse rx="6" ry="10" cy="-10" fill="#f9a8d4"/><ellipse rx="6" ry="10" cy="-10" fill="#f472b6" transform="rotate(72)"/><ellipse rx="6" ry="10" cy="-10" fill="#f9a8d4" transform="rotate(144)"/><ellipse rx="6" ry="10" cy="-10" fill="#f472b6" transform="rotate(216)"/><ellipse rx="6" ry="10" cy="-10" fill="#f9a8d4" transform="rotate(288)"/><circle r="5" fill="#fbbf24"/></g></svg>',
+            pop: `<svg viewBox="0 0 48 48" width="72" height="72"><g transform="translate(24,24)"><ellipse rx="6" ry="10" cy="-10" fill="${FLOWER_BURST_MID}"/><ellipse rx="6" ry="10" cy="-10" fill="${FLOWER_BURST_DEEP}" transform="rotate(72)"/><ellipse rx="6" ry="10" cy="-10" fill="${FLOWER_BURST_MID}" transform="rotate(144)"/><ellipse rx="6" ry="10" cy="-10" fill="${FLOWER_BURST_DEEP}" transform="rotate(216)"/><ellipse rx="6" ry="10" cy="-10" fill="${FLOWER_BURST_MID}" transform="rotate(288)"/><circle r="5" fill="#fbbf24"/></g></svg>`,
             particles: [
-                '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="#f472b6"/></svg>',
-                '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="#f9a8d4"/></svg>',
-                '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="#fbcfe8"/></svg>',
+                `<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="${FLOWER_BURST_DEEP}"/></svg>`,
+                `<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="${FLOWER_BURST_MID}"/></svg>`,
+                `<svg viewBox="0 0 24 24" width="12" height="12"><path d="M12 2c5 4 8 8 8 12a8 8 0 01-16 0c0-4 3-8 8-12z" fill="${FLOWER_BURST_LIGHT}"/></svg>`,
             ],
         },
         candle: {
