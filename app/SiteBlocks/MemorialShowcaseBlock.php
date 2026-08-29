@@ -30,8 +30,19 @@ class MemorialShowcaseBlock extends AbstractSiteBlock
             'eyebrow' => 'Trending',
             'title' => 'Popular Memorials',
             'description' => '',
-            'view_all_label' => 'View all',
-            'mobile_view_all_label' => 'View All Memorials',
+            // The link beside this row used to be "View all", pointing at the directory. The
+            // directory is already in the header nav on every page; what somebody reading a row
+            // of examples wants next is to start one of their own.
+            //
+            // Renamed rather than left as view_all_label holding "Create a Memorial", which
+            // would be a lie the next reader has to discover. Nothing stores the old keys but
+            // this block's own layouts, and stored props merge over defaults, so the new keys
+            // fall back cleanly wherever the old ones were saved.
+            'cta_label' => 'Create a Memorial',
+            'mobile_cta_label' => 'Create a Memorial',
+            // Resolved through StandardPages so it lands on the right site's flow, exactly as
+            // the hero's primary button does.
+            'cta_route' => 'memorial.create.step1',
         ];
     }
 
@@ -41,8 +52,9 @@ class MemorialShowcaseBlock extends AbstractSiteBlock
             'eyebrow' => 'nullable|string|max:120',
             'title' => 'required|string|max:200',
             'description' => 'nullable|string|max:600',
-            'view_all_label' => 'nullable|string|max:80',
-            'mobile_view_all_label' => 'nullable|string|max:120',
+            'cta_label' => 'nullable|string|max:80',
+            'mobile_cta_label' => 'nullable|string|max:120',
+            'cta_route' => 'nullable|string|max:120',
         ];
     }
 

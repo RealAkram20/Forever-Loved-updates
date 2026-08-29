@@ -15,7 +15,14 @@ $copy = [
     'eyebrow' => 'Featured',
     'title' => 'Memorial Inspiration',
     'description' => 'Not sure where to begin? A memorial can be as unique as the life it celebrates. Let these fictional examples inspire you to create a beautiful place filled with love, memories, and the moments that made someone special.',
+    'cta_label' => 'Create a Memorial',
+    'mobile_cta_label' => 'Create a Memorial',
+    'cta_route' => 'memorial.create.step1',
 ];
+
+// The link's props were renamed when it stopped pointing at the directory. Stored copies of
+// the old names would render nothing but would sit in the layout JSON looking meaningful.
+$dead = ['view_all_label', 'mobile_view_all_label'];
 
 $touched = 0;
 
@@ -29,6 +36,13 @@ if ($page && is_array($page->layout['widgets'] ?? null)) {
             if (($w['props'][$k] ?? null) !== $v) {
                 echo "  page.{$k}: ".json_encode($w['props'][$k] ?? null).' -> '.json_encode($v).PHP_EOL;
                 $layout['widgets'][$i]['props'][$k] = $v;
+                $changed = true;
+            }
+        }
+        foreach ($dead as $k) {
+            if (array_key_exists($k, $w['props'] ?? [])) {
+                echo "  page.{$k}: removed".PHP_EOL;
+                unset($layout['widgets'][$i]['props'][$k]);
                 $changed = true;
             }
         }
@@ -46,6 +60,13 @@ if ($site && $site->json) {
             if (($b['props'][$k] ?? null) !== $v) {
                 echo "  sitelayout.{$k}: ".json_encode($b['props'][$k] ?? null).' -> '.json_encode($v).PHP_EOL;
                 $doc['blocks'][$i]['props'][$k] = $v;
+                $changed = true;
+            }
+        }
+        foreach ($dead as $k) {
+            if (array_key_exists($k, $b['props'] ?? [])) {
+                echo "  sitelayout.{$k}: removed".PHP_EOL;
+                unset($doc['blocks'][$i]['props'][$k]);
                 $changed = true;
             }
         }

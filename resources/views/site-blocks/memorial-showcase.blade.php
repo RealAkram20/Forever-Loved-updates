@@ -1,9 +1,10 @@
 @if (isset($popularMemorials) && $popularMemorials->isNotEmpty())
 @php
-    // The directory of the site this block is being served on. route('memorial.directory')
-    // always names the platform's, so on a reseller's front page "View all" walked their
-    // visitor off their site and onto ours, to a list their memorials are not even in.
-    $dirUrl = \App\Support\StandardPages::urlFor(\App\Models\Page::SLUG_FIND_MEMORIAL);
+    // Where the link beside this row goes. Resolved for the site being served rather than
+    // named directly, for the reason the directory link before it had to be: route() always
+    // names the platform's, so on a reseller's front page this walked their visitor onto ours.
+    $ctaUrl = \App\Support\StandardPages::urlForRouteName($props['cta_route'] ?? 'memorial.create.step1')
+        ?: \App\Support\StandardPages::urlFor(\App\Models\Page::SLUG_FIND_MEMORIAL);
 @endphp
 <section class="relative isolate py-14 sm:py-16">
     <div class="showcase-wash-dark absolute inset-0 hidden pointer-events-none select-none dark:block" aria-hidden="true"></div>
@@ -22,9 +23,11 @@
                     <p class="mt-3 text-base leading-relaxed text-gray-600 dark:text-gray-400">{{ $props['description'] }}</p>
                 @endif
             </div>
-            <a href="{{ $dirUrl }}" class="btn btn-link btn-md group mt-8 hidden shrink-0 sm:inline-flex">
-                {{ $props['view_all_label'] ?? 'View All' }}
-                <svg class="lucide icon-arrow h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            {{-- A plus rather than an arrow: this starts something now, it does not go
+                 somewhere to look at more. Same mark as the hero's own create button. --}}
+            <a href="{{ $ctaUrl }}" class="btn btn-link btn-md group mt-8 hidden shrink-0 sm:inline-flex">
+                <svg class="lucide icon-plus h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                {{ $props['cta_label'] ?? 'Create a Memorial' }}
             </a>
         </div>
 
@@ -76,9 +79,9 @@
             </div>
         </div>
 
-        <a href="{{ $dirUrl }}" class="btn btn-link btn-md group mt-6 sm:hidden">
-            {{ $props['mobile_view_all_label'] ?? 'View All Memorials' }}
-            <svg class="lucide icon-arrow h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        <a href="{{ $ctaUrl }}" class="btn btn-link btn-md group mt-6 sm:hidden">
+            <svg class="lucide icon-plus h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            {{ $props['mobile_cta_label'] ?? 'Create a Memorial' }}
         </a>
     </div>
 </section>
