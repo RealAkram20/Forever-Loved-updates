@@ -291,6 +291,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/payment-orders', [SettingsController::class, 'paymentOrders'])->name('payment-orders');
         Route::post('/payment-orders/bulk', [SettingsController::class, 'bulkPaymentOrders'])->name('payment-orders.bulk');
+        Route::get('/payment-orders/options', [SettingsController::class, 'searchPaymentOrderOptions'])->name('payment-orders.options');
         Route::post('/payment-orders', [SettingsController::class, 'storePaymentOrder'])->name('payment-orders.store');
         Route::put('/payment-orders/{order}', [SettingsController::class, 'updatePaymentOrder'])->name('payment-orders.update');
         Route::delete('/payment-orders/{order}', [SettingsController::class, 'destroyPaymentOrder'])->name('payment-orders.destroy');

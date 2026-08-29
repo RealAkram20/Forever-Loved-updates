@@ -340,8 +340,22 @@ class SettingsController extends Controller
 
         $orders = $query->paginate(25)->withQueryString();
 
-        $adminId = $request->user()->id;
-        $users = User::where('id', '!=', $adminId)->orderBy('name')->get(['id', 'name', 'email']);
+        // The admin is in this list like anybody else.
+        //
+        // They used to be filtered out, so an admin could not grant a plan on a memorial they
+        // own — they had to pick somebody else as the user, and the form came back with
+        // "Memorial must belong to the selected user", which describes a problem they did not
+        // have.
+        //
+        // A `different:$admin->id` rule sat alongside it and looked like the real control. It
+        // was not one, and never had been: `different:` names another *field*, so `different:5`
+        // compared user_id against a request field literally called "5" and passed every time
+        // for want of one. Removing it changes no behaviour — it only stops the next reader
+        // believing there is a self-dealing guard here.
+        //
+        // Nor should there be one at this spot while Settings → Subscriptions grants the same
+        // plans, from the same screen group, with no such rule.
+        $users = User::orderBy('name')->get(['id', 'name', 'email']);
         $plans = SubscriptionPlan::orderBy('sort_order')->get();
         $memorials = Memorial::with('owner')->orderBy('full_name')->get(['id', 'slug', 'full_name', 'user_id']);
 
@@ -358,13 +372,74 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * Type-ahead for the two fields that used to be a list of everything.
+     *
+     * Both selects rendered every user and every memorial on the platform into the page, which
+     * is slow to load, impossible to find yourself in, and gets worse with every signup. This
+     * answers a query instead.
+     *
+     * Memorials can be narrowed to one owner, which is what makes the pairing safe: pick the
+     * person and you are only ever offered pages they actually own, so the two fields cannot
+     * end up disagreeing and hitting "Memorial must belong to the selected user".
+     */
+    public function searchPaymentOrderOptions(Request $request)
+    {
+        $request->validate([
+            'type' => ['required', 'in:users,memorials'],
+            'q' => ['nullable', 'string', 'max:120'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        $term = trim((string) $request->query('q', ''));
+        $adminId = $request->user()->id;
+
+        if ($request->query('type') === 'users') {
+            $results = User::query()
+                ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w
+                    ->where('name', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%")))
+                // The admin first when they match, because granting on your own memorial is a
+                // thing you do often and hunting for your own name in an alphabetical list of
+                // every account is the reason this field was unusable.
+                ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$adminId])
+                ->orderBy('name')
+                ->limit(20)
+                ->get(['id', 'name', 'email'])
+                ->map(fn (User $u) => [
+                    'id' => $u->id,
+                    'label' => $u->name.($u->id === $adminId ? ' (You)' : ''),
+                    'sub' => $u->email,
+                ]);
+
+            return response()->json(['results' => $results]);
+        }
+
+        $results = Memorial::query()
+            ->with('owner:id,name')
+            ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->integer('user_id')))
+            ->when($term !== '', fn ($q) => $q->where('full_name', 'like', "%{$term}%"))
+            ->orderBy('full_name')
+            ->limit(20)
+            ->get(['id', 'full_name', 'user_id'])
+            ->map(fn (Memorial $m) => [
+                'id' => $m->id,
+                'label' => $m->full_name,
+                // Carried back so picking a memorial can fill the owner in, which is the other
+                // half of the two fields never disagreeing.
+                'user_id' => $m->user_id,
+                'sub' => ($m->owner?->name ?? 'No owner').($m->user_id === $adminId ? ' (You)' : ''),
+            ]);
+
+        return response()->json(['results' => $results]);
+    }
+
     public function storePaymentOrder(Request $request)
     {
-        $admin = $request->user();
         $gateway = $request->input('payment_gateway', 'manual');
 
         $rules = [
-            'user_id' => ['required', 'exists:users,id', 'different:' . $admin->id],
+            'user_id' => ['required', 'exists:users,id'],
             'memorial_id' => ['required', 'exists:memorials,id'],
             'subscription_plan_id' => ['required', 'exists:subscription_plans,id'],
             'payment_gateway' => ['required', 'string', 'in:manual,pesapal'],
@@ -486,9 +561,8 @@ class SettingsController extends Controller
 
     public function updatePaymentOrder(Request $request, PaymentOrder $order)
     {
-        $admin = $request->user();
         $request->validate([
-            'user_id' => ['required', 'exists:users,id', 'different:' . $admin->id],
+            'user_id' => ['required', 'exists:users,id'],
             'memorial_id' => ['required', 'exists:memorials,id'],
             'subscription_plan_id' => ['required', 'exists:subscription_plans,id'],
             'status' => ['required', 'in:pending,completed,failed,cancelled'],

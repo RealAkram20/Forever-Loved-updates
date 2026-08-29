@@ -217,26 +217,30 @@
                 <form id="create-order-form" action="{{ route('settings.payment-orders.store') }}" method="POST" class="space-y-4" @submit="handleSubmit($event)">
                     @csrf
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {{-- User and Memorial are one decision made in two fields, so they are
+                             wired to each other: pick the person and the memorial list narrows
+                             to pages they actually own; pick the memorial and its owner is
+                             filled in for you. The server still refuses a mismatched pair —
+                             that guard stays — but it should now be unreachable by hand rather
+                             than something you discover after submitting. --}}
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">User</label>
-                            <select name="user_id" required
-                                class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden">
-                                <option value="">Select user...</option>
-                                @foreach ($users ?? [] as $u)
-                                    <option value="{{ $u->id }}" {{ old('user_id') == $u->id ? 'selected' : '' }}>{{ $u->name }} ({{ $u->email }})</option>
-                                @endforeach
-                            </select>
+                            <x-admin.option-search
+                                name="user_id"
+                                type="users"
+                                placeholder="Search name or email..."
+                                :value="old('user_id')"
+                                model="user" />
                             @error('user_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Memorial</label>
-                            <select name="memorial_id" required
-                                class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:text-white/90 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden">
-                                <option value="">Select memorial...</option>
-                                @foreach ($memorials ?? [] as $m)
-                                    <option value="{{ $m->id }}" {{ old('memorial_id') == $m->id ? 'selected' : '' }} data-user="{{ $m->user_id }}">{{ $m->full_name }} ({{ $m->owner->name ?? '' }})</option>
-                                @endforeach
-                            </select>
+                            <x-admin.option-search
+                                name="memorial_id"
+                                type="memorials"
+                                placeholder="Search memorial name..."
+                                :value="old('memorial_id')"
+                                model="memorial" />
                             @error('memorial_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
