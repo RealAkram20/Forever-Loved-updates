@@ -26,7 +26,15 @@ class SiteLayoutService
             'version' => 1,
             'blocks' => [
                 ['type' => HeroBlock::type(), 'props' => HeroBlock::defaultProps()],
-                ['type' => MemorialShowcaseBlock::type(), 'props' => MemorialShowcaseBlock::defaultProps()],
+                // Our own wording for this row, kept here rather than in the block's defaults
+                // because it says something about the memorials shown — that they are examples
+                // to borrow from — which is true of ours and would be false on a reseller's
+                // site, where the same block shows real families.
+                ['type' => MemorialShowcaseBlock::type(), 'props' => array_merge(MemorialShowcaseBlock::defaultProps(), [
+                    'eyebrow' => 'Featured',
+                    'title' => 'Memorial Inspiration',
+                    'description' => 'Not sure where to begin? A memorial can be as unique as the life it celebrates. Let these fictional examples inspire you to create a beautiful place filled with love, memories, and the moments that made someone special.',
+                ])],
                 ['type' => FeaturesGridBlock::type(), 'props' => FeaturesGridBlock::defaultProps()],
                 ['type' => CtaBannerBlock::type(), 'props' => CtaBannerBlock::defaultProps()],
             ],

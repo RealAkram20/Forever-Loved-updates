@@ -9,14 +9,20 @@
     <div class="showcase-wash-dark absolute inset-0 hidden pointer-events-none select-none dark:block" aria-hidden="true"></div>
 
     <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex items-end justify-between mb-8">
-            <div>
+        {{-- items-start, not items-end: with a paragraph under the heading the link was being
+             aligned to the bottom of four lines of body copy, which puts it nowhere in
+             particular. It belongs beside the heading it relates to. --}}
+        <div class="flex items-start justify-between gap-8 mb-8">
+            <div class="max-w-2xl">
                 @if (!empty($props['eyebrow']))
                     <p class="ap-eyebrow text-sm font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-400">{{ $props['eyebrow'] }}</p>
                 @endif
-                <h2 class="ap-title font-display mt-2 text-3xl font-semibold text-gray-900 dark:text-white sm:text-4xl">{{ $props['title'] ?? 'Popular Memorials' }}</h2>
+                <h2 class="ap-title font-display mt-2 text-3xl font-semibold text-gray-900 dark:text-white sm:text-4xl">{{ $props['title'] ?? 'Memorial Inspiration' }}</h2>
+                @if (!empty($props['description']))
+                    <p class="mt-3 text-base leading-relaxed text-gray-600 dark:text-gray-400">{{ $props['description'] }}</p>
+                @endif
             </div>
-            <a href="{{ $dirUrl }}" class="btn btn-link btn-md group hidden sm:inline-flex">
+            <a href="{{ $dirUrl }}" class="btn btn-link btn-md group mt-8 hidden shrink-0 sm:inline-flex">
                 {{ $props['view_all_label'] ?? 'View All' }}
                 <svg class="lucide icon-arrow h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </a>
