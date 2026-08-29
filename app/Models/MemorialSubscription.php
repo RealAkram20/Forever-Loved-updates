@@ -29,6 +29,16 @@ class MemorialSubscription extends Model
         return $this->belongsTo(Memorial::class);
     }
 
+    /**
+     * The browsers registered for push under this subscription — a guest may have more than
+     * one (a phone and a laptop), and a signed-in subscriber has none here, because theirs are
+     * device registrations on the account rather than on the memorial.
+     */
+    public function pushSubscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

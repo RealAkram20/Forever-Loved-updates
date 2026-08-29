@@ -319,7 +319,14 @@ class NotificationService
      */
     private static function webPushClient(): \GuzzleHttp\Client
     {
-        return new \GuzzleHttp\Client(static::getWebPushClientOptions() + ['timeout' => 30]);
+        // Through the container rather than `new`, so a test can substitute a handler and
+        // assert *which endpoints* a fan-out addresses. Without that seam the delivery tests
+        // passed whether or not the selection was right, which is the one thing about a
+        // notification pipeline worth proving: one family's news must never reach a phone that
+        // subscribed to somebody else.
+        return app()->makeWith(\GuzzleHttp\Client::class, [
+            'config' => static::getWebPushClientOptions() + ['timeout' => 30],
+        ]);
     }
 
     private static function isPushEnabled(): bool
@@ -805,6 +812,91 @@ class NotificationService
                     ));
                 }
             }
+        }
+
+        static::pushToGuestSubscribers($memorial, $preference, $title, $message, $actionUrl);
+    }
+
+    /**
+     * The push half of the same fan-out.
+     *
+     * Members are already covered: their branch above creates a Notification, and send()
+     * dispatches push off the back of it. Guests had no equivalent — push required an account —
+     * so this delivers to the browsers registered against a guest's MemorialSubscription.
+     *
+     * Loaded through the subscription rather than by memorial id, so the same preference flag
+     * that gates the email gates the push: someone who turned tributes off is off on both, and
+     * unsubscribing deletes the registrations with it.
+     *
+     * Failures are logged, never raised. A push endpoint that has expired must not take down
+     * the email that was already sent beside it, nor the story that triggered either.
+     */
+    /**
+     * The guest browsers a given memorial update should reach.
+     *
+     * Separated from the send so it can be asserted on its own. The transport needs real VAPID
+     * keys and a crypto extension; *who gets addressed* needs neither, and it is the half that
+     * matters — one family's news arriving on a phone that subscribed to somebody else is the
+     * worst thing this pipeline could do, and it is a question about a query.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, PushSubscription>
+     */
+    public static function guestPushSubscriptionsFor(
+        \App\Models\Memorial $memorial,
+        string $preference
+    ): \Illuminate\Database\Eloquent\Collection {
+        if (! static::isPushEnabled()) {
+            return PushSubscription::query()->whereRaw('1 = 0')->get();
+        }
+
+        return PushSubscription::query()
+            ->whereNull('user_id')
+            ->whereHas('memorialSubscription', fn ($q) => $q
+                ->where('memorial_id', $memorial->id)
+                ->where($preference, true))
+            ->get();
+    }
+
+    private static function pushToGuestSubscribers(
+        \App\Models\Memorial $memorial,
+        string $preference,
+        string $title,
+        string $message,
+        string $actionUrl
+    ): void {
+        $subscriptions = static::guestPushSubscriptionsFor($memorial, $preference);
+
+        if ($subscriptions->isEmpty()) {
+            return;
+        }
+
+        $appUrl = $memorial->reseller?->publicBaseUrl() ?: config('app.url', 'http://localhost');
+
+        try {
+            $reports = static::sendPushToSubscriptions(
+                $subscriptions,
+                $title,
+                $message,
+                $actionUrl,
+                'memorial-'.$memorial->id.'-'.$preference,
+                $appUrl
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Guest push failed', ['memorial_id' => $memorial->id, 'reason' => $e->getMessage()]);
+
+            return;
+        }
+
+        foreach ($reports as $report) {
+            if ($report['success'] ?? false) {
+                continue;
+            }
+
+            Log::warning('Guest push notification failed', [
+                'memorial_id' => $memorial->id,
+                'endpoint' => $report['endpoint'] ?? null,
+                'reason' => $report['reason'] ?? null,
+            ]);
         }
     }
 

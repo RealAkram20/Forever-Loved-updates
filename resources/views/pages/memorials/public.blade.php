@@ -1596,5 +1596,12 @@
 
 </div>
 
+{{-- Plan-gated with the rest of the visitor notification features: a memorial whose plan does
+     not include guest notifications has nothing to subscribe anybody to. --}}
+@if ($quotaInfo['guest_notifications'] ?? false)
+    @include('pages.memorials.partials.push-invite', ['memorial' => $memorial])
+    @include('pages.memorials.partials.push-invite-script', ['memorial' => $memorial])
+@endif
+
 @vite('resources/js/memorial-public.js')
 @endsection

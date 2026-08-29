@@ -12,6 +12,7 @@ use App\Models\Memorial;
 use App\Models\MemorialShare;
 use App\Models\MemorialSubscription;
 use App\Models\Post;
+use App\Models\PushSubscription;
 use App\Models\Reaction;
 use App\Models\Tribute;
 use App\Models\User;
@@ -651,6 +652,127 @@ class MemorialApiController extends Controller
                 'notify_tributes' => $sub->notify_tributes,
             ],
         ]);
+    }
+
+    /**
+     * Register this browser for push about one memorial, with or without an account.
+     *
+     * The one-tap counterpart to subscribe() above, which needs an email address. Somebody who
+     * followed a link to a memorial and wants to know when the family adds something has, until
+     * now, had to hand over an address to get it — and push exists precisely so they do not have
+     * to. Nothing here identifies the person: an endpoint the browser minted, and two keys that
+     * only their browser can decrypt with.
+     *
+     * It still creates a MemorialSubscription, because that is where consent lives on this
+     * codebase — the preference flags, the unsubscribe route and the fan-out are all built
+     * against it. A push-only guest gets one with no email, which the mail branch of
+     * notifyMemorialSubscribers() skips on its own.
+     */
+    public function subscribePush(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+
+        if (! PlanLimitsHelper::canUseGuestNotifications($memorial)) {
+            return response()->json(['error' => 'Notifications are not available on this memorial\'s plan.'], 422);
+        }
+
+        $validated = $request->validate([
+            'endpoint' => ['required', 'url', 'max:2048'],
+            'keys.p256dh' => ['required', 'string', 'max:255'],
+            'keys.auth' => ['required', 'string', 'max:255'],
+            'contentEncoding' => ['nullable', 'string', 'in:aesgcm,aes128gcm'],
+        ]);
+
+        $userId = $request->user()?->id;
+
+        // A signed-in person's registration is a device, not a per-memorial thing: it follows
+        // their account everywhere and is keyed by endpoint alone, exactly as it always was.
+        if ($userId) {
+            $request->user()->pushSubscriptions()->updateOrCreate(
+                ['endpoint' => $validated['endpoint']],
+                [
+                    'p256dh_key' => $validated['keys']['p256dh'],
+                    'auth_token' => $validated['keys']['auth'],
+                    'content_encoding' => $validated['contentEncoding'] ?? 'aes128gcm',
+                ]
+            );
+
+            return response()->json(['success' => true, 'scope' => 'account']);
+        }
+
+        // A guest's is one browser wanting news of one person, so the subscription it hangs off
+        // is found by that pair. Without the endpoint in the lookup, a second browser on the
+        // same memorial would overwrite the first rather than join it.
+        $existing = PushSubscription::query()
+            ->whereNull('user_id')
+            ->where('endpoint', $validated['endpoint'])
+            ->whereHas('memorialSubscription', fn ($q) => $q->where('memorial_id', $memorial->id))
+            ->first();
+
+        $subscription = $existing?->memorialSubscription ?: MemorialSubscription::create([
+            'memorial_id' => $memorial->id,
+            'user_id' => null,
+            'guest_name' => null,
+            'guest_email' => null,
+            'notify_life_chapters' => true,
+            'notify_tributes' => true,
+        ]);
+
+        PushSubscription::updateOrCreate(
+            [
+                'memorial_subscription_id' => $subscription->id,
+                'endpoint' => $validated['endpoint'],
+            ],
+            [
+                'user_id' => null,
+                'p256dh_key' => $validated['keys']['p256dh'],
+                'auth_token' => $validated['keys']['auth'],
+                'content_encoding' => $validated['contentEncoding'] ?? 'aes128gcm',
+            ]
+        );
+
+        return response()->json(['success' => true, 'scope' => 'memorial']);
+    }
+
+    /**
+     * Stop this browser's push for this memorial.
+     *
+     * Deletes the subscription rather than the registration when nothing else is left on it: a
+     * push-only guest has no email, so an empty MemorialSubscription would be a consent record
+     * for a channel nobody can be reached on.
+     */
+    public function unsubscribePush(Request $request, string $slug): JsonResponse
+    {
+        $memorial = Memorial::where('slug', $slug)->firstOrFail();
+
+        $validated = $request->validate([
+            'endpoint' => ['required', 'url', 'max:2048'],
+        ]);
+
+        if ($userId = $request->user()?->id) {
+            PushSubscription::where('user_id', $userId)
+                ->where('endpoint', $validated['endpoint'])
+                ->delete();
+
+            return response()->json(['success' => true]);
+        }
+
+        $rows = PushSubscription::query()
+            ->whereNull('user_id')
+            ->where('endpoint', $validated['endpoint'])
+            ->whereHas('memorialSubscription', fn ($q) => $q->where('memorial_id', $memorial->id))
+            ->get();
+
+        foreach ($rows as $row) {
+            $subscription = $row->memorialSubscription;
+            $row->delete();
+
+            if ($subscription && ! $subscription->guest_email && $subscription->pushSubscriptions()->count() === 0) {
+                $subscription->delete();
+            }
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

@@ -556,6 +556,10 @@ Route::prefix('m/{slug}')->where(['slug' => '[a-z0-9\-]+'])->name('memorial.api.
     Route::put('/subscribe', [MemorialApiController::class, 'updateSubscription'])->name('subscribe.update');
     Route::delete('/subscribe', [MemorialApiController::class, 'unsubscribe'])->name('subscribe.delete');
     Route::get('/subscribe/check', [MemorialApiController::class, 'checkSubscription'])->name('subscribe.check');
+    // Push, for guests as well as members. Throttled like subscribe(): this is reachable
+    // without an account, and a browser only ever needs to call it once.
+    Route::post('/push/subscribe', [MemorialApiController::class, 'subscribePush'])->middleware('throttle:20,1')->name('push.subscribe');
+    Route::post('/push/unsubscribe', [MemorialApiController::class, 'unsubscribePush'])->middleware('throttle:20,1')->name('push.unsubscribe');
     // Media uploads
     Route::post('/profile-photo', [MemorialMediaController::class, 'uploadProfilePhoto'])->name('profile-photo');
     Route::post('/cover-photo', [MemorialMediaController::class, 'uploadCoverPhoto'])->name('cover-photo');
