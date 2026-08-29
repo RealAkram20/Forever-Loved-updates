@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
         <button type="button" data-share="copy" data-share-url="${url}" class="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 group">
             <svg class="h-5 w-5 text-gray-400 dark:text-gray-500 group-hover:text-brand-500 shrink-0 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-            <span class="group-hover:text-brand-500 transition">Copy link</span>
+            <span class="group-hover:text-brand-500 transition">Copy message</span>
         </button>`;
     }
 
@@ -3489,24 +3489,43 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const url = getShareUrl(btn);
             const encoded = encodeURIComponent(url);
-            const title = encodeURIComponent(document.title || 'Memorial');
             const shareType = getShareType(btn);
+
+            // The message the page composed for this memorial — the name, the years, and what
+            // the person receiving it is being invited to do. A bare link asks them to work all
+            // of that out, at the moment they are least able to.
+            //
+            // The tab title is the fallback, which is what this used to send: better than
+            // nothing where the page did not supply a message, as on a shared life chapter.
+            const message = container?.dataset.shareMessage || document.title || 'Memorial';
+
+            // A blank line between the words and the link, so the two read as separate things
+            // in the message somebody receives.
+            const LINE_BREAK = String.fromCharCode(10, 10);
+
             trackShare(shareType);
             switch (shareType) {
                 case 'whatsapp':
-                    window.open(`https://wa.me/?text=${title}%20${encoded}`, '_blank', 'noopener');
+                    // wa.me takes one `text`, so the message and the link travel as one string.
+                    window.open('https://wa.me/?text=' + encodeURIComponent(message + LINE_BREAK + url), '_blank', 'noopener');
                     break;
                 case 'facebook':
+                    // Facebook and LinkedIn both strip any text a site tries to prefill and
+                    // build the preview from the page's own share tags instead, so passing the
+                    // message here would be dropped rather than shown.
                     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encoded}`, '_blank', 'noopener');
                     break;
                 case 'linkedin':
                     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encoded}`, '_blank', 'noopener');
                     break;
                 case 'copy':
-                    navigator.clipboard.writeText(url).then(() => {
-                        const orig = btn.textContent;
-                        btn.textContent = 'Copied';
-                        setTimeout(() => { btn.textContent = orig; }, 1500);
+                    // The message and the link, because that is what the button now offers —
+                    // see its label. Somebody who wants the bare URL has the address bar.
+                    navigator.clipboard.writeText(message + LINE_BREAK + url).then(() => {
+                        const label = btn.querySelector('span') || btn;
+                        const orig = label.textContent;
+                        label.textContent = 'Copied';
+                        setTimeout(() => { label.textContent = orig; }, 1500);
                     });
                     break;
             }
