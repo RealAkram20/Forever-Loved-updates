@@ -2047,7 +2047,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // The artwork's own lightest tints are left out. Each petal carries a white highlight
     // overlay, and on a tint that pale the highlight takes the whole shape to near-white —
     // which against this page's own pale ground is not a petal at all.
-    const PETAL_COLOURS = ['#f08a72', '#e76069', '#dd6f8f', '#c96a9d', '#aa5796', '#8b3f84'];
+    //
+    // A template that ships its own flower ships its own palette with it, set on `window` by
+    // its memorial partial before this runs. Without that the petals stay coral-to-purple while
+    // the card above them is a different flower entirely — which reads less as a theme than as
+    // a bug. The platform's own is the fallback, so a template that replaces nothing changes
+    // nothing.
+    const PETAL_COLOURS = (Array.isArray(window.__tributePetalColours) && window.__tributePetalColours.length)
+        ? window.__tributePetalColours
+        : ['#f08a72', '#e76069', '#dd6f8f', '#c96a9d', '#aa5796', '#8b3f84'];
 
     // Drawn from rather than picked uniformly, because the narrow shapes — the edge-on
     // sliver especially — read as a hairline at small sizes. A few are what sells the

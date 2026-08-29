@@ -205,6 +205,72 @@ it('leaves the platform fade and wash alone on the base template', function () {
         ->toBeTrue('the platform wash is the platform default and stays');
 });
 
+it('gives a template its own flower on the tribute card', function () {
+    // Per-file, not all-or-nothing: this template replaces the rose and leaves the candle and
+    // the praying hands alone, so the assertion is that the two untouched ones still resolve to
+    // the platform's.
+    $acme = blendTenant('blend-rose', 'dignified');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, 'images/themes/dignified/tributes/flower.png'))
+        ->toBeTrue('the template ships a flower and should be using it')
+        ->and(str_contains($html, 'images/tributes/flower.png'))
+        ->toBeFalse('and not the platform rose alongside it');
+});
+
+it('leaves the platform tribute artwork to the platform', function () {
+    $owner = User::factory()->create();
+    $memorial = Memorial::factory()->create([
+        'reseller_id' => null,
+        'user_id' => $owner->id,
+        'is_public' => true,
+        'status' => Memorial::STATUS_ACTIVE,
+    ]);
+
+    $html = $this->get('/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, 'images/themes/'))
+        ->toBeFalse('our own memorial should reach for no template folder at all');
+});
+
+it('falls back to the platform flower for a template that ships none', function () {
+    // The same promise the backdrop makes. A template is not required to dress this page, and
+    // one that does not must never leave a broken image where the artwork should be.
+    $acme = blendTenant('blend-rose-basic', 'basic');
+    $memorial = blendMemorial($acme);
+
+    $this->get('/r/'.$acme->slug.'/'.$memorial->slug)
+        ->assertOk()
+        ->assertSee('images/tributes/flower.png', false);
+});
+
+it('makes the falling petals the colours of whichever flower is on the card', function () {
+    // The artwork and the petals are one decision. Left apart, a template could swap the rose
+    // and still rain the platform's coral-and-purple over it — which reads less as a theme than
+    // as a bug, and only shows itself after somebody taps.
+    $acme = blendTenant('blend-petals', 'dignified');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    expect(str_contains($html, '__tributePetalColours'))->toBeTrue()
+        // Sampled off this template's rose: near-black through crimson to gold.
+        ->and(str_contains($html, '#5E1A19'))->toBeTrue()
+        ->and(str_contains($html, '#E7AA52'))->toBeTrue();
+});
+
+it('leaves the platform petals alone on a site running no template', function () {
+    $acme = blendTenant('blend-petals-basic', null);
+    $memorial = blendMemorial($acme);
+
+    expect(str_contains(
+        $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent(),
+        '__tributePetalColours'
+    ))->toBeFalse();
+});
+
 it('leaves the platform portrait mount plain', function () {
     // A reseller not on this template keeps the white card, which is what suits every brand.
     $acme = blendTenant('blend-frame-basic', null);

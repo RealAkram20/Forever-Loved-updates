@@ -27,6 +27,22 @@
     $dgGold = \App\Helpers\BrandingHelper::accentColor();
     $dgRed = \App\Helpers\BrandingHelper::primaryColor();
 @endphp
+
+{{-- The petals that fall when Leave a Flower is tapped.
+
+     Sampled off this template's own rose — public/images/themes/dignified/tributes/flower.png —
+     the way public/images/tributes/README.md says to sample them off the platform's: a spread
+     along the flower's own gradient rather than one average tint, so what falls is that flower
+     coming apart rather than confetti. This one runs near-black at its outer petals through
+     crimson to gold at the heart, and the palette runs the same way.
+
+     The extremes are left out at both ends, for the same reason the platform's are. Each petal
+     carries a black overlay and a white one; on the artwork's true near-black the first takes
+     the shape to a hole in the page, and on its palest gold the second takes it to near-white,
+     which against this template's paper is not a petal at all.
+
+     Set before the memorial bundle runs, which is what lets it read this rather than its own. --}}
+<script>window.__tributePetalColours = ['#5E1A19', '#9F2625', '#BB4948', '#CC622F', '#D78C34', '#E7AA52'];</script>
 <style>
     /* Where to crop the backdrop this template ships.
 

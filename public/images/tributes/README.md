@@ -80,3 +80,23 @@ again, these change with it:
 
 The marker chips in the story composer and the medallion on a marked story both read this
 same file through that partial, so they follow along on their own.
+
+## A template can bring its own
+
+`tribute-art.blade.php` looks in `public/images/themes/{template}/tributes/` before it looks
+here, so a template ships whichever of the three it wants to replace and inherits the rest.
+Everything above applies to those files too — transparent, square, cropped to the subject,
+nothing baked in that the page animates, ~256px.
+
+`dignified/tributes/flower.png` is the one that exists today: a black-to-gold rose. It arrived
+inside a screenshot frame with an Edit button and a download icon in the corners, and with four
+petals already falling. The chrome was painted out and the black frame shaved before the
+flood-fill — a frame touching the border stops the fill reaching the white — and the loose
+petals were cropped away with the stem, because the page rains its own the moment anyone taps.
+
+The palette moves with the artwork. A template that ships a flower sets `window.__tributePetalColours`
+in its `memorial-theme.blade.php`; `PETAL_COLOURS` in `memorial-public.js` reads it and falls back
+to the platform's coral-to-purple when there is none. Sample the same way — a spread along that
+flower's own gradient, extremes left out at both ends. Dignified's runs `#5E1A19` through
+`#E7AA52`: its true near-black takes the per-petal black overlay to a hole in the page, and its
+palest gold takes the white overlay to something that is not a petal at all.

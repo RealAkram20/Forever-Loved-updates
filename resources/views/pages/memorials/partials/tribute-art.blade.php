@@ -10,7 +10,19 @@
     @param string $image  filename to look for, e.g. rose.png
 --}}
 @php
-    $artPath = public_path('images/tributes/'.$image);
+    // A template may bring its own. Same shape as the memorial backdrop above it:
+    // `public/images/themes/{template}/tributes/{file}`, and every template that ships none —
+    // including the base one — keeps the platform's, so nothing changes for anyone who has not
+    // opted in. Per-file rather than all-or-nothing: a template can replace the rose and leave
+    // the candle and the hands alone.
+    $artTemplate = app(\App\Themes\ActiveTheme::class)->template();
+    $artRel = 'images/themes/'.$artTemplate.'/tributes/'.$image;
+
+    if (! is_file(public_path($artRel))) {
+        $artRel = 'images/tributes/'.$image;
+    }
+
+    $artPath = public_path($artRel);
     $hasArtwork = is_file($artPath);
     // Stamped with the file's own mtime so replacing the artwork replaces the URL.
     // Without it these are cached under a name that never changes, and swapping the file
@@ -21,7 +33,7 @@
 @endphp
 
 @if ($hasArtwork)
-    <img src="{{ asset('images/tributes/'.$image).'?v='.$artVersion }}" alt="" aria-hidden="true"
+    <img src="{{ asset($artRel).'?v='.$artVersion }}" alt="" aria-hidden="true"
         class="h-full w-full object-contain" loading="lazy" />
 @elseif ($type === 'flower')
     <svg viewBox="0 0 64 64" fill="none" class="h-full w-full" aria-hidden="true">
