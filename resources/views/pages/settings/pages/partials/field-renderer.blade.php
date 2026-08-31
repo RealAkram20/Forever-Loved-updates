@@ -132,4 +132,7 @@
     </div>
 </template>
 
-@include('pages.settings.pages.partials.field-repeater')
+{{-- Every kind above is guarded by its own `x-if`, and the repeater is no exception — it is
+     included at `field.kind === 'repeater'` near the top of this file. An unguarded include
+     used to sit here as well, which drew a second repeater under *every* field of every
+     widget: a stray "Add item" list after each text box, and the real one rendered twice. --}}
