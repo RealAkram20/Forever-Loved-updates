@@ -252,6 +252,46 @@ it('still falls back per file for a template that ships none', function () {
     }
 });
 
+it('dresses all three a-plus tribute cards in its own artwork', function () {
+    // A-Plus now ships all three, so nothing on these cards is ours any more. Asserted as a
+    // loop over the three rather than one path, because the failure this catches is a single
+    // file going missing from a deploy — and that shows up as exactly one motif falling back.
+    $acme = blendTenant('blend-ap-art', 'a-plus');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    foreach (['flower', 'candle', 'prayer'] as $motif) {
+        expect(str_contains($html, "images/themes/a-plus/tributes/{$motif}.png"))
+            ->toBeTrue("{$motif} should be the template's own");
+    }
+
+    // And none of ours leaks in alongside them.
+    expect(preg_match('#images/tributes/(flower|candle|prayer)\.png#', $html))->toBe(0);
+});
+
+it('keeps the a-plus petals the colours of the rose they fall from', function () {
+    // The pair the README calls one decision. The gold spread was set before this template had
+    // a flower of its own; the rose that arrived is yellow with blue edges, and its yellow sits
+    // inside that same spread, so the list still holds. Pinned so that if either the artwork or
+    // the list moves without the other, this says so.
+    $acme = blendTenant('blend-ap-petals', 'a-plus');
+    $memorial = blendMemorial($acme);
+
+    $html = $this->get('/r/'.$acme->slug.'/'.$memorial->slug)->assertOk()->getContent();
+
+    // Scoped to the declaration itself. Searching the whole page for a hex would find the
+    // template's navy in its own token block and prove nothing about what falls.
+    preg_match('/__tributePetalColours\s*=\s*(\[[^\]]*\])/', $html, $m);
+
+    expect($m)->not->toBeEmpty('the template should be setting its own petals')
+        ->and(str_contains($m[1], '#F8D566'))->toBeTrue('the pale end of the rose own yellow')
+        ->and(str_contains($m[1], '#7A5A05'))->toBeTrue('and the deep end')
+        // Blue is deliberately absent: each petal is filled flat, so a navy entry drops solid
+        // chips rather than the two-tone petals the artwork has.
+        ->and(preg_match('/#0{0,1}0?33A0|#06214F/i', $m[1]))->toBe(0, 'no navy in the falling petals');
+});
+
 it('leaves the platform tribute artwork to the platform', function () {
     $owner = User::factory()->create();
     $memorial = Memorial::factory()->create([

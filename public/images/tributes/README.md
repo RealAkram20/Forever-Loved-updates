@@ -99,6 +99,55 @@ petals already falling. The chrome was painted out and the black frame shaved be
 flood-fill — a frame touching the border stops the fill reaching the white — and the loose
 petals were cropped away with the stem, because the page rains its own the moment anyone taps.
 
+A-Plus ships all three: a yellow-hearted rose with blue petal edges, a yellow-to-blue pillar on
+a cobalt dish, and a pair of praying hands with navy cuffs and yellow sleeves. All three are in
+the two colours the rest of that template is built from, and nothing on those cards is ours any
+more.
+
+Its rose arrived with five loose petals painted in beside the bloom, which the rule above
+forbids because the page rains its own the moment anyone taps. They were not painted out by
+hand: the loose petals do not touch the flower, so labelling the keyed alpha mask's connected
+components and keeping only the largest removes all five exactly, along with a stray two-pixel
+speck, and cannot nibble the subject the way a hand-drawn mask would. `magick mask.png -define
+connected-components:area-threshold=50000 -define connected-components:mean-color=true
+-connected-components 8`, then multiply that back into the real soft alpha so the edges stay
+anti-aliased. The stem and leaves were kept, which is what dignified does; only the loose petals
+go.
+
+Its petal list was checked against the artwork and deliberately left alone. The gold spread was
+set before this template had a flower, and the rose that arrived is yellow with blue edges —
+quantising the bloom gives `#997338`, `#E8A717`, `#D7AE4D`, `#F7D462`, `#F5DF94`, which is the
+same ramp the list already held (`#F7D462` against the list's `#F8D566` at the bright end). The
+blue stays out for the reason recorded in that file: each petal is filled flat, so a navy entry
+drops solid chips rather than the two-tone petals the artwork actually has.
+
+That hands file taught the one thing this page's method does not already cover: **source art
+that fades to white on purpose cannot be keyed at a single fuzz.** The sleeves dissolve into
+the background by design, so a 7-12% flood-fill stops partway down the ramp and leaves an
+opaque white band with a torn edge along the bottom — invisible on white, and a smear with a
+ragged edge on any dark ground, which is exactly where this one is largest (the prayer scene
+draws it full-screen on a near-black sky). Raising the fuzz to 30% follows the fade out
+cleanly, but at 30% the fill also leaks through the bright specular rim on the fingertips and
+bites chunks out of them. Neither number works everywhere. What worked was to stop looking for
+one: fill at 12% above a horizontal line drawn well below the lowest skin, at 30% below it,
+and feather the join. The nails survive because a flood-fill cannot reach a highlight that is
+not connected to the outside — which is the same property that makes flood-fill the right tool
+in the first place. Check any fade-to-white art on black before believing it.
+
+The candle taught the opposite lesson to the hands, and the pair of them is the whole point:
+**a flame must not be keyed the way a fade must.** Its core is genuinely white-hot and it
+connects to the outside through its own soft edge, so the fill walks straight up into it — at
+30% the flame comes out hollow, a bright outline around a hole. 20% and below leave it whole.
+For the same reason the whiteness ramp described above was deliberately *not* used on this
+file: the ramp exists to dissolve near-white pixels, and here the near-white pixels are the
+subject. That art also arrived on a perfectly flat ground (251,251,251 in every corner, no
+vignette and no glow around the flame), which is why one modest fuzz and a half-pixel alpha
+blur were enough with no second pass anywhere.
+
+The rule underneath both: look at what the near-white in a given file actually *is* before
+choosing a number. In the hands it was background the artist faded into; in the candle it is
+the brightest thing in the picture.
+
 The palette moves with the artwork. A template that ships a flower sets `window.__tributePetalColours`
 in its `memorial-theme.blade.php`; `PETAL_COLOURS` in `memorial-public.js` reads it and falls back
 to the platform's coral-to-purple when there is none. Sample the same way — a spread along that

@@ -47,3 +47,6 @@ storage/backups/
 # its own optimised webp under public/images/themes/; these are the originals and are
 # large enough to be worth keeping out of the history.
 /themes/*.png
+
+# graphify code graph - regenerable in seconds, do not commit (added 2026-08-29)
+graphify-out/

@@ -66,7 +66,14 @@ class PlanFeatures
     public static function catalogue(): array
     {
         return [
-            // ── What the product is ──────────────────────────────────────────
+            // ── What you are buying ──────────────────────────────────────────
+            // Public order is this array's order: the comparison table and the plan card
+            // bullets both render publicRows() straight down it. `group` is a separate axis
+            // — it only buckets the admin form — so the two can now disagree, and do.
+            //
+            // Leading rows are the ones a family understands without being told and decides
+            // on. The technical rows are at the bottom, where anyone looking for them still
+            // finds them and nobody else has to read past them first.
             'memorial_page' => [
                 'label' => 'Beautiful Memorial Page',
                 'type' => self::TYPE_ALWAYS,
@@ -76,23 +83,32 @@ class PlanFeatures
                 'help' => '',
             ],
             'life_story' => [
-                'label' => 'Life Story / Obituary',
+                'label' => 'Biography / Obituary',
                 'type' => self::TYPE_ALWAYS,
                 'default' => true,
                 'available' => true,
                 'group' => 'Included',
                 'help' => '',
             ],
-            'secure_hosting' => [
-                'label' => 'Secure Hosting & Backups',
-                'type' => self::TYPE_ALWAYS,
-                'default' => true,
+            'feature_never_expires' => [
+                'label' => 'Permanent Preservation',
+                'type' => self::TYPE_BOOL,
+                'default' => false,
                 'available' => true,
-                'group' => 'Included',
+                'group' => 'Features',
+                'help' => 'The memorial is never expired by the subscription lifecycle.',
+            ],
+            'feature_no_ads' => [
+                'label' => 'Ad-Free',
+                'type' => self::TYPE_BOOL,
+                'default' => false,
+                'available' => true,
+                'group' => 'Features',
                 'help' => '',
             ],
 
-            // ── Allowances ───────────────────────────────────────────────────
+            // ── How much fits on it ──────────────────────────────────────────
+            // The figures people actually compare one plan against another on.
             'memorial_limit' => [
                 'label' => 'Memorials',
                 'type' => self::TYPE_LIMIT,
@@ -117,56 +133,6 @@ class PlanFeatures
                 'group' => 'Allowances',
                 'help' => 'How many videos. The total size they may take up is set separately below.',
             ],
-            'max_video_storage_mb' => [
-                'label' => 'Video Allowance',
-                'type' => self::TYPE_STORAGE,
-                'default' => self::NONE,
-                'available' => true,
-                'group' => 'Allowances',
-                'help' => 'Roughly 1.2 GB per hour of phone video. Measured exactly, unlike duration, which the browser reports and can be under-stated.',
-            ],
-            'storage_limit_mb' => [
-                'label' => 'Total Storage',
-                'type' => self::TYPE_STORAGE,
-                'default' => 100,
-                'available' => true,
-                'group' => 'Allowances',
-                'help' => 'Everything on the memorial — photos, videos, audio, cover and profile pictures.',
-            ],
-            'max_contributors' => [
-                'label' => 'Family & Friends Contributors',
-                'type' => self::TYPE_LIMIT,
-                'default' => 5,
-                'available' => true,
-                'group' => 'Allowances',
-                'help' => 'People invited to help build the memorial. Visitors leaving tributes are not counted.',
-            ],
-            'max_tributes' => [
-                'label' => 'Tributes',
-                'type' => self::TYPE_LIMIT,
-                'default' => 20,
-                'available' => true,
-                'group' => 'Allowances',
-                'help' => '',
-            ],
-            'max_chapters' => [
-                'label' => 'Story Chapters',
-                'type' => self::TYPE_LIMIT,
-                'default' => 3,
-                'available' => true,
-                'group' => 'Allowances',
-                'help' => '',
-            ],
-            'max_ai_bio_per_day' => [
-                'label' => 'AI Biography',
-                'type' => self::TYPE_DAILY,
-                'default' => self::NONE,
-                'available' => true,
-                'group' => 'Allowances',
-                'help' => 'Generations per day. Zero switches it off.',
-            ],
-
-            // ── Features that exist today ────────────────────────────────────
             'feature_albums' => [
                 'label' => 'Photo and Video Albums',
                 'type' => self::TYPE_BOOL,
@@ -174,6 +140,28 @@ class PlanFeatures
                 'available' => true,
                 'group' => 'Features',
                 'help' => 'Lets the family sort the gallery into categories visitors can browse.',
+            ],
+            // Counts `storyChapters()` — the family's own groupings, the chips the stories
+            // pane files posts under — not the posts themselves, which nothing limits.
+            // Labelled "Life Stories" by choice, so read the figure as how many a plan may
+            // create, not as a cap on how much anyone may write.
+            'max_chapters' => [
+                'label' => 'Life Stories',
+                'type' => self::TYPE_LIMIT,
+                'default' => 3,
+                'available' => true,
+                'group' => 'Allowances',
+                'help' => 'How many the family may create. The stories filed under them are not limited.',
+            ],
+
+            // ── Who can take part, and what they can leave ───────────────────
+            'max_contributors' => [
+                'label' => 'Family & Friends Contributors',
+                'type' => self::TYPE_LIMIT,
+                'default' => 5,
+                'available' => true,
+                'group' => 'Allowances',
+                'help' => 'People invited to help build the memorial. Visitors leaving tributes are not counted.',
             ],
             'feature_tributes' => [
                 'label' => 'Candle & Flower Tributes',
@@ -183,18 +171,26 @@ class PlanFeatures
                 'group' => 'Features',
                 'help' => 'The one-tap gestures visitors leave. Off hides the cards entirely.',
             ],
-            'feature_background_music' => [
-                'label' => 'Background Music',
-                'type' => self::TYPE_BOOL,
-                'default' => false,
+            'max_tributes' => [
+                'label' => 'Tributes',
+                'type' => self::TYPE_LIMIT,
+                'default' => 20,
                 'available' => true,
-                'group' => 'Features',
+                'group' => 'Allowances',
                 'help' => '',
             ],
             'feature_share_memories' => [
                 'label' => 'Easy Sharing',
                 'type' => self::TYPE_BOOL,
                 'default' => true,
+                'available' => true,
+                'group' => 'Features',
+                'help' => '',
+            ],
+            'feature_background_music' => [
+                'label' => 'Background Music',
+                'type' => self::TYPE_BOOL,
+                'default' => false,
                 'available' => true,
                 'group' => 'Features',
                 'help' => '',
@@ -215,21 +211,42 @@ class PlanFeatures
                 'group' => 'Features',
                 'help' => '',
             ],
-            'feature_no_ads' => [
-                'label' => 'Ad-Free',
-                'type' => self::TYPE_BOOL,
-                'default' => false,
+
+            // ── The technical rows ───────────────────────────────────────────
+            // Sizes in MB and GB, a per-day allowance, and the hosting line. Real, and worth
+            // stating, but nobody chooses a plan on them — so they sit last rather than
+            // between the photographs and the tributes.
+            'max_ai_bio_per_day' => [
+                'label' => 'AI Biography',
+                'type' => self::TYPE_DAILY,
+                'default' => self::NONE,
                 'available' => true,
-                'group' => 'Features',
-                'help' => '',
+                'group' => 'Allowances',
+                'help' => 'Generations per day. Zero switches it off.',
             ],
-            'feature_never_expires' => [
-                'label' => 'Permanent Preservation',
-                'type' => self::TYPE_BOOL,
-                'default' => false,
+            'max_video_storage_mb' => [
+                'label' => 'Video Allowance',
+                'type' => self::TYPE_STORAGE,
+                'default' => self::NONE,
                 'available' => true,
-                'group' => 'Features',
-                'help' => 'The memorial is never expired by the subscription lifecycle.',
+                'group' => 'Allowances',
+                'help' => 'Roughly 1.2 GB per hour of phone video. Measured exactly, unlike duration, which the browser reports and can be under-stated.',
+            ],
+            'storage_limit_mb' => [
+                'label' => 'Total Storage',
+                'type' => self::TYPE_STORAGE,
+                'default' => 100,
+                'available' => true,
+                'group' => 'Allowances',
+                'help' => 'Everything on the memorial — photos, videos, audio, cover and profile pictures.',
+            ],
+            'secure_hosting' => [
+                'label' => 'Secure Hosting & Backups',
+                'type' => self::TYPE_ALWAYS,
+                'default' => true,
+                'available' => true,
+                'group' => 'Included',
+                'help' => '',
             ],
 
             // ── Priced now, built later ──────────────────────────────────────
@@ -284,6 +301,7 @@ class PlanFeatures
                 'group' => 'Coming',
                 'help' => 'Not built yet.',
             ],
+
         ];
     }
 
@@ -321,6 +339,21 @@ class PlanFeatures
         );
     }
 
+    /**
+     * The order the admin form shows its sections in.
+     *
+     * Declared, rather than taken from whichever group happens to appear first in the
+     * catalogue. The catalogue is ordered for the customer — plain rows at the top,
+     * technical ones at the bottom — and that ordering deliberately interleaves the groups.
+     * Left implicit, moving a feature up the pricing page would silently reshuffle the admin
+     * screen's sections, which is a surprise nobody asked for and nobody would connect back
+     * to the edit that caused it.
+     *
+     * 'Included' is here for completeness and never renders: its rows are all TYPE_ALWAYS
+     * and stored() drops them, because there is no column to edit.
+     */
+    private const GROUP_ORDER = ['Included', 'Allowances', 'Features', 'Coming'];
+
     /** Grouped for the admin form, in catalogue order within each group. */
     public static function storedByGroup(): array
     {
@@ -330,7 +363,18 @@ class PlanFeatures
             $grouped[$definition['group']][$key] = $definition;
         }
 
-        return $grouped;
+        // Declared order first; anything with a group not on the list keeps its place at the
+        // end rather than vanishing, so a new group added above still renders.
+        $ordered = [];
+
+        foreach (self::GROUP_ORDER as $group) {
+            if (isset($grouped[$group])) {
+                $ordered[$group] = $grouped[$group];
+                unset($grouped[$group]);
+            }
+        }
+
+        return $ordered + $grouped;
     }
 
     public static function definition(string $key): ?array
