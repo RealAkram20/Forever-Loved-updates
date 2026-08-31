@@ -1,6 +1,7 @@
 {
     "name": "Dignified",
     "description": "A formal funeral-home site: small-caps serif headings, a monochrome hero, gold and crimson accents, and a services grid on dark florals. Built for businesses whose visitors arrive grieving rather than browsing.",
+    "screenshot": "preview.webp",
     "tokens": {
         "branding.primary_color": "#BB1520",
         "branding.secondary_color": "#F9BE1C",

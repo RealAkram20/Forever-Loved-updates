@@ -1,6 +1,7 @@
 {
     "name": "Basic",
     "description": "The original Forever design: a full-bleed hero, a memorial showcase carousel, a feature grid and a closing call to action. Clean, familiar, and the one every site ran on before themes existed.",
+    "screenshot": "preview.webp",
     "tokens": [],
     "default_home_blocks": [
         {
