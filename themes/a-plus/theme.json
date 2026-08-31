@@ -1,0 +1,926 @@
+{
+    "name": "A-Plus",
+    "description": "A corporate funeral-management site: a blue utility strip above a white identity bar, pill buttons, a navy hero over a drained photograph, and a services grid whose first card is a filled blue tile. Built for businesses that want to look organised and reachable rather than solemn.",
+    "screenshot": "preview.webp",
+    "tokens": {
+        "branding.primary_color": "#0033A0",
+        "branding.secondary_color": "#FECB01",
+        "branding.accent_color": "#FECB01",
+        "branding.bg_light": "#FFFFFF",
+        "branding.bg_dark": "#06214F",
+        "branding.button1_color": "#FECB01",
+        "branding.button1_text_color": "#06214F",
+        "branding.button2_color": "#0033A0",
+        "branding.button2_text_color": "#FFFFFF",
+        "branding.cta_bg_light": "#06214F",
+        "branding.cta_bg_dark": "#06214F",
+        "branding.default_theme": "light",
+        "appearance.font_heading": "Montserrat",
+        "appearance.font_body": "Open Sans"
+    },
+    "default_pages": {
+        "visitor-home": {
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "Honouring Life With Dignity",
+                        "body": "Compassionate, professional funeral management for families across Uganda and beyond. We are here whenever you need us.",
+                        "image": "{theme}/hero.webp",
+                        "height": "tall",
+                        "overlay": "medium",
+                        "alignment": "left",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "Our Services",
+                        "button_url": "/services",
+                        "button2_label": "Contact Us",
+                        "button2_url": "/contact"
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Compassionate Support When It Matters Most",
+                        "body": "We guide and support you with respect, professionalism and care. From arrangements to aftercare, we handle every detail so you can focus on what truly matters — honouring your loved one.",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "hand-heart",
+                                "title": "Funeral Arrangements",
+                                "text": "Complete funeral planning and coordination, tailored to your needs and your traditions.",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "plane",
+                                "title": "Repatriation Services",
+                                "text": "Dignified repatriation of your loved one to or from anywhere in the world.",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "casket",
+                                "title": "Coffins & Caskets",
+                                "text": "Quality coffins and caskets in a range of styles, to suit your preferences and your budget.",
+                                "url": "/coffins-caskets"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Hearse Transport",
+                                "text": "Reliable and respectful transport, for local journeys and long distances alike.",
+                                "url": "/hearse-transport"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "Personalised memorial services that celebrate a life and bring comfort to those who shared it.",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "calendar",
+                                "title": "Pre-Planning",
+                                "text": "Plan ahead with confidence, and ease the burden on your family when the time comes.",
+                                "url": "/pre-planning"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Why Choose Us",
+                        "heading": "Here For You, Every Step Of The Way",
+                        "body": "We listen, we care, and we guide you with empathy through every stage of the journey.\n\nOur experienced team handles every detail with dignity and respect, and we tell you what things cost before you agree to them.",
+                        "image": "{theme}/why.webp",
+                        "image_side": "left",
+                        "image_ratio": "1/1",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "About Us",
+                        "button_url": "/about",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "",
+                        "body": "",
+                        "columns": 2,
+                        "items": [
+                            {
+                                "icon": "shield-check",
+                                "title": "Our Mission",
+                                "text": "To provide dignified, professional and compassionate funeral services that honour life and support families.",
+                                "url": ""
+                            },
+                            {
+                                "icon": "heart-handshake",
+                                "title": "Our Promise",
+                                "text": "Integrity, transparency and exceptional service — 24 hours a day, wherever you are.",
+                                "url": ""
+                            }
+                        ],
+                        "background": "page",
+                        "padding": "sm",
+                        "width": "normal",
+                        "alignment": "left",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Need immediate help?",
+                        "heading": "We answer, day or night.",
+                        "body": "",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "band",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "enquiry",
+                        "form_button_label": "Send",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_contact",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "Contact & Location",
+                        "body": "",
+                        "show_map": true,
+                        "map_side": "right",
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "normal"
+                    }
+                }
+            ]
+        },
+        "services": {
+            "title": "Our Services",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "Honouring Life With Dignity",
+                        "body": "",
+                        "image": "{theme}/hero.webp",
+                        "height": "tall",
+                        "overlay": "medium",
+                        "alignment": "left",
+                        "width": "wide",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Compassionate Support When It Matters Most",
+                        "body": "We are here to guide and support you with respect, professionalism and care. From arrangements to aftercare, we handle every detail so you can focus on what truly matters — honouring your loved one.",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "hand-heart",
+                                "title": "Funeral Arrangements",
+                                "text": "Complete funeral planning and coordination, tailored to your needs and your traditions.",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "plane",
+                                "title": "Repatriation Services",
+                                "text": "Dignified and efficient repatriation of your loved one to or from anywhere in the world.",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "casket",
+                                "title": "Coffins & Caskets",
+                                "text": "Quality coffins and caskets in a variety of styles, to suit your preferences and your budget.",
+                                "url": "/coffins-caskets"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Hearse Transport",
+                                "text": "Reliable and respectful transport services, for local journeys and long distances.",
+                                "url": "/hearse-transport"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "Personalised memorial services that celebrate life and bring comfort to family and friends.",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "calendar",
+                                "title": "Pre-Planning",
+                                "text": "Plan ahead with confidence and ease the burden on your loved ones in the future.",
+                                "url": "/pre-planning"
+                            }
+                        ],
+                        "background": "page",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "",
+                        "body": "",
+                        "columns": 4,
+                        "items": [
+                            {
+                                "icon": "phone",
+                                "title": "24/7",
+                                "text": "Support",
+                                "url": ""
+                            },
+                            {
+                                "icon": "shield-check",
+                                "title": "30+",
+                                "text": "Years Experience",
+                                "url": ""
+                            },
+                            {
+                                "icon": "users",
+                                "title": "1,000+",
+                                "text": "Families Served",
+                                "url": ""
+                            },
+                            {
+                                "icon": "map-pin",
+                                "title": "Nationwide",
+                                "text": "Service",
+                                "url": ""
+                            }
+                        ],
+                        "background": "dark",
+                        "padding": "none",
+                        "width": "wide",
+                        "alignment": "center",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Why Choose Us",
+                        "heading": "Here For You, Every Step Of The Way",
+                        "body": "Compassionate guidance. We listen, we care, and we guide you with empathy through every step of the journey.\n\nProfessional care. Our experienced team ensures every detail is handled with dignity, respect and excellence.",
+                        "image": "{theme}/why.webp",
+                        "image_side": "left",
+                        "image_ratio": "4/5",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "wide",
+                        "button_label": "Need Immediate Help?",
+                        "button_url": "tel:+256414340773",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "",
+                        "heading": "",
+                        "body": "",
+                        "columns": 2,
+                        "items": [
+                            {
+                                "icon": "shield-check",
+                                "title": "Our Mission",
+                                "text": "To provide dignified, professional and compassionate funeral services that honour life and support families.",
+                                "url": ""
+                            },
+                            {
+                                "icon": "heart-handshake",
+                                "title": "Our Promise",
+                                "text": "We are committed to integrity, transparency and exceptional service — 24/7, wherever you are.",
+                                "url": ""
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "funeral-arrangements": {
+            "title": "Funeral Arrangements",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Funeral Arrangements",
+                        "body": "Planning a service that reflects the person it is for.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Funeral Arrangements",
+                        "heading": "A service that reflects the person it is for",
+                        "body": "We take care of every practical detail of the funeral itself — the order of service, the venue, the flowers, the transport and the timing.\n\nYou tell us what matters. We handle the rest, and we tell you what things cost before you agree to them.",
+                        "image": "{theme}/about.webp",
+                        "image_side": "left",
+                        "image_ratio": "4/5",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "plane",
+                                "title": "Repatriation Services",
+                                "text": "Dignified repatriation of your loved one to or from anywhere in the world.",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "casket",
+                                "title": "Coffins & Caskets",
+                                "text": "Quality coffins and caskets in a range of styles, to suit your preferences and your budget.",
+                                "url": "/coffins-caskets"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Hearse Transport",
+                                "text": "Reliable and respectful transport, for local journeys and long distances alike.",
+                                "url": "/hearse-transport"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "Personalised memorial services that celebrate a life and bring comfort to those who shared it.",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "calendar",
+                                "title": "Pre-Planning",
+                                "text": "Plan ahead with confidence, and ease the burden on your family when the time comes.",
+                                "url": "/pre-planning"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "repatriation-services": {
+            "title": "Repatriation Services",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Repatriation Services",
+                        "body": "Bringing someone home, wherever home is.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Repatriation Services",
+                        "heading": "Bringing someone home, wherever home is",
+                        "body": "Transporting a loved one between districts or across borders, with the documentation each crossing requires.\n\nWe coordinate with the receiving family and the authorities at both ends, so nothing waits on a form nobody knew about.",
+                        "image": "{theme}/hero.webp",
+                        "image_side": "right",
+                        "image_ratio": "4/5",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "hand-heart",
+                                "title": "Funeral Arrangements",
+                                "text": "Complete funeral planning and coordination, tailored to your needs and your traditions.",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "casket",
+                                "title": "Coffins & Caskets",
+                                "text": "Quality coffins and caskets in a range of styles, to suit your preferences and your budget.",
+                                "url": "/coffins-caskets"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Hearse Transport",
+                                "text": "Reliable and respectful transport, for local journeys and long distances alike.",
+                                "url": "/hearse-transport"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "Personalised memorial services that celebrate a life and bring comfort to those who shared it.",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "calendar",
+                                "title": "Pre-Planning",
+                                "text": "Plan ahead with confidence, and ease the burden on your family when the time comes.",
+                                "url": "/pre-planning"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "coffins-caskets": {
+            "title": "Coffins & Caskets",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Coffins & Caskets",
+                        "body": "A range you can see, at prices you are told first.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Coffins & Caskets",
+                        "heading": "A range you can see, at prices you are told first",
+                        "body": "Coffins and caskets in a range of timbers, finishes and styles, from the simple to the ornate.\n\nEvery one carries its price where you can read it, and nobody here will steer you toward the more expensive shelf.",
+                        "image": "{theme}/about.webp",
+                        "image_side": "left",
+                        "image_ratio": "4/5",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "hand-heart",
+                                "title": "Funeral Arrangements",
+                                "text": "Complete funeral planning and coordination, tailored to your needs and your traditions.",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "plane",
+                                "title": "Repatriation Services",
+                                "text": "Dignified repatriation of your loved one to or from anywhere in the world.",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Hearse Transport",
+                                "text": "Reliable and respectful transport, for local journeys and long distances alike.",
+                                "url": "/hearse-transport"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "Personalised memorial services that celebrate a life and bring comfort to those who shared it.",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "calendar",
+                                "title": "Pre-Planning",
+                                "text": "Plan ahead with confidence, and ease the burden on your family when the time comes.",
+                                "url": "/pre-planning"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "hearse-transport": {
+            "title": "Hearse Transport",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Hearse Transport",
+                        "body": "The journey, handled properly.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Hearse Transport",
+                        "heading": "The journey, handled properly",
+                        "body": "A maintained fleet and drivers who understand what they are carrying, for a service across town or a village six hours away.\n\nWe confirm the route and the timing with you in advance, so the family is never waiting at one end wondering where the vehicle is.",
+                        "image": "{theme}/hero.webp",
+                        "image_side": "right",
+                        "image_ratio": "4/5",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "hand-heart",
+                                "title": "Funeral Arrangements",
+                                "text": "Complete funeral planning and coordination, tailored to your needs and your traditions.",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "plane",
+                                "title": "Repatriation Services",
+                                "text": "Dignified repatriation of your loved one to or from anywhere in the world.",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "casket",
+                                "title": "Coffins & Caskets",
+                                "text": "Quality coffins and caskets in a range of styles, to suit your preferences and your budget.",
+                                "url": "/coffins-caskets"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "Personalised memorial services that celebrate a life and bring comfort to those who shared it.",
+                                "url": "/memorial-services"
+                            },
+                            {
+                                "icon": "calendar",
+                                "title": "Pre-Planning",
+                                "text": "Plan ahead with confidence, and ease the burden on your family when the time comes.",
+                                "url": "/pre-planning"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "memorial-services": {
+            "title": "Memorial Services",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Memorial Services",
+                        "body": "A place to remember, on the day and afterwards.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Memorial Services",
+                        "heading": "A place to remember, on the day and after",
+                        "body": "Memorial gatherings, anniversary services, and a lasting online memorial page where family and friends can leave their tributes.\n\nDistance stops being the reason somebody could not be there.",
+                        "image": "{theme}/about.webp",
+                        "image_side": "left",
+                        "image_ratio": "4/5",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "hand-heart",
+                                "title": "Funeral Arrangements",
+                                "text": "Complete funeral planning and coordination, tailored to your needs and your traditions.",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "plane",
+                                "title": "Repatriation Services",
+                                "text": "Dignified repatriation of your loved one to or from anywhere in the world.",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "casket",
+                                "title": "Coffins & Caskets",
+                                "text": "Quality coffins and caskets in a range of styles, to suit your preferences and your budget.",
+                                "url": "/coffins-caskets"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Hearse Transport",
+                                "text": "Reliable and respectful transport, for local journeys and long distances alike.",
+                                "url": "/hearse-transport"
+                            },
+                            {
+                                "icon": "calendar",
+                                "title": "Pre-Planning",
+                                "text": "Plan ahead with confidence, and ease the burden on your family when the time comes.",
+                                "url": "/pre-planning"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        },
+        "pre-planning": {
+            "title": "Pre-Planning",
+            "widgets": [
+                {
+                    "type": "section_banner",
+                    "props": {
+                        "eyebrow": "Our Services",
+                        "heading": "Pre-Planning",
+                        "body": "Decisions made calmly now, instead of hurriedly later.",
+                        "image": "{theme}/services-bg.webp",
+                        "height": "short",
+                        "overlay": "medium",
+                        "alignment": "center",
+                        "width": "normal",
+                        "background": "image",
+                        "padding": "md",
+                        "form": "none",
+                        "form_button_label": "Submit",
+                        "button_label": "",
+                        "button_url": "",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_split",
+                    "props": {
+                        "eyebrow": "Pre-Planning",
+                        "heading": "Decisions made calmly now, not hurriedly later",
+                        "body": "Setting down what you want, and what it will cost, while there is time to think about it properly.\n\nIt spares your family from guessing at your wishes in the worst week of their lives, and from paying for that guess.",
+                        "image": "{theme}/why.webp",
+                        "image_side": "right",
+                        "image_ratio": "4/5",
+                        "background": "page",
+                        "padding": "md",
+                        "width": "normal",
+                        "button_label": "Talk to us",
+                        "button_url": "/contact",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                },
+                {
+                    "type": "section_grid",
+                    "props": {
+                        "eyebrow": "Also from us",
+                        "heading": "",
+                        "body": "",
+                        "columns": 3,
+                        "items": [
+                            {
+                                "icon": "hand-heart",
+                                "title": "Funeral Arrangements",
+                                "text": "Complete funeral planning and coordination, tailored to your needs and your traditions.",
+                                "url": "/funeral-arrangements"
+                            },
+                            {
+                                "icon": "plane",
+                                "title": "Repatriation Services",
+                                "text": "Dignified repatriation of your loved one to or from anywhere in the world.",
+                                "url": "/repatriation-services"
+                            },
+                            {
+                                "icon": "casket",
+                                "title": "Coffins & Caskets",
+                                "text": "Quality coffins and caskets in a range of styles, to suit your preferences and your budget.",
+                                "url": "/coffins-caskets"
+                            },
+                            {
+                                "icon": "hearse",
+                                "title": "Hearse Transport",
+                                "text": "Reliable and respectful transport, for local journeys and long distances alike.",
+                                "url": "/hearse-transport"
+                            },
+                            {
+                                "icon": "headstone",
+                                "title": "Memorial Services",
+                                "text": "Personalised memorial services that celebrate a life and bring comfort to those who shared it.",
+                                "url": "/memorial-services"
+                            }
+                        ],
+                        "background": "muted",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "left",
+                        "button_label": "View all services",
+                        "button_url": "/services",
+                        "button2_label": "",
+                        "button2_url": ""
+                    }
+                }
+            ]
+        }
+    },
+    "shadows": {
+        "components/home-header.blade.php": "820de3b69230eb00",
+        "components/visitor-footer.blade.php": "1ca72a8ffc598052",
+        "layouts/visitor.blade.php": "7726e3ae729de412",
+        "page-builder/widgets/section-banner.blade.php": "70175bc64e134c32",
+        "page-builder/widgets/section-grid.blade.php": "26adaacea1ef7740",
+        "page-builder/widgets/section-split.blade.php": "291dddd89171b9bf",
+        "pages/visitor/home.blade.php": "3bcedd14966795e8"
+    }
+}

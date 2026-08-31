@@ -43,10 +43,15 @@ storage/backups/
 /.agents/
 /skills-lock.json
 
-# Reference photography the Dignified template was matched against. The template ships
-# its own optimised webp under public/images/themes/; these are the originals and are
-# large enough to be worth keeping out of the history.
+# Reference photography a template was matched against. The template ships its own
+# optimised webp under public/images/themes/; these are the originals and are large
+# enough to be worth keeping out of the history.
+#
+# Two rules, because they arrive two ways: loose in themes/ (Dignified), or filed under
+# themes/_source/<template>/ (A-Plus). The first pattern is anchored to the top level and
+# would not have caught the second — 11MB of PNGs would have gone in behind it.
 /themes/*.png
+/themes/_source/
 
 # graphify code graph - regenerable in seconds, do not commit (added 2026-08-29)
 graphify-out/
