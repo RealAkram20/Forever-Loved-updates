@@ -44,6 +44,10 @@ class ThemeController extends Controller
             // the page so the one confusing state of the layering — "I applied a theme and
             // half of it did not take" — is answered before it is asked.
             'shadowedCount' => $this->shadowedCount($reseller, $active),
+            // The same question for pages. A reseller who already had a home page keeps it
+            // when they apply a theme, which is right and was also completely silent — so the
+            // theme's designed front page looked like something that had never been built.
+            'keptPages' => $this->keptPages($reseller, $active),
         ]);
     }
 
@@ -81,12 +85,29 @@ class ThemeController extends Controller
 
         // Hand them the template's pages as documents they can open, but only where they have
         // not built one themselves. Applying a theme must never cost someone an afternoon.
-        $seeded = \App\Themes\ThemePages::seed(
-            $reseller,
-            app(\App\Themes\ThemeRegistry::class)->manifest($theme->templateSlug()),
-        );
+        $manifest = app(\App\Themes\ThemeRegistry::class)->manifest($theme->templateSlug());
+
+        $seeded = \App\Themes\ThemePages::seed($reseller, $manifest);
 
         $message = "Your site is now using {$theme->name}.".\App\Themes\ThemePages::summary($seeded);
+
+        // The other half of the sentence summary() was always meant to say. Without it, a
+        // reseller who already had a home page sees their old front page in new colours and
+        // concludes the theme is broken — which is exactly what happened, and cost an
+        // afternoon of looking for a bug in a template that was working correctly.
+        $kept = \App\Themes\ThemePages::keptByOwner($reseller, $manifest);
+
+        if ($kept !== []) {
+            $names = array_map(
+                fn (string $slug) => \App\Support\StandardPages::definition($slug)['title'] ?? $slug,
+                $kept,
+            );
+
+            $message .= ' Your own '.implode(', ', $names).' '
+                .(count($names) === 1 ? 'page was' : 'pages were')
+                .' kept, so '.(count($names) === 1 ? 'it is' : 'they are').' still exactly as you built '
+                .(count($names) === 1 ? 'it' : 'them').". You can swap {$theme->name}'s design in below.";
+        }
 
         if ($theme->templateIsMissing()) {
             $message .= ' Its template is not deployed on this server yet, so it is rendering'
@@ -94,6 +115,48 @@ class ThemeController extends Controller
         }
 
         return redirect()->route('reseller.theme')->with('success', $message);
+    }
+
+    /**
+     * Replace one of this reseller's pages with the active theme's design for it.
+     *
+     * The escape hatch from rule 1 of ThemePages: applying a theme never overwrites a page
+     * somebody built, which is right, and leaves them no way to ever get the theme's version.
+     * This is that way — asked for by name, one page at a time, never as a side effect.
+     *
+     * Their own layout is overwritten and not recoverable from here, so the button that reaches
+     * this says so. A page they have not built is not offered at all: seeding already gave them
+     * the theme's design, so there is nothing to swap.
+     */
+    public function resetPage(Request $request)
+    {
+        $reseller = $this->resellerOrFail($request);
+
+        $data = $request->validate(['slug' => ['required', 'string', 'max:90']]);
+
+        $theme = $this->activeTheme($reseller);
+
+        abort_unless($theme !== null, 404);
+
+        $manifest = app(ThemeRegistry::class)->manifest($theme->templateSlug());
+
+        // Only a page this theme actually ships, and only one it is currently keeping. Without
+        // both checks the slug is a free-form string that could point at any page they own.
+        if (! in_array($data['slug'], \App\Themes\ThemePages::keptByOwner($reseller, $manifest), true)) {
+            throw ValidationException::withMessages([
+                'slug' => 'That page is not one this theme can replace.',
+            ]);
+        }
+
+        $title = \App\Support\StandardPages::definition($data['slug'])['title'] ?? $data['slug'];
+
+        if (! \App\Themes\ThemePages::resetToTheme($reseller, $manifest, $data['slug'])) {
+            return redirect()->route('reseller.theme')
+                ->with('error', "{$theme->name} could not supply a {$title} page. Nothing was changed.");
+        }
+
+        return redirect()->route('reseller.theme')
+            ->with('success', "Your {$title} page now uses {$theme->name}'s design. Edit it in the page builder.");
     }
 
     /**
@@ -219,6 +282,25 @@ class ThemeController extends Controller
         }
 
         return count(array_intersect_key($this->currentTokens($reseller), $theme->tokenValues()));
+    }
+
+    /**
+     * The pages of the active theme this reseller kept because they had already built them.
+     *
+     * @return array<int, array{slug: string, title: string}>
+     */
+    private function keptPages(?Reseller $reseller, ?Theme $theme): array
+    {
+        if (! $reseller || ! $theme) {
+            return [];
+        }
+
+        $manifest = app(ThemeRegistry::class)->manifest($theme->templateSlug());
+
+        return array_map(fn (string $slug) => [
+            'slug' => $slug,
+            'title' => \App\Support\StandardPages::definition($slug)['title'] ?? $slug,
+        ], \App\Themes\ThemePages::keptByOwner($reseller, $manifest));
     }
 
     private function resellerOrFail(Request $request): Reseller

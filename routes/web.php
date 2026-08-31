@@ -464,6 +464,10 @@ Route::middleware(['auth'])->group(function () {
         // resellers actually came for.
         Route::get('/theme', [App\Http\Controllers\Reseller\ThemeController::class, 'index'])->name('theme');
         Route::post('/theme/apply', [App\Http\Controllers\Reseller\ThemeController::class, 'apply'])->name('theme.apply');
+        // Take the active theme's design for one page they had already built. Applying a theme
+        // deliberately never overwrites their work, which left no way to ever get the theme's
+        // version of a page they had touched — this is that way, one page and one click.
+        Route::post('/theme/reset-page', [App\Http\Controllers\Reseller\ThemeController::class, 'resetPage'])->name('theme.reset-page');
         // Look before applying. Mints a short-lived signed link and redirects to it; the
         // preview itself lives in a session on the tenant's host, which is not this one.
         Route::post('/theme/preview', [App\Http\Controllers\Reseller\ThemeController::class, 'preview'])->name('theme.preview');

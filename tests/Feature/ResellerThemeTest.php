@@ -707,3 +707,127 @@ it('refuses to let a template claim a slug that would hide something', function 
 
     expect($reflection->invoke(null, $acme, 'grace-mukasa'))->toBeFalse();
 });
+
+/*
+|--------------------------------------------------------------------------
+| Applying a theme to a site that already has pages
+|--------------------------------------------------------------------------
+|
+| The path nobody covered, and the one every real reseller takes. Seeding skips a page that
+| already has a layout — correctly, because it may hold an afternoon of somebody's work — and
+| for a long time it did so silently. The reseller then saw their old front page in the new
+| theme's colours and concluded the theme was broken. It was not; nothing said what had
+| happened. These pin both halves: the page is kept, and they are told.
+*/
+
+/** A reseller who already built their own front page, whatever it says. */
+function themeTenantWithOwnHome(string $slug = 'acme'): Reseller
+{
+    $reseller = themeTenant($slug);
+
+    // Provisioning already gave them the standard pages, empty. updateOrCreate rather than
+    // create, because the row exists and the point here is the *layout* on it.
+    Page::updateOrCreate(
+        ['reseller_id' => $reseller->id, 'slug' => Page::SLUG_VISITOR_HOME],
+        [
+            'title' => 'Home',
+            'is_published' => true,
+            'layout' => app(\App\Services\PageLayoutService::class)->validateDocumentFromArray([
+                'widgets' => [[
+                    'type' => 'heading',
+                    'props' => ['text' => 'Something they wrote themselves'],
+                ]],
+            ]),
+        ],
+    );
+
+    Page::clearSlugCache(Page::SLUG_VISITOR_HOME, $reseller->id);
+
+    return $reseller;
+}
+
+/** The catalogue row for a real template that ships a home page document. */
+function templateThatShipsPages(): Theme
+{
+    ThemeCatalogue::sync();
+
+    $theme = Theme::whereNull('reseller_id')->where('template', 'a-plus')->first();
+
+    expect($theme)->not->toBeNull('the a-plus template must be on disk for this test');
+
+    return $theme;
+}
+
+it('keeps a home page the reseller already built, and says so', function () {
+    $acme = themeTenantWithOwnHome();
+    $theme = templateThatShipsPages();
+
+    $this->actingAs($acme->owner)
+        ->post('/reseller/theme/apply', ['theme_id' => $theme->id])
+        ->assertRedirect(route('reseller.theme'))
+        ->assertSessionHas('success', fn (string $m) => str_contains($m, 'kept'));
+
+    $home = Page::where('reseller_id', $acme->id)->where('slug', Page::SLUG_VISITOR_HOME)->first();
+
+    // Still theirs, word for word.
+    expect($home->layout['widgets'][0]['props']['text'])->toBe('Something they wrote themselves');
+});
+
+it('offers the swap on the theme screen for a page it is keeping', function () {
+    $acme = themeTenantWithOwnHome();
+    $theme = templateThatShipsPages();
+    $acme->update(['theme_id' => $theme->id]);
+
+    $this->actingAs($acme->owner)
+        ->get('/reseller/theme')
+        ->assertOk()
+        ->assertSee('Use the theme\'s Home', false);
+});
+
+it('swaps the theme design into a page when the reseller asks for it', function () {
+    $acme = themeTenantWithOwnHome();
+    $theme = templateThatShipsPages();
+    $acme->update(['theme_id' => $theme->id]);
+
+    $this->actingAs($acme->owner)
+        ->post('/reseller/theme/reset-page', ['slug' => Page::SLUG_VISITOR_HOME])
+        ->assertRedirect(route('reseller.theme'))
+        ->assertSessionHas('success');
+
+    $home = Page::where('reseller_id', $acme->id)->where('slug', Page::SLUG_VISITOR_HOME)->first();
+    $shipped = app(ThemeRegistry::class)->manifest('a-plus')->defaultPages[Page::SLUG_VISITOR_HOME]['widgets'];
+
+    expect(array_column($home->layout['widgets'], 'type'))
+        ->toBe(array_column($shipped, 'type'));
+});
+
+it('refuses to swap a page the active theme is not keeping', function () {
+    $acme = themeTenantWithOwnHome();
+    $theme = templateThatShipsPages();
+    $acme->update(['theme_id' => $theme->id]);
+
+    // `contact` is a page this template ships no document for, so there is nothing to swap in
+    // and the slug must not be treated as a free-form pointer at any page they own.
+    $this->actingAs($acme->owner)
+        ->post('/reseller/theme/reset-page', ['slug' => 'contact'])
+        ->assertSessionHasErrors('slug');
+
+    $home = Page::where('reseller_id', $acme->id)->where('slug', Page::SLUG_VISITOR_HOME)->first();
+
+    expect($home->layout['widgets'][0]['props']['text'])->toBe('Something they wrote themselves');
+});
+
+it('stops offering the swap once the page is already the theme design', function () {
+    $acme = themeTenant();
+    $theme = templateThatShipsPages();
+
+    // Applying seeds the home page, because they have not built one. What it seeded *is* the
+    // theme's design, so offering to replace it with the theme's design would be nonsense —
+    // and was, before keptByOwner compared the documents rather than just counting layouts.
+    $this->actingAs($acme->owner)->post('/reseller/theme/apply', ['theme_id' => $theme->id]);
+
+    $manifest = app(ThemeRegistry::class)->manifest('a-plus');
+
+    expect(\App\Themes\ThemePages::keptByOwner($acme->fresh(), $manifest))
+        ->not->toContain(Page::SLUG_VISITOR_HOME);
+});

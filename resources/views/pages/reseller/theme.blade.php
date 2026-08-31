@@ -67,6 +67,44 @@
                 </div>
             @endif
 
+            {{-- The same confusing state, for pages rather than colours.
+
+                 Applying a theme never overwrites a page somebody built. That is right, and on
+                 its own it is indistinguishable from the theme being broken: the reseller gets
+                 the new palette on their old front page and no explanation. Saying it here,
+                 with the swap attached, is what turns "this theme didn't work" into a choice.
+
+                 One button per page rather than a single "reset everything", because the
+                 answer is genuinely different per page — a home page built in an afternoon is
+                 worth keeping, a placeholder About is not. --}}
+            @if (! empty($keptPages))
+                <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-500/30 dark:bg-blue-500/[0.08]">
+                    <p class="text-sm text-blue-900 dark:text-blue-200">
+                        This theme ships {{ count($keptPages) === 1 ? 'a designed' : 'designed' }}
+                        {{ \Illuminate\Support\Str::plural('page', count($keptPages)) }} you already have
+                        {{ count($keptPages) === 1 ? 'a version' : 'versions' }} of, so
+                        {{ count($keptPages) === 1 ? 'yours was' : 'yours were' }} kept and nothing you built was lost.
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        @foreach ($keptPages as $kept)
+                            <form method="POST" action="{{ route('reseller.theme.reset-page') }}"
+                                onsubmit="return confirm('Replace your {{ $kept['title'] }} page with this theme\'s design? What you have built on that page will be replaced.');">
+                                @csrf
+                                <input type="hidden" name="slug" value="{{ $kept['slug'] }}">
+                                <button type="submit" class="btn btn-secondary btn-sm">
+                                    Use the theme's {{ $kept['title'] }}
+                                </button>
+                            </form>
+                        @endforeach
+                    </div>
+
+                    <p class="mt-2 text-xs text-blue-800/80 dark:text-blue-300/80">
+                        This replaces that page. Your other pages are untouched.
+                    </p>
+                </div>
+            @endif
+
             @if ($active?->templateIsMissing())
                 <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/[0.08] dark:text-red-300">
                     This theme's template isn't deployed on this server, so your site is rendering in the

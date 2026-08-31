@@ -109,6 +109,150 @@ class ThemePages
     }
 
     /**
+     * The pages this template ships that the reseller already had, so seeding left them alone.
+     *
+     * The silent half of rule 1. Keeping someone's work is right; keeping it without saying so
+     * is what makes a freshly applied theme look half-applied — the reseller sees the new
+     * palette on their old front page and reasonably concludes the theme is broken. This is the
+     * pages equivalent of the shadowed-colours count the theme screen already shows, and exists
+     * for the same reason: name the confusing state before it is discovered.
+     *
+     * Only pages the template actually ships a document for. A page they built that this
+     * template has no opinion about is not being "kept" from anything.
+     *
+     * @return array<int, string> slugs, in the order the manifest lists them
+     */
+    public static function keptByOwner(Reseller $reseller, ?ThemeManifest $manifest): array
+    {
+        if ($manifest === null || $manifest->defaultPages === []) {
+            return [];
+        }
+
+        // One query rather than one per page: a template may ship a dozen, and this runs on
+        // every render of the theme screen.
+        $pages = Page::query()
+            ->where('reseller_id', $reseller->id)
+            ->whereIn('slug', array_keys($manifest->defaultPages))
+            ->get(['slug', 'layout'])
+            ->filter(fn (Page $page) => $page->hasLayout())
+            ->keyBy('slug');
+
+        $out = [];
+
+        foreach ($manifest->defaultPages as $slug => $document) {
+            $page = $pages->get($slug);
+
+            if (! $page) {
+                continue;
+            }
+
+            // A page that already *is* the template's document is not being kept from
+            // anything — it is what seeding put there. Without this, applying a theme to a
+            // fresh site offered to replace every page with the design it had just installed,
+            // which reads as the feature being broken rather than as an offer.
+            if (self::matchesTemplate($page->layout, $document, $manifest->template, $slug)) {
+                continue;
+            }
+
+            $out[] = $slug;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Whether a stored layout is the template's own document rather than something edited.
+     *
+     * Compared after the manifest goes through the same validator a save does, so defaults and
+     * ordering are filled in on both sides — the raw manifest never equals a stored document.
+     *
+     * Widget ids are stripped first. They are minted fresh on every validation, so two
+     * identical documents never share them, and comparing with them in makes this answer "no"
+     * always. Everything else — type, order and every prop — must match exactly, so a reseller
+     * who changed one word still counts as having their own page.
+     *
+     * @param  array<string, mixed>  $stored
+     * @param  array<string, mixed>  $document
+     */
+    private static function matchesTemplate(array $stored, array $document, string $template, string $slug): bool
+    {
+        try {
+            $validated = app(PageLayoutService::class)->validateDocumentFromArray($document);
+        } catch (\Throwable $e) {
+            // A manifest this broken cannot be offered as a replacement either, so treating it
+            // as "not a match" would advertise a swap that resetToTheme() would then refuse.
+            Log::warning('Theme template shipped an invalid page document.', [
+                'template' => $template,
+                'slug' => $slug,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return true;
+        }
+
+        return self::withoutIds($stored) == self::withoutIds($validated);
+    }
+
+    /**
+     * @param  array<string, mixed>  $document
+     * @return array<int, array<string, mixed>>
+     */
+    private static function withoutIds(array $document): array
+    {
+        return array_map(static function (array $widget): array {
+            unset($widget['id']);
+
+            return $widget;
+        }, $document['widgets'] ?? []);
+    }
+
+    /**
+     * Replace one page with the document this template ships for it.
+     *
+     * The deliberate opposite of seed(), and the only way a reseller can get a template's
+     * designed page once they have a page of their own there. Never called by applying a
+     * theme — only when somebody asks for it by name, having been told what it will cost.
+     *
+     * Validated through PageLayoutService exactly as seed() and an editor save are, so a
+     * manifest typo fails here rather than becoming a 500 on their front page.
+     */
+    public static function resetToTheme(Reseller $reseller, ?ThemeManifest $manifest, string $slug): bool
+    {
+        $document = $manifest?->defaultPages[$slug] ?? null;
+
+        if ($document === null) {
+            return false;
+        }
+
+        $page = Page::where('reseller_id', $reseller->id)->where('slug', $slug)->first();
+
+        if (! $page) {
+            // Nothing to replace — seed() is the right route for a page that does not exist,
+            // and it applies the reserved-slug and memorial-collision rules this must not skip.
+            return self::seedOne($reseller, $slug, $document, $manifest->template);
+        }
+
+        try {
+            $validated = app(PageLayoutService::class)->validateDocumentFromArray($document);
+        } catch (\Throwable $e) {
+            Log::warning('Theme template shipped an invalid page document.', [
+                'template' => $manifest->template,
+                'slug' => $slug,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        $page->layout = $validated;
+        $page->save();
+
+        Page::clearSlugCache($slug, $reseller->id);
+
+        return true;
+    }
+
+    /**
      * Whether a template may claim this slug on this tenant's site.
      *
      * Two ways it may not. A reserved slug is a path the application already answers —
