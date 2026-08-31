@@ -32,6 +32,26 @@ echo "[entrypoint] running migrations"
 # migration costs a deploy rather than the site.
 php artisan migrate --force
 
+echo "[entrypoint] syncing the theme catalogue"
+
+# A template is only selectable once a themes row points at it, and until now the only
+# thing creating those rows was 2026_08_26_100002_seed_theme_catalogue. That migration
+# calls ThemeCatalogue::sync() and calls itself "idempotent, so adding a template later
+# costs nothing" — but a migration runs once. It ran the day it shipped and will never
+# run again, so every template added *after* it lands on the server with its blades,
+# its manifest and its artwork, and no row. A-Plus deployed exactly that way: the files
+# were live and served, and the gallery did not list it.
+#
+# Here instead, because this is the thing that actually runs on every deploy. The
+# command is safe to repeat by design — it fills in what is missing and rewrites the
+# name, description and tokens of the rows it already has from the manifest.
+#
+# Not fatal. A stale catalogue means a template cannot be chosen yet; it does not stop a
+# single site rendering, because sites resolve their template through a row that already
+# exists. That is not worth failing a deploy over, unlike a missed migration. The output
+# is left visible so a failure is legible in the deploy log rather than swallowed.
+php artisan themes:sync || true
+
 echo "[entrypoint] caching configuration"
 
 php artisan config:cache
