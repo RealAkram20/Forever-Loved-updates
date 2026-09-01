@@ -148,3 +148,24 @@ it('refuses to copy a memorial onto the tenant that already owns it', function (
 
     expect(Memorial::count())->toBe(1);
 });
+
+it('carries the plan tier but never the payment behind it', function () {
+    $source = duplicateTenant('source-home');
+    $target = duplicateTenant('a-plus');
+    $memorial = memorialToCopy($source);
+
+    // A memorial's plan is a feature tier — it is what decides how many tributes the page
+    // will accept. The payment record behind it belongs to whoever bought it.
+    $plan = \App\Models\SubscriptionPlan::create(["name" => "Ultimate", "slug" => "ultimate-test"]);
+    $memorial->update(['subscription_plan_id' => $plan->id, 'user_subscription_id' => null]);
+
+    $this->artisan('memorials:duplicate', ['source' => 'jane-doe', '--to' => 'a-plus'])->assertSuccessful();
+
+    $copy = Memorial::where('reseller_id', $target->id)->first();
+
+    // Dropped, the copy falls to free limits and a page full of tributes tells its visitors
+    // the limit is reached and refuses new ones. That happened on the live copy.
+    expect($copy->subscription_plan_id)->toBe($plan->id)
+        ->and($copy->user_subscription_id)->toBeNull()
+        ->and($copy->expires_at)->toBeNull();
+});

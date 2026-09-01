@@ -151,9 +151,10 @@ class MemorialsDuplicateCommand extends Command
         $copy = $source->replicate([
             // Counted, not copied: the duplicate has been seen by nobody.
             'visitor_count',
-            // Subscription state belongs to whoever paid for the original. Carried over, the
-            // copy would ride somebody else's plan and expire with it.
-            'subscription_plan_id',
+            // The *payment* is the original owner's and must not follow the copy. The plan on
+            // the memorial is a feature tier rather than a payment, and it does follow. Dropped,
+            // the copy falls to free limits, so a page carrying 33 tributes told its visitors
+            // "tribute limit reached (33/1)" and refused new ones. Found on the live copy.
             'user_subscription_id',
             'expires_at',
         ]);
