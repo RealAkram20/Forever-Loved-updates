@@ -4,10 +4,14 @@ namespace App\Http\Middleware;
 
 use App\Helpers\ThemeSetting;
 use App\Models\Reseller;
+use App\Support\ResellerDomain;
+use App\Support\StandardPages;
+use App\Support\SuspendedSite;
 use App\Themes\ActiveTheme;
 use App\Themes\ThemePreview;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -63,7 +67,7 @@ class ResolveResellerByHost
         // and www. forms count — routes/web.php excludes the same pair from the reseller
         // custom-domain pattern, and the two have to agree or a request would be routed as
         // the platform's while being themed as somebody's tenant.
-        if (in_array($host, \App\Support\ResellerDomain::platformHosts(parse_url((string) config('app.url'), PHP_URL_HOST)), true)) {
+        if (in_array($host, ResellerDomain::platformHosts(parse_url((string) config('app.url'), PHP_URL_HOST)), true)) {
             // Clear any tenant a *previous* request left bound. Under PHP-FPM the container is
             // rebuilt per request so this is a no-op, but under a long-running worker (Octane)
             // or in tests the bindings persist — and a leaked tenant would serve one reseller's
@@ -116,12 +120,12 @@ class ResolveResellerByHost
         // provably a tenant's — the /r/{slug} fallback runs on the platform's host and
         // keeps the platform root. Queued jobs and mail never pass through this
         // middleware, so their links still root at APP_URL, as they must.
-        \Illuminate\Support\Facades\URL::forceRootUrl($request->getScheme().'://'.$request->getHttpHost());
+        URL::forceRootUrl($request->getScheme().'://'.$request->getHttpHost());
 
         $path = trim($request->path(), '/');
 
         if (in_array($path, self::TENANT_OPTIONAL_PATHS, true)
-            && ! \App\Support\StandardPages::isEnabledFor($path, $reseller->id)) {
+            && ! StandardPages::isEnabledFor($path, $reseller->id)) {
             // Their front page, on their host — not the platform equivalent, which would hand
             // the visitor off to us.
             //
@@ -131,6 +135,12 @@ class ResolveResellerByHost
             // own address. redirect('/') on acme.example.com therefore sent the visitor to
             // example.com — precisely the hand-off this branch exists to prevent.
             return redirect()->to($request->getSchemeAndHttpHost().'/');
+        }
+
+        // Suspension closes the site, not the memorials. See App\Support\SuspendedSite for
+        // which addresses still answer and why 503 rather than 404.
+        if (SuspendedSite::locks($reseller, $request)) {
+            return SuspendedSite::response($reseller);
         }
 
         return $next($request);

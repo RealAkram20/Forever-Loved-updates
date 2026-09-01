@@ -82,7 +82,12 @@
         <p>@yield('message')</p>
         <div class="actions">
             @yield('actions')
-            <a href="{{ \App\Support\SiteUrl::to('') }}" class="btn btn-secondary">Back to home</a>
+            {{-- Suppressed on a page that *is* the site being closed — see
+                 errors/site-unavailable. Offering "Back to home" there sends the visitor
+                 to the one address guaranteed to answer with this same page. --}}
+            @unless ($hideHomeLink ?? false)
+                <a href="{{ \App\Support\SiteUrl::to('') }}" class="btn btn-secondary">Back to home</a>
+            @endunless
         </div>
     </div>
     <div class="footer">{{ $appName }}</div>

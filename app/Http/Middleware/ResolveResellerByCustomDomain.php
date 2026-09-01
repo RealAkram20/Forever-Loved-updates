@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Helpers\ThemeSetting;
 use App\Models\Reseller;
+use App\Support\SuspendedSite;
 use App\Themes\ActiveTheme;
 use App\Themes\ThemePreview;
 use Closure;
@@ -44,6 +45,12 @@ class ResolveResellerByCustomDomain
         // have applied. resolveTemplate() also swaps the palette to match, so a preview
         // answers "what would our site look like" rather than half of it.
         app(ActiveTheme::class)->use(ThemePreview::resolveTemplate($reseller));
+
+        // Suspension closes the site, not the memorials. See App\Support\SuspendedSite for
+        // which addresses still answer and why 503 rather than 404.
+        if (SuspendedSite::locks($reseller, $request)) {
+            return SuspendedSite::response($reseller);
+        }
 
         return $next($request);
     }
