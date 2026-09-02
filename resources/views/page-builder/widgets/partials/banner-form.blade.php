@@ -7,6 +7,8 @@
 
     Shared by the plain banner and every theme's, because the *markup* is behavioural: the
     field names, the CSRF token and the honeypot have to match what the controller expects.
+    The honeypot itself is `partials.honeypot`, included below -- until 2026-09-02 this
+    sentence described a field that existed in no form on the site.
     Themes restyle it by passing classes, not by rewriting it.
 --}}
 @php
@@ -19,6 +21,7 @@
 
 <form action="{{ $action }}" method="POST" class="t-banner-form mt-7 grid gap-2.5 sm:grid-cols-[1fr_1fr_1.4fr_auto]">
     @csrf
+    @include('partials.honeypot')
 
     <input type="text" name="name" required maxlength="100" value="{{ old('name') }}" placeholder="Your Name" aria-label="Your name" class="{{ $inputCls }}" />
     <input type="email" name="email" required maxlength="255" value="{{ old('email') }}" placeholder="Your Email" aria-label="Your email" class="{{ $inputCls }}" />

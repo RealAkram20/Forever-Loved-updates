@@ -46,6 +46,18 @@ class ContactController extends Controller
 
     public function send(Request $request)
     {
+        // Before validation, deliberately.
+        //
+        // A bot that trips the trap gets the same success message a person gets, and nothing
+        // is sent. Checking after validation would hand it a 422 listing every field name it
+        // got wrong, which is free reconnaissance; checking first means a caught bot learns
+        // exactly nothing about the form and has no failure to retry against.
+        if (\App\Support\Honeypot::tripped($request)) {
+            \App\Support\Honeypot::log($request, 'contact');
+
+            return back()->with('success', 'Your message has been sent. We\'ll get back to you soon.');
+        }
+
         $request->validate([
             'name' => 'required|string|max:100',
             'email' => 'required|email|max:255',

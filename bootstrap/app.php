@@ -26,7 +26,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Cloudflare). Without this, HTTPS requests look like HTTP: secure
         // session cookies are never sent back (breaking OAuth state checks)
         // and generated URLs use the wrong scheme.
-        $middleware->trustProxies(at: '*');
+        //
+        // This was `at: '*'` until 2026-09-02. That trusted the client's own
+        // X-Forwarded-For, so Request::ip() returned whatever the caller sent —
+        // and that is the key every `throttle` middleware on this app's public
+        // routes uses. See App\Support\TrustedProxies; TRUSTED_PROXIES=* undoes it.
+        $middleware->trustProxies(at: \App\Support\TrustedProxies::list());
 
         $middleware->prependToGroup('web', InstallMiddleware::class);
 
