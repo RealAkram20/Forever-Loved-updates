@@ -175,22 +175,39 @@
 
     /* The tabs.
 
-       The platform's selected tab is brand-derived three times over: coloured label, tinted
-       block behind it, coloured underline. On this palette the tint lands as a pale blue wash
-       that reads as a disabled control rather than as the open one.
+       The open tab is a solid block of the brand blue with a white label on it and the amber
+       bar underneath. Asked for directly, against a reference showing a filled dark tab with a
+       coloured rule beneath it.
 
-       So the open tab is the same mark the site's own navigation uses for the page you are on:
-       a blue label on white with a gold bar under it. A visitor who has used the header already
-       knows what it means.
+       Two earlier attempts are worth recording, because both were wrong in the same direction.
+       The platform's own version tints the open tab pale — on this palette that lands as a
+       wash that reads as a *disabled* control rather than the open one. Replacing the tint with
+       a coloured label on white then failed for the opposite reason: the platform sets the
+       closed tabs `text-gray-600` (#4B5563), which against #1B3A6B is a difference of hue and
+       almost none of lightness, so four tabs read as one row of grey-blue words and the amber
+       bar did all the work alone. Bolding the open one helped and was still not enough.
+
+       A fill settles it. Nothing else on this page is a solid blue rectangle, so there is no
+       ambiguity about which tab is open, and white on #1B3A6B is 11.27:1.
 
        Keyed on aria-selected rather than the utility classes: the tab script rewrites those on
        every click, but it sets the attribute in the same breath, so this holds for the tab the
        page opens on and for every tab opened after. */
     .memorial-tab-btn[aria-selected='true'],
     .dark .memorial-tab-btn[aria-selected='true'] {
-        color: {{ $apBlue }};
-        background-color: #ffffff;
+        color: #ffffff;
+        background-color: {{ $apBlue }};
         border-bottom: 3px solid {{ $apGold }};
+        font-weight: 700;
+    }
+
+    /* The closed tabs. Muted, but not faded — they are 14px body text and still have to clear
+       AA on white. `--ap-ink-soft` is 5.92:1; the obvious lighter greys #6B7A91 and #7C8AA0
+       measure 4.37:1 and 3.50:1 and both fail. Measured before choosing. */
+    .memorial-tab-btn[aria-selected='false'] {
+        color: var(--ap-ink-soft);
+        font-weight: 500;
+        background-color: transparent;
     }
 
     .dark .memorial-tab-btn[aria-selected='true'] {

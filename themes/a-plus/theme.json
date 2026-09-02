@@ -1,21 +1,21 @@
 {
     "name": "A-Plus",
-    "description": "A corporate funeral-management site: a blue utility strip above a white identity bar, pill buttons, a navy hero over a drained photograph, and a services grid whose first card is a filled blue tile. Built for businesses that want to look organised and reachable rather than solemn.",
+    "description": "A quiet, light funeral-management site: a white header, a pale blue hero with the photograph bleeding out of its right-hand edge, serif headings over an amber rule, and rows of services separated by hairlines rather than boxed into cards. Built for firms that want to read as calm and established rather than busy.",
     "screenshot": "preview.webp",
     "tokens": {
-        "branding.primary_color": "#0033A0",
-        "branding.secondary_color": "#FECB01",
-        "branding.accent_color": "#FECB01",
-        "branding.bg_light": "#FFFFFF",
-        "branding.bg_dark": "#06214F",
-        "branding.button1_color": "#FECB01",
-        "branding.button1_text_color": "#06214F",
-        "branding.button2_color": "#0033A0",
-        "branding.button2_text_color": "#FFFFFF",
-        "branding.cta_bg_light": "#06214F",
-        "branding.cta_bg_dark": "#06214F",
+        "branding.primary_color": "#1B3A6B",
+        "branding.secondary_color": "#1B3A6B",
+        "branding.accent_color": "#D6A343",
+        "branding.bg_light": "#FDFDFB",
+        "branding.bg_dark": "#16305A",
+        "branding.button1_color": "#1B3A6B",
+        "branding.button1_text_color": "#FFFFFF",
+        "branding.button2_color": "#FFFFFF",
+        "branding.button2_text_color": "#1B3A6B",
+        "branding.cta_bg_light": "#DFE6F0",
+        "branding.cta_bg_dark": "#16305A",
         "branding.default_theme": "light",
-        "appearance.font_heading": "Montserrat",
+        "appearance.font_heading": "Playfair Display",
         "appearance.font_body": "Open Sans"
     },
     "default_pages": {
@@ -24,73 +24,61 @@
                 {
                     "type": "section_banner",
                     "props": {
-                        "eyebrow": "",
-                        "heading": "Honouring Life With Dignity",
-                        "body": "Compassionate, professional funeral management for families across Uganda and beyond. We are here whenever you need us.",
-                        "image": "{theme}/hero.webp",
+                        "heading": "In Need\nWe Care",
+                        "body": "Compassionate care and professional services when you need it most.",
+                        "image": "{theme}/hero-candle.webp",
                         "height": "tall",
-                        "overlay": "medium",
+                        "button_label": "Our Services",
+                        "button_url": "/services",
+                        "eyebrow": "",
+                        "overlay": "none",
                         "alignment": "left",
-                        "width": "normal",
+                        "width": "wide",
                         "background": "image",
                         "padding": "md",
                         "form": "none",
                         "form_button_label": "Submit",
-                        "button_label": "Our Services",
-                        "button_url": "/services",
-                        "button2_label": "Contact Us",
-                        "button2_url": "/contact"
+                        "button2_label": "",
+                        "button2_url": ""
                     }
                 },
                 {
                     "type": "section_grid",
                     "props": {
-                        "eyebrow": "Our Services",
-                        "heading": "Compassionate Support When It Matters Most",
-                        "body": "We guide and support you with respect, professionalism and care. From arrangements to aftercare, we handle every detail so you can focus on what truly matters — honouring your loved one.",
-                        "columns": 3,
+                        "heading": "Our Services",
+                        "body": "We provide a full range of funeral services to honor your loved ones.",
+                        "columns": 4,
                         "items": [
                             {
                                 "icon": "hand-heart",
-                                "title": "Funeral Arrangements",
-                                "text": "Complete funeral planning and coordination, tailored to your needs and your traditions.",
+                                "title": "Funeral Services",
+                                "text": "Personalized services to honor and celebrate your loved one.",
                                 "url": "/funeral-arrangements"
                             },
                             {
-                                "icon": "plane",
-                                "title": "Repatriation Services",
-                                "text": "Dignified repatriation of your loved one to or from anywhere in the world.",
-                                "url": "/repatriation-services"
+                                "icon": "calendar",
+                                "title": "Pre-Need Planning",
+                                "text": "Plan ahead and make decisions with peace of mind.",
+                                "url": "/pre-planning"
                             },
                             {
-                                "icon": "casket",
-                                "title": "Coffins & Caskets",
-                                "text": "Quality coffins and caskets in a range of styles, to suit your preferences and your budget.",
-                                "url": "/coffins-caskets"
-                            },
-                            {
-                                "icon": "hearse",
-                                "title": "Hearse Transport",
-                                "text": "Reliable and respectful transport, for local journeys and long distances alike.",
+                                "icon": "truck",
+                                "title": "Transportation",
+                                "text": "Professional and dignified transportation services.",
                                 "url": "/hearse-transport"
                             },
                             {
-                                "icon": "headstone",
-                                "title": "Memorial Services",
-                                "text": "Personalised memorial services that celebrate a life and bring comfort to those who shared it.",
-                                "url": "/memorial-services"
-                            },
-                            {
-                                "icon": "calendar",
-                                "title": "Pre-Planning",
-                                "text": "Plan ahead with confidence, and ease the burden on your family when the time comes.",
-                                "url": "/pre-planning"
+                                "icon": "urn",
+                                "title": "Memorial Products",
+                                "text": "A selection of caskets, urns, and memorial keepsakes.",
+                                "url": "/coffins-caskets"
                             }
                         ],
-                        "background": "muted",
+                        "background": "page",
+                        "eyebrow": "",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
+                        "alignment": "center",
                         "button_label": "",
                         "button_url": "",
                         "button2_label": "",
@@ -98,48 +86,42 @@
                     }
                 },
                 {
-                    "type": "section_split",
-                    "props": {
-                        "eyebrow": "Why Choose Us",
-                        "heading": "Here For You, Every Step Of The Way",
-                        "body": "We listen, we care, and we guide you with empathy through every stage of the journey.\n\nOur experienced team handles every detail with dignity and respect, and we tell you what things cost before you agree to them.",
-                        "image": "{theme}/why.webp",
-                        "image_side": "left",
-                        "image_ratio": "1/1",
-                        "background": "page",
-                        "padding": "md",
-                        "width": "normal",
-                        "button_label": "About Us",
-                        "button_url": "/about",
-                        "button2_label": "",
-                        "button2_url": ""
-                    }
-                },
-                {
                     "type": "section_grid",
                     "props": {
-                        "eyebrow": "",
-                        "heading": "",
-                        "body": "",
-                        "columns": 2,
+                        "heading": "Why Choose A-Plus",
+                        "columns": 4,
+                        "background": "muted",
                         "items": [
                             {
-                                "icon": "shield-check",
-                                "title": "Our Mission",
-                                "text": "To provide dignified, professional and compassionate funeral services that honour life and support families.",
+                                "icon": "circle-check-big",
+                                "title": "Compassionate Care",
+                                "text": "We treat every family with kindness and understanding.",
                                 "url": ""
                             },
                             {
-                                "icon": "heart-handshake",
-                                "title": "Our Promise",
-                                "text": "Integrity, transparency and exceptional service — 24 hours a day, wherever you are.",
+                                "icon": "circle-check-big",
+                                "title": "Professional Service",
+                                "text": "Our experienced team is here to guide you every step of the way.",
+                                "url": ""
+                            },
+                            {
+                                "icon": "circle-check-big",
+                                "title": "24/7 Availability",
+                                "text": "We are available anytime, day or night, 365 days a year.",
+                                "url": ""
+                            },
+                            {
+                                "icon": "circle-check-big",
+                                "title": "Affordable Options",
+                                "text": "Quality services tailored to your needs and budget.",
                                 "url": ""
                             }
                         ],
-                        "background": "page",
-                        "padding": "sm",
-                        "width": "normal",
-                        "alignment": "left",
+                        "eyebrow": "",
+                        "body": "",
+                        "padding": "md",
+                        "width": "wide",
+                        "alignment": "center",
                         "button_label": "",
                         "button_url": "",
                         "button2_label": "",
@@ -149,35 +131,22 @@
                 {
                     "type": "section_banner",
                     "props": {
-                        "eyebrow": "Need immediate help?",
-                        "heading": "We answer, day or night.",
-                        "body": "",
-                        "image": "{theme}/services-bg.webp",
+                        "heading": "We Are Here\nFor You",
+                        "body": "Losing a loved one is never easy. We are here to support you and your family.",
+                        "image": "{theme}/landscape-mist.webp",
                         "height": "band",
-                        "overlay": "medium",
-                        "alignment": "center",
-                        "width": "normal",
+                        "button_label": "Contact Us",
+                        "button_url": "/contact",
+                        "eyebrow": "",
+                        "overlay": "none",
+                        "alignment": "left",
+                        "width": "wide",
                         "background": "image",
                         "padding": "md",
-                        "form": "enquiry",
-                        "form_button_label": "Send",
-                        "button_label": "",
-                        "button_url": "",
+                        "form": "none",
+                        "form_button_label": "Submit",
                         "button2_label": "",
                         "button2_url": ""
-                    }
-                },
-                {
-                    "type": "section_contact",
-                    "props": {
-                        "eyebrow": "",
-                        "heading": "Contact & Location",
-                        "body": "",
-                        "show_map": true,
-                        "map_side": "right",
-                        "background": "muted",
-                        "padding": "md",
-                        "width": "normal"
                     }
                 }
             ]
@@ -189,12 +158,12 @@
                     "type": "section_banner",
                     "props": {
                         "eyebrow": "",
-                        "heading": "Honouring Life With Dignity",
-                        "body": "",
-                        "image": "{theme}/hero.webp",
-                        "height": "tall",
-                        "overlay": "medium",
-                        "alignment": "left",
+                        "heading": "Our Services",
+                        "body": "Everything we do for a family, from the first call to the day itself and after.",
+                        "image": "",
+                        "height": "short",
+                        "overlay": "none",
+                        "alignment": "center",
                         "width": "wide",
                         "background": "image",
                         "padding": "md",
@@ -254,49 +223,6 @@
                         "background": "page",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
-                        "button_label": "",
-                        "button_url": "",
-                        "button2_label": "",
-                        "button2_url": ""
-                    }
-                },
-                {
-                    "type": "section_grid",
-                    "props": {
-                        "eyebrow": "",
-                        "heading": "",
-                        "body": "",
-                        "columns": 4,
-                        "items": [
-                            {
-                                "icon": "phone",
-                                "title": "24/7",
-                                "text": "Support",
-                                "url": ""
-                            },
-                            {
-                                "icon": "shield-check",
-                                "title": "30+",
-                                "text": "Years Experience",
-                                "url": ""
-                            },
-                            {
-                                "icon": "users",
-                                "title": "1,000+",
-                                "text": "Families Served",
-                                "url": ""
-                            },
-                            {
-                                "icon": "map-pin",
-                                "title": "Nationwide",
-                                "text": "Service",
-                                "url": ""
-                            }
-                        ],
-                        "background": "dark",
-                        "padding": "none",
-                        "width": "wide",
                         "alignment": "center",
                         "button_label": "",
                         "button_url": "",
@@ -346,7 +272,7 @@
                         "background": "muted",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
+                        "alignment": "center",
                         "button_label": "",
                         "button_url": "",
                         "button2_label": "",
@@ -366,7 +292,7 @@
                         "body": "Planning a service that reflects the person it is for.",
                         "image": "{theme}/services-bg.webp",
                         "height": "short",
-                        "overlay": "medium",
+                        "overlay": "none",
                         "alignment": "center",
                         "width": "normal",
                         "background": "image",
@@ -439,7 +365,7 @@
                         "background": "muted",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
+                        "alignment": "center",
                         "button_label": "View all services",
                         "button_url": "/services",
                         "button2_label": "",
@@ -459,7 +385,7 @@
                         "body": "Bringing someone home, wherever home is.",
                         "image": "{theme}/services-bg.webp",
                         "height": "short",
-                        "overlay": "medium",
+                        "overlay": "none",
                         "alignment": "center",
                         "width": "normal",
                         "background": "image",
@@ -532,7 +458,7 @@
                         "background": "muted",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
+                        "alignment": "center",
                         "button_label": "View all services",
                         "button_url": "/services",
                         "button2_label": "",
@@ -552,7 +478,7 @@
                         "body": "A range you can see, at prices you are told first.",
                         "image": "{theme}/services-bg.webp",
                         "height": "short",
-                        "overlay": "medium",
+                        "overlay": "none",
                         "alignment": "center",
                         "width": "normal",
                         "background": "image",
@@ -625,7 +551,7 @@
                         "background": "muted",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
+                        "alignment": "center",
                         "button_label": "View all services",
                         "button_url": "/services",
                         "button2_label": "",
@@ -645,7 +571,7 @@
                         "body": "The journey, handled properly.",
                         "image": "{theme}/services-bg.webp",
                         "height": "short",
-                        "overlay": "medium",
+                        "overlay": "none",
                         "alignment": "center",
                         "width": "normal",
                         "background": "image",
@@ -718,7 +644,7 @@
                         "background": "muted",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
+                        "alignment": "center",
                         "button_label": "View all services",
                         "button_url": "/services",
                         "button2_label": "",
@@ -738,7 +664,7 @@
                         "body": "A place to remember, on the day and afterwards.",
                         "image": "{theme}/services-bg.webp",
                         "height": "short",
-                        "overlay": "medium",
+                        "overlay": "none",
                         "alignment": "center",
                         "width": "normal",
                         "background": "image",
@@ -811,7 +737,7 @@
                         "background": "muted",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
+                        "alignment": "center",
                         "button_label": "View all services",
                         "button_url": "/services",
                         "button2_label": "",
@@ -831,7 +757,7 @@
                         "body": "Decisions made calmly now, instead of hurriedly later.",
                         "image": "{theme}/services-bg.webp",
                         "height": "short",
-                        "overlay": "medium",
+                        "overlay": "none",
                         "alignment": "center",
                         "width": "normal",
                         "background": "image",
@@ -904,7 +830,7 @@
                         "background": "muted",
                         "padding": "md",
                         "width": "wide",
-                        "alignment": "left",
+                        "alignment": "center",
                         "button_label": "View all services",
                         "button_url": "/services",
                         "button2_label": "",
@@ -921,6 +847,13 @@
         "page-builder/widgets/section-banner.blade.php": "70175bc64e134c32",
         "page-builder/widgets/section-grid.blade.php": "26adaacea1ef7740",
         "page-builder/widgets/section-split.blade.php": "291dddd89171b9bf",
-        "pages/visitor/home.blade.php": "3bcedd14966795e8"
+        "pages/memorial-directory/index.blade.php": "b06f49c750c05b03",
+        "pages/visitor/about.blade.php": "d71c7b70e6dda71f",
+        "pages/visitor/cms-page.blade.php": "2fe8d2a6720a7e57",
+        "pages/visitor/contact.blade.php": "7e542facffba482f",
+        "pages/visitor/home.blade.php": "3bcedd14966795e8",
+        "pages/visitor/pricing.blade.php": "9eedb39b42e90d53",
+        "pages/visitor/privacy-policy.blade.php": "4521efe06c869ba5",
+        "pages/visitor/terms-of-use.blade.php": "d39574ec6821f90d"
     }
 }

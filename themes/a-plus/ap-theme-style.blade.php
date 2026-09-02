@@ -1,6 +1,6 @@
 {{--
-    Everything mechanical about how this template looks: its tokens, its type, its pill
-    buttons, its blue and its yellow.
+    Everything mechanical about how this template looks: its tokens, its type, its square navy
+    buttons, its pale blue bands and its one amber rule.
 
     A partial rather than a block inside layouts/visitor.blade.php, because a memorial page
     never passes through that layout — it extends layouts/fullscreen-layout and renders this
@@ -9,29 +9,86 @@
     memorial hosted by a reseller running it. Two copies of these tokens would have fixed that
     and then drifted apart; one file included twice cannot.
 
-    The colours are read from BrandingHelper rather than written out, so a funeral home that
-    changes its brand on the Appearance page moves the whole template with it. theme.json
-    supplies the defaults — the blue and the yellow sampled from A-Plus's own logo.
+    ------------------------------------------------------------------
+    Rewritten 2026-09-02 to the client's final mockup. Navy is no longer a ground.
+
+    The template shipped on 2026-08-31 was navy-dominant: a navy hero over a drained
+    photograph, a filled-blue lead card, a navy statistics plate, gold pill buttons, a navy
+    footer. The mockup inverts all of it. Navy became ink — headings, buttons, the closing bar
+    — and the grounds became white and a pale blue sampled from the client's own photographs.
+    Gold stopped being a fill and became one short amber rule under a centred heading.
+
+    Almost all of that is these tokens. The platform's widget views read `--t-*` and follow, so
+    a change of this size still edits four blades and this file rather than forking the widget
+    layer. Where a fork does exist (section-banner, section-grid) it is because the *structure*
+    differs, never because a colour does — if a change can be made here, it belongs here.
+
+    The colours are still read from BrandingHelper rather than written out, so a funeral home
+    that changes its brand on the Appearance page moves the whole template with it. theme.json
+    supplies the defaults.
 --}}
 <style>
     :root {
+        /* The workhorse. Headings, buttons, icons, the footer's closing bar — in this design
+           they are all one colour, and it is this one. Softer and deeper than the bright blue
+           sampled from the logo, which now appears only in the logo itself: at the weight this
+           design uses navy (every heading, every button) #0033A0 vibrates against a pale blue
+           ground, and the mockup's answer was to desaturate it rather than to use less of it. */
         --ap-blue: {{ \App\Helpers\BrandingHelper::primaryColor() }};
+
+        /* The rule under a centred heading, and nothing else. A muted ochre rather than the
+           logo's bright yellow: at 2px on a white ground #FECB01 disappears, and at any weight
+           that makes it visible it becomes the loudest thing in a very quiet page. */
         --ap-gold: {{ \App\Helpers\BrandingHelper::accentColor() }};
 
-        /* The dark ground: hero scrim, statistics band, footer. Deeper than the brand blue
-           rather than a dimmed copy of it — white type on the brand blue itself sits at about
-           7:1, which passes, but the photograph underneath the hero eats most of that margin.
-           This clears it with room to spare and still reads as the same colour family. */
-        --ap-navy: #06214F;
+        /* Deeper than the brand navy, for the two places that still carry white type: the
+           footer's closing bar and the memorial page's furniture. Kept as its own token rather
+           than a dimmed copy of --ap-blue so those surfaces do not drift when a reseller
+           rebrands to a light or mid-tone primary. */
+        --ap-navy: #16305A;
 
-        --ap-ink: #16233F;
-        --ap-ink-soft: #4A5878;
+        /* The pale blue band behind the hero and the closing feature section.
+
+           Sampled off the mockup itself (#E4ECF3 in the "We Are Here For You" band), not off
+           the supplied photograph. Those disagree, and the mockup wins: it lays a blue wash
+           over the whole hero — the picture included — so the band is not trying to match the
+           photograph's own background at all. The wash is `.ap-bleed-fade` below. */
+        --ap-sky: #E4ECF3;
+
+        --ap-ink: #1B3A6B;
+        /* Body copy, and the tightest contrast pairing in the design. Measured, not judged:
+           at the #5A6B85 this started as it came to 4.31:1 against --ap-sky, which fails AA for
+           normal text — and the hero standfirst is exactly that, 15px on the pale band. This
+           clears it at 4.71:1 there and 5.92:1 on white. Darkening it any further starts to
+           read as a second heading colour rather than as body text. */
+        --ap-ink-soft: #55657E;
+
+        /* Body copy on the hero, which is a darker ground than anywhere else.
+
+           The blue wash over the opening takes the band to about #D8E0E7 where the
+           standfirst sits, and --ap-ink-soft on that is 4.43:1 — under AA, again, and
+           again invisibly. Measured off the rendered PNG rather than off the token,
+           because the token is not what the text is actually sitting on.
+
+           This is 5.50:1 there, and it happens to be right for the design too: the
+           mockup's hero copy is visibly heavier than the column copy further down. */
+        --ap-ink-strong: #48566E;
         --ap-paper: {{ \App\Helpers\BrandingHelper::bgLight() }};
 
-        /* The faint blue-white behind alternating sections. Mixed from the brand blue rather
-           than declared, so it follows a reseller who rebrands instead of staying the one
-           surface still tinted with somebody else's colour. */
-        --ap-mist: color-mix(in srgb, var(--ap-blue) 4%, #ffffff);
+        /* The alternating section ground — and in this design it is very nearly not one.
+
+           Measured off the mockup, "Our Services" is #FDFDFB and "Why Choose A-Plus" is
+           #FDFDFC: the same near-white, a shade warm. There is no blue-tinted band between
+           them. The earlier `color-mix(--ap-blue 3%, white)` invented a cool tint the design
+           does not have, and put a visible seam between two sections meant to read as one
+           sheet of paper. Kept as a token rather than collapsed into white so the footer and
+           the grids can still be told apart from a card if one is ever put on them. */
+        --ap-mist: #FDFDFB;
+
+        /* The hairline. This design has no card borders and no shadows — the only thing
+           separating one column from the next is this, so it is a token rather than a value
+           repeated in three views. */
+        --ap-line: color-mix(in srgb, var(--ap-blue) 14%, #ffffff);
     }
 
     /* ------------------------------------------------------------------
@@ -42,62 +99,72 @@
        economy the base token block in resources/css/app.css was written for.
        ------------------------------------------------------------------ */
     :root {
-        --t-heading-family: 'Montserrat', system-ui, sans-serif;
+        /* A serif, and the single biggest change in the redesign. Montserrat made the template
+           read as a service business; the mockup wanted a funeral home. Playfair carries that
+           at heading sizes and nowhere else — the body, the navigation, the buttons and the
+           column titles all stay on Open Sans, because a serif at 13px on a pale ground is
+           where this kind of design usually falls apart. */
+        --t-heading-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
         --t-heading-weight: 700;
         --t-heading-caps: normal;
-        --t-heading-tracking: -0.015em;
-        --t-heading-leading: 1.18;
+
+        /* Zero, not negative. Montserrat wanted tightening; a high-contrast serif does not, and
+           at hero size the tightened version collides the "W" and the "e" of "We Care". */
+        --t-heading-tracking: 0;
+        --t-heading-leading: 1.2;
 
         --t-body-family: 'Open Sans', system-ui, sans-serif;
         --t-body-leading: 1.75;
 
-        /* "OUR SERVICES", "WHY CHOOSE US" — small, wide and blue. No rule before it: the base
-           hook draws nothing by default and this template leaves it that way on purpose.
-           Dignified's gold dash is a flourish; this design's character is that it has none. */
+        /* The mockup has no eyebrows at all — a centred serif heading with a rule under it does
+           the work the small blue caps used to. These are kept sane rather than removed because
+           a reseller can still type one into any section, and it should not arrive unstyled. */
         --t-eyebrow-size: 0.75rem;
         --t-eyebrow-weight: 700;
         --t-eyebrow-transform: uppercase;
-        --t-eyebrow-tracking: 0.2em;
+        --t-eyebrow-tracking: 0.18em;
 
-        --t-h1-size: 2.25rem;
+        --t-h1-size: 2.5rem;
         --t-h2-size: 1.875rem;
         --t-h3-size: 0.75rem;
-        --t-h4-size: 1.25rem;
-        --t-h5-size: 1.0625rem;
+        --t-h4-size: 1.125rem;
+        --t-h5-size: 1rem;
         --t-h6-size: 0.9375rem;
 
-        /* Softly rounded, not square and not a capsule. Cards and photographs share one
-           radius; buttons are the deliberate exception below. */
-        --t-radius: 0.625rem;
-        --t-radius-sm: 0.5rem;
+        --t-radius: 0.5rem;
+        --t-radius-sm: 0.375rem;
 
-        /* Full pills. The single loudest thing about this template, and the reason it reads as
-           a service business rather than a funeral parlour — it is the shape of the "Call Us
-           Now" button in the header, and every other button on the site follows it. */
-        --t-btn-radius: 999px;
+        /* Square, near enough. The pill was the loudest thing about the old template and the
+           first thing the mockup threw away: a small radius on a solid navy rectangle reads as
+           an institution rather than as a product, which is the whole distance between the two
+           designs. Everything else about a button follows from this one value. */
+        --t-btn-radius: 0.25rem;
         --t-btn-transform: none;
         --t-btn-tracking: 0.01em;
         --t-btn-weight: 600;
-        --t-btn-size: 0.8125rem;
-        --t-btn-pad-x: 1.875rem;
-        --t-btn-pad-y: 0.875rem;
+        --t-btn-size: 0.875rem;
+        --t-btn-pad-x: 2.25rem;
+        --t-btn-pad-y: 1rem;
 
-        --t-pad-sm: 2.5rem;
-        --t-pad-md: 4.5rem;
-        --t-pad-lg: 6rem;
+        /* More air than the old template carried. With the cards gone there is no border
+           holding a section together, so the space around it is what separates one idea from
+           the next — under-padding this design makes it read as a list rather than as a page. */
+        --t-pad-sm: 3rem;
+        --t-pad-md: 4rem;
+        --t-pad-lg: 6.5rem;
 
         --t-surface-page: var(--ap-paper);
         --t-surface-muted: var(--ap-mist);
         --t-surface-dark: var(--ap-navy);
         --t-accent: var(--ap-blue);
         --t-accent-2: var(--ap-gold);
-        --t-border: color-mix(in srgb, var(--ap-blue) 14%, transparent);
+        --t-border: var(--ap-line);
     }
 
     @media (min-width: 1024px) {
         :root {
-            --t-h1-size: 3rem;
-            --t-h2-size: 2.375rem;
+            --t-h1-size: 4.375rem;
+            --t-h2-size: 2.25rem;
         }
     }
 
@@ -105,113 +172,138 @@
        This template's flourishes, drawn on the shared hooks rather than in forked views.
        ------------------------------------------------------------------ */
 
-    /* Hero photographs are drained and let the navy scrim carry the colour, so the picture
-       reads as one blue field with the type on it rather than as a photograph competing with
-       the brand. Scoped to `--t-image-filter`, which the base stylesheet applies to banner
-       backgrounds only — the portraits in split sections keep their own colour, which is the
-       whole reason people are in them. */
-    :root { --t-image-filter: grayscale(0.85) contrast(1.06); }
+    /* No filter. The old template drained every banner photograph to grayscale so the navy
+       scrim could carry the colour; there is no scrim any more, and both supplied photographs
+       are already almost monochrome — a candle on pale blue, and a blue-grey mountain range.
+       Draining them a second time turns them grey. Stated rather than deleted, because the
+       platform's base stylesheet sets a filter that would otherwise apply. */
+    :root { --t-image-filter: none; }
 
-    /* The scrim. Written out rather than left to the view's `bg-black/50`, which Tailwind v4
-       resolves through oklab to a colour that is not neutral — Dignified's hero came out
-       tinted navy over a warm photograph before this was noticed. Here the tint is wanted, so
-       it is stated rather than inherited by accident. */
-    .t-banner-overlay { background: rgb(6 33 79 / 0.78); }
+    /* The amber rule under a centred section heading.
 
-    /* The front page hero, and only it.
-
-       Everything below is scoped to the *tall* banner, which on this template is one section
-       per page: the opening. The same view also renders every inner-page title band, the
-       feedback bar and any call to action, and a rule meant for the hero that reached those
-       would shout over the content beneath them. */
-    [data-banner-height='tall'] {
-        min-height: 26rem;
-        display: grid;
-        align-content: center;
-    }
-
-    /* Darker where the words are. The photograph's subject sits centre-right in all three of
-       the pictures this template ships, so the copy gets the side with the least in it and the
-       gradient buys back the contrast that a flat wash spends evenly. */
-    [data-banner-height='tall'] .t-banner-overlay {
-        background: linear-gradient(
-            100deg,
-            rgb(6 33 79 / 0.93) 0%,
-            rgb(6 33 79 / 0.82) 45%,
-            rgb(6 33 79 / 0.58) 100%
-        );
-    }
-
-    /* The rule under a hero heading.
-
-       The base view offers a rule down the *side* of left-aligned banner copy, which is
-       Dignified's idiom, not this one's. Here the same intent is a short gold bar underneath
-       the heading, so the side border is zeroed and the padding the view adds with it —
-       otherwise the copy stays indented against nothing.
-
-       On the heading rather than the copy block, so it sits tight under the last line instead
-       of below the paragraph and the buttons too. */
-    .t-banner-ruled {
-        border-inline-start-width: 0;
-        padding-inline-start: 0;
-    }
-
-    [data-banner-height='tall'] .t-heading::after {
-        content: '';
+       Two elements carry it — a heading in a forked view where the markup is ours, and this
+       hook for the platform's own views — so it is written once as a class and used by both.
+       Short and thin on purpose: it is a full stop under the heading, not a divider. */
+    .ap-rule {
         display: block;
-        width: 3.5rem;
-        height: 3px;
-        margin-top: 1.75rem;
+        width: 3.25rem;
+        height: 2px;
         background: var(--ap-gold);
     }
 
-    [data-banner-height='tall'] .t-body {
-        max-width: 30rem;
+    .ap-rule-center { margin-inline: auto; }
+
+    /* Hairlines between columns.
+
+       This design has no cards. A row of four things is held together by three 1px lines and
+       nothing else, which means the line has to survive wrapping: at two columns the divider
+       belongs between the pair and not down the left edge of the row, and at one column it
+       should not be there at all. Done with a border on the element rather than `divide-x`,
+       which cannot express "except at the start of a row" at three different widths. */
+    .ap-col { border-inline-start: 1px solid transparent; }
+
+    @media (min-width: 640px) {
+        .ap-col:not(.ap-col-row-start-sm) { border-inline-start-color: var(--ap-line); }
     }
+
+    @media (min-width: 1024px) {
+        .ap-col { border-inline-start-color: var(--ap-line); }
+        .ap-col-row-start-lg { border-inline-start-color: transparent; }
+    }
+
+    /* The circular icon badge. A pale blue disc with a navy line mark in it, repeated in the
+       services row and the reasons row, so it is one rule rather than two copies of six
+       utility classes. */
+    .ap-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        /* 92px. Measured, not guessed: the disc is 56px across in the mockup scaled to 854,
+           which is 94px at 1440. The first pass had it at 3.5rem and the row read as a compact
+           feature list rather than as the mockup's open, well-spaced services. */
+        width: 5.75rem;
+        height: 5.75rem;
+        border-radius: 999px;
+        background: var(--ap-sky);
+        color: var(--ap-blue);
+    }
+
+    /* The title over a column: the heading serif, at label size.
+
+       This was briefly set to the body face on the assumption that a high-contrast serif goes
+       spindly at 15px. Reading the mockup at full size says otherwise — "Funeral Services",
+       "Compassionate Care" and the rest are unmistakably Playfair, and the serif is most of
+       what stops the row reading like a feature table. Stated explicitly rather than left to
+       the global `h1..h6` rule AppearanceHelper emits, so it is a decision on the record and
+       not an inheritance that happens to be right. */
+    .ap-col-title {
+        font-family: var(--t-heading-family);
+        font-weight: 700;
+        letter-spacing: var(--t-heading-tracking);
+    }
+
+    /* An icon with no disc behind it.
+
+       The mockup draws the services with a pale disc and the reasons without one — a tick in a
+       circle is already a self-contained mark and a disc behind it makes two concentric
+       circles. Same box as `.ap-badge` so the two rows sit on the same baseline grid. */
+    .ap-mark {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        /* The same box as the disc, so the services row and the reasons row share a baseline
+           grid even though only one of them draws a circle. */
+        height: 5.75rem;
+        color: var(--ap-blue);
+    }
+
+    /* The pricing tick.
+
+       `partials.pricing.plan-bullets` and `partials.pricing.comparison-rows` colour their tick
+       `text-green-500`. Those partials carry the plan limits and the unlimited-sentinel
+       formatting, so they are the last thing this template should fork over a colour — but
+       green is not in this palette and three green columns on a navy-and-amber page look like
+       a different site. Scoped to a wrapper the theme puts around the includes, so it recolours
+       them here and nowhere else. */
+    .ap-pricing .text-green-500 { color: var(--ap-blue); }
 
     /* Photographs beside text.
 
-       No frame. Dignified brackets its pictures with two offset rectangles; this design does
-       not decorate, and adding a flourish here because the hook exists would be the template
-       wearing somebody else's character.
+       No frame and no shadow. The old template hung a deep drop shadow under every figure;
+       this design's pictures bleed out of the band they sit in, and a shadow on a picture with
+       no edge draws an edge back on. */
+    .t-figure > img { box-shadow: none; }
 
-       No width cap either. The platform's view caps the figure at 365px, which is right for a
-       portrait beside a serif column; this template's split view drops that cap so the picture
-       fills its half of the grid, because it has to be wide enough to carry the call card that
-       sits over its foot. A 27rem cap left the card narrower than its own phone number. */
-
-    .t-figure > img {
-        box-shadow: 0 18px 40px -18px rgb(6 33 79 / 0.45);
-    }
-
-    /* The enquiry form on a feedback band: white pills on the photograph, gold submit. */
+    /* The enquiry form on a feedback band: white fields on the pale ground, navy submit. */
     .t-banner-form input {
-        border: 1px solid rgb(255 255 255 / 0.3);
-        background: rgb(255 255 255 / 0.1);
-        color: #fff;
-        border-radius: 999px;
-        padding-inline: 1.25rem;
+        border: 1px solid var(--ap-line);
+        background: #fff;
+        color: var(--ap-ink);
+        border-radius: var(--t-btn-radius);
+        padding-inline: 1rem;
     }
 
-    .t-banner-form input::placeholder { color: rgb(255 255 255 / 0.6); }
+    .t-banner-form input::placeholder { color: var(--ap-ink-soft); }
 
     .t-banner-form input:focus {
-        border-color: var(--ap-gold);
-        background: rgb(255 255 255 / 0.16);
-        outline: none;
+        border-color: var(--ap-blue);
+        outline: 2px solid color-mix(in srgb, var(--ap-blue) 30%, transparent);
+        outline-offset: 1px;
     }
 
     .t-banner-form button {
-        background: var(--ap-gold);
-        color: var(--ap-navy);
-        border-radius: 999px;
-        font-weight: 700;
+        background: var(--ap-blue);
+        color: #fff;
+        border-radius: var(--t-btn-radius);
+        font-weight: 600;
         font-size: 0.8125rem;
     }
 
     .t-map-frame {
-        border: 1px solid var(--t-border);
-        box-shadow: 0 18px 40px -22px rgb(6 33 79 / 0.4);
+        border: 1px solid var(--ap-line);
+        border-radius: var(--t-radius);
     }
 
     /* ------------------------------------------------------------------
@@ -219,39 +311,110 @@
 
        Asserted by ThemeConformanceTest rather than left to taste: on a long services page or a
        memorial, a header that scrolls away makes the way back a scroll to the top. The test
-       accepts either a `sticky` utility class or a rule like this one; this template needs the
-       rule because it pins two bars of different heights together.
+       accepts either a `sticky` utility class or a rule like this one; this template keeps the
+       rule because the shadow belongs with it.
+
+       Lighter than it was. With the blue utility strip gone the header is a single white bar
+       against a pale blue hero, and the old 20px shadow drew a grey band across the top of the
+       photograph. This is enough to separate the two surfaces and no more.
        ------------------------------------------------------------------ */
     .ap-header {
         position: sticky;
         top: 0;
         z-index: 40;
-        box-shadow: 0 4px 20px -6px rgb(6 33 79 / 0.18);
+        box-shadow: 0 1px 0 0 var(--ap-line);
     }
 
-    /* The active item in the navigation: a gold underline sitting on the baseline of the bar,
-       not a filled block. The bar is white and the type is dark, so a filled marker would be
-       the heaviest thing in a header whose job is to be quiet. */
-    .ap-nav-link { position: relative; }
-
-    .ap-nav-link[aria-current='page']::after {
-        content: '';
-        position: absolute;
-        inset-inline: 0.75rem;
-        bottom: 0;
-        height: 3px;
-        background: var(--ap-gold);
+    /* The active item in the navigation. The mockup marks it by weight and colour alone — no
+       underline, no block, nothing that adds a shape to a bar whose job is to be quiet. */
+    .ap-nav-link[aria-current='page'] {
+        color: var(--ap-blue);
+        font-weight: 700;
     }
 
-    /* A gold rule under a footer column heading — the one place this template repeats
-       Dignified's habit of underlining a label, because four columns of white-on-navy text
-       need something separating the heading from the list under it. */
-    .ap-foot-heading::after {
-        content: '';
-        display: block;
-        width: 2rem;
-        height: 2px;
-        margin-top: 0.625rem;
-        background: var(--ap-gold);
+    /* ------------------------------------------------------------------
+       The hero, and the closing feature band.
+
+       One idea used twice: a pale blue band with the copy on the left and a photograph
+       bleeding out of the right-hand side. The band and the picture are the same colour where
+       they meet, so there is no edge — which only works because the fade below is wide enough
+       to cover the difference between --ap-sky and whatever the photograph actually starts at.
+       ------------------------------------------------------------------ */
+    [data-banner-height='tall'] { min-height: 30rem; }
+
+    /* The hero copy is narrower than the width prop allows.
+
+       The mockup sets the opening line over two lines — "In Need" above "We Care" — and there
+       is no line-break prop to say so with. Capping the column is what makes the wrap happen,
+       and it is the honest version of the same intent: the copy is a narrow left column beside
+       a photograph, not a paragraph that happens to break. It caps the body copy with it,
+       which is what the mockup does too. */
+    [data-banner-height='tall'] .t-banner-copy { max-width: 27rem; }
+
+    /* One line per span, on the two bands that carry a composed heading. `.t-banner-line`
+       is `display: inline` in the base stylesheet precisely so a template can do this;
+       everywhere else the heading should still wrap on its own. */
+    [data-banner-height='tall'] .t-banner-line,
+    [data-banner-height='band'] .t-banner-line { display: block; }
+
+    [data-banner-height='tall'] .t-banner-line + .t-banner-line::before,
+    [data-banner-height='band'] .t-banner-line + .t-banner-line::before { content: none; }
+
+    [data-banner-height='tall'],
+    [data-banner-height='band'] {
+        display: grid;
+        align-content: center;
+    }
+
+    /* The fade that joins the band to the photograph.
+
+       Opaque across the copy, gone by the time it reaches the subject. Percentages rather than
+       a hard stop because the two supplied pictures put their subject at different distances
+       from the left edge, and a stop tuned to the candle cuts into the mountains. */
+    .ap-bleed-fade {
+        background: linear-gradient(
+            90deg,
+            var(--ap-sky) 0%,
+            var(--ap-sky) 38%,
+            color-mix(in srgb, var(--ap-sky) 55%, transparent) 58%,
+            transparent 78%
+        );
+    }
+
+    /* The hero's blue wash.
+
+       A second layer over the first, and over the photograph with it. The mockup's hero is not
+       a pale band with a picture dropped into it — the whole opening, picture included, sits
+       under a blue tint that is deepest at the top and gone by two thirds down. Measured: the
+       band reads #AEBDD5 at the top and #E2E8F1 at the foot, and the photograph is tinted the
+       same way rather than left at its own colour.
+
+       Hero only. On the closing feature band the mockup leaves the picture alone, and washing
+       that one too turns a light mountain range into a grey one. */
+    [data-banner-height='tall'] .ap-bleed-fade {
+        background:
+            linear-gradient(
+                180deg,
+                rgb(126 147 181 / 0.46) 0%,
+                rgb(126 147 181 / 0.20) 40%,
+                rgb(126 147 181 / 0) 72%
+            ),
+            linear-gradient(
+                90deg,
+                var(--ap-sky) 0%,
+                var(--ap-sky) 34%,
+                color-mix(in srgb, var(--ap-sky) 55%, transparent) 56%,
+                transparent 76%
+            );
+    }
+
+    /* Under 1024px the photograph stops being a bleed and becomes a band under the copy: at
+       phone width there is no room for a picture beside two lines of serif heading, and fading
+       it out behind the text turns the heading grey on grey. */
+    @media (max-width: 1023px) {
+        .ap-bleed-image { display: none; }
+
+        .ap-bleed-fade,
+        [data-banner-height='tall'] .ap-bleed-fade { background: var(--ap-sky); }
     }
 </style>
