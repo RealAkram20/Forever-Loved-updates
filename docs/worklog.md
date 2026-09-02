@@ -720,3 +720,421 @@ earns its place as a guard; it just never described a live bug.
   alone.** It reads the value directly rather than through `format()`, but `> 0`
   is correct for a TYPE_DAILY entry where zero genuinely means off, so there is
   no bug to fix and touching it would only widen the diff.
+
+### 2026-09-02 — A-Plus redesigned to the client's final mockup
+
+**Status:** complete
+**Owns:** `themes/a-plus/ap-theme-style.blade.php`,
+`themes/a-plus/components/home-header.blade.php`,
+`themes/a-plus/components/visitor-footer.blade.php`,
+`themes/a-plus/page-builder/widgets/section-banner.blade.php`,
+`themes/a-plus/page-builder/widgets/section-grid.blade.php`,
+`themes/a-plus/page-builder/widgets/section-split.blade.php`,
+`themes/a-plus/theme.json`, `themes/a-plus/preview.webp`,
+`public/images/themes/a-plus/hero-candle.webp`,
+`public/images/themes/a-plus/landscape-mist.webp`
+**Not touched after all:** `themes/a-plus/memorial-theme.blade.php`. Claimed
+before starting and then left alone — it is written entirely against
+`--ap-blue`, `--ap-gold`, `--ap-ink` and `--ap-navy`, so retokenising moved the
+whole memorial page with no edit. Verified by rendering it, not assumed.
+**Shares:** none intended. If a change cannot be made inside `themes/a-plus/**`
+and `public/images/themes/a-plus/**`, it gets its own entry and is named here
+before it is made.
+
+**What this is.** The client supplied a second, final mockup and two new
+photographs. It is not a polish of the template shipped on 2026-08-31 — it is a
+different visual language, and every page of the theme moves to it.
+
+The template today is navy-dominant: a navy hero over a drained photograph, a
+filled-blue lead card, a navy statistics plate, gold pill buttons, a navy
+footer. The mockup inverts that. Navy stops being a ground and becomes ink.
+
+| | Shipped 2026-08-31 | Final mockup |
+|---|---|---|
+| Hero | navy scrim over greyscale photo, white type | pale blue band, photo bleeding right in full colour, navy type |
+| Headings | Montserrat | serif (Playfair Display) |
+| Buttons | gold full pills | solid navy rectangles, ~4px radius |
+| Cards | bordered tiles, first filled blue, "Learn More" row | no cards — centred columns with hairline dividers and circular pale-blue icon badges |
+| Stats | inset navy plate over a photo | dropped |
+| Footer | navy, gold discs, chevron bullets | light ground, navy serif headings, navy bottom bar |
+| Accent | gold pills, gold rules, gold icons | one muted amber rule under each centred heading; nothing else |
+
+**Why the tokens carry most of it.** `--t-btn-radius`, `--t-heading-family` and
+the surface tokens live in this template's own `:root` block, so a language
+change of this size is still additive — the platform's widget views read the
+tokens and follow. The forks (`section-banner`, `section-grid`) change only
+where the *structure* differs: an image that bleeds beside the copy instead of
+sitting under a scrim, and a column group that is not a card.
+
+**Deliberately not built** — recorded here before the fact so the gaps are not
+mistaken for oversights:
+
+- **The mockup's content is placeholder and is not being adopted.** It shows
+  four services, "123 Funeral Home Lane, City, State 12345" and
+  "(012) 345-6789". The template keeps its six real services — they have six
+  detail pages in `default_pages` that renaming would orphan — and contact
+  details keep coming from `ThemeSetting`. The mockup is taken as a design
+  spec, not a copy deck.
+- **The statistics band goes, and with it the "30+ Years Experience" /
+  "1,000+ Families Served" problem** the wiki flagged as shipping one client's
+  claims to every future reseller. Closed by deletion rather than by decision.
+
+**For whoever is next:** `/r/vandervort-west` is the only local tenant on this
+theme. It carries pages seeded from the old `default_pages`, and
+`ThemePages::seed()` never overwrites — so editing `theme.json` copy will not
+move that tenant. Styling changes reach it; content changes do not.
+
+**What was built.** Five files carry the new language; `theme.json` carries the
+new tokens and a rebuilt front page.
+
+- **`ap-theme-style.blade.php`** — the whole palette and type vocabulary.
+  Playfair Display headings, `--t-btn-radius: 0.25rem`, `--ap-sky` (`#DFE6F0`,
+  sampled off the supplied candle photograph so the band and the picture are one
+  surface), `--ap-line`, and three new hooks: `.ap-rule`, `.ap-badge`,
+  `.ap-col`.
+- **`section-banner`** — the hero stops putting the photograph *behind* the
+  words. `background: image` now means a pale band with the picture bleeding out
+  of the right-hand edge in full colour, under a `.ap-bleed-fade` gradient.
+  Explicit `dark`/`accent` still gets the old scrim, so the prop keeps meaning
+  something.
+- **`section-grid`** — cards replaced by centred columns separated by hairlines.
+- **`visitor-footer`** — light ground, navy serif headings, one navy closing bar.
+- **`home-header`** — the blue utility strip is gone; one white bar.
+
+**Three bugs found by rendering and measuring, none by the test suite.**
+
+1. **Every column title came out in the heading serif.** `AppearanceHelper`
+   emits `h1, h2, h3, h4, h5, h6 { font-family: <heading font> }` from the
+   Appearance page, so an `<h3>` is Playfair whether it asks or not. Declining
+   `.t-heading` is not enough — the rule has to be overruled. Fixed with
+   `.ap-col-title { font-family: var(--t-body-family); }`. **Worth knowing for
+   any future template:** on this platform a heading element is opinionated
+   before your template says a word.
+2. **No width cap produces the mockup's hero break.** "In Need / We Care" needs
+   an explicit break; every column narrow enough to wrap it breaks
+   "In Need We / Care" instead. `.t-banner-line` is `display: inline` in the
+   base stylesheet precisely so a template can make it a block, so the fork now
+   splits the heading on a literal newline first and falls back to the old
+   sentence split. The break is data in `theme.json`, not a layout accident.
+3. **The hero standfirst failed WCAG AA.** This was about to be filed under "not
+   verified" on the grounds that it looked fine. Measured instead:
+   `--ap-ink-soft` at `#5A6B85` on `--ap-sky` is **4.31:1**, and the hero body
+   copy is 15px normal text, which needs 4.5. Every other pairing in the design
+   passed comfortably — it was specifically the one surface introduced by this
+   redesign that broke. Darkened to `#55657E`: 4.71:1 on the pale band, 5.92:1
+   on white. The nine pairings the template actually renders are all AA now,
+   worst case 4.71:1. **The lesson is the method, not the value** — the failing
+   pair was invisible by eye and would have shipped.
+
+**Verified:**
+
+- **Full suite: 819 passed, 2560 assertions.** Theme subset on its own: 153
+  passed, 575 assertions.
+- **Rendered, not just asserted.** Headless Chrome over CDP at 1440px: the front
+  page, `/funeral-arrangements` (banner + split + grid), and
+  `/vandervort-west/ethelyn-moore` (the memorial, which never passes through
+  `layouts/visitor`). Front page again at 390px with mobile emulation — the
+  bleed image drops out, the band goes flat, the dividers disappear at one
+  column, and nothing scrolls sideways.
+- **The front page was rendered against the template's own `default_pages`**, by
+  creating a throwaway tenant with no saved pages (`aplus-preview`, deleted
+  afterwards). `/r/vandervort-west` renders that tenant's *saved* pages and
+  therefore shows the new styling with the old copy — which is correct
+  behaviour, and is why it is not a valid check of the new document.
+- `themes:sync` clean, `npm run build` clean, `theme.json` re-parsed after every
+  scripted edit.
+- `themes/a-plus/preview.webp` regenerated from the new front page, so the theme
+  gallery does not advertise a design that no longer exists.
+- **Contrast measured, not eyeballed**, across the nine foreground/background
+  pairings this template renders. All pass WCAG AA for their text size; the
+  tightest is the hero standfirst at 4.71:1. The script is disposable but the
+  pairing list is worth rebuilding for any future template.
+
+**Not verified:**
+
+- No real browser, no Safari, no Firefox. Chromium only.
+- **Nothing was checked on a real reseller host or custom domain** — only the
+  `/r/{slug}` path fallback. `RESELLER-PRODUCTION-CHECKLIST.md` still governs.
+- Tablet widths between 640px and 1024px were not rendered. The two-column
+  divider logic is the thing most likely to be wrong there.
+- Nobody has opened the page builder against the new widget views. The rendered
+  output is right; the *editing* experience for these sections is unchecked.
+
+
+**Deliberately not built:**
+
+- **The three tribute cards are still in the old brand colours.**
+  `public/images/themes/a-plus/tributes/{candle,flower,prayer}.png` are 3D
+  renders in `#0033A0` and `#FECB01`. Against the new muted palette they are the
+  most saturated thing on the memorial page. Not recoloured: they are supplied
+  client artwork, a convincing recolour of rendered art is not a levels tweak,
+  and repainting a client's assets is not a call to make unasked. Same applies,
+  more mildly, to `memorial-backdrop.webp`.
+- **The header button still says "Call Us Now", where the mockup says
+  "Reach Us 24/7".** The design was adopted; that particular string was not.
+  This is a shared template, and a 24/7 promise printed in the header of every
+  reseller who applies it is the same class of problem as the statistics band
+  this change just deleted. One line to change if A-Plus wants it.
+- **The footer keeps its services column**, where the mockup has
+  logo / Quick Links / Contact Us / Follow Us. That column renders
+  `footerCompanyItems`, a menu the reseller builds in Reseller → Menus, and
+  dropping it would silently stop showing links somebody configured.
+- **The mockup's content was not adopted, only its design.** It shows four
+  services, "123 Funeral Home Lane, City, State 12345" and "(012) 345-6789" —
+  placeholders. The six real services and their six detail pages are unchanged,
+  and contact details still come from `ThemeSetting`.
+- **The mockup repeats one tick icon four times** under "Why Choose A-Plus".
+  Replaced with four distinct marks: a row of identical icons carries no
+  information and reads as unfinished artwork.
+- **The home page lost its contact-and-map section**, following the mockup. Its
+  Google Map was already broken before this change — it renders "Google Maps
+  Platform rejected your request. Invalid request. Invalid 'pb' parameter." on
+  `/r/vandervort-west`. **That fault is still live on every other page and
+  template that uses `section_contact`** and is not fixed here.
+
+**For whoever is next:**
+
+- `ThemePages::seed()` never overwrites, so **the three local tenants on this
+  theme keep their old copy and their old section order.** They pick up the new
+  styling immediately and nothing else. Reseller → Themes → Apply now offers to
+  swap kept pages for the template's version, which is the supported way to move
+  one of them onto the new front page.
+- `--ap-sky` is tuned to the two supplied photographs. A reseller who swaps the
+  hero image for one with a different background colour will see a seam where
+  the fade lands. The fade is `.ap-bleed-fade`; widening the transparent stop is
+  the first thing to try.
+
+### 2026-09-02 — A-Plus, second pass: measured against the mockup instead of eyeballed
+
+**Status:** complete
+**Owns:** the same five theme files and `theme.json`; `themes/a-plus/preview.webp`
+**Shares:** none.
+**Local data touched:** `ThemePages::resetToTheme()` run twice against
+`vandervort-west`'s `visitor-home`. See "the thing that looked like a bug".
+
+**What this is.** The first pass got the language right and the *dimensions*
+wrong, and "it looks close" is what let that through. This pass compared the two
+renders numerically — same crop, same width, bounding boxes measured with
+ImageMagick — and fixed what the comparison showed.
+
+**Measured, and wrong by more than eye:**
+
+| | First pass | Mockup | Now |
+|---|---|---|---|
+| Icon disc | 56px | ~94px | 92px |
+| Column title | 15px sans | ~21px serif | 19px serif |
+| Column copy | 13.5px | ~15px | 15px |
+| Tick mark | 32px | ~52px | 48px |
+| Button | 135×43 | ~175×52 | ~165×52 |
+| Hero heading block | 65px tall | 82px | 4.375rem |
+
+The section headings, checked the same way, were already exact — 124×16 against
+124×16. Which is the point: the eye was wrong about which things were wrong.
+
+**Three of my own judgement calls, reversed against the mockup.**
+
+1. **Column titles are serif.** The first pass forced them to the body face and
+   wrote a confident comment about high-contrast serifs going spindly at label
+   size. Reading the mockup at full resolution, they are unmistakably Playfair,
+   and the serif is most of what stops the row reading as a feature-comparison
+   table. The `.ap-col-title` hook survives; it now asserts the serif instead of
+   overriding it.
+2. **The four ticks are all the same tick.** The first pass substituted four
+   distinct marks on the grounds that a row of identical icons carries no
+   information. True in general, wrong here — the row is a checklist and the
+   repetition is what makes it read as one.
+3. **The button says "Reach Us 24/7".** Held back in the first pass because a
+   24/7 promise in a shared template outlives the client who made it. Asked for
+   explicitly, so it ships. **The concern stands and is now the live example of
+   it** — the note in [[Theme System]] should be read before this template is
+   offered to a second reseller.
+
+**Also this pass:** the pale band is the mockup's `#E4ECF3`, not a colour
+sampled off the photograph; the hero carries a blue wash over the picture as
+well as the band; `--ap-mist` stopped being a cool blue tint and became the
+near-white `#FDFDFB` the mockup actually uses for every section; the footer
+gained a "Follow Us" column and a single hairline; the services grid is the
+mockup's four columns with its copy verbatim, American spelling included.
+
+**A second WCAG failure, caught the same way as the first.** Darkening
+`--ap-ink-soft` in pass one fixed the standfirst against `--ap-sky` — and then
+this pass put a blue wash over the hero, which took the ground under that same
+text to `#D7E0E6` and the ratio back to 4.43:1. **The token was passing; the
+pixel was not.** Contrast is now measured by sampling the rendered PNG at the
+coordinates the text actually occupies, not by reasoning about the token, and
+the hero standfirst has its own `--ap-ink-strong` at 5.54:1 measured. Every
+sampled pairing passes.
+
+**The thing that looked like a bug and was not.** Reported as "we are still
+getting the old design". The styling on `/r/vandervort-west` was the new one all
+along; the *content* was that tenant's own saved page, which `ThemePages::seed()`
+correctly refuses to overwrite. Resolved with `ThemePages::resetToTheme()` — the
+same call Reseller → Themes makes — against that one page. **`ferry-heller` and
+`robel-bogisich` were left alone.** Worth saying plainly because it will be
+reported again: after a template redesign, existing tenants get the new paint
+and keep their own words, and that is the design working.
+
+**Verified:** full suite 819 passed / 2560 assertions, twice. Rendered at 1440px
+and compared crop-for-crop against the mockup. Contrast sampled from the render.
+`preview.webp` regenerated.
+
+**Not verified:** unchanged from the first entry — Chromium only, no real
+reseller host, no 640–1024px tablet pass, page builder not opened against the
+new views. **The mobile and service-page renders predate this pass's size
+changes and were not re-taken**, which matters most for the 92px discs at 390px.
+
+**Still deliberately not built:** the tribute artwork is still in the old
+`#0033A0`/`#FECB01`; the mockup's `www.aplusfuneral.com` footer row is absent
+because there is no globe in the icon set and no website setting to read, and
+adding both reaches outside `themes/a-plus/`. Two of the six service detail
+pages (repatriation, memorial services) are no longer linked from the front page
+because the mockup names four services — they keep their pages and stay reachable
+from `/services` and the footer menu.
+
+### 2026-09-02 — A-Plus, third pass: the pages the template never had
+
+**Status:** complete
+**Owns (new):** `themes/a-plus/sections/page-banner.blade.php`,
+`themes/a-plus/sections/prose-page.blade.php`,
+`themes/a-plus/pages/memorial-directory/index.blade.php`,
+`themes/a-plus/pages/visitor/{about,cms-page,contact,pricing,privacy-policy,terms-of-use}.blade.php`
+**Owns (edited):** `ap-theme-style.blade.php`, `page-builder/widgets/section-grid.blade.php`,
+`theme.json`
+**Shares:** none. `partials.pricing.*` and the directory partial are *included*, never forked.
+**Local data touched:** `resetToTheme()` across all eight default pages of
+`vandervort-west`; `subscription_plans.reseller_id` set to 1 and back to NULL to
+render the pricing page once (see below).
+
+**What this is.** The redesign had covered the home page and the widget layer.
+It had not covered the pages that are not built from widgets — and A-Plus, unlike
+Dignified, shipped **no page views at all** beyond `home`. Everything else fell
+through to the platform's own Blade.
+
+**The reported symptom was real and worse than it looked.** "On find memorial
+page we don't have the header on A-Plus theme." The platform's
+`pages/memorial-directory/index.blade.php` extends `layouts.fullscreen-layout`
+directly, so it renders the header component but **no footer at all**, on flat
+white, under a bare `text-2xl` heading. Confirmed with `grep -c '<footer'`:
+`0` on both A-Plus tenants and on the platform host, `1` on Dignified — which
+had already hit this and written the fix. A visitor was being dropped out of the
+design halfway through a visit.
+
+**A-Plus now covers every visitor view the platform has** except `page-layout`,
+which is the builder's renderer and not a page. 14 shadows, 4 own views,
+`themes:doctor` in step.
+
+| View | What it was falling through to |
+|---|---|
+| `memorial-directory/index` | header, no footer, bare heading on white |
+| `visitor/contact` | `rounded-2xl` grey cards, platform `.btn-primary` |
+| `visitor/pricing` | platform-brand ring and buttons, green/blue/purple trust badges |
+| `visitor/about`, `cms-page`, `privacy-policy`, `terms-of-use` | unthemed prose |
+
+Two new partials carry the shared furniture: `sections/page-banner` (the centred
+pale band, serif title, amber rule and breadcrumb) and `sections/prose-page`
+(banner plus a prose column whose headings take the template's serif). Both are
+the template's own views, not shadows — the platform has nothing to shadow.
+
+**Behaviour was not touched.** The contact form keeps its action, field names,
+`@error` bags, session flashes and Alpine `sending` guard; pricing keeps
+`$plans`, `PriceHelper` and both `partials.pricing.*` includes. A themed form
+that drops a validation message is worse than an unthemed one, and the pricing
+partials are where the unlimited-sentinel formatting lives — the exact thing the
+signup wizard got wrong by reimplementing.
+
+**A bug in my own work from pass two, found by rendering the About page.** The
+icon disc was keyed on whether the row's items linked anywhere: services do,
+reasons do not. It read well and was wrong within one page — the About page's
+services grid has no urls, so six services rendered as bare marks. Re-keyed on
+the icon itself: `circle-check-big` and friends draw their own ring and get no
+disc; everything else does. **An icon that draws a ring is a fact about the
+icon; whether somebody filled in a url is not.**
+
+**One inner-page header, everywhere.** The `services` page still opened with the
+old home hero — tall, left-aligned, "Honouring Life With Dignity" bleeding over
+`hero.webp` — while `/contact` and `/pricing` opened with the clean centred band.
+Now every page that is not the home page opens the same way.
+
+**Verified:** full suite 819 passed / 2560 assertions. `themes:doctor` in step
+with 14 baselines recorded. Rendered at 1440px: find-memorial, contact, pricing,
+privacy-policy, services, funeral-arrangements, about. find-memorial also
+rendered at 390px mobile — title band, filters, cards and the full footer.
+
+**A pre-existing fault, not caused here and not fixed here.** A reseller's
+pricing page shows **no plan cards and a one-column comparison table**. All four
+`subscription_plans` rows carry `reseller_id = NULL`, so a tenant matches none.
+Confirmed pre-existing by re-reading the render taken before this pass — the old
+platform view was equally empty. To prove the new plan-card layout actually
+works, the four plans were pointed at reseller 1, the page rendered, and the
+column set straight back to NULL in the same command. **The cards, the "Most
+Popular" treatment and the bullet formatting are correct; whether a reseller
+should inherit platform plans is a product question and belongs to whoever owns
+billing.**
+
+**The green tick.** `partials.pricing.plan-bullets` and `comparison-rows` colour
+their tick `text-green-500`, and green is not in this palette. Not forked —
+those partials carry plan logic. Recoloured through a `.ap-pricing` wrapper the
+theme puts around the includes, so the override lands here and on no other
+template.
+
+**Not verified:** Chromium only; no real reseller host; 640–1024px untested; the
+page builder has still not been opened against the new widget views. **The
+contact form was never submitted** — the markup keeps every hook, but no round
+trip was made through `contact.send`, and neither the success nor the error
+flash has been seen rendered.
+
+**Deliberately not built:** the tribute artwork is still in the old brand
+colours; the mockup's `www.aplusfuneral.com` footer row still has no globe icon
+and no setting to read; `memorial-signup` is untouched, as it is on Dignified —
+it is an application flow rather than a public page, and theming a checkout is a
+larger decision than theming a marketing site.
+
+### 2026-09-02 — A-Plus memorial tabs: the open tab did not look open
+
+**Status:** complete
+**Owns:** `themes/a-plus/memorial-theme.blade.php`
+**Shares:** none.
+
+**What this is.** Reported as "make the active tab the brand blue, keep the
+yellow underline". It already *was* the brand blue —
+`.memorial-tab-btn[aria-selected='true']` had set `color: {{ $apBlue }}` since
+the template was written, and sampling the rendered PNG confirmed the Bio label
+was exactly `#1B3A6B`. So the request could not be taken literally; something
+else was wrong.
+
+**The fault was the other three tabs.** The platform sets closed tabs
+`text-gray-600` (#4B5563). Against `#1B3A6B` that is a difference of hue and
+almost none of lightness, at the same weight — four tabs read as one row of
+grey-blue words, and the amber bar was the only thing saying which was open.
+Nothing was wrong with the blue; there was nothing for it to be brighter *than*.
+
+**Two attempts, and the second is what shipped.**
+
+1. **Weight.** Open tab bolded, closed tabs stepped back to `--ap-ink-soft`.
+   Better, and still a row of words.
+2. **A fill.** Shown a reference — a filled dark tab with a coloured rule under
+   it — the answer was a solid block, not a colour. The open tab is now
+   `--ap-blue` filled, white bold label, amber bar beneath. Nothing else on the
+   page is a solid blue rectangle, so there is no ambiguity left.
+
+Worth recording that the platform's own version *also* fills the open tab, just
+palely — and that pale tint is what reads as a disabled control on this palette
+and got replaced in the first place. The fix was not "don't fill it", it was
+"fill it properly".
+
+**Why the closed tabs are not simply faded out.** They are 14px body text and
+still have to clear AA on white. `--ap-ink-soft` (#55657E) is 5.92:1; the
+obvious lighter greys measure 4.37:1 (#6B7A91) and 3.50:1 (#7C8AA0) and both
+fail. Measured before choosing. White on the filled tab is 11.27:1.
+
+**Verified:** rendered `/r/vandervort-west/ethelyn-moore` before and after and
+compared the crops. Theme suite 153 passed / 575 assertions; `themes:doctor` in
+step. The amber underline is untouched, which was the explicit ask.
+
+**Not verified:** only Bio was rendered as the open tab — the page opens on it
+and no tab was clicked, so the rule is confirmed through `aria-selected` on
+first paint, not after the tab script rewrites the classes on interaction. The
+comment above the rule claims it holds for both; that claim is inherited from
+the original author and was not re-tested. Dark mode not checked, and the dark
+branch of this rule now sets a white label on the brand blue rather than gold on
+transparent — untested because this template ships light-only.

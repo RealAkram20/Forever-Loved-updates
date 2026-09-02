@@ -86,14 +86,14 @@
                              photograph leaves the number on two lines over somebody's face. --}}
                         <figcaption class="mt-4 sm:absolute sm:inset-x-6 sm:bottom-6 sm:mt-0">
                             <a href="{{ $callButton['url'] }}"
-                                class="flex items-center gap-4 rounded-[var(--t-radius)] bg-[var(--ap-blue)] p-5 shadow-[0_18px_40px_-16px_rgb(6_33_79_/_0.55)] transition-[filter,transform] duration-200 ease-out hover:brightness-110 active:scale-[0.99]">
-                                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-[var(--ap-gold)]">
+                                class="flex items-center gap-4 rounded-[var(--t-radius)] bg-[var(--ap-blue)] p-5 transition-[filter,transform] duration-200 ease-out hover:brightness-110 active:scale-[0.99]">
+                                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-white">
                                     <x-icon name="phone" class="h-5 w-5" />
                                 </span>
                                 <span class="min-w-0">
                                     <span class="t-heading block text-[15px] leading-snug text-white">{{ $callButton['label'] }}</span>
                                     @if ($callDisplay)
-                                        <span class="mt-1 block text-[15px] font-bold text-[var(--ap-gold)]">{{ $callDisplay }}</span>
+                                        <span class="mt-1 block text-[15px] font-bold text-white">{{ $callDisplay }}</span>
                                     @endif
                                 </span>
                             </a>
@@ -105,19 +105,19 @@
 
         <div>
             @if (filled($props['eyebrow'] ?? ''))
-                <p class="t-eyebrow {{ $onDark ? 'text-[var(--ap-gold)]' : 'text-[var(--t-accent)]' }}">{{ $props['eyebrow'] }}</p>
+                <p class="t-eyebrow {{ $onDark ? 'text-white/70' : 'text-[var(--t-accent)]' }}">{{ $props['eyebrow'] }}</p>
             @endif
 
             @if (filled($props['heading'] ?? ''))
                 <h2 class="t-heading t-h2 mt-3 {{ $onDark ? 'text-white' : 'text-[var(--ap-ink)]' }}">{{ $props['heading'] }}</h2>
             @endif
 
-            {{-- The gold rule under the heading, the same mark the hero and every card title
-                 carry. Drawn here rather than as a pseudo-element on `.t-heading`, because that
-                 selector is also every card title in the grid, where the rule is already
-                 explicit markup. --}}
+            {{-- The amber rule under the heading, the same mark the hero and every column title
+                 carry. Drawn with the shared `.ap-rule` hook rather than as a pseudo-element
+                 on `.t-heading`, because that selector is also every column title, where the
+                 rule is already explicit markup. --}}
             @if (filled($props['heading'] ?? ''))
-                <span class="mt-4 block h-[3px] w-14 bg-[var(--ap-gold)]" aria-hidden="true"></span>
+                <span class="ap-rule mt-5" aria-hidden="true"></span>
             @endif
 
             @if ($paragraphs)
@@ -133,10 +133,10 @@
                     @foreach ($buttons as $button)
                         <a href="{{ $button['url'] }}" @class([
                             't-btn',
-                            'bg-[var(--ap-gold)] text-[var(--ap-navy)] hover:brightness-95' => $button['primary'],
-                            'border border-current/30 hover:border-current' => ! $button['primary'],
-                            'text-white' => ! $button['primary'] && $onDark,
-                            'text-[var(--ap-blue)]' => ! $button['primary'] && ! $onDark,
+                            'bg-[var(--ap-blue)] text-white hover:brightness-110' => $button['primary'] && ! $onDark,
+                            'bg-white text-[var(--ap-blue)] hover:brightness-95' => $button['primary'] && $onDark,
+                            'border border-[var(--ap-blue)]/30 text-[var(--ap-blue)] hover:border-[var(--ap-blue)]' => ! $button['primary'] && ! $onDark,
+                            'border border-white/40 text-white hover:border-white' => ! $button['primary'] && $onDark,
                         ])>{{ $button['label'] }}</a>
                     @endforeach
                 </div>
