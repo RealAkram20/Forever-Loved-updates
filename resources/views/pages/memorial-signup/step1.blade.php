@@ -33,6 +33,7 @@
 
                     <form id="step1-form" method="POST" action="{{ route('memorial.create.storeStep1') }}" class="space-y-6" @input="saveToStorage()" @change="saveToStorage()">
                         @csrf
+                        @include('partials.honeypot')
                         <div class="space-y-5">
                             <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                                 <div>

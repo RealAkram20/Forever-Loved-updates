@@ -8,6 +8,7 @@
 
     <form method="POST" action="{{ route('password.email') }}">
         @csrf
+        @include('partials.honeypot')
 
         <!-- Email Address -->
         <div>

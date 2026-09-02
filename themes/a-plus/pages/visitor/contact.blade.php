@@ -104,6 +104,7 @@
                     <form action="{{ route('contact.send') }}" method="POST" class="space-y-6"
                         x-data="{ sending: false }" @submit="sending = true">
                         @csrf
+                        @include('partials.honeypot')
 
                         <div class="grid gap-6 sm:grid-cols-2">
                             <div>

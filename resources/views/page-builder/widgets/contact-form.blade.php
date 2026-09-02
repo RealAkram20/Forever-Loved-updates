@@ -73,6 +73,7 @@
                       x-data="{ sending: false }"
                       @submit="sending = true">
                     @csrf
+                    @include('partials.honeypot')
 
                     <div class="grid gap-5 sm:grid-cols-2">
                         <div>

@@ -32,6 +32,7 @@
 
             <form action="{{ route('contact.send') }}" method="POST" class="mt-8 space-y-5">
                 @csrf
+                @include('partials.honeypot')
 
                 @php
                     $field = 'h-11 w-full border border-[#d4d4d4] bg-white px-4 text-[14px] text-[var(--dg-ink)] placeholder:text-[#9a9a9a] focus:border-[var(--dg-gold)] focus:outline-none';
