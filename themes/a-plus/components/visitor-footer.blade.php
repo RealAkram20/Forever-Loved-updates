@@ -43,7 +43,11 @@
     // The heading serif, at label size. `t-heading` is what carries --t-heading-family, so the
     // column headings move with the template's type rather than naming Playfair here.
     $colHeading = 't-heading text-[16px] text-[var(--ap-ink)]';
-    $colLink = 'block py-1.5 text-[13.5px] text-[var(--ap-ink-soft)] transition-colors duration-200 ease-out hover:text-[var(--ap-blue)]';
+    // 6px of padding either side of 13.5px type is a 32px row: fine under a mouse, and two
+    // thirds of a fingertip. The footer is where a phone visitor goes for the number and the
+    // opening hours, so on a phone the rows open up to 44px and close again at `sm`, where the
+    // columns go side by side and the mockup's tighter rhythm is the right one.
+    $colLink = 'block py-3 text-[13.5px] text-[var(--ap-ink-soft)] transition-colors duration-200 ease-out hover:text-[var(--ap-blue)] sm:py-1.5';
 
     // One hairline, left of the first link column — the only divider the mockup's footer has.
     // Not between every column: four rules across a footer turns it into a table.
@@ -130,14 +134,17 @@
                     @foreach (collect([$phone, $phoneAlt])->filter() as $number)
                         <p class="flex items-center gap-3">
                             <x-icon name="phone" class="h-4 w-4 shrink-0 text-[var(--ap-blue)]" />
-                            <a href="tel:{{ preg_replace('/[^0-9+]/', '', $number) }}" class="transition-colors duration-200 ease-out hover:text-[var(--ap-blue)]">{{ $number }}</a>
+                            {{-- Padded on a phone for the same reason as the link columns: a
+                                 20px line of text is the thing a visitor on a phone is most
+                                 likely to be reaching for in this whole footer. --}}
+                            <a href="tel:{{ preg_replace('/[^0-9+]/', '', $number) }}" class="py-2.5 transition-colors duration-200 ease-out hover:text-[var(--ap-blue)] sm:py-0">{{ $number }}</a>
                         </p>
                     @endforeach
 
                     @if (filled($email))
                         <p class="flex items-center gap-3">
                             <x-icon name="mail" class="h-4 w-4 shrink-0 text-[var(--ap-blue)]" />
-                            <a href="mailto:{{ $email }}" class="break-all transition-colors duration-200 ease-out hover:text-[var(--ap-blue)]">{{ $email }}</a>
+                            <a href="mailto:{{ $email }}" class="break-all py-2.5 transition-colors duration-200 ease-out hover:text-[var(--ap-blue)] sm:py-0">{{ $email }}</a>
                         </p>
                     @endif
 
@@ -167,7 +174,10 @@
                         @foreach ($socials as $social)
                             <a href="{{ $social['url'] }}" target="_blank" rel="noopener"
                                 aria-label="{{ $social['label'] }}"
-                                class="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ap-blue)] text-white transition-[filter] duration-200 ease-out hover:brightness-125">
+                                {{-- 32px is the disc the mockup draws. On a phone that is a
+                                     target you miss, so it grows to 40px there and returns to
+                                     the drawn size from `sm` up. --}}
+                                class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ap-blue)] text-white transition-[filter] duration-200 ease-out hover:brightness-125 sm:h-8 sm:w-8">
                                 @switch($social['key'])
                                     @case('facebook')
                                         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.25-1.5 1.55-1.5H16.7V3.6c-.3 0-1.3-.13-2.47-.13-2.44 0-4.11 1.49-4.11 4.23V9.9H7.4V13h2.72v8z" /></svg>

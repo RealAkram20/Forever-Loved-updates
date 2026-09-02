@@ -61,3 +61,25 @@ replace reading the wiki.
 If `GRAPH_REPORT.md` says the graph was built from an older commit, run
 `graphify update . --no-cluster` before trusting it. Setup notes and the two
 known traps are in `D:\OS\references\code-graph.md`.
+
+## Themes: a template is not done until it has been rendered at 390px
+
+Twice now a template has shipped a mobile-only layout fault that every test
+passed and nobody saw: the A-Plus header's `Reach Us 24/7` pill beat `hidden`
+and scrolled the whole page sideways, and a `@media (max-width: 1023px)` block
+whose comment described a photograph "becoming a band under the copy" while its
+one rule was `display: none`. Both were invisible at desktop widths and
+invisible to a suite that asserts markup rather than layout.
+
+So, for any change under `themes/`:
+
+- **Render it at 390 before calling it done**, with real mobile emulation —
+  `--screenshot` alone does not emulate; drive Chrome over CDP. The method is in
+  the `visual-verification-tools` memory.
+- **Check `document.scrollWidth === clientWidth`** at 360 and 390. Sideways
+  scroll is the single most common form of this bug and it is one line to test.
+- **A rule that hides something on mobile owes the reader what replaced it** —
+  and the replacement has to be visible in the render, not only in the comment.
+- Numbers taken off a 1440px mockup (section padding, disc sizes, text measures)
+  are desktop values. Give them a mobile step or they arrive as a phone screen
+  that is two fifths padding.

@@ -1138,3 +1138,119 @@ comment above the rule claims it holds for both; that claim is inherited from
 the original author and was not re-tested. Dark mode not checked, and the dark
 branch of this rule now sets a white label on the brand blue rather than gold on
 transparent — untested because this template ships light-only.
+
+### 2026-09-02 — A-Plus on a phone: the photographs were never there
+
+**Status:** complete
+**Owns:** `themes/a-plus/ap-theme-style.blade.php`,
+`themes/a-plus/page-builder/widgets/section-banner.blade.php`,
+`themes/a-plus/page-builder/widgets/section-grid.blade.php`,
+`themes/a-plus/components/visitor-footer.blade.php`
+**Shares:** none. `public/build/**` rebuilt, as any Tailwind class change
+requires.
+
+**The report was "the images are not seen" on mobile, and it was literal.**
+`ap-theme-style` carried this, from the 2026-09-02 redesign:
+
+```css
+@media (max-width: 1023px) {
+    .ap-bleed-image { display: none; }
+}
+```
+
+under a comment saying the photograph "stops being a bleed and becomes a band
+under the copy". Nothing ever put it there. Every phone visitor to the front
+page got a pale blue rectangle with a heading and a button in it where the
+candle should be, and the closing "We Are Here For You" section lost its
+landscape the same way. Both photographs were shipped, committed and referenced
+by `theme.json`; they were simply switched off at the width where most of this
+client's visitors are.
+
+The reasoning that wrote the rule still stands — there is no room for a picture
+beside two lines of serif heading at 390px, and fading one out behind the text
+turns the heading grey on grey. What was wrong was throwing the picture away
+rather than moving it. **The composition now rotates instead of collapsing:**
+the copy keeps the pale band, the photograph runs full width beneath it flush to
+the foot of the section, and its top edge is masked into the band exactly as the
+desktop version fades its left edge into the copy. Same two elements, same idea,
+turned ninety degrees. 16rem under the hero, 14rem under the closing band.
+
+**A class, not the height attribute.** The section gives up its bottom padding
+to let the picture bleed, and a centred inner-page title band with no picture
+must not — `data-banner-height` cannot tell those apart, so the view now sets
+`ap-bleed` on the sections that actually carry one. It is the same flag the view
+already computes for whether to render the `<img>` at all.
+
+**The rest of the pass, all of it measured at 390px:**
+
+- **Section padding is now a mobile-first scale.** `--t-pad-lg` was 6.5rem at
+  every width. That number is measured off a 1440px mockup; on a phone it is two
+  fifths of the screen, and six sections of it was ~600px of scrolling through
+  nothing. 4rem / 5rem / 6.5rem at base / `sm` / `lg`, ratio between the three
+  preserved so the rhythm is the same page seen closer up.
+- **Two columns on a phone, not one.** Asked for directly — "instead of having
+  this long list can we have two per row" — and right: six services stacked one
+  per screen made the front page a scroll rather than a page. `grid-cols-2` is
+  now the base and `sm:grid-cols-2` was already the next step, so the change is
+  one class and the desktop layouts are untouched. The hairline between a pair
+  comes with it: `.ap-col:not(.ap-col-row-start-sm)` used to start at 640px
+  because below that there was a single stack and no divider to draw, and it
+  now applies from the narrowest width up.
+- **What two-up costs, paid back.** At 179px a column cannot carry the mockup's
+  sizes. Column gutters `px-6` → `px-3`, titles 19px → 16px, body 15px/1.8 →
+  13.5px/1.7, discs 92px → 68px with their icons — all `sm:`-reverted, so
+  everything from 640px up is the drawn design to the pixel.
+- **The gap between the copy and the photograph**, reported twice — "there is so
+  much space", then "reduce further, it is still more". It was being paid for
+  twice over: a `--t-pad-md` margin put ~48px of sky under the button and the
+  mask then held the first fifth of the picture transparent on top of it. The
+  margin is now **gone**, and the fade *is* the air — the picture's box begins
+  where the copy ends and the only gap is the part of the picture that has not
+  arrived yet. Space doing two jobs instead of space doing none.
+- **The picture is fluid, not a plate.** `height: clamp(12rem, 60vw, 18rem)` on
+  the hero and `clamp(10rem, 48vw, 15rem)` on a band. A fixed 16rem is the same
+  256px on a 360px phone and on a 430px one — a stamp on one and a stripe on the
+  other. The middle term ties it to the width it sits on; the two ends stop it
+  collapsing or running away before the desktop rules take over.
+- **Why the hero is not cropped to a band.** The obvious way to shrink it is a
+  short cinematic strip, and it cannot be done here: at 390px the candle
+  photograph already renders at almost exactly the box's aspect, and its subject
+  runs from the flame at 19% of the frame to the flowers at 92%. Anything
+  shorter puts the flame under the fade. So the hero keeps the photograph's own
+  proportions and the height came out of the composition around it instead.
+- **The copy's own rhythm.** 24px and 32px steps between eyebrow, rule, body and
+  button are the mockup's, measured at 1440. On a phone the same four steps are
+  separating things inside a third of the screen — each comes down one notch
+  below `sm`, and the hero's top padding drops from `--t-pad-lg` to `--t-pad-md`
+  because 4rem of sky above the first heading a visitor sees is not an opening,
+  it is a wait.
+- **Footer tap targets.** Link rows 32px → 44px, phone/email rows 20px → 40px,
+  social discs 32px → 40px, all `sm:`-reverted to the sizes the mockup draws.
+  The footer is where a phone visitor goes for the number.
+
+**Verified by rendering, which is the only way any of this is ever found.**
+CDP with `mobile: true` at 390, 768 and 1440 on the front page, About, Contact
+and a memorial, plus 360 for overflow. `document.scrollWidth === clientWidth` on
+every page at 360 and 390 — no sideways scroll. **The 1440 render is
+pixel-identical to the one before this change** (`compare -metric AE` → 0), so
+the desktop design the client signed off is untouched — re-checked after the
+two-column pass and again after the hero was tightened, still 0. Theme suite
+144 passed across the seven theme test files; `themes:doctor` in step.
+
+The front page on a phone: **4669px** before any of this, with no pictures in it
+at all. 4846 once both photographs were put back. 3942 when the columns paired
+up. **3706** after the hero's own spacing came down. Two photographs gained and
+960px of scrolling lost against where it started.
+
+**Deliberately not built.** The pictures are still the desktop files — no
+`srcset`, so a phone downloads a 1600px-wide candle to show it 390px wide. That
+is a `ui-performance` job across the whole platform's image handling, not a
+theme fork, and doing it here would put a second image pipeline in one template.
+
+**Found and not fixed, because it is not mobile.** `memorial-theme.blade.php`
+still parks the sticky profile card at `top: 8.25rem` / `8.75rem` from `md` up,
+with a comment measuring those against "the utility strip and the identity bar
+together, 117px". The redesign deleted the utility strip; the header is much
+shorter now, so that card sits about 40px lower than it should on desktop
+memorial pages. One line each, but a desktop change, and this was a mobile
+report.

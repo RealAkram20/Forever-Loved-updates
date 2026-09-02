@@ -148,10 +148,16 @@
 
         /* More air than the old template carried. With the cards gone there is no border
            holding a section together, so the space around it is what separates one idea from
-           the next — under-padding this design makes it read as a list rather than as a page. */
-        --t-pad-sm: 3rem;
-        --t-pad-md: 4rem;
-        --t-pad-lg: 6.5rem;
+           the next — under-padding this design makes it read as a list rather than as a page.
+
+           These are the phone values, and the desktop ones are further down. The numbers the
+           mockup gives are measured off a 1440px page: 104px above and below a section is a
+           tenth of that screen and two fifths of a phone's, which on a stack of six sections
+           was 600px of scrolling through nothing. The ratio between the three is kept, so the
+           rhythm is the same page seen closer up rather than a different one. */
+        --t-pad-sm: 2.25rem;
+        --t-pad-md: 3rem;
+        --t-pad-lg: 4rem;
 
         --t-surface-page: var(--ap-paper);
         --t-surface-muted: var(--ap-mist);
@@ -161,10 +167,26 @@
         --t-border: var(--ap-line);
     }
 
+    /* A tablet is neither: a phone's padding leaves a 768px page looking cramped, and the
+       desktop's leaves it looking empty. Halfway, and it stops being a decision anyone has to
+       revisit at every new section. */
+    @media (min-width: 640px) {
+        :root {
+            --t-pad-sm: 2.5rem;
+            --t-pad-md: 3.5rem;
+            --t-pad-lg: 5rem;
+        }
+    }
+
     @media (min-width: 1024px) {
         :root {
             --t-h1-size: 4.375rem;
             --t-h2-size: 2.25rem;
+
+            /* The mockup's own numbers, restored at the width they were measured at. */
+            --t-pad-sm: 3rem;
+            --t-pad-md: 4rem;
+            --t-pad-lg: 6.5rem;
         }
     }
 
@@ -202,9 +224,10 @@
        which cannot express "except at the start of a row" at three different widths. */
     .ap-col { border-inline-start: 1px solid transparent; }
 
-    @media (min-width: 640px) {
-        .ap-col:not(.ap-col-row-start-sm) { border-inline-start-color: var(--ap-line); }
-    }
+    /* Two columns is now the layout from the narrowest phone up to `lg`, so the "except at the
+       start of a row" marker for a pair applies at every width below it — it used to start at
+       640px because below that the grid was a single stack with no divider to draw. */
+    .ap-col:not(.ap-col-row-start-sm) { border-inline-start-color: var(--ap-line); }
 
     @media (min-width: 1024px) {
         .ap-col { border-inline-start-color: var(--ap-line); }
@@ -227,6 +250,21 @@
         border-radius: 999px;
         background: var(--ap-sky);
         color: var(--ap-blue);
+    }
+
+    /* Both marks come down a size on a phone.
+
+       92px is a fifteenth of the mockup's width and a quarter of a phone's. At that size the
+       disc is the first thing on the screen and the service it belongs to is the second — and
+       six of them stacked put 550px of circle into a page that is mostly circle already. The
+       icon inside comes down with the disc so the ring around it stays the width the design
+       drew it at. */
+    @media (max-width: 639px) {
+        .ap-badge { width: 4.25rem; height: 4.25rem; }
+        .ap-badge svg { width: 2rem; height: 2rem; }
+
+        .ap-mark { height: 4.25rem; }
+        .ap-mark svg { width: 2.25rem; height: 2.25rem; }
     }
 
     /* The title over a column: the heading serif, at label size.
@@ -408,13 +446,87 @@
             );
     }
 
-    /* Under 1024px the photograph stops being a bleed and becomes a band under the copy: at
-       phone width there is no room for a picture beside two lines of serif heading, and fading
-       it out behind the text turns the heading grey on grey. */
-    @media (max-width: 1023px) {
-        .ap-bleed-image { display: none; }
+    /* Under 1024px the photograph stops being a bleed and becomes a band under the copy.
 
-        .ap-bleed-fade,
-        [data-banner-height='tall'] .ap-bleed-fade { background: var(--ap-sky); }
+       That is what this block always claimed to do. What it actually did was `display: none`,
+       and the picture was simply gone: every phone visitor to the front page got an empty pale
+       band with a heading and a button in it, and the closing section lost its landscape the
+       same way. On a funeral home's site the candle *is* the hero.
+
+       The reasoning that put the rule here still holds — at phone width there is no room for a
+       picture beside two lines of serif heading, and fading one out behind the text turns the
+       heading grey on grey. So the composition rotates rather than collapsing: the copy keeps
+       the pale band, and the photograph runs full width beneath it, flush to the foot of the
+       section, its top edge faded into the band exactly as the desktop version fades its left
+       edge into the copy. Same two elements, same idea, turned ninety degrees.
+
+       `.ap-bleed` — set by the view on the sections that carry a bleed — rather than the height
+       attribute, because a centred banner with no picture must keep its bottom padding. */
+    @media (max-width: 1023px) {
+        .ap-bleed {
+            display: flex;
+            flex-direction: column;
+
+            /* The picture takes the foot of the section, so the section's own bottom padding
+               would put a band of sky under the photograph and undo the bleed. */
+            padding-bottom: 0;
+
+            /* `tall` asks for 30rem of hero. With the picture stacked under the copy the
+               section is well past that on its own, and the min-height only pushes the two
+               apart. */
+            min-height: 0;
+        }
+
+        .ap-bleed-image {
+            position: static;
+            /* After the copy, which comes second in the markup because on desktop this
+               picture is a background. */
+            order: 2;
+            width: 100%;
+
+            /* Fluid, not a fixed plate.
+
+               A picture pinned to 16rem is the same 256px on a 360px phone and on a 430px one,
+               so it reads as a stamp on the small screen and as a stripe on the large. The
+               middle term ties it to the width it sits on, and the two ends stop it collapsing
+               on the narrowest phone or running away on a tablet — where the desktop rules take
+               over a breakpoint later anyway. */
+            height: clamp(10rem, 48vw, 15rem);
+
+            /* The air between the button and the picture is the fade, and nothing else.
+
+               It used to be paid for twice: a margin put ~48px of sky under the button and then
+               the mask held the first fifth of the picture transparent on top of it, which is
+               why it read as a hole rather than as a join. The margin is gone. The picture's
+               box now begins where the copy ends, and the only gap is the part of the picture
+               that has not arrived yet — space doing two jobs instead of space doing none. */
+            margin-top: 0;
+            object-position: center 30%;
+
+            -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 12%);
+            mask-image: linear-gradient(180deg, transparent 0%, #000 12%);
+        }
+
+        /* The hero carries the composition, so it gets the taller plate — and a subject that
+           runs from the flame at the top of the frame to the flowers at the bottom, which is
+           why this one stays near the photograph's own proportions instead of cropping to a
+           band. Cropping it is what puts the flame under the fade. */
+        [data-banner-height='tall'] .ap-bleed-image { height: clamp(12rem, 60vw, 18rem); }
+
+        /* The hero opens tighter than the sections below it. 4rem of sky above a heading is
+           right when there is a page of it underneath; at the top of a phone screen it is the
+           first thing a visitor is given and it is nothing. */
+        .ap-bleed[data-banner-height='tall'] { padding-top: var(--t-pad-md); }
+
+        /* The left-to-right gradient has nothing left to join, and `absolute inset-0` over a
+           picture that is now in the flow would simply cover it. The section's own
+           background is the band. */
+        .ap-bleed-fade { display: none; }
+    }
+
+    @media (max-width: 1023px) and (prefers-reduced-transparency: reduce) {
+        /* A mask is a transparency effect; without it the picture keeps a hard top edge, which
+           is the honest fallback rather than a missing photograph. */
+        .ap-bleed-image { -webkit-mask-image: none; mask-image: none; }
     }
 </style>

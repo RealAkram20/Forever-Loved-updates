@@ -127,7 +127,11 @@
 {{-- data-banner-height so a template can style the hero differently from the four other things
      this same view renders. Without it the only handle is the padding class, and a rule meant
      for the front page's hero lands on every inner-page title band too. --}}
-<section data-banner-height="{{ $height }}" class="relative isolate overflow-hidden {{ $bg }} {{ $heightCls }}">
+{{-- `ap-bleed` marks the sections that actually carry a photograph out of their edge. Below
+     1024px that picture becomes a band under the copy and the section gives up its bottom
+     padding for it — which a centred banner with no picture must not do, and neither the
+     height attribute nor the background can tell the two apart. --}}
+<section data-banner-height="{{ $height }}" class="relative isolate overflow-hidden {{ $bleed ? 'ap-bleed' : '' }} {{ $bg }} {{ $heightCls }}">
     @if ($bleed)
         {{-- Anchored right and clipped, rather than stretched across the section. `object-right`
              keeps the subject where the photographer put it at every width; `w-[62%]` leaves the
@@ -173,11 +177,14 @@
                  has to follow the alignment — a centred inner-page title band wants it centred,
                  and a pseudo-element cannot read the alignment prop. --}}
             @if ($headingLines)
-                <span class="ap-rule mt-6 {{ $centred ? 'ap-rule-center' : '' }}" aria-hidden="true"></span>
+                {{-- The steps down this column are the mockup's, measured at 1440. On a phone
+                     the same 24 and 32 are being asked to separate four things inside a third
+                     of the screen, so each comes down one notch and returns at `sm`. --}}
+                <span class="ap-rule mt-5 {{ $centred ? 'ap-rule-center' : '' }} sm:mt-6" aria-hidden="true"></span>
             @endif
 
             @if (filled($props['body'] ?? ''))
-                <p class="t-body mt-6 {{ $height === 'tall' ? 'max-w-[19rem] text-[16px]' : 'max-w-md text-[15px]' }} {{ $centred ? 'mx-auto' : '' }} {{ $dark ? 'text-white/75' : ($height === 'tall' ? 'text-[var(--ap-ink-strong)]' : 'text-[var(--ap-ink-soft)]') }}">{{ $props['body'] }}</p>
+                <p class="t-body mt-5 sm:mt-6 {{ $height === 'tall' ? 'max-w-[19rem] text-[16px]' : 'max-w-md text-[15px]' }} {{ $centred ? 'mx-auto' : '' }} {{ $dark ? 'text-white/75' : ($height === 'tall' ? 'text-[var(--ap-ink-strong)]' : 'text-[var(--ap-ink-soft)]') }}">{{ $props['body'] }}</p>
             @endif
 
             @if ($crumb)
@@ -202,7 +209,7 @@
             @endif
 
             @if ($buttons)
-                <div class="mt-8 flex flex-wrap gap-3 {{ $centred ? 'justify-center' : '' }}">
+                <div class="mt-6 flex flex-wrap gap-3 sm:mt-8 {{ $centred ? 'justify-center' : '' }}">
                     @foreach ($buttons as $button)
                         <a href="{{ $button['url'] }}" @class([
                             't-btn',

@@ -110,8 +110,12 @@
             {{-- `gap-y` only. A column gap would put space either side of the hairline and turn
                  the divider into a gutter with a line floating in it; the padding inside each
                  column does that job instead, so the line sits hard against the content it
-                 separates. --}}
-            <div class="mt-12 grid grid-cols-1 gap-y-12 {{ $colClass }}">
+                 separates.
+
+                 Tighter on a phone, where the columns are a single stack and the gap is the
+                 only thing between one service and the next — at 48px each item reads as its
+                 own section and the row stops being a row. --}}
+            <div class="mt-9 grid grid-cols-2 gap-y-9 sm:mt-12 sm:gap-y-12 {{ $colClass }}">
                 @foreach ($items as $i => $item)
                     @php
                         $url = filled($item['url'] ?? '') ? R::url($item['url']) : null;
@@ -124,7 +128,10 @@
 
                     <{{ $tag }} @if ($url) href="{{ $url }}" @endif
                         @class([
-                            'ap-col group flex flex-col px-6',
+                            // `px-6` either side of a column is the gutter the hairline sits
+                            // against, and at two columns on a phone it is 48px of the 179px
+                            // each column has. Halved below `sm` so the words get the room.
+                            'ap-col group flex flex-col px-3 sm:px-6',
                             // No divider at the start of a row. Which index starts a row depends
                             // on the width, so both breakpoints are marked and the CSS picks.
                             'ap-col-row-start-sm' => $i % 2 === 0,
@@ -154,7 +161,7 @@
                                  serif here that stops a row of four columns reading as a feature
                                  comparison table. --}}
                             <h3 @class([
-                                'ap-col-title mt-6 text-[19px] leading-snug transition-colors duration-200 ease-out',
+                                'ap-col-title mt-5 text-[16px] leading-snug transition-colors duration-200 ease-out sm:mt-6 sm:text-[19px]',
                                 'text-white' => $onDark,
                                 'text-[var(--ap-ink)]' => ! $onDark,
                                 'group-hover:text-[var(--ap-blue)]' => $url && ! $onDark,
@@ -162,8 +169,13 @@
                         @endif
 
                         @if (filled($item['text'] ?? ''))
+                            {{-- 200px is the measure the mockup gives a column standing beside
+                                 three others, and at two columns on a phone the column itself
+                                 is narrower than that — so the cap does nothing there and the
+                                 column width is the measure. A step down in size and leading
+                                 keeps three or four words to a line rather than two. --}}
                             <p @class([
-                                't-body mt-3 max-w-[12.5rem] text-[15px] leading-[1.8]',
+                                't-body mt-2.5 max-w-[12.5rem] text-[13.5px] leading-[1.7] sm:mt-3 sm:text-[15px] sm:leading-[1.8]',
                                 'text-white/65' => $onDark,
                                 'text-[var(--ap-ink-soft)]' => ! $onDark,
                             ])>{{ $item['text'] }}</p>
