@@ -55,6 +55,7 @@
                         @endif
                         <form method="POST" action="{{ \App\Support\ResellerAuthUrls::register() }}">
                             @csrf
+                            @include('partials.honeypot')
                             <div class="space-y-5">
                                 <div>
                                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400" for="name">

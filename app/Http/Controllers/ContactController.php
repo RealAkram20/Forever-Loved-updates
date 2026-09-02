@@ -48,6 +48,10 @@ class ContactController extends Controller
 
     public function send(Request $request)
     {
+        // The honeypot is not checked here. `HoneypotGuard` on the web group catches a tripped
+        // submission before this method runs, for every form on the site rather than this one —
+        // which is the whole point, given the bug that started this was one form's protection
+        // being described in a comment and implemented nowhere.
         $request->validate([
             'name' => ['required', 'string', new HumanName],
             'email' => 'required|email|max:255',

@@ -34,6 +34,7 @@
                 @endif
                 <form method="POST" action="{{ route('login.code.send') }}" class="{{ \App\Helpers\SocialLoginHelper::googleLoginEnabled() ? 'space-y-4' : 'mt-6 space-y-4' }}">
                     @csrf
+                    @include('partials.honeypot')
                     <div>
                         <label for="email" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
                         <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus

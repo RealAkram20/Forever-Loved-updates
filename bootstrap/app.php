@@ -33,6 +33,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // routes uses. See App\Support\TrustedProxies; TRUSTED_PROXIES=* undoes it.
         $middleware->trustProxies(at: \App\Support\TrustedProxies::list());
 
+        // Catches a tripped honeypot on any web POST, before the controller runs. On the
+        // group rather than per route: a form is protected the moment it includes
+        // `partials.honeypot`, and a form that never renders the field is untouched,
+        // because only a *filled* value counts as a trip.
+        $middleware->appendToGroup('web', \App\Http\Middleware\HoneypotGuard::class);
+
         $middleware->prependToGroup('web', InstallMiddleware::class);
 
         // Widening the session cookie's domain left every browser holding two cookies of the
