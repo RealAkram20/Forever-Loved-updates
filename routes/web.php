@@ -172,14 +172,16 @@ Route::get('/unsubscribe/{subscription}', [PublicMemorialController::class, 'uns
 // Memorial creation flow (multi-step signup)
 Route::prefix('create-memorial')->name('memorial.create.')->group(function () {
     Route::get('/step-1', [MemorialSignupController::class, 'step1'])->name('step1');
-    Route::post('/step-1', [MemorialSignupController::class, 'storeStep1'])->name('storeStep1');
+    Route::post('/step-1', [MemorialSignupController::class, 'storeStep1'])->middleware('throttle:20,1')->name('storeStep1');
     Route::get('/step-2', [MemorialSignupController::class, 'step2'])->name('step2');
-    Route::post('/step-2/register', [MemorialSignupController::class, 'storeStep2Register'])->name('storeStep2Register');
-    Route::post('/step-2/login', [MemorialSignupController::class, 'storeStep2Login'])->name('storeStep2Login');
+    // 6/min, the same as /register: this creates an account and mails it, and it had no
+    // limit at all while the route beside it did.
+    Route::post('/step-2/register', [MemorialSignupController::class, 'storeStep2Register'])->middleware('throttle:6,1')->name('storeStep2Register');
+    Route::post('/step-2/login', [MemorialSignupController::class, 'storeStep2Login'])->middleware('throttle:10,1')->name('storeStep2Login');
     Route::post('/check-email', [MemorialSignupController::class, 'checkEmail'])->middleware('throttle:30,1')->name('checkEmail');
     Route::get('/step-3', [MemorialSignupController::class, 'step3'])->name('step3');
-    Route::post('/step-3', [MemorialSignupController::class, 'storeStep3'])->name('storeStep3');
-    Route::post('/prepare-paid-checkout', [MemorialSignupController::class, 'preparePaidCheckout'])->name('preparePaidCheckout');
+    Route::post('/step-3', [MemorialSignupController::class, 'storeStep3'])->middleware('throttle:20,1')->name('storeStep3');
+    Route::post('/prepare-paid-checkout', [MemorialSignupController::class, 'preparePaidCheckout'])->middleware('throttle:12,1')->name('preparePaidCheckout');
     Route::get('/complete', [MemorialSignupController::class, 'complete'])->name('complete');
     Route::get('/preparing/{slug}', [MemorialSignupController::class, 'preparing'])->name('preparing');
 });

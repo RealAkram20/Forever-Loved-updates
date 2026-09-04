@@ -50,9 +50,9 @@ class MemorialSignupController extends Controller
     public function storeStep1(Request $request)
     {
         $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', new HumanName],
+            'middle_name' => ['nullable', 'string', new HumanName],
+            'last_name' => ['required', 'string', new HumanName],
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'relationship' => ['nullable', 'string', 'max:255'],
             'relationship_other' => ['nullable', 'string', 'max:255'],

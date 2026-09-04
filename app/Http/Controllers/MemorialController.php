@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\HumanName;
+
 use App\Exceptions\ResellerCapacityExceededException;
 use App\Helpers\AiConfigHelper;
 use App\Helpers\PlanLimitsHelper;
@@ -216,9 +218,9 @@ class MemorialController extends Controller
         $this->authorize('update', $memorial);
 
         $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', new HumanName],
+            'middle_name' => ['nullable', 'string', new HumanName],
+            'last_name' => ['required', 'string', new HumanName],
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'relationship' => ['nullable', 'string', 'max:255'],
             'short_description' => ['nullable', 'string', 'max:255'],
@@ -393,9 +395,9 @@ class MemorialController extends Controller
         $input = $request->validate(['fields' => ['required', 'array']])['fields'];
 
         $allRules = [
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', new HumanName],
+            'middle_name' => ['nullable', 'string', new HumanName],
+            'last_name' => ['nullable', 'string', new HumanName],
             'short_description' => ['nullable', 'string', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:255'],
             'primary_profession' => ['nullable', 'string', 'max:255'],
@@ -507,9 +509,9 @@ class MemorialController extends Controller
     protected function getSectionValidationRules(string $section): array
     {
         $base = [
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', new HumanName],
+            'middle_name' => ['nullable', 'string', new HumanName],
+            'last_name' => ['nullable', 'string', new HumanName],
             'short_description' => ['nullable', 'string', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:255'],
             'primary_profession' => ['nullable', 'string', 'max:255'],
@@ -695,9 +697,9 @@ class MemorialController extends Controller
     protected function applyFormDataToMemorial(Memorial $memorial, array $data): void
     {
         $rules = [
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', new HumanName],
+            'middle_name' => ['nullable', 'string', new HumanName],
+            'last_name' => ['nullable', 'string', new HumanName],
             'gender' => ['nullable', Rule::in(['male', 'female'])],
             'relationship' => ['nullable', 'string', 'max:255'],
             'short_description' => ['nullable', 'string', 'max:255'],

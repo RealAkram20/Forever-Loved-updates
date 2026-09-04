@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\HumanName;
+
 use App\Helpers\HtmlHelper;
 use App\Helpers\PlanLimitsHelper;
 use App\Helpers\StorageHelper;
@@ -328,7 +330,7 @@ class MemorialMediaController extends Controller
             // a storage bill and a full disk rather than an attack anyone needs skill for.
             'files' => ['nullable', 'array', 'max:'.self::MAX_TRIBUTE_POST_FILES],
             'files.*' => ['file', 'max:102400'], // 100MB
-            'guest_name' => ['nullable', 'string', 'max:255'],
+            'guest_name' => ['nullable', 'string', new HumanName],
             'guest_email' => ['nullable', 'email'],
             'idempotency_key' => ['nullable', 'string', 'max:64'],
         ]);
