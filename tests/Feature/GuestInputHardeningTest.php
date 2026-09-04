@@ -1,6 +1,7 @@
 <?php
 
 use App\Rules\HumanName;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\Validator;
  * This asserts the rule reaches the fields, not that the rule works — NameSpamRelayTest owns
  * that. What would regress here is somebody adding a name field and forgetting.
  */
+uses(RefreshDatabase::class);
+
 $payload = 'Your account has been dormant for 364 days. To prevent removal and retrieve your funds, please access your account and request a withdrawal within 24 hours. For assistance, join graph.org/vJJgPbfz8o-09-04?OwDpHA';
 
 it('rejects the payload in every user-supplied name field', function () use ($payload) {
@@ -130,3 +133,26 @@ it('leaves no unauthenticated write route without either a throttle or a policy 
 
     expect($unguarded)->toBe([], "unguarded write routes:\n  ".implode("\n  ", $unguarded));
 });
+
+/**
+ * The live vector, found on 2026-09-04 after `register` had already been fixed and the
+ * signups kept arriving.
+ *
+ * `GuestOnboarding::signUpAndIn()` creates an account from a guest write and mails a welcome
+ * message to the address supplied with it. A phishing message in `guest_name` and a victim in
+ * `guest_email` made that method the delivery mechanism — the same relay as the registration
+ * form, through a door nobody had thought of as a signup.
+ */
+it('refuses to mint a guest account from a name that is really a message', function () use ($payload) {
+    $memorial = \App\Models\Memorial::factory()->create(['is_public' => true]);
+
+    expect(fn () => \App\Support\GuestOnboarding::signUpAndIn(
+        request(),
+        $memorial,
+        $payload,
+        'victim@example.test'
+    ))->toThrow(\Illuminate\Validation\ValidationException::class);
+
+    // The assertion that matters: no row means no welcome mail means we did not send it.
+    expect(\App\Models\User::where('email', 'victim@example.test')->exists())->toBeFalse();
+})->group('guest-onboarding');

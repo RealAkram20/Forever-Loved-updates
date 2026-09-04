@@ -7,9 +7,12 @@ use App\Helpers\SocialLoginHelper;
 use App\Jobs\SendRawEmail;
 use App\Models\Memorial;
 use App\Models\User;
+use App\Rules\HumanName;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -38,6 +41,23 @@ class GuestOnboarding
      */
     public static function signUpAndIn(Request $request, Memorial $memorial, string $name, string $email): User
     {
+        // The backstop, not the guard.
+        //
+        // Both callers validate `guest_name` with HumanName before they get here. This
+        // exists because on 2026-09-04 an attacker found that a guest write creates an
+        // account *and mails the address* — so a phishing message in the name and a
+        // victim in the email made this method the delivery mechanism. Validation at two
+        // call sites is validation that a third call site will forget.
+        //
+        // Throws rather than sanitises: a silent substitution would hide the fact that
+        // somebody added a path without validating it. Nothing is written before this
+        // point, so there is nothing to orphan.
+        $check = Validator::make(['name' => $name], ['name' => new HumanName]);
+
+        if ($check->fails()) {
+            throw ValidationException::withMessages(['guest_name' => $check->errors()->first('name')]);
+        }
+
         // The memorial's reseller owns this relationship: a visitor moved to write on a
         // reseller's memorial becomes that reseller's user, not a stray platform account.
         $user = User::create([
