@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Rules\HumanName;
+
 use App\Helpers\SiteShareMetaHelper;
 use App\Helpers\ThemeSetting;
 use App\Http\Controllers\Controller;
@@ -43,7 +45,10 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            // HumanName, not just max:255. The 2026-09-04 abuse put its entire phishing
+            // message in this field: the account was disposable, the verification mail we
+            // then sent to the victim was the payload.
+            'name' => ['required', 'string', new HumanName],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);

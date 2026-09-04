@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\HumanName;
+
 use App\Exceptions\ResellerCapacityExceededException;
 use App\Helpers\SiteShareMetaHelper;
 use App\Models\Memorial;
@@ -126,7 +128,7 @@ class MemorialSignupController extends Controller
     public function storeStep2Register(Request $request)
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', new HumanName],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
