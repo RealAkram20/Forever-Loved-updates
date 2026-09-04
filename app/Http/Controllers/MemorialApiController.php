@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\HumanName;
+
 use App\Helpers\HtmlHelper;
 use App\Helpers\MemorialStatsHelper;
 use App\Helpers\PlanLimitsHelper;
@@ -188,7 +190,7 @@ class MemorialApiController extends Controller
             'reactionable_type' => ['required', 'in:post,tribute,comment'],
             'reactionable_id' => ['required', 'integer'],
             'type' => ['required', 'in:like,love,candle,flower'],
-            'guest_name' => ['nullable', 'string', 'max:255'],
+            'guest_name' => ['nullable', 'string', new HumanName],
             'guest_email' => ['nullable', 'email'],
         ]);
 
@@ -610,7 +612,7 @@ class MemorialApiController extends Controller
         }
 
         $validated = $request->validate([
-            'guest_name' => ['nullable', 'string', 'max:255'],
+            'guest_name' => ['nullable', 'string', new HumanName],
             'guest_email' => ['nullable', 'email', 'max:255'],
             'notify_life_chapters' => ['nullable', 'boolean'],
             'notify_tributes' => ['nullable', 'boolean'],
@@ -1093,7 +1095,7 @@ class MemorialApiController extends Controller
         $validated = $request->validate([
             'content' => ['required', 'string', 'max:2000'],
             'parent_id' => ['nullable', 'integer', 'exists:comments,id'],
-            'guest_name' => ['nullable', 'string', 'max:255'],
+            'guest_name' => ['nullable', 'string', new HumanName],
             'guest_email' => ['nullable', 'email'],
         ]);
 

@@ -41,6 +41,9 @@ Route::middleware('guest')->group(function () {
         ->name('password.reset');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
+        // Throttled like the request side: this sets a password, and a token guessing
+        // loop should not get unlimited attempts.
+        ->middleware('throttle:6,1')
         ->name('password.store');
 
     Route::get('auth/google', [GoogleLoginController::class, 'redirect'])
