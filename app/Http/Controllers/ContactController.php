@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\HumanName;
+
 use App\Helpers\SiteShareMetaHelper;
 use App\Helpers\ThemeSetting;
 use App\Models\SystemSetting;
@@ -47,7 +49,7 @@ class ContactController extends Controller
     public function send(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:100',
+            'name' => ['required', 'string', new HumanName],
             'email' => 'required|email|max:255',
             'subject' => 'required|string|max:255',
             'message' => 'required|string|max:5000',
