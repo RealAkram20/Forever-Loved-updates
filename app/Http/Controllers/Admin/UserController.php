@@ -30,11 +30,56 @@ class UserController extends Controller
 
         Reseller::applyFilter($query, $request->input('reseller'));
 
+        // The relay's leftovers: link-shaped or message-length names that own nothing.
+        // One definition shared with the bulk delete and the console command, so what the
+        // screen shows is exactly what those remove.
+        if ($request->boolean('suspicious')) {
+            \App\Support\JunkUserPurge::scope($query);
+        }
+
         $users = $query->latest()->paginate(15)->withQueryString();
         $roles = Role::orderBy('name')->get();
         $resellers = Reseller::filterOptions();
 
         return view('pages.users.index', compact('users', 'roles', 'resellers'));
+    }
+
+    /**
+     * Remove many at once -- the rows ticked on the page, or every row the suspicious
+     * filter matches.
+     *
+     * `scope` mode is deliberately not "delete everything matching the current filters".
+     * It is the suspicious filter only. A search box that happens to match a real family's
+     * surname must never be one confirm away from cascading their memorial.
+     *
+     * Every row still passes JunkUserPurge::reasonToSkip, whichever mode. Ticking a box is
+     * not permission to delete a memorial owner.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $data = $request->validate([
+            'mode' => ['required', 'in:ids,scope'],
+            'ids' => ['required_if:mode,ids', 'array', 'max:'.\App\Support\JunkUserPurge::WEB_BATCH],
+            'ids.*' => ['integer'],
+        ]);
+
+        $actor = auth()->user();
+        $remaining = null;
+
+        if ($data['mode'] === 'ids') {
+            $users = User::with('roles')->whereKey($data['ids'])->get();
+            $summary = \App\Support\JunkUserPurge::purge($users, $actor);
+        } else {
+            // Capped per request so it returns before a proxy times out; the flash says how
+            // many are left and points at the command for the rest.
+            $users = \App\Support\JunkUserPurge::query()->with('roles')->orderBy('id')->limit(\App\Support\JunkUserPurge::WEB_BATCH)->get();
+            $summary = \App\Support\JunkUserPurge::purge($users, $actor);
+            $remaining = \App\Support\JunkUserPurge::query()->count() ?: null;
+        }
+
+        return redirect()
+            ->route('users.index', $request->only(['search', 'role', 'reseller', 'suspicious']))
+            ->with('success', \App\Support\JunkUserPurge::describe($summary, $remaining));
     }
 
     public function create()
