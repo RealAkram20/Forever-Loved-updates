@@ -1254,3 +1254,86 @@ together, 117px". The redesign deleted the utility strip; the header is much
 shorter now, so that card sits about 40px lower than it should on desktop
 memorial pages. One line each, but a desktop change, and this was a mobile
 report.
+
+### 2026-09-04 → 2026-09-06 — The phishing relay, and everything that followed
+
+**Status:** complete (PR #7 awaiting merge)
+**Owns:** `app/Rules/HumanName.php`, `app/Support/{Honeypot,TrustedProxies,JunkUserPurge}.php`,
+`app/Http/Middleware/HoneypotGuard.php`, `app/Console/Commands/PurgeSuspiciousUsers.php`,
+`resources/views/partials/honeypot.blade.php`,
+`tests/Feature/{ContactHoneypotTest,TrustedProxiesTest,NameSpamRelayTest,GuestInputHardeningTest,AdminBulkDeleteJunkUsersTest}.php`
+**Shares (exact edits):** `bootstrap/app.php` (trustProxies narrowed; HoneypotGuard on `web`),
+`ContactController`/`RegisteredUserController`/`MemorialSignupController`/`MemorialApiController`/
+`MemorialMediaController` (name fields → HumanName), `GuestOnboarding::signUpAndIn` (backstop),
+`Admin/UserController` (suspicious filter, `bulkDestroy`), `routes/web.php` (one POST route,
+wizard throttles), `pages/users/index.blade.php` (checkbox column, bulk bar), ten public forms
+(`@include('partials.honeypot')`), `AppServiceProvider` (sqlite REGEXP for tests).
+
+**What was reported.** "Millions of signups heating our notifications and emails." The admin
+Users list showed rows whose *name* was a phishing message and whose *email* was a stranger's.
+
+**What it actually was.** Not a flood — a relay. The account was disposable; the payload was
+the verification/welcome mail *we* sent to the victim, from our domain, SPF/DKIM passing,
+opening "Hello <name>". `'name' => ['required', 'string', 'max:255']` let a 230-character
+sentence with a URL into an email. Rate limits could never have caught it: every request was a
+different address and looked ordinary.
+
+**Shipped, in order, each verified live before the next:**
+
+| PR | What | Live check |
+|---|---|---|
+| #4 | `trustProxies('*')` → private ranges. `'*'` trusted the client's own XFF, which is what every `throttle` keys on — all 22 were resettable per request. | site healthy after |
+| #5 | `HumanName` on `register`, wizard, contact | probe → `"name may not contain a web address"` |
+| #6 | the *actual* vector: `GuestOnboarding::signUpAndIn` — a guest tribute/heart/story is a signup and sends mail. `guest_name` hardened at both callers **and** a throwing backstop at the choke point. | probe on `first_name` → same rejection |
+| #3 | site-wide honeypot (`HoneypotGuard` on the `web` group; absent ≠ filled) | field present on /register /contact /login |
+| #7 | suspicious-names filter, bulk delete, `users:purge-suspicious` | tests only (see below) |
+
+**Three things worth more than the code.**
+
+1. **"The signups are still coming" after #5 deployed was the most useful message of the
+   incident.** It said the fixed door was not the one in use. Eleven `User::create` paths
+   exist; four are reachable signed-out; `GuestOnboarding` does not look like a signup and
+   was not in anyone's list of registration endpoints.
+2. **Guard at the choke point, not at the callers.** Both the honeypot (a middleware, not a
+   per-controller check) and the guest backstop (inside `signUpAndIn`, throwing) exist because
+   the original fault was a comment in `banner-form.blade.php` describing a honeypot that no
+   form on the site had. Protection written in two places is protection that stops being
+   written in one of them.
+3. **The bulk delete is built around refusing.** `users.user_id` cascades onto memorials,
+   subscriptions and payment orders. Memorial owners, payers, staff, protected and self are
+   refused per row in every mode, and the cascade test was run with the guard removed to prove
+   it fails. "Delete all" is the suspicious filter only — a surname search must not be one
+   confirm away from a cascade.
+
+**Verified:** full suite 853 / 2720. Every merged PR probed on production with a request
+carrying a *second* deliberate validation failure (mismatched password, missing `last_name`),
+so the rejection could be read without anything being created. Honeypot renders zero pixels
+of difference on the contact page.
+
+**Not verified:**
+- **#7 has never been clicked.** Local Apache was down; the test asserts the controls render.
+  Look at `/users?suspicious=1` on production before pressing anything.
+- The guest-write path end to end on the live host: `alwaysforeverloved.com` has **no public
+  memorials** (`/api/search/memorials` → `[]`), so the relay was landing on a reseller host or
+  reaching `GuestOnboarding` another way. The backstop covers both; the live confirmation is
+  inference from code.
+- Whether the deployed proxy sits inside the ranges #4 trusts. Site is healthy, which is the
+  evidence; `TRUSTED_PROXIES=*` is the one-line revert.
+
+**Deliberately not built:**
+- Captcha. A real cost to a grieving family; not warranted while the honeypot + name rule hold.
+- Honeypot on the memorial page's JSON endpoints (tributes/comments/stories). Throttled and
+  CSRF-protected; a honeypot on a fetch payload buys little against anyone hitting the API.
+- Automatic purge. The command exists; running it against production is a human's call, and
+  `--dry-run` is the way in.
+
+**Process notes, so they are not rediscovered:**
+- `gh pr merge --delete-branch` checks out local `main` and deletes the branch; with local
+  `main` ahead of origin it also fails to fast-forward, prints `fatal`, and leaves the working
+  tree showing *old* files. The merge itself had succeeded. `git reset --keep origin/main`
+  (never `--hard` — two loose files were uncommitted) put it right.
+- Two merges the user reported as done had not taken (`origin/main` unchanged, PR `OPEN`).
+  Check `gh pr view N --json state` before believing a merge happened.
+- Another session was editing `themes/a-plus/**` and `docs/worklog.md` concurrently. Its
+  files were left out of every commit here; the worklog was written only once its diff was
+  empty.
