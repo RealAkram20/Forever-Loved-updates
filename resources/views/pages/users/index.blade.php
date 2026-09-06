@@ -14,7 +14,7 @@
         </div>
     @endif
 
-    <div class="space-y-6">
+    <div class="space-y-6" x-data="{ selected: [], page: @js($users->pluck('id')->reject(fn ($id) => $id === auth()->id())->values()) }">
         {{-- Filters & Actions --}}
         <x-common.component-card title="Manage Users" desc="View, create, edit and manage all system users.">
             {{-- Wrapping, not just stacking. Below `sm` these are a column and fine; from
@@ -33,6 +33,13 @@
                         @endforeach
                     </select>
                     <x-admin.reseller-filter :resellers="$resellers" :standalone="false" />
+                    {{-- Link-shaped or message-length names that own nothing: the accounts the
+                         2026-09-04 relay left behind. Same definition the bulk delete uses. --}}
+                    <label class="inline-flex h-11 items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <input type="checkbox" name="suspicious" value="1" @checked(request()->boolean('suspicious'))
+                            class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20" />
+                        Suspicious names
+                    </label>
                     <button type="submit"
                         class="btn btn-secondary btn-md">
                         Filter
@@ -45,11 +52,57 @@
                 </a>
             </div>
 
+            {{-- Bulk actions. Shown only once something is ticked, or when the suspicious
+                 filter is on and there is a whole set to clear. Both forms live outside the
+                 table: the per-row delete forms are inside it and forms cannot nest, so the
+                 row checkboxes reach this one through form="bulk-ids" instead. --}}
+            <div x-show="selected.length > 0" x-cloak
+                class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/40 dark:bg-red-900/20">
+                <p class="text-sm text-red-800 dark:text-red-300">
+                    <span class="font-semibold" x-text="selected.length"></span>
+                    <span x-text="selected.length === 1 ? 'user selected' : 'users selected'"></span>
+                    <span class="text-red-700/70 dark:text-red-300/70">&middot; memorial owners, payers and staff are never deleted, even if ticked</span>
+                </p>
+                <form id="bulk-ids" method="POST" action="{{ route('users.bulk-destroy') }}"
+                    onsubmit="return confirm('Delete the selected users? Accounts that own memorials, have payments, or are staff will be skipped.')">
+                    @csrf
+                    <input type="hidden" name="mode" value="ids" />
+                    @foreach (['search', 'role', 'reseller', 'suspicious'] as $k)
+                        @if (request()->filled($k))<input type="hidden" name="{{ $k }}" value="{{ request($k) }}" />@endif
+                    @endforeach
+                    <button type="submit" class="btn btn-md bg-red-600 text-white hover:bg-red-700">Delete selected</button>
+                </form>
+            </div>
+
+            @if (request()->boolean('suspicious') && $users->total() > 0)
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-900/20">
+                    <p class="text-sm text-amber-900 dark:text-amber-200">
+                        <span class="font-semibold">{{ number_format($users->total()) }}</span>
+                        {{ $users->total() === 1 ? 'account matches' : 'accounts match' }} the suspicious filter across all pages.
+                        Up to {{ \App\Support\JunkUserPurge::WEB_BATCH }} are removed per click; the message afterwards says how many remain.
+                    </p>
+                    <form method="POST" action="{{ route('users.bulk-destroy') }}"
+                        onsubmit="return confirm('Delete up to {{ \App\Support\JunkUserPurge::WEB_BATCH }} of the {{ number_format($users->total()) }} suspicious accounts? Memorial owners, payers and staff are always skipped.')">
+                        @csrf
+                        <input type="hidden" name="mode" value="scope" />
+                        <input type="hidden" name="suspicious" value="1" />
+                        <button type="submit" class="btn btn-md bg-amber-600 text-white hover:bg-amber-700">Delete all suspicious</button>
+                    </form>
+                </div>
+            @endif
+
             {{-- Users Table --}}
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-200 dark:border-gray-700">
+                            <th class="pb-3 w-8">
+                                <input type="checkbox" aria-label="Select all on this page"
+                                    :checked="page.length > 0 && selected.length === page.length"
+                                    :indeterminate="selected.length > 0 && selected.length < page.length"
+                                    @change="selected = $event.target.checked ? [...page] : []"
+                                    class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20" />
+                            </th>
                             <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Name</th>
                             <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">Email</th>
                             <th class="pb-3 text-left font-medium text-gray-500 dark:text-gray-400">Role</th>
@@ -64,6 +117,13 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @forelse ($users as $user)
                             <tr>
+                                <td class="py-3 w-8">
+                                    @if ($user->id !== auth()->id())
+                                        <input type="checkbox" form="bulk-ids" name="ids[]" value="{{ $user->id }}"
+                                            x-model.number="selected" aria-label="Select {{ $user->email }}"
+                                            class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20" />
+                                    @endif
+                                </td>
                                 <td class="py-3">
                                     <div class="font-medium text-gray-800 dark:text-white/90">{{ $user->name }}</div>
                                     <div class="text-xs text-gray-500 dark:text-gray-400 sm:hidden">{{ $user->email }}</div>
@@ -107,7 +167,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $resellers->isNotEmpty() ? 7 : 6 }}" class="py-8 text-center text-gray-500 dark:text-gray-400">No users found.</td>
+                                <td colspan="{{ $resellers->isNotEmpty() ? 8 : 7 }}" class="py-8 text-center text-gray-500 dark:text-gray-400">No users found.</td>
                             </tr>
                         @endforelse
                     </tbody>
