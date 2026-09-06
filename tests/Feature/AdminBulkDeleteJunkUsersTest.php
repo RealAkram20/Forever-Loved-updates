@@ -193,3 +193,62 @@ it('has a console command whose dry run deletes nothing', function () use ($payl
 
     expect(JunkUserPurge::query()->count())->toBe(0);
 });
+
+/**
+ * The whole set in one click, off the request.
+ */
+it('hands the entire suspicious set to a background job in all mode', function () use ($payload, $junk) {
+    \Illuminate\Support\Facades\Queue::fake();
+    foreach (range(1, 4) as $i) {
+        $junk($payload, "victim{$i}@example.test");
+    }
+
+    $this->actingAs($this->admin)
+        ->post(route('users.bulk-destroy'), ['mode' => 'all'])
+        ->assertRedirect(route('users.index', ['suspicious' => 1]))
+        ->assertSessionHas('success', fn ($msg) => str_contains($msg, 'Removing 4 suspicious accounts'));
+
+    \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\PurgeSuspiciousUsersJob::class);
+    // Nothing deleted in the request itself — that is the job's work.
+    expect(JunkUserPurge::query()->count())->toBe(4);
+});
+
+it('the job empties the set across slices and leaves guarded rows alone', function () use ($payload, $junk) {
+    foreach (range(1, 7) as $i) {
+        $junk($payload, "victim{$i}@example.test");
+    }
+    $family = $junk('graph.org/has-a-page', 'family@example.test');
+    $memorial = Memorial::factory()->create(['user_id' => $family->id]);
+    $grace = User::factory()->create(['name' => 'Grace Namutebi']);
+
+    // A slice of 3 forces three runs; ReliableDispatch falls back to dispatch_sync in tests
+    // (no healthy scheduler), so the chain runs to completion right here.
+    (new \App\Jobs\PurgeSuspiciousUsersJob(slice: 3))->handle();
+
+    expect(JunkUserPurge::query()->count())->toBe(0)
+        ->and(User::whereKey($family->id)->exists())->toBeTrue()
+        ->and(Memorial::whereKey($memorial->id)->exists())->toBeTrue()
+        ->and(User::whereKey($grace->id)->exists())->toBeTrue()
+        ->and(User::whereKey($this->admin->id)->exists())->toBeTrue();
+});
+
+it('the job stops rather than looping when everything left is refused', function () use ($junk) {
+    // Two junk-looking names that both own memorials: the filter excludes them (whereDoesntHave),
+    // so the set is empty and the job must return immediately without re-dispatching.
+    foreach (['a', 'b'] as $x) {
+        $o = $junk("graph.org/owner-{$x}", "owner{$x}@example.test");
+        Memorial::factory()->create(['user_id' => $o->id]);
+    }
+
+    \Illuminate\Support\Facades\Queue::fake();
+    (new \App\Jobs\PurgeSuspiciousUsersJob(slice: 1))->handle();
+
+    \Illuminate\Support\Facades\Queue::assertNothingPushed();
+    expect(User::count())->toBe(3); // two owners + the admin
+});
+
+it('says so when there is nothing to remove', function () {
+    $this->actingAs($this->admin)
+        ->post(route('users.bulk-destroy'), ['mode' => 'all'])
+        ->assertSessionHas('success', 'No suspicious accounts to remove.');
+});

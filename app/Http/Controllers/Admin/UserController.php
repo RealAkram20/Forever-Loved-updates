@@ -58,13 +58,33 @@ class UserController extends Controller
     public function bulkDestroy(Request $request)
     {
         $data = $request->validate([
-            'mode' => ['required', 'in:ids,scope'],
+            'mode' => ['required', 'in:ids,scope,all'],
             'ids' => ['required_if:mode,ids', 'array', 'max:'.\App\Support\JunkUserPurge::WEB_BATCH],
             'ids.*' => ['integer'],
         ]);
 
         $actor = auth()->user();
         $remaining = null;
+
+        // `all` hands the whole set to a job rather than deleting in the request. The
+        // 500-per-click cap protected the request, not the admin; an attack that left
+        // thousands of rows should be one click to undo, not dozens. Same definition,
+        // same refusals — only where the work runs changes.
+        if ($data['mode'] === 'all') {
+            $count = \App\Support\JunkUserPurge::query()->count();
+
+            if ($count === 0) {
+                return redirect()->route('users.index', ['suspicious' => 1])->with('success', 'No suspicious accounts to remove.');
+            }
+
+            \App\Support\ReliableDispatch::dispatch(new \App\Jobs\PurgeSuspiciousUsersJob);
+
+            return redirect()->route('users.index', ['suspicious' => 1])->with('success', sprintf(
+                'Removing %s suspicious %s in the background. Memorial owners, payers and staff are skipped. Refresh this filter in a minute to watch it drain.',
+                number_format($count),
+                $count === 1 ? 'account' : 'accounts'
+            ));
+        }
 
         if ($data['mode'] === 'ids') {
             $users = User::with('roles')->whereKey($data['ids'])->get();

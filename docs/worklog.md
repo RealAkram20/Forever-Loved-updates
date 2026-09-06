@@ -1337,3 +1337,12 @@ of difference on the contact page.
 - Another session was editing `themes/a-plus/**` and `docs/worklog.md` concurrently. Its
   files were left out of every commit here; the worklog was written only once its diff was
   empty.
+
+**Addendum 2026-09-07 — the whole set in one click.** The 500-per-click cap protected the
+request, not the person; asked not to be made to do this in halves. `mode=all` on
+`users.bulk-destroy` now hands the set to `PurgeSuspiciousUsersJob`, which deletes in slices of
+2000 and re-dispatches itself while rows remain — a short chain on a healthy queue, bounded
+pieces on the inline fallback, every slice committed. Stops (does not loop) when everything
+left is refused. Same `JunkUserPurge` definition and refusals. The screen's amber button is
+now this; the per-request `scope` mode stays in the controller, tested, unoffered. 14 tests in
+the file, suite 857 / 2733.
