@@ -241,6 +241,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ─── Users Management (admin only) ──────────────────────────────
     Route::middleware('role:admin|super-admin')->group(function () {
+        Route::post('users/bulk-delete', [UserController::class, 'bulkDestroy'])->name('users.bulk-destroy');
         Route::resource('users', UserController::class)->except(['show']);
 
         // ─── Reports ──────────────────────────────────────────────

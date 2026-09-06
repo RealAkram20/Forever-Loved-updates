@@ -32,6 +32,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The suspicious-name filter (JunkUserPurge) uses REGEXP, which MySQL has and
+        // sqlite does not. Registering it on the connection event rather than once at
+        // boot: RefreshDatabase reconnects between tests, and a function attached to the
+        // previous PDO is not on the next one. Case-insensitive, to match MySQL's
+        // behaviour on text columns, so the query means the same thing in both places.
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Database\Events\ConnectionEstablished::class,
+            function (\Illuminate\Database\Events\ConnectionEstablished $event): void {
+                if ($event->connection->getDriverName() !== 'sqlite') {
+                    return;
+                }
+
+                $event->connection->getPdo()->sqliteCreateFunction(
+                    'REGEXP',
+                    fn ($pattern, $value) => preg_match('/'.str_replace('/', '\/', (string) $pattern).'/iu', (string) $value) === 1,
+                    2
+                );
+            }
+        );
+
         // The base template is `resources/views` itself. The platform's own site lives there
         // and nothing is moved out of it — an earlier version of this relocated the visitor
         // blades into `themes/basic/`, which meant the main website was being served from
