@@ -79,12 +79,12 @@
                     <p class="text-sm text-amber-900 dark:text-amber-200">
                         <span class="font-semibold">{{ number_format($users->total()) }}</span>
                         {{ $users->total() === 1 ? 'account matches' : 'accounts match' }} the suspicious filter across all pages.
-                        Up to {{ \App\Support\JunkUserPurge::WEB_BATCH }} are removed per click; the message afterwards says how many remain.
+                        One click removes the whole set in the background; memorial owners, payers and staff are always skipped.
                     </p>
                     <form method="POST" action="{{ route('users.bulk-destroy') }}"
-                        onsubmit="return confirm('Delete up to {{ \App\Support\JunkUserPurge::WEB_BATCH }} of the {{ number_format($users->total()) }} suspicious accounts? Memorial owners, payers and staff are always skipped.')">
+                        onsubmit="return confirm('Delete all {{ number_format($users->total()) }} suspicious accounts? This runs in the background. Memorial owners, payers and staff are always skipped.')">
                         @csrf
-                        <input type="hidden" name="mode" value="scope" />
+                        <input type="hidden" name="mode" value="all" />
                         <input type="hidden" name="suspicious" value="1" />
                         <button type="submit" class="btn btn-md bg-amber-600 text-white hover:bg-amber-700">Delete all suspicious</button>
                     </form>
