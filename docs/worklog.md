@@ -1420,3 +1420,39 @@ background job, same refusals) through the styled confirm. Count is `Cache::reme
 (REGEXP scan; page opened often; the number only falls) and busted the moment any bulk delete
 starts, so the notice cannot show a stale count after a purge. Hidden on the filtered view,
 where the amber bar already is. 3 tests; file 17, suite 868 / 2776. Not clicked on production.
+
+### 2026-09-07 — Homepage showcase: "Featured Memorials / Remembering Loved Ones", paragraph gone
+
+**Status:** complete
+**Owns:** `app/Support/PlatformShowcaseCopy.php`,
+`database/migrations/2026_09_07_000000_rename_platform_showcase_copy.php`,
+`tests/Feature/PlatformShowcaseCopyTest.php`
+**Shares (exact edits):** `SiteLayoutService` (showcase props now read `PlatformShowcaseCopy::CURRENT`),
+`site-blocks/memorial-showcase.blade.php` (title fallback), `database/scripts/showcase-copy.php`
+(now a one-line delegate).
+
+**Asked:** drop the paragraph, "Featured" → "Featured Memorials", "Memorial Inspiration" →
+"Remembering Loved Ones".
+
+**Why it is a migration and not a view edit.** The heading is stored data — in the platform's
+page-builder `Page` and in the `SiteLayout` fallback — and stored props merge over defaults. A
+code change reaches a fresh install only; production keeps what it saved on day one. Every
+earlier change to this copy was a script somebody ran on the server (`showcase-copy.php`), or
+did not. Deploys run migrations (`composer.json` `migrate --graceful`; the updater
+`migrate --force`), so this lands with the deploy. Reversible: `down()` restores the paragraph.
+One constant is the source of truth for the migration, the fresh-install default and the
+manual script.
+
+**Verified:** ran locally — the stored page now reads the new copy with `description: ""`,
+which the block collapses with no gap. 6 tests: both stores rewritten and dead props dropped,
+idempotent, reversible, reseller pages untouched, the homepage renders the new words and not
+the old, and the migration file itself up/down. Suite 874 / 2793.
+
+**Found while testing, worth knowing:** the showcase block is `@if ($popularMemorials->
+isNotEmpty())` at line 1 — with no eligible memorial (public, active, platform-owned, named)
+the whole row, heading included, renders nothing. And creating a `Reseller` already leaves it a
+`visitor-home` page row (the composite unique on `reseller_id, slug` fired on a second insert).
+
+**Not verified:** production render after deploy — the migration runs there, not here. The
+block's `MemorialShowcaseBlock::defaultProps()` ("Trending / Popular Memorials") is left
+neutral on purpose; resellers adding the block get that, not our marketing.
