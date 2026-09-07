@@ -14,6 +14,35 @@
         </div>
     @endif
 
+    @if (! request()->boolean('suspicious') && ($suspiciousCount ?? 0) > 0)
+        {{-- Standing notice. The delete-all used to appear only after ticking a filter that nobody
+             had a reason to know about; an admin who opened this page saw thousands of fake rows
+             and one delete button per row. This says what is here and offers the one click. --}}
+        <div class="mb-6 flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/40 dark:bg-amber-900/20 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-start gap-3">
+                <svg class="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                <div>
+                    <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                        {{ number_format($suspiciousCount) }} {{ $suspiciousCount === 1 ? 'account looks' : 'accounts look' }} like the fake sign-ups
+                    </p>
+                    <p class="mt-1 text-sm text-amber-800/80 dark:text-amber-300/80">
+                        Names that are web addresses or messages, owning nothing. Removing them runs in the background and never touches memorial owners, payers or staff.
+                    </p>
+                </div>
+            </div>
+            <div class="flex shrink-0 flex-wrap items-center gap-2">
+                <a href="{{ route('users.index', ['suspicious' => 1]) }}" class="btn btn-secondary btn-md">Review them</a>
+                <form method="POST" action="{{ route('users.bulk-destroy') }}"
+                    x-confirm="'Delete all {{ number_format($suspiciousCount) }} fake accounts? This runs in the background. Memorial owners, payers and staff are always skipped.'"
+                    data-confirm-title="Delete fake accounts" data-confirm-label="Delete all">
+                    @csrf
+                    <input type="hidden" name="mode" value="all" />
+                    <button type="submit" class="btn btn-md bg-amber-600 text-white hover:bg-amber-700">Delete all {{ number_format($suspiciousCount) }}</button>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <div class="space-y-6" x-data="{ selected: [], page: @js($users->pluck('id')->reject(fn ($id) => $id === auth()->id())->values()) }">
         {{-- Filters & Actions --}}
         <x-common.component-card title="Manage Users" desc="View, create, edit and manage all system users.">

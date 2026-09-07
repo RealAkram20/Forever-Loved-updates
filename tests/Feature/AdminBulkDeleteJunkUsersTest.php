@@ -252,3 +252,51 @@ it('says so when there is nothing to remove', function () {
         ->post(route('users.bulk-destroy'), ['mode' => 'all'])
         ->assertSessionHas('success', 'No suspicious accounts to remove.');
 });
+
+/**
+ * The notice nobody has to go looking for.
+ */
+it('tells an admin on the plain Users page how many fake accounts exist, with a one-click delete', function () use ($payload, $junk) {
+    foreach (range(1, 3) as $i) {
+        $junk($payload, "victim{$i}@example.test");
+    }
+    User::factory()->create(['name' => 'Grace Namutebi']);
+
+    $html = $this->actingAs($this->admin)->get(route('users.index'))->assertOk()->getContent();
+
+    expect($html)->toContain('3 accounts look like the fake sign-ups')
+        ->and($html)->toContain('Delete all 3')
+        ->and($html)->toContain('name="mode" value="all"')
+        ->and($html)->toContain(route('users.index', ['suspicious' => 1]));
+});
+
+it('shows no notice when there is nothing suspicious, and none on the filtered view where the amber bar already is', function () use ($payload, $junk) {
+    User::factory()->create(['name' => 'Grace Namutebi']);
+
+    $this->actingAs($this->admin)->get(route('users.index'))
+        ->assertOk()
+        ->assertDontSee('look like the fake sign-ups')
+        ->assertDontSee('looks like the fake sign-ups');
+
+    $junk($payload, 'victim@example.test');
+    \Illuminate\Support\Facades\Cache::forget('users.suspicious_count');
+
+    $this->actingAs($this->admin)->get(route('users.index', ['suspicious' => 1]))
+        ->assertOk()
+        ->assertDontSee('like the fake sign-ups')
+        ->assertSee('Delete all suspicious');
+});
+
+it('drops the cached count the moment a purge is started, so the notice does not lie for a minute', function () use ($payload, $junk) {
+    $junk($payload, 'victim@example.test');
+    \Illuminate\Support\Facades\Cache::forget('users.suspicious_count');
+
+    // Warm the cache at 1 …
+    $this->actingAs($this->admin)->get(route('users.index'))->assertSee('1 account looks like the fake sign-ups');
+
+    // … purge (runs inline in tests) …
+    $this->actingAs($this->admin)->post(route('users.bulk-destroy'), ['mode' => 'all']);
+
+    // … and the next page load must not still say 1.
+    $this->actingAs($this->admin)->get(route('users.index'))->assertDontSee('like the fake sign-ups');
+});
