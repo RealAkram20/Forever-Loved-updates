@@ -1489,3 +1489,37 @@ one-per-request contract cannot drift silently.
 editor and real files; nobody has selected five files and watched the count tick. Behaviour
 with a mid-batch network drop is "that file fails, the rest continue" by construction, not by
 observation. Drag-and-drop was not asked for and was not added.
+
+### 2026-09-07 — Confirm dialog hid behind the modal that opened it
+
+**Status:** complete
+**Owns:** `tests/Feature/ConfirmDialogLayeringTest.php`
+**Shares (exact edits):** `layouts/fullscreen-layout.blade.php` (confirm backdrop z-[99998]→z-[100000]),
+`partials/confirm-dialog.blade.php` (admin dialog z-[100]→z-[1000000]), `public/build` (rebuilt).
+
+**Reported:** deleting a gallery category, the "Delete / Cancel" confirm appeared *behind* the
+Gallery categories editor — you had to press Done to reach it.
+
+**Cause:** the memorial confirm was z-[99998]; the categories and caption editors are z-[99998]
+too and the lightbox z-[99999]. Equal z falls back to DOM order, and the layout's confirm is
+declared before the page body, so the editor won. A confirmation must be the topmost thing on
+screen while open — raised to z-[100000], above every z the page and its script use. The admin's
+own dialog (`confirm-dialog.blade.php`) had the same latent fault at z-[100] against a z-[999999]
+popover and z-[99999] checkout modals; raised to z-[1000000].
+
+**Verified — and this one needed real rendering, not just tests.** Rendered the memorial page
+through the HTTP kernel as the owner (Apache still down), opened the categories editor and asked
+the confirm: it now sits on top. Two false trails on the way, both worth recording:
+- The first render showed the bug *still present* — because it used the CSS bundle built before
+  the change. Tailwind emits an arbitrary class like `z-[100000]` only if it saw it at build
+  time, so the source change does nothing until `npm run build`. Hence a test that greps the
+  built stylesheet, not just the Blade source.
+- That build-check test then "failed" while the class was demonstrably in the file: Pest's
+  `toContain($a, $b)` treats the second argument as a second needle, not a message, so it was
+  asserting the CSS contained my failure sentence. Fixed to `expect(str_contains(...))->toBeTrue(msg)`.
+
+4 layering tests (memorial above page, memorial above layout, admin above admin views, both
+compiled into built CSS), each proven to bite. Suite 881 / 2816.
+
+**Not verified:** a real click on production. The z-order is asserted from source + built CSS and
+confirmed in an offline render; nobody has deleted a category in a live browser.

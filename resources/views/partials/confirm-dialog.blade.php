@@ -30,7 +30,12 @@
 <div x-data x-cloak
     x-show="$store.confirm.open"
     x-on:keydown.escape.window="$store.confirm.cancel()"
-    class="fixed inset-0 z-[100] flex items-end justify-center p-4 sm:items-center"
+    {{-- z-[1000000]: a confirmation is the topmost thing on the screen while it is open, and the
+         admin has a z-[999999] popover and z-[99999] checkout modals. At z-[100] this would
+         have drawn *under* any of those the moment a form inside one used x-confirm -- the
+         same fault the memorial page had between its categories editor and its confirm.
+         ConfirmDialogLayeringTest holds it above every z-index the admin views use. --}}
+    class="fixed inset-0 z-[1000000] flex items-end justify-center p-4 sm:items-center"
     role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
 
     {{-- Backdrop. Clicking it is a cancel, never a confirm. --}}

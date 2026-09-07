@@ -236,7 +236,15 @@ window.addEventListener('resize', checkMobile);">
     </script>
 
     {{-- Global confirm dialog (replaces browser confirm()) --}}
-    <div id="confirm-dialog-backdrop" class="fixed inset-0 z-[99998] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+    {{-- z-[100000], and not a round number lower down. This dialog is asked from inside the
+         page's own modals -- the gallery categories editor and caption editor are z-[99998],
+         the lightbox z-[99999] -- and it was z-[99998] too. Equal z falls back to DOM order,
+         this element is declared before the page content, so the editor painted over the
+         question it had just raised: the family saw "Gallery categories" and had to press
+         Done to find the Delete/Cancel underneath. A confirmation is by definition the
+         topmost thing on the screen while it is open. ConfirmDialogLayeringTest holds it
+         above every z-index the memorial page uses. --}}
+    <div id="confirm-dialog-backdrop" class="fixed inset-0 z-[100000] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="mx-4 w-full max-w-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl">
             <div class="p-5">
                 <div class="flex items-start gap-3">
