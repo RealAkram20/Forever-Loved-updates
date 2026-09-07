@@ -89,6 +89,7 @@
                     cursor: 0,
                     selectedId: config.initialId ?? '',
                     selectedLabel: '',
+                    ownerId: null,
 
                     init() {
                         // Picking a memorial fills in its owner. Done through the store rather
@@ -107,8 +108,12 @@
                         // And changing the user invalidates a memorial that belonged to somebody
                         // else — leaving it selected is exactly the mismatch the server rejects.
                         if (config.model === 'memorial') {
-                            this.$watch('$store.orderPair.userId', () => {
+                            this.$watch('$store.orderPair.userId', (uid) => {
                                 if (!this.selectedId) return;
+                                // The user we just handed over from this very memorial is not a
+                                // reason to drop it -- that is the auto-fill working, not a
+                                // conflict. Only a switch to a different person clears it.
+                                if (String(uid) === String(this.ownerId)) return;
                                 this.clear();
                             });
                         }
@@ -119,9 +124,6 @@
                     },
 
                     emptyMessage() {
-                        if (config.model === 'memorial' && Alpine.store('orderPair').userId) {
-                            return 'No memorials for that user.';
-                        }
                         return this.term ? 'Nothing found.' : 'Type to search.';
                     },
 
@@ -130,11 +132,6 @@
                         this.cursor = 0;
 
                         const params = new URLSearchParams({ type: config.type, q: this.term });
-
-                        // Only ever offer memorials the chosen person actually owns.
-                        if (config.model === 'memorial' && Alpine.store('orderPair').userId) {
-                            params.set('user_id', Alpine.store('orderPair').userId);
-                        }
 
                         try {
                             const res = await fetch(`${config.endpoint}?${params}`, {
@@ -167,6 +164,7 @@
                             store.userId = row.id;
                         } else {
                             store.memorialId = row.id;
+                            this.ownerId = row.user_id ?? null;
                             // Hand the owner over, so the person is filled in rather than hunted for.
                             if (row.user_id) store.fillUser = { id: row.user_id, label: row.sub };
                         }

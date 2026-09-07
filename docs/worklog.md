@@ -1523,3 +1523,45 @@ compiled into built CSS), each proven to bite. Suite 881 / 2816.
 
 **Not verified:** a real click on production. The z-order is asserted from source + built CSS and
 confirmed in an offline render; nobody has deleted a category in a live browser.
+
+### 2026-09-07 — Payment order form: could never be submitted; now memorial-led
+
+**Status:** complete
+**Owns:** `tests/Feature/PaymentOrderMemorialFirstTest.php`
+**Shares (exact edits):** `components/admin/option-search.blade.php` (the field-pair JS),
+`pages/settings/payment-orders.blade.php` (Memorial before User, User shown as auto-filled).
+
+**Reported:** "I cannot create an order" — the form showed "The memorial id field is required"
+no matter what.
+
+**Cause — a feedback loop between the two type-ahead fields.** They share an Alpine store.
+Picking a memorial handed its owner to the User field (`store.fillUser`); the User field set
+`store.userId`; and the Memorial field watched `store.userId` and, on any change, called
+`clear()` to drop a memorial that might belong to a different person. So the auto-fill it had
+just triggered wiped the memorial that triggered it, and `memorial_id` posted empty every time.
+That guard was written for a user-led flow ("changed the user, so invalidate a mismatched
+memorial"), and it could not tell "the owner I just filled from this memorial" from "a
+different person".
+
+**Fix, matching the request that the memorial should drive and the user derive:**
+- The Memorial field records the chosen memorial's `ownerId`; its `userId` watcher no longer
+  clears when the incoming user *is* that owner — only a genuine switch to someone else does.
+- Memorial search no longer pre-filters by a chosen user, so a super-admin searches **any**
+  memorial on the platform (the endpoint never scoped by owner; only the client narrowed it).
+- The view leads with Memorial; the User field is presented as auto-filled ("Selected
+  automatically from the memorial's owner").
+
+No controller change was needed. `storePaymentOrder` already allows any memorial for an
+admin/super-admin and only requires `memorial->user_id === user_id`, which the auto-fill
+satisfies. That mismatch guard is kept and still fires if the pair is posted mismatched
+directly.
+
+**Verified:** suite 885 / 2829. Four tests: the options endpoint offers another user's memorial
+and carries its owner id; a super-admin creates an order against another user's memorial; the
+mismatch guard still rejects a wrong pairing; the form renders Memorial before the auto-filled
+User. No JS runner here, so the loop fix itself is covered by the endpoint/store contract and
+the field order, not by driving Alpine.
+
+**Not verified:** the type-ahead in a real browser — Apache is down. The acute failure
+(memorial_id empty) was reproduced by reading the loop, not by clicking; the fix removes the
+`clear()` that caused it. Worth one manual create after deploy.

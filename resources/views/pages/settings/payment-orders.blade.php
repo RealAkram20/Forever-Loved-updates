@@ -223,25 +223,28 @@
                              filled in for you. The server still refuses a mismatched pair —
                              that guard stays — but it should now be unreachable by hand rather
                              than something you discover after submitting. --}}
-                        <div>
-                            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">User</label>
-                            <x-admin.option-search
-                                name="user_id"
-                                type="users"
-                                placeholder="Search name or email..."
-                                :value="old('user_id')"
-                                model="user" />
-                            @error('user_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
-                        </div>
+                        {{-- Memorial leads: billing is per memorial, and picking one fills in its
+                             owner below. A super-admin can search any memorial on the platform. --}}
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Memorial</label>
                             <x-admin.option-search
                                 name="memorial_id"
                                 type="memorials"
-                                placeholder="Search memorial name..."
+                                placeholder="Search any memorial…"
                                 :value="old('memorial_id')"
                                 model="memorial" />
                             @error('memorial_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">User</label>
+                            <x-admin.option-search
+                                name="user_id"
+                                type="users"
+                                placeholder="Filled from the memorial…"
+                                :value="old('user_id')"
+                                model="user" />
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Selected automatically from the memorial's owner. Change it only to bill a different account.</p>
+                            @error('user_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Plan</label>
