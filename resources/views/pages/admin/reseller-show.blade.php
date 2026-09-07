@@ -32,7 +32,7 @@
                 </form>
                 @if ($reseller->isActive())
                     <form action="{{ route('settings.resellers.suspend', $reseller) }}" method="POST"
-                        onsubmit="return confirm('Suspend {{ addslashes($reseller->name) }}? Their public memorials and subdomain keep working — only their own dashboard access is blocked.')">
+                        x-confirm="'Suspend {{ addslashes($reseller->name) }}? Their public memorials and subdomain keep working — only their own dashboard access is blocked.'">
                         @csrf
                         <button type="submit" class="btn btn-danger-soft btn-md">Suspend</button>
                     </form>
@@ -344,7 +344,7 @@
                         </div>
 
                         <form action="{{ route('settings.resellers.verify-domain', $reseller) }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-5"
-                            onsubmit="return confirm('Mark this domain verified? Only do this once you have confirmed the DNS is correct yourself — it skips the TXT-record check entirely.')">
+                            x-confirm="'Mark this domain verified? Only do this once you have confirmed the DNS is correct yourself — it skips the TXT-record check entirely.'">
                             @csrf
                             <button type="submit" class="btn btn-secondary btn-sm">Mark verified manually</button>
                             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -391,7 +391,7 @@
                     </div>
 
                     <form action="{{ route('settings.resellers.custom-domain.clear', $reseller) }}" method="POST" class="border-t border-gray-100 dark:border-gray-800 pt-5"
-                        onsubmit="return confirm('Remove this custom domain? Their {{ $reseller->slug }}.{{ config('reseller.domain') }} address keeps working — visitors on the removed domain will stop reaching their site.')">
+                        x-confirm="'Remove this custom domain? Their {{ $reseller->slug }}.{{ config('reseller.domain') }} address keeps working — visitors on the removed domain will stop reaching their site.'">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger-soft btn-sm">Remove domain</button>
@@ -421,7 +421,7 @@
                 </div>
                 <div class="space-y-5 border-t border-gray-100 dark:border-gray-800 p-6">
                     <form action="{{ route('settings.resellers.rollover', $reseller) }}" method="POST"
-                        onsubmit="return confirm('Roll over every client and memorial to direct platform ownership? This is meant for when the partnership has ended. It can be reversed with Restore.')">
+                        x-confirm="'Roll over every client and memorial to direct platform ownership? This is meant for when the partnership has ended. It can be reversed with Restore.'">
                         @csrf
                         <button type="submit" class="btn btn-danger-soft btn-sm">Roll over clients</button>
                         <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">

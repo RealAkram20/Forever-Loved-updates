@@ -175,7 +175,7 @@
                     </p>
                     @if ($overrideCount)
                         <button type="submit" form="reseller-appearance-reset" class="btn btn-secondary btn-sm"
-                            onclick="return confirm('Reset every colour and font back to the platform defaults? Your logo and favicon are not affected.')">
+                            x-confirm="'Reset every colour and font back to the platform defaults? Your logo and favicon are not affected.'">
                             Reset to platform defaults
                         </button>
                     @endif

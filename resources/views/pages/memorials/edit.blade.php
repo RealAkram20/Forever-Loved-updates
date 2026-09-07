@@ -605,7 +605,8 @@
                         } catch (e) { window.$toast?.('error', 'Could not update the role.'); }
                     },
                     async remove(c) {
-                        if (!window.confirm('Remove ' + (c.name || c.email) + ' from this memorial?')) return;
+                        // Our dialog, not the browser's. The store resolves a Promise, and this method is already async.
+                        if (! await Alpine.store('confirm').ask({ message: 'Remove ' + (c.name || c.email) + ' from this memorial?', label: 'Remove' })) return;
                         try {
                             const r = await fetch(base + '/' + c.id, { method: 'DELETE', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() } });
                             if (r.ok) this.collaborators = this.collaborators.filter(x => x.id !== c.id);

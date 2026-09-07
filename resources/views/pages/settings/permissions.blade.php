@@ -24,7 +24,7 @@
                         <span class="text-xs text-gray-500 dark:text-gray-400">({{ $role->users_count ?? $role->users()->count() }} users)</span>
                         @if (!in_array($role->name, ['super-admin', 'admin', 'user']))
                             <form action="{{ route('settings.roles.destroy', $role) }}" method="POST" class="inline"
-                                onsubmit="return confirm('Delete this role?')">
+                                x-confirm="'Delete this role?'">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-700 transition">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -62,7 +62,7 @@
                         <div class="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2 text-sm">
                             <span class="font-mono text-gray-800 dark:text-white/90">{{ $permission->name }}</span>
                             <form action="{{ route('settings.permissions.destroy', $permission) }}" method="POST" class="inline"
-                                onsubmit="return confirm('Delete the {{ addslashes($permission->name) }} permission? It will be removed from every role.')">
+                                x-confirm="'Delete the {{ addslashes($permission->name) }} permission? It will be removed from every role.'">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-700 transition" title="Delete permission">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>

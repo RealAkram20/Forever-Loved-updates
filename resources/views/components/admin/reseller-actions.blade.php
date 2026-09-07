@@ -62,7 +62,7 @@
 
         @if ($reseller->isActive())
             <form action="{{ route('settings.resellers.suspend', $reseller) }}" method="POST" role="none"
-                onsubmit="return confirm('Suspend {{ addslashes($reseller->name) }}? Their public memorials and subdomain keep working — only their own dashboard access is blocked.')">
+                x-confirm="'Suspend {{ addslashes($reseller->name) }}? Their public memorials and subdomain keep working — only their own dashboard access is blocked.'">
                 @csrf
                 <button type="submit" role="menuitem" class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-red-600 transition-colors duration-150 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.25"/><path d="m6.5 6.5 11 11"/></svg>

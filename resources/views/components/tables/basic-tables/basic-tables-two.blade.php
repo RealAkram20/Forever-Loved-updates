@@ -91,8 +91,8 @@
         };
         return classes[status] || '';
     },
-    deleteRow(id) {
-        if (confirm('Are you sure you want to delete this order?')) {
+    async deleteRow(id) {
+        if (await Alpine.store('confirm').ask({ message: 'Are you sure you want to delete this order?', label: 'Delete' })) {
             this.tableRowData = this.tableRowData.filter(row => row.id !== id);
             this.selectedRows = this.selectedRows.filter(rowId => rowId !== id);
         }

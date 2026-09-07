@@ -43,7 +43,7 @@
                                 <td class="px-6 py-4 text-right">
                                     @if ($member->id !== $ownerId)
                                         <form action="{{ route('reseller.staff.destroy', $member) }}" method="POST" class="inline"
-                                            onsubmit="return confirm('Remove {{ addslashes($member->name) }} from your team? They lose access to your reseller account immediately.')">
+                                            x-confirm="'Remove {{ addslashes($member->name) }} from your team? They lose access to your reseller account immediately.'">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 transition-colors duration-150 hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-900/20 dark:hover:text-red-400">
                                                 Remove

@@ -142,7 +142,7 @@
                                                             <input type="hidden" name="action" value="suspend" />
                                                             <button type="submit" class="flex w-full px-3 py-2 text-left text-theme-xs font-medium text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-white">Suspend</button>
                                                         </form>
-                                                        <form method="POST" action="{{ route('memorials.status', $memorial) }}" class="block" onsubmit="return confirm('Are you sure you want to delete this memorial?');">
+                                                        <form method="POST" action="{{ route('memorials.status', $memorial) }}" class="block" x-confirm="'Are you sure you want to delete this memorial?'">
                                                             @csrf
                                                             <input type="hidden" name="action" value="delete" />
                                                             <button type="submit" class="flex w-full px-3 py-2 text-left text-theme-xs font-medium text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
@@ -208,7 +208,7 @@
                                                 <a href="{{ route('memorials.edit', $memorial) }}" title="Edit" class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
                                                     <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                 </a>
-                                                <form method="POST" action="{{ route('memorials.destroy', $memorial) }}" class="inline shrink-0" onsubmit="return confirm('Are you sure?');">
+                                                <form method="POST" action="{{ route('memorials.destroy', $memorial) }}" class="inline shrink-0" x-confirm="'Are you sure?'">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" title="Delete" class="p-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
