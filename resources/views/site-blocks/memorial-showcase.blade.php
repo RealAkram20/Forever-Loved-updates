@@ -18,7 +18,7 @@
                 @if (!empty($props['eyebrow']))
                     <p class="ap-eyebrow text-sm font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-400">{{ $props['eyebrow'] }}</p>
                 @endif
-                <h2 class="ap-title font-display mt-2 text-3xl font-semibold text-gray-900 dark:text-white sm:text-4xl">{{ $props['title'] ?? 'Memorial Inspiration' }}</h2>
+                <h2 class="ap-title font-display mt-2 text-3xl font-semibold text-gray-900 dark:text-white sm:text-4xl">{{ $props['title'] ?? 'Remembering Loved Ones' }}</h2>
                 @if (!empty($props['description']))
                     <p class="mt-3 text-base leading-relaxed text-gray-600 dark:text-gray-400">{{ $props['description'] }}</p>
                 @endif

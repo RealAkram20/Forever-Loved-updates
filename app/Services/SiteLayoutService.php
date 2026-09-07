@@ -30,15 +30,14 @@ class SiteLayoutService
                 // so a reseller adding the same block to their page inherits a neutral heading
                 // rather than our marketing.
                 //
-                // "Illustrative" rather than "fictional", which an earlier draft said: the row
-                // pulls any sufficiently complete public memorial on this site, so the day a
-                // real family builds one here, calling it fictional would be a false statement
-                // about somebody's father. Illustrative stays true either way.
-                ['type' => MemorialShowcaseBlock::type(), 'props' => array_merge(MemorialShowcaseBlock::defaultProps(), [
-                    'eyebrow' => 'Featured',
-                    'title' => 'Memorial Inspiration',
-                    'description' => 'Not sure where to begin? A memorial can be as unique as the life it celebrates. Let these illustrative memorials inspire you to create a beautiful place filled with love, memories, and the moments that made someone special.',
-                ])],
+                // The words themselves live in PlatformShowcaseCopy, because this default only
+                // ever reaches a fresh install — production renders the *stored* page, and a
+                // data migration is what moves that. Reading the same constant keeps the two
+                // from drifting the next time someone changes the heading.
+                ['type' => MemorialShowcaseBlock::type(), 'props' => array_merge(
+                    MemorialShowcaseBlock::defaultProps(),
+                    \App\Support\PlatformShowcaseCopy::CURRENT,
+                )],
                 ['type' => FeaturesGridBlock::type(), 'props' => FeaturesGridBlock::defaultProps()],
                 ['type' => CtaBannerBlock::type(), 'props' => CtaBannerBlock::defaultProps()],
             ],
