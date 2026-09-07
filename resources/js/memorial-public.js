@@ -924,47 +924,101 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Gallery upload (supports Images/Videos sub-tabs + lightbox) ---
+    //
+    // Several files at once, one request each, in order. Not one request carrying all of them:
+    // PHP's post_max_size caps the whole body (16M locally, unknown on the host) and a batch
+    // over it is silently truncated rather than refused. One-per-request also keeps the
+    // server's per-file checks -- type, size, the plan's photo/video quota, storage -- exactly
+    // as they are, and lets the person be told which files did not make it and why, instead
+    // of "upload failed" for the lot. Sequential rather than parallel so the quota is checked
+    // against a count that includes the file before it.
     if (canUpload) {
-        document.getElementById('gallery-upload')?.addEventListener('change', (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const d = galleryData();
-            // Upload into whatever category is being browsed, so the picture lands where the
-            // person was looking instead of somewhere they then have to go and find.
-            const targetCat = d && /^\d+$/.test(String(d.activeCat)) ? String(d.activeCat) : '';
+        // Put one uploaded item into the grid. Unchanged from the single-file version; it is
+        // now called once per success.
+        const placeInGallery = (media, d) => {
+            const video = media.type === 'video';
+            const grid = document.getElementById(video ? 'gallery-grid-videos' : 'gallery-grid-images');
+            if (!grid) return;
+
+            const keys = media.gallery_category_id ? [String(media.gallery_category_id)] : ['uncategorised'];
+            if (video) {
+                d?.addVideo(media.id, keys);
+            } else {
+                d?.addImage(media.id, media.url, media.caption || '', keys);
+            }
+
+            // Appended before initTree so Alpine can resolve matches() and
+            // openLightbox() from the enclosing gallery scope.
+            const cell = buildGalleryCell(media);
+            grid.appendChild(cell);
+            if (typeof Alpine !== 'undefined') Alpine.initTree(cell);
+        };
+
+        // Upload one file. Resolves to a result rather than throwing, so the loop below can
+        // keep going past a failure and report at the end.
+        const uploadOne = (file, targetCat, label) => {
             const fd = new FormData();
             fd.append('file', file);
             fd.append('_token', csrf);
             if (targetCat) fd.append('gallery_category_id', targetCat);
-            const isVideo = file.type.startsWith('video/');
-            const label = isVideo ? 'Uploading video to gallery…' : 'Uploading photo to gallery…';
-            postFormDataWithUploadProgress(`${baseUrl}/gallery`, fd, { label })
-                .then(data => {
-                    if (!data.success || !data.media) {
-                        if (data.error) $toast('error', data.error);
-                        return;
-                    }
 
-                    const media = data.media;
-                    const video = media.type === 'video';
-                    const grid = document.getElementById(video ? 'gallery-grid-videos' : 'gallery-grid-images');
-                    if (!grid) return;
+            return postFormDataWithUploadProgress(`${baseUrl}/gallery`, fd, { label })
+                .then(data => (data.success && data.media)
+                    ? { ok: true, media: data.media }
+                    : { ok: false, error: data.error || 'Gallery upload failed.' })
+                .catch(err => ({ ok: false, error: err.message || 'Gallery upload failed.' }));
+        };
 
-                    const keys = media.gallery_category_id ? [String(media.gallery_category_id)] : ['uncategorised'];
-                    if (video) {
-                        d?.addVideo(media.id, keys);
-                    } else {
-                        d?.addImage(media.id, media.url, media.caption || '', keys);
-                    }
-
-                    // Appended before initTree so Alpine can resolve matches() and
-                    // openLightbox() from the enclosing gallery scope.
-                    const cell = buildGalleryCell(media);
-                    grid.appendChild(cell);
-                    if (typeof Alpine !== 'undefined') Alpine.initTree(cell);
-                })
-                .catch(err => { $toast('error', err.message || 'Gallery upload failed.'); });
+        document.getElementById('gallery-upload')?.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files || []);
+            // Clear the picker straight away: choosing the same files again must fire change.
             e.target.value = '';
+            if (!files.length) return;
+
+            const d = galleryData();
+            // Upload into whatever category is being browsed, so the pictures land where the
+            // person was looking instead of somewhere they then have to go and find.
+            const targetCat = d && /^\d+$/.test(String(d.activeCat)) ? String(d.activeCat) : '';
+
+            const total = files.length;
+            let done = 0;
+            const failures = [];
+
+            for (let i = 0; i < total; i++) {
+                const file = files[i];
+                const kind = file.type.startsWith('video/') ? 'video' : 'photo';
+                const label = total === 1
+                    ? `Uploading ${kind} to gallery…`
+                    : `Uploading ${i + 1} of ${total} (${kind})…`;
+
+                const result = await uploadOne(file, targetCat, label);
+
+                if (result.ok) {
+                    placeInGallery(result.media, d);
+                    done++;
+                } else {
+                    failures.push({ name: file.name, error: result.error });
+                }
+            }
+
+            // One message for the batch. A single file keeps the old behaviour (an error toast
+            // and nothing on success); several get a count, and the distinct reasons anything
+            // was refused -- "limit reached" once, not once per file that hit it.
+            if (total === 1) {
+                if (failures.length) $toast('error', failures[0].error);
+                return;
+            }
+
+            if (!failures.length) {
+                $toast('success', `Uploaded ${done} ${done === 1 ? 'item' : 'items'} to the gallery.`);
+                return;
+            }
+
+            const reasons = [...new Set(failures.map(f => f.error))];
+            $toast(
+                done ? 'warning' : 'error',
+                `Uploaded ${done} of ${total}. ${failures.length} not added: ${reasons.join(' · ')}`
+            );
         });
     }
 

@@ -694,7 +694,7 @@
                             </div>
                             @if ($canEdit)
                                 <label class="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium transition-colors duration-150 hover:bg-gray-50 active:scale-[0.97] motion-reduce:active:scale-100 dark:border-gray-600 dark:hover:bg-white/5">
-                                    <input type="file" id="gallery-upload" accept="image/*,video/*" class="hidden" />
+                                    <input type="file" id="gallery-upload" accept="image/*,video/*" multiple class="hidden" />
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     <span>Upload<span x-show="uploadTargetName" x-cloak x-text="' to ' + uploadTargetName"></span></span>
                                 </label>

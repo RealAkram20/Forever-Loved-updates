@@ -1456,3 +1456,36 @@ the whole row, heading included, renders nothing. And creating a `Reseller` alre
 **Not verified:** production render after deploy — the migration runs there, not here. The
 block's `MemorialShowcaseBlock::defaultProps()` ("Trending / Popular Memorials") is left
 neutral on purpose; resellers adding the block get that, not our marketing.
+
+### 2026-09-07 — Gallery: pick several photos and videos at once
+
+**Status:** complete
+**Owns:** `tests/Feature/GalleryMultiUploadTest.php`
+**Shares (exact edits):** `pages/memorials/public.blade.php` (`multiple` on `#gallery-upload`),
+`resources/js/memorial-public.js` (the change handler: a sequential per-file loop), `public/build`
+(rebuilt).
+
+**Asked:** upload multiple images and media to a memorial's gallery at once.
+
+**Design, and why it is not one request.** The server still receives one file per request —
+`uploadGalleryMedia` is untouched. Three reasons, in order of weight: PHP's `post_max_size`
+caps the whole body (16M locally, unknown on the host) and a batch over it is *silently
+truncated*, not refused; one-per-request keeps every per-file check exactly as it is (type,
+size, the plan's photo/video quota, storage); and the person can be told *which* files did not
+make it and why. Sequential rather than parallel so the quota is checked against a count that
+includes the file before it — parallel uploads could all pass a "9 of 10" check and land 14.
+
+**Behaviour:** label reads "Uploading 2 of 5 (photo)…"; each success is placed in the grid as
+before; at the end one message — "Uploaded 5 items", or "Uploaded 3 of 5. 2 not added: Gallery
+image limit reached (10/10)" with reasons de-duplicated. A single file keeps the old behaviour
+exactly. The picker is cleared first so re-choosing the same files fires `change`.
+
+**Verified:** suite 877 / 2800; the Vite build compiled the changed bundle (there is no JS test
+runner in this repo — the build is the syntax check). Tests assert `multiple` on the input for
+an editor, no input for a visitor, and that the endpoint still 422s a `file[]` array, so the
+one-per-request contract cannot drift silently.
+
+**Not verified:** the loop in a browser. Local Apache is down and the flow needs a signed-in
+editor and real files; nobody has selected five files and watched the count tick. Behaviour
+with a mid-batch network drop is "that file fails, the rest continue" by construction, not by
+observation. Drag-and-drop was not asked for and was not added.
