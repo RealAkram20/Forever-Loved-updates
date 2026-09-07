@@ -46,7 +46,7 @@
                                 <div class="flex gap-2">
                                     <button @click="editing = true" class="btn btn-secondary btn-sm flex-1">Edit</button>
                                     @if (!$plan->subscriptions()->exists())
-                                        <form action="{{ route('reseller.plans.destroy', $plan) }}" method="POST" onsubmit="return confirm('Delete this plan?')">
+                                        <form action="{{ route('reseller.plans.destroy', $plan) }}" method="POST" x-confirm="'Delete this plan?'">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-danger-soft btn-sm">Delete</button>
                                         </form>

@@ -386,6 +386,8 @@
     </script>
 
     @include('vendor.laraupdater.notification')
+    {{-- The styled confirm() replacement. Mounted once; any form or button opts in with x-confirm. --}}
+    @include('partials.confirm-dialog')
 </body>
 
 @stack('scripts')

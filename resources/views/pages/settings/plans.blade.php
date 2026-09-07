@@ -72,7 +72,7 @@
                                     </button>
                                     @if (!$plan->subscriptions()->exists())
                                         <form action="{{ route('settings.plans.destroy', $plan) }}" method="POST"
-                                            onsubmit="return confirm('Delete this plan?')">
+                                            x-confirm="'Delete this plan?'">
                                             @csrf @method('DELETE')
                                             <button type="submit"
                                                 class="btn btn-danger-soft btn-sm">

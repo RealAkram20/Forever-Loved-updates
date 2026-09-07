@@ -89,7 +89,7 @@
                     <div class="mt-3 flex flex-wrap items-center gap-2">
                         @foreach ($keptPages as $kept)
                             <form method="POST" action="{{ route('reseller.theme.reset-page') }}"
-                                onsubmit="return confirm('Replace your {{ $kept['title'] }} page with this theme\'s design? What you have built on that page will be replaced.');">
+                                x-confirm="'Replace your {{ $kept['title'] }} page with this theme\'s design? What you have built on that page will be replaced.'">
                                 @csrf
                                 <input type="hidden" name="slug" value="{{ $kept['slug'] }}">
                                 <button type="submit" class="btn btn-secondary btn-sm">
@@ -196,7 +196,7 @@
                                         @method('DELETE')
                                         <button type="submit"
                                             class="text-xs font-medium text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                                            onclick="return confirm('Delete “{{ $theme->name }}”? Your site is not using it, so nothing on it changes.')">
+                                            x-confirm="'Delete “{{ $theme->name }}”? Your site is not using it, so nothing on it changes.'">
                                             Delete
                                         </button>
                                     </form>

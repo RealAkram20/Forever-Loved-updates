@@ -156,7 +156,7 @@
                                 <button type="button" @click="startEdit({{ \Illuminate\Support\Js::from($payload) }})" class="btn btn-secondary btn-sm">Edit</button>
 
                                 @if ($tier->resellers_count === 0)
-                                    <form action="{{ route('settings.reseller-tiers.destroy', $tier) }}" method="POST" onsubmit="return confirm('Delete the {{ addslashes($tier->name) }} tier?')">
+                                    <form action="{{ route('settings.reseller-tiers.destroy', $tier) }}" method="POST" x-confirm="'Delete the {{ addslashes($tier->name) }} tier?'">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="rounded-lg p-2 text-gray-400 transition-colors duration-150 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400" title="Delete tier">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7m3.5 0-.7 12.1a1.5 1.5 0 0 1-1.5 1.4H8.2a1.5 1.5 0 0 1-1.5-1.4L6 7"/></svg>

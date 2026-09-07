@@ -105,7 +105,7 @@
                                 </p>
                             </div>
                             <form action="{{ route('settings.appearance.fonts.destroy', $i) }}" method="POST"
-                                onsubmit="return confirm('Delete the font “{{ $font['name'] }}”? Pages using it fall back to the theme default.');">
+                                x-confirm="'Delete the font “{{ $font['name'] }}”? Pages using it fall back to the theme default.'">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="rounded-lg p-2 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20" aria-label="Delete font {{ $font['name'] }}">

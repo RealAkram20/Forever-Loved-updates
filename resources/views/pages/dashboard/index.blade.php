@@ -57,12 +57,12 @@
                                     @endif
                                     <span class="mt-2 flex flex-wrap items-center gap-2">
                                         <form method="POST" action="{{ route('settings.queue.retry-failed') }}"
-                                            onsubmit="return confirm('Retry all {{ $systemHealth['failedJobs'] }} failed jobs? If the cause is still there they will simply fail again.')">
+                                            x-confirm="'Retry all {{ $systemHealth['failedJobs'] }} failed jobs? If the cause is still there they will simply fail again.'">
                                             @csrf
                                             <button type="submit" class="rounded-lg border border-amber-300 bg-white/70 px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-white dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-100">Retry all</button>
                                         </form>
                                         <form method="POST" action="{{ route('settings.queue.clear-failed') }}"
-                                            onsubmit="return confirm('Delete all {{ $systemHealth['failedJobs'] }} failed jobs permanently? Whatever they would have sent will never be sent.')">
+                                            x-confirm="'Delete all {{ $systemHealth['failedJobs'] }} failed jobs permanently? Whatever they would have sent will never be sent.'">
                                             @csrf
                                             <button type="submit" class="rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40">Clear them</button>
                                         </form>

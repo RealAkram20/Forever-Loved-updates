@@ -80,7 +80,7 @@
                                             </button>
                                         </form>
                                         <form action="{{ route('reseller.clients.destroy', $client) }}" method="POST" class="inline"
-                                            onsubmit="return confirm('Remove {{ addslashes($client->name) }} from your client list? Their memorials stay published — only the link to your business is removed.')">
+                                            x-confirm="'Remove {{ addslashes($client->name) }} from your client list? Their memorials stay published — only the link to your business is removed.'">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 transition-colors duration-150 hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-900/20 dark:hover:text-red-400">
                                                 Remove

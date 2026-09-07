@@ -64,7 +64,7 @@
                     <span class="text-red-700/70 dark:text-red-300/70">&middot; memorial owners, payers and staff are never deleted, even if ticked</span>
                 </p>
                 <form id="bulk-ids" method="POST" action="{{ route('users.bulk-destroy') }}"
-                    onsubmit="return confirm('Delete the selected users? Accounts that own memorials, have payments, or are staff will be skipped.')">
+                    x-confirm="'Delete the selected users? Accounts that own memorials, have payments, or are staff will be skipped.'">
                     @csrf
                     <input type="hidden" name="mode" value="ids" />
                     @foreach (['search', 'role', 'reseller', 'suspicious'] as $k)
@@ -82,7 +82,7 @@
                         One click removes the whole set in the background; memorial owners, payers and staff are always skipped.
                     </p>
                     <form method="POST" action="{{ route('users.bulk-destroy') }}"
-                        onsubmit="return confirm('Delete all {{ number_format($users->total()) }} suspicious accounts? This runs in the background. Memorial owners, payers and staff are always skipped.')">
+                        x-confirm="'Delete all {{ number_format($users->total()) }} suspicious accounts? This runs in the background. Memorial owners, payers and staff are always skipped.'">
                         @csrf
                         <input type="hidden" name="mode" value="all" />
                         <input type="hidden" name="suspicious" value="1" />
@@ -153,7 +153,7 @@
                                         </a>
                                         @if ($user->id !== auth()->id())
                                             <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline"
-                                                onsubmit="return confirm('Are you sure you want to delete {{ addslashes($user->name) }}?')">
+                                                x-confirm="'Are you sure you want to delete {{ addslashes($user->name) }}?'">
                                                 @csrf @method('DELETE')
                                                 <button type="submit"
                                                     class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"

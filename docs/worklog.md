@@ -1346,3 +1346,30 @@ pieces on the inline fallback, every slice committed. Stops (does not loop) when
 left is refused. Same `JunkUserPurge` definition and refusals. The screen's amber button is
 now this; the per-request `scope` mode stays in the controller, tested, unoffered. 14 tests in
 the file, suite 857 / 2733.
+
+### 2026-09-07 — The admin's confirm boxes are ours now
+
+**Status:** complete
+**Owns:** `resources/views/partials/confirm-dialog.blade.php`, `tests/Feature/AdminConfirmDialogTest.php`
+**Shares (exact edits):** `layouts/app.blade.php` (one `@include` before `</body>`); 16 admin
+views — every `onsubmit|onclick="return confirm(X)"` → `x-confirm="X"` (23 sites, scripted, X
+kept verbatim); two JS-side `confirm(` calls (`memorials/edit`, the template-kit
+`basic-tables-two`) → `await Alpine.store('confirm').ask(...)`.
+
+**What this is.** Every destructive button in the admin ended in the browser's grey
+"alwaysforeverloved.com says" box — the one part of the admin that was never ours, at the
+moment a person is about to delete something. Now one dialog, mounted once, and an `x-confirm`
+Alpine directive: capture-phase intercept of submit/click, styled panel, replay the original
+action with a flag on OK. Cancel gets focus (Enter must not land on Delete). Button verb is
+lifted from the message ("Delete this plan?" → Delete), overridable with `data-confirm-label`.
+
+**Verified:** suite 860 / 2745. A regression test reads every admin view off disk and fails
+on any `confirm(` that comes back. The attribute's Blade escaping was checked *as the browser
+decodes it* (entity-decode, then assert `\'` inside the JS string) after my first guess at the
+literal rendered form was wrong. Rendered visually **without Apache** (still down): the real
+Users page rendered through the HTTP kernel in tinker, `/build/` assets rewritten to `file://`,
+headless Chrome with `--allow-file-access-from-files`, dialog pre-opened by an injected script.
+
+**Not verified:** a real click on production; dark mode (classes are there, unrendered);
+the two JS-side conversions beyond a syntax/compile pass. Public memorial pages and visitor
+views were deliberately left out — different design system, different decision.
