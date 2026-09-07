@@ -1373,3 +1373,41 @@ headless Chrome with `--allow-file-access-from-files`, dialog pre-opened by an i
 **Not verified:** a real click on production; dark mode (classes are there, unrendered);
 the two JS-side conversions beyond a syntax/compile pass. Public memorial pages and visitor
 views were deliberately left out — different design system, different decision.
+
+### 2026-09-07 — 4,444 failed jobs, and why neither dashboard button was the answer
+
+**Status:** complete
+**Owns:** `app/Console/Commands/TriageFailedJobs.php`, `tests/Feature/FailedJobsTriageTest.php`
+
+**What was reported.** The dashboard health banner: 4,444 failed background jobs, "most for
+the same reason" — `451 4.7.1 Ratelimit "hostinger_out_ratelimit" exceeded`, last failed two
+days ago. "We keep on doing this."
+
+**What it is.** Hostinger's outbound SMTP cap, hit during the 2026-09-04 relay. Each fake
+account triggered a welcome mail to the victim (`GuestOnboarding::sendWelcomeEmail` →
+`SendRawEmail`) and a "New User Registered" notice to admins (`notifyNewUserSignup` →
+`SendNotificationEmail`). Hostinger throttling those was the best thing that happened that
+day — it is why thousands of phishing mails never left. "Last failed two days ago" means the
+failures stopped when the relay closed; nothing new is failing.
+
+**Why the buttons are wrong here.** *Retry all* is `queue:retry all` — it would try to send
+the phishing again. *Clear them* is `queue:flush` — it drops everything, including any real
+family's notification that failed in the same window. Neither looks at who the mail was to.
+
+**`queue:failed-triage`** does. `SendRawEmail` carries its recipient in the serialized
+payload; `SendNotificationEmail` carries a notification id whose row names the account it is
+about. Recipient no longer a user, or still one but matching `JunkUserPurge` → junk. Bare run
+reports by reason and by recipient and deletes nothing; `--purge-junk` drops the junk rows and
+keeps the rest for `queue:retry all` once the cap has cleared. It also warns if the `jobs`
+table still holds pending work, because that will hit the same cap on the next worker pass.
+
+**Verified:** 5 tests against rows shaped exactly as Laravel writes them (displayName + PHP-
+serialized command) with the real 451 line; suite 865 / 2763. Found and fixed in the process:
+a 120-char reason key truncated the line *before* `hostinger_out_ratelimit` — the one token
+that names the cause. Kept at 300, as the banner does.
+
+**Not verified / not done:** not run against production (no shell from here) — the report is
+the first thing to run there. The banner itself still offers Retry all unconditionally; a
+guard when the dominant reason is a provider rate limit would be a sensible follow-up.
+Hostinger's shared-SMTP cap is a standing risk for a memorial platform's notification volume;
+a transactional provider (SES/Postmark/Resend) is the real fix and is a decision, not a patch.
