@@ -41,7 +41,13 @@ class UserController extends Controller
         $roles = Role::orderBy('name')->get();
         $resellers = Reseller::filterOptions();
 
-        return view('pages.users.index', compact('users', 'roles', 'resellers'));
+        // How many accounts the suspicious definition matches, site-wide, so the page can say so
+        // without anyone having to know the filter exists. Cached for a minute: it is a REGEXP
+        // scan of the users table and this page is opened often; a minute of staleness on a
+        // number that only ever falls is fine. Busted below the moment a purge is started.
+        $suspiciousCount = \Illuminate\Support\Facades\Cache::remember('users.suspicious_count', 60, fn () => \App\Support\JunkUserPurge::query()->count());
+
+        return view('pages.users.index', compact('users', 'roles', 'resellers', 'suspiciousCount'));
     }
 
     /**
@@ -65,6 +71,8 @@ class UserController extends Controller
 
         $actor = auth()->user();
         $remaining = null;
+
+        \Illuminate\Support\Facades\Cache::forget('users.suspicious_count');
 
         // `all` hands the whole set to a job rather than deleting in the request. The
         // 500-per-click cap protected the request, not the admin; an attack that left

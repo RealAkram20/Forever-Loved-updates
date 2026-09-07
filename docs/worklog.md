@@ -1411,3 +1411,12 @@ the first thing to run there. The banner itself still offers Retry all unconditi
 guard when the dominant reason is a provider rate limit would be a sensible follow-up.
 Hostinger's shared-SMTP cap is a standing risk for a memorial platform's notification volume;
 a transactional provider (SES/Postmark/Resend) is the real fix and is a decision, not a patch.
+
+**Addendum 2026-09-07 — the notice nobody has to find.** "I cannot delete them manually." The
+delete-all existed but appeared only after ticking a filter nobody had reason to know about. The
+plain Users page now carries a standing amber notice whenever the suspicious definition matches
+anything — the count, a *Review them* link (the filtered list), and *Delete all N* (`mode=all`,
+background job, same refusals) through the styled confirm. Count is `Cache::remember` for 60s
+(REGEXP scan; page opened often; the number only falls) and busted the moment any bulk delete
+starts, so the notice cannot show a stale count after a purge. Hidden on the filtered view,
+where the amber bar already is. 3 tests; file 17, suite 868 / 2776. Not clicked on production.
